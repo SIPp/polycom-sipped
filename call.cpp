@@ -3839,23 +3839,21 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if((l_pid = fork()) < 0) {
           ERROR_NO("Forking error child");
         } else {
-          // Execute shell in different ways.  Because cygwin wrongly returns true for system(0)
-          // even when the shell is not available
           if( l_pid == 0){
+// Execute shell in different ways via compiler check.
+// This is required because cygwin wrongly returns true for system(0)
+// even when the shell is not available
+// For some reason if system is invoked when sh is not available the program seg faults.
+// This is avoided by ifdef'ing out the system() call in favor of exec of cmd.exe on Windows.
 #ifndef __CYGWIN
-              //TRACE_MSG("Invoke sh via system call ; l_pid = %d, pid=%d\n", l_pid, getpid());
-              ret = system(x); // second child runs
-              // For some reason if system is invoked when sh is not available the program seg faults.
-              // This is avoided by ifdef'ing otu the system() call in favor of exec of cmd.exe.
-              //TRACE_MSG("system call returned %d ; l_pid = %d, pid=%d\n", ret, l_pid, getpid());
-            int ret;
+            int ret = system(x); // second child runs
             if(ret == -1) {
               WARNING("system call error for %s",x);
             }
 #else
-              // sh not available, use exec(command)
-              int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
-              ERROR_NO("Exec of cmd.exe /c %s failed", x);
+            // sh not available, use exec(command)
+            int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
+            ERROR_NO("Exec of cmd.exe /c %s failed", x);
 #endif
           }
           exit(EXIT_OTHER); 
