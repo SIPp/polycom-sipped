@@ -214,7 +214,7 @@ extern unsigned long      report_freq             _DEFVAL(DEFAULT_REPORT_FREQ);
 extern unsigned long      report_freq_dumpLog     _DEFVAL
                                                 (DEFAULT_REPORT_FREQ_DUMP_LOG);
 extern bool		  periodic_rtd		  _DEFVAL(false);
-extern char		* stat_delimiter          _DEFVAL(";");
+extern const char		* stat_delimiter          _DEFVAL(";");
 
 extern bool               timeout_exit            _DEFVAL(false);
 extern bool               timeout_error           _DEFVAL(false);
@@ -229,8 +229,6 @@ extern bool		  skip_rlimit		  _DEFVAL(false);
 extern unsigned int       timer_resolution        _DEFVAL(DEFAULT_TIMER_RESOLUTION);
 extern int                max_recv_loops          _DEFVAL(MAX_RECV_LOOPS_PER_CYCLE);
 extern int                max_sched_loops         _DEFVAL(MAX_SCHED_LOOPS_PER_CYCLE);
- 
-extern unsigned int       global_t2               _DEFVAL(DEFAULT_T2_TIMER_VALUE);
  
 extern char               local_ip[40];
 extern char               local_ip_escaped[42];
@@ -279,8 +277,9 @@ extern int                currentScreenToDisplay  _DEFVAL
 extern int                currentRepartitionToDisplay  _DEFVAL(1);
 extern unsigned int       base_cseq               _DEFVAL(0);
 extern char             * auth_uri                _DEFVAL(0);
-extern char             * call_id_string          _DEFVAL("%u-%p@%s");
+extern const char       * call_id_string          _DEFVAL("%u-%p@%s");
 extern char             **generic[100];
+extern bool              no_call_id_check         _DEFVAL(false);
 
 /* TDM map */
 extern bool               use_tdmmap              _DEFVAL(false);
@@ -478,7 +477,7 @@ struct logfile_id {
 };
 
 struct logfile_info {
-	char *name;
+	const char *name;
 	bool check;
 	FILE *fptr;
 	int nfiles;
@@ -513,7 +512,8 @@ void print_count_file(FILE *f, int header);
 /********************* Mini-Parser Routines *******************/
 
 int get_method(char *msg);
-char * get_peer_tag(char *msg);
+char * get_peer_tag_from_to(char *msg);
+char * get_peer_tag_from_from(char *msg);
 unsigned long int get_cseq_value(char *msg);
 unsigned long get_reply_code(char *msg);
 
@@ -632,10 +632,10 @@ void free_peer_addr_map();
 #ifdef __cplusplus
 extern "C" {
 #endif
-int TRACE_MSG(char *fmt, ...);
-int TRACE_CALLDEBUG(char *fmt, ...);
-int TRACE_SHORTMSG(char *fmt, ...);
-int LOG_MSG(char *fmt, ...);
+int TRACE_MSG(const char *fmt, ...);
+int TRACE_CALLDEBUG(const char *fmt, ...);
+int TRACE_SHORTMSG(const char *fmt, ...);
+int LOG_MSG(const char *fmt, ...);
 #ifdef __cplusplus
 }
 #endif

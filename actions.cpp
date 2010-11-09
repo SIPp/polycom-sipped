@@ -228,7 +228,7 @@ int*  CAction::getSubVarId() {
     return(M_subVarId);
 }
 
-void CAction::setNbSubVarId (int            P_value) {
+void CAction::setNbSubVarId (int P_value) {
    M_maxNbSubVarId        = P_value; 
    if(M_subVarId != NULL) {
      delete [] M_subVarId;
@@ -242,7 +242,7 @@ int  CAction::getNbSubVarId () {
 }
 
 
-void CAction::setLookingChar  (char*          P_value)
+void CAction::setLookingChar  (char *P_value)
 {
   if(M_lookingChar != NULL)
   {
@@ -257,7 +257,7 @@ void CAction::setLookingChar  (char*          P_value)
   }
 }
 
-void CAction::setMessage  (char*          P_value, int n)
+void CAction::setMessage  (char *P_value, int n)
 {
   if(M_message[n] != NULL)
   {
@@ -270,7 +270,7 @@ void CAction::setMessage  (char*          P_value, int n)
   if(P_value != NULL)
   { 
     M_message_str[n] = strdup(P_value);
-    M_message[n] = new SendingMessage(M_scenario, P_value, true /* skip sanity */);
+    M_message[n] = new SendingMessage(M_scenario, P_value, true /* skip sanity */, M_dialog_number);
   }
 }
 
@@ -332,6 +332,7 @@ int CAction::executeRegExp(char* P_string, VariableTable *P_callVarTable)
   return(nbOfMatch);
 }
 
+
 void CAction::setSubString(char** P_target, char* P_source, int P_start, int P_stop)
 {
   int sizeOf;
@@ -389,8 +390,13 @@ void CAction::setPcapArgs (char*        P_value)
 }
 #endif
 
+/*
 void CAction::setScenario(scenario *     P_scenario) {
   M_scenario = P_scenario;
+}
+
+void CAction::setDialogNumber(int P_dialog_number) {
+  M_dialog_number = P_dialog_number;
 }
 
 void CAction::setAction(CAction P_action)
@@ -406,6 +412,7 @@ void CAction::setAction(CAction P_action)
   setDoubleValue  ( P_action.getDoubleValue()  );
   setDistribution ( P_action.getDistribution() );
   setScenario     ( P_action.M_scenario        );
+  setDialogNumber ( P_action.M_dialog_number   );
 
   setNbSubVarId   ( P_action.getNbSubVarId()   );
   for (L_i = 0; L_i < P_action.getNbSubVarId() ; L_i++ ) {
@@ -427,8 +434,9 @@ void CAction::setAction(CAction P_action)
   setPcapArgs     ( P_action.M_pcapArgs        );
 #endif
 }
+*/
 
-CAction::CAction(scenario *scenario)
+CAction::CAction(scenario *scenario, int dialog_number)
 {
   M_action       = E_AT_NO_ACTION;
   M_varId        = 0;
@@ -458,6 +466,7 @@ CAction::CAction(scenario *scenario)
   M_pcapArgs     = NULL;
 #endif
   M_scenario     = scenario;
+  M_dialog_number = dialog_number;
   M_regExpSet    = false;
   M_regularExpression = NULL;
 }

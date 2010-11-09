@@ -40,7 +40,7 @@
 #include "message.hpp"
 
 struct KeywordMap {
-	char *keyword;
+	const char *keyword;
 	MessageCompType type;
 };
 
@@ -65,19 +65,11 @@ struct KeywordMap SimpleKeywords[] = {
   {"media_ip_type", E_Message_Media_IP_Type },
   {"call_number", E_Message_Call_Number },
   {"dynamic_id", E_Message_DynamicId }, // wrapping global counter
-  {"call_id", E_Message_Call_ID },
-  {"cseq", E_Message_CSEQ },
   {"pid", E_Message_PID },
   {"service", E_Message_Service },
   {"branch", E_Message_Branch },
   {"msg_index", E_Message_Index },
-  {"next_url", E_Message_Next_Url },
   {"len", E_Message_Len },
-  {"peer_tag_param", E_Message_Peer_Tag_Param },
-  {"last_Request_URI", E_Message_Last_Request_URI },
-  {"last_cseq_number", E_Message_Last_CSeq_Number },
-  {"last_message", E_Message_Last_Message },
-  {"routes", E_Message_Routes },
   {"tdmmap", E_Message_TDM_Map },
   {"clock_tick", E_Message_ClockTick },
   {"users", E_Message_Users },
@@ -86,20 +78,40 @@ struct KeywordMap SimpleKeywords[] = {
   {"sipp_version", E_Message_SippVersion },
 };
 
+/* These keywords take an optional dialog= parameter and no other processing. */
+struct KeywordMap DialogSpecificKeywords[] = {
+  {"cseq", E_Message_CSEQ },
+  {"last_cseq_number", E_Message_Last_CSeq_Number },
+  {"last_Request_URI", E_Message_Last_Request_URI },
+  {"call_id", E_Message_Call_ID },
+  {"last_message", E_Message_Last_Message },
+  {"next_url", E_Message_Next_Url },
+  {"routes", E_Message_Routes },
+  {"peer_tag_param", E_Message_Peer_Tag_Param },
+  {"remote_tag_param", E_Message_Remote_Tag_Param },
+  {"remote_tag", E_Message_Remote_Tag },
+// to_uri, to_value, from_uri, from_value
+// contact_number, contact_uri, contact_value
+// local_tag, local_tag_param
+};
+
 #define KEYWORD_SIZE 256
 
-SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sanity) {
-    char *osrc = src;
+SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number) {
+// should we parse out the _n portion of call here or later? Here would be faster and more
+// in keepin with the existing style, I suppose...
+    const char *osrc = src;
     char * literal;
     int    literalLen;
     char * dest;
     char * key;
     char   current_line[MAX_HEADER_LEN];
-    char * line_mark = NULL;
-    char * tsrc;
+    const char * line_mark = NULL;
+    const char * tsrc;
     int    num_cr = get_cr_number(src);
 
     this->msg_scenario = msg_scenario;
+    this->dialog_number = dialog_number;
     
     dest = literal = (char *)malloc(strlen(src) + num_cr + 1);
     literalLen = 0;
@@ -108,6 +120,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
     *dest = 0;
 
     while(*src) {
+			/* If start of new line, copy through next \n into current_line */
       if (current_line[0] == '\0') {
         line_mark = strchr(src, '\n');
         if (line_mark) {
@@ -150,6 +163,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
 	  newcomp->type = E_Message_Literal;
 	  newcomp->literal = literal;
 	  newcomp->literalLen = literalLen; // length without the terminator 
+  	newcomp->dialog_number = dialog_number;
 	  messageComponents.push_back(newcomp);
 	} else {
 	  free(literal);
@@ -163,7 +177,9 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
 	MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
 	if (!newcomp) { ERROR("Out of memory!"); }
 
-        char keyword [KEYWORD_SIZE+1];
+	newcomp->dialog_number = dialog_number;
+
+	char keyword [KEYWORD_SIZE+1];
 	src++;
 
 	/* Like strchr, but don't count things in quotes. */
@@ -184,7 +200,8 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
 	}
 
 	/* Like strchr, but don't count things in quotes. */
-	for(key = src; *key; key++) {
+  // cast away const of src [*UGLY*]
+	for(key = (char *) src; *key; key++) {
 		if (*key == '\"') {
 			do {
 				key++;
@@ -207,10 +224,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
           ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
         }
         memcpy(keyword, src,  key - src);
-	keyword[key - src] = 0;
+        keyword[key - src] = 0;
         src = key + 1;
         // allow +/-n for numeric variables
-	newcomp->offset = 0;
+        newcomp->offset = 0;
         if ((strncmp(keyword, "authentication", strlen("authentication")) &&
 	    strncmp(keyword, "tdmmap", strlen("tdmmap"))) &&
 	    ((key = strchr(keyword,'+')) || (key = strchr(keyword,'-')))) {
@@ -247,10 +264,22 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
 	  }
 	}
 
-	if (simple_keyword) {
+	bool dialog_keyword = false;
+	for (unsigned int i = 0; i < sizeof(DialogSpecificKeywords)/sizeof(DialogSpecificKeywords[0]); i++) {
+	  if (strstr(keyword, DialogSpecificKeywords[i].keyword) == keyword) {
+		newcomp->type = DialogSpecificKeywords[i].type;
+    parse_dialog_number(keyword, newcomp);
+		dialog_keyword = true;
+		break;
+	  }
+	}
+
+	if (simple_keyword || dialog_keyword) {
 	  messageComponents.push_back(newcomp);
 	  continue;
 	}
+
+
 
         if(!strncmp(keyword, "field", strlen("field"))) {
 	  newcomp->type = E_Message_Injection;
@@ -276,7 +305,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
 	  getKeywordParam(keyword, "line=", line);
 	  if (line[0]) {
 	    /* Turn this into a new message component. */
-	    newcomp->comp_param.field_param.line = new SendingMessage(msg_scenario, line, true);
+	    newcomp->comp_param.field_param.line = new SendingMessage(msg_scenario, line, true, dialog_number);
 	  }
         } else if(!strncmp(keyword, "file", strlen("file"))) {
 	  newcomp->type = E_Message_File;
@@ -288,7 +317,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
 	    ERROR("No name specified for 'file' keyword!\n");
 	  }
 	  /* Turn this into a new message component. */
-	  newcomp->comp_param.filename = new SendingMessage(msg_scenario, fileName, true);
+	  newcomp->comp_param.filename = new SendingMessage(msg_scenario, fileName, true, dialog_number);
         } else if(*keyword == '$') {
 	  newcomp->type = E_Message_Variable;
 	  if (!msg_scenario) {
@@ -312,13 +341,25 @@ SendingMessage::SendingMessage(scenario *msg_scenario, char *src, bool skip_sani
 	    ERROR("SendingMessage with variable usage outside of scenario!");
 	  }
 	  newcomp->varId = msg_scenario->get_var(varName, "Fill Variable");
-     } else if(!strncmp(keyword, "last_", strlen("last_"))) {
-       newcomp->type = E_Message_Last_Header;
-       newcomp->literal = strdup(keyword + strlen("last_"));
-       newcomp->literalLen = strlen(newcomp->literal);
-     } else if(!strncmp(keyword, "authentication", strlen("authentication"))) {
-       parseAuthenticationKeyword(msg_scenario, newcomp, keyword);
+
+	} else if(!strncmp(keyword, "last_", strlen("last_"))) {
+     newcomp->type = E_Message_Last_Header;
+
+     // parse optional dialog parameter 
+     if (parse_dialog_number(keyword, newcomp)) {
+       // if dialog= specified, only copy header portion
+       const char *diagptr = strstr(keyword, "dialog=");
+       assert(diagptr);
+       while ((diagptr > keyword) && (*(diagptr-1) == ' ')) diagptr--;
+       newcomp->literal = strndup(keyword + strlen("last_"), diagptr - keyword - strlen("last_"));
      }
+     else 
+       newcomp->literal = strdup(keyword + strlen("last_"));
+     newcomp->literalLen = strlen(newcomp->literal);
+
+   } else if(!strncmp(keyword, "authentication", strlen("authentication"))) {
+     parseAuthenticationKeyword(msg_scenario, newcomp, keyword);
+   }
 #ifndef PCAPPLAY
         else if(!strcmp(keyword, "auto_media_port") ||
 		  !strcmp(keyword, "media_port") ||
@@ -477,7 +518,7 @@ void SendingMessage::getHexStringParam(char * dest, char * src, int * len)
   }
 }
 
-void SendingMessage::getKeywordParam(char * src, char * param, char * output)
+void SendingMessage::getKeywordParam(char * src, const char * param, char * output)
 {
   char *key, *tmp;
   int len;
@@ -510,6 +551,22 @@ void SendingMessage::getKeywordParam(char * src, char * param, char * output)
   } else {
     output[0] = '\0';
   }
+}
+
+// store dialog number in MessageComponent if specified
+// return value of true indicates dialog= keyword was found
+bool SendingMessage::parse_dialog_number(char * src, struct MessageComponent* newcomp)
+{    
+  char dialogNumber[KEYWORD_SIZE];
+  getKeywordParam(src, "dialog=", dialogNumber);
+  if (dialogNumber[0] != '\0') {
+    char *endptr;
+    newcomp->dialog_number = strtol(dialogNumber, &endptr, 10);
+    if (endptr == dialogNumber)
+      ERROR("Invalid dialog number specified in last_ tag.");
+    return true;
+  }
+  else return false;
 }
 
 void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword) {

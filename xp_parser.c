@@ -50,7 +50,7 @@ char * xp_position [XP_MAX_STACK_LEN];
 int    xp_stack    = 0;
 
 /****************** Internal routines ********************/
-int xp_replace(char *source, char *dest, char *search, char *replace)
+int xp_replace(char *source, char *dest, const char *search, const char *replace)
 {
   char *position;
   char *occurances;
@@ -174,30 +174,85 @@ int xp_set_xml_buffer_from_string(char * str)
   return 1;
 }
 
-int xp_set_xml_buffer_from_file(char * filename)
+// return 1 on success, 0 on error 
+int xp_open_and_buffer_file(char * filename, int *index)
 {
   FILE * f = fopen(filename, "rb");
-  int index = 0;
   int c;
 
-  if(!f) { return 0; }
+  int include_index = 0;
+  const char* include_tag = "<xi:include href=\"";
+  int include_tag_length = strlen(include_tag);
+  char include_file_name[XP_MAX_NAME_LEN];
+
+  if(!f) { 
+    printf("Unable to open file name '%s'\n", filename);
+    return 0; 
+  }
 
   while((c = fgetc(f)) != EOF) {
+    // Handle match for include file
+    if (c == include_tag[include_index]) {
+      include_index++;
+      if (include_index >= include_tag_length) {
+        // match: move index to spot to overwrite, read out the filename, recursively call to place inline
+        *index = *index - (include_tag_length-1); // index not bumped for final quote yet
+
+        // read up until '">' (if EOF or EOLN before its an error)
+        include_index = 0; // use to track file name
+        while((c = fgetc(f)) != '"') {
+          if (c == EOF || c == '\r' || c == '\n') {
+            printf("xi:include tag must be formatted exactly '<xi:include href=\"filename\"/>'  No EOF or EOLN permitted.\n");
+            fclose(f);
+            return 0;
+          }
+          include_file_name[include_index] = c;
+          include_index++;
+        } // while fgetc != '"'
+        char ch = fgetc(f);
+        if (ch != '/' || fgetc(f) != '>') {
+          printf("xi:include tag must be formatted exactly '<xi:include href=\"filename\"/>'  '/>' must follow '\"'.\n");
+          fclose(f);
+          return 0;
+        }
+        include_file_name[include_index] = 0;      
+       
+        if (!xp_open_and_buffer_file(include_file_name, index)) 
+          return 0;  
+        include_index = 0;
+      } // if include_index >= include_tag_length
+    } // if c == include_tag[include_index])
+    else
+      include_index = 0; // not include tag: reset search
+
+    // Handle parsing file into xp_file
     if(c == '\r') continue;
-    xp_file[index++] = c;
-    if(index >= XP_MAX_FILE_LEN) {
-      xp_file[index++] = 0;
-      xp_stack = 0;
-      xp_position[xp_stack] = xp_file;
-      return 0;
+    xp_file[(*index)++] = c;
+    if(*index >= XP_MAX_FILE_LEN) {
+      printf("Error: XML definition too long.\n");
+      fclose(f);
+      return 0; 
     }
   }
-  xp_file[index++] = 0;
   fclose(f);
 
+  return 1;
+} // xp_open_and_buffer_file
+
+
+// return 1 on success, 0 on error 
+int xp_set_xml_buffer_from_file(char * filename)
+{
+  int index = 0;
+
+  int result = xp_open_and_buffer_file(filename, &index);
+  xp_file[index++] = 0;
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
 
+  if (!result)
+    return 0;
+  
   if(strstr(xp_position[xp_stack], "<?xml") != xp_position[xp_stack]) return 0;
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
   xp_position[xp_stack] = xp_position[xp_stack] + 2;

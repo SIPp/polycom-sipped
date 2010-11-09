@@ -31,7 +31,7 @@
 
 class listener {
 public:
-  listener(char *id, bool listening);
+  listener(const char *id, bool listening);
   virtual ~listener();
   char *getId();
   virtual bool process_incoming(char * msg, struct sockaddr_storage *src) = 0;

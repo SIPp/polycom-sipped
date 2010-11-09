@@ -28,7 +28,7 @@
 
 listener_map listeners;
 
-listener::listener(char *id, bool listening) {
+listener::listener(const char *id, bool listening) {
   this->id = strdup(id);
   this->listening = false;
   if (listening) {
@@ -66,9 +66,16 @@ listener::~listener() {
 }
 
 listener *get_listener(char *id) {
-  listener_map::iterator listener_it = listeners.find(listener_map::key_type(id));
+  listener_map::iterator listener_it;
+  if (id != NULL) {
+    listener_it = listeners.find(listener_map::key_type(id));
+  } else {
+    listener_it = listeners.begin();
+  }
   if (listener_it == listeners.end()) {
     return NULL;
   }
+  
   return listener_it->second;
+
 }

@@ -139,11 +139,12 @@ class CAction
     void setVarInId      (int            P_value);
     void setVarIn2Id      (int            P_value);
     void setLookingChar  (char*          P_value);
-    void setAction       (CAction        P_action);
+//    void setAction       (CAction        P_action);
     void setCaseIndep    (bool           P_action);
     void setOccurence   (int            P_value);
     void setHeadersOnly  (bool           P_value);
-    void setScenario     (scenario *     P_scenario);
+//    void setScenario     (scenario *     P_scenario);     / set by constructor so not needed
+//    void setDialogNumber (int           P_dialog_number); \ only place called was setAction, which itself is never called. 
     void setRegExp       (char*		 P_value);  /* ereg specific function. */
     int  executeRegExp   (char* P_string, VariableTable *P_callVarTable);
     void setMessage      (char*          P_value, int n = 0);  /* log specific function  */
@@ -165,7 +166,7 @@ class CAction
     double getDoubleValue ();  /* assign value specific function  */
     char * getStringValue ();  /* strcmp specific function  */
 
-    CAction(scenario *scenario);
+    CAction(scenario *scenario, int dialog_number);
     ~CAction();
 
   private:
@@ -198,6 +199,8 @@ class CAction
       char *         M_stringValue;
       /* what scenario we belong to. */
       scenario *     M_scenario;
+      /* what dialog keywords refer by default */
+      int            M_dialog_number;
       /* Our regular expression. */
       bool	     M_regExpSet;
       regex_t        M_internalRegExp;

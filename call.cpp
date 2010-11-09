@@ -184,8 +184,8 @@ uint8_t get_remote_ipv6_media(char *msg, struct in6_addr *addr)
 #define PAT_VIDEO 2
 uint16_t get_remote_port_media(char *msg, int pattype)
 {
-    char *pattern;
-    char *begin, *end;
+    const char *pattern;
+    const char *begin, *end;
     char number[7];
 
     if (pattype == PAT_AUDIO) {
@@ -319,31 +319,29 @@ call::call(char *p_id, struct sipp_socket *socket, struct sockaddr_storage *dest
   init(main_scenario, socket, dest, p_id, 0 /* No User. */, socket->ss_ipv6, false /* Not Auto. */, false);
 }
 
-call::call(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitialization) : listener(p_id, true) {
+call::call(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, const char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitialization) : listener(p_id, true) {
   init(call_scenario, socket, dest, p_id, userId, ipv6, isAutomatic, isInitialization);
 }
 
-call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest)
+void call::compute_id(char *call_id, int length)
 {
-  static char call_id[MAX_HEADER_LEN];
-
-  char * src = call_id_string;
+  const char * src = call_id_string;
   int count = 0;
 
   if(!next_number) { next_number ++; }
 
-  while (*src && count < MAX_HEADER_LEN-1) {
+  while (*src && count < length-1) {
       if (*src == '%') {
           ++src;
           switch(*src++) {
           case 'u':
-              count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%u", next_number);
+              count += snprintf(&call_id[count], length-count-1,"%u", next_number);
               break;
           case 'p':
-              count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%u", pid);
+              count += snprintf(&call_id[count], length-count-1,"%u", pid);
               break;
           case 's':
-              count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%s", local_ip);
+              count += snprintf(&call_id[count], length-count-1,"%s", local_ip);
               break;
           default:      // treat all unknown sequences as %%
               call_id[count++] = '%';
@@ -354,12 +352,19 @@ call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest)
       }
   }
   call_id[count] = 0;
+}
+
+call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest)
+{
+  static char call_id[MAX_HEADER_LEN];
+
+  compute_id(call_id, MAX_HEADER_LEN);
 
   return new call(main_scenario, NULL, dest, call_id, userId, ipv6, false /* Not Auto. */, false);
 }
 
 
-void call::init(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall)
+void call::init(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, const char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall)
 {
   this->call_scenario = call_scenario;
   zombie = false;
@@ -380,10 +385,15 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   recv_retrans_recv_index = -1;
   recv_retrans_send_index = -1;
 
-  dialog_route_set = NULL;
-  next_req_url = NULL;
+//  dialog_route_set = NULL;
+//  next_req_url = NULL;
 
-  cseq = 0;
+  last_dialog_state = get_dialogState(-1);
+  assert(last_dialog_state);
+  // pre-configure call_id to built-in value for default scenario 
+  // This will be used for transmission, but not for call-id verification
+  // actually, may not be used: test this and remove
+  last_dialog_state->call_id = string(id); 
 
   next_retrans = 0;
   nb_retrans = 0;
@@ -397,8 +407,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   start_time = clock_tick;
   call_established=false ;
   ack_is_pending=false ;
-  last_recv_msg = NULL;
-  cseq = base_cseq;
+//  cseq = base_cseq;
   nb_last_delay = 0;
   use_ipv6 = ipv6;
   queued_msg = NULL;
@@ -512,7 +521,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   media_thread = 0;
 #endif
 
-  peer_tag = NULL;
+//  peer_tag = NULL;
   recv_timeout = 0;
   send_timeout = 0;
   timewait = false;
@@ -545,7 +554,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   setRunning();
 }
 
-int call::_callDebug(char *fmt, ...) {
+int call::_callDebug(const char *fmt, ...) {
     va_list ap;
 
     if (!useCallDebugf) {
@@ -601,10 +610,13 @@ call::~call()
     free(transactions);
   }
 
-  if(last_recv_msg) { free(last_recv_msg); }
-  if(last_send_msg) { free(last_send_msg); }
-  if(peer_tag) { free(peer_tag); }
+  free_dialogState();
 
+//  if(last_recv_msg) { free(last_recv_msg); } nope: now it points to dialogState's copy
+  if(last_send_msg) { free(last_send_msg); }
+//  if(peer_tag) { free(peer_tag); }
+
+/*
   if(dialog_route_set) {
        free(dialog_route_set);
   }
@@ -612,7 +624,7 @@ call::~call()
   if(next_req_url) {
        free(next_req_url);
   }
-
+*/
 
 #ifdef _USE_OPENSSL
   if(dialog_authentication) {
@@ -928,12 +940,12 @@ void call::sendBuffer(char * msg, int len)
 }
 
 
-char * call::compute_cseq(char * src)
+char * call::compute_cseq(char * src, DialogState *ds)
 {
   static char cseq[MAX_HEADER_LEN];
 
     /* If we find a CSeq in incoming msg */
-  char * last_header = get_last_header("CSeq:");
+  char * last_header = get_last_header("CSeq:", ds);
     if(last_header) {
       int i;
       /* Extract the integer value of the last CSeq */
@@ -968,11 +980,12 @@ char * call::get_header_field_code(char *msg, char * name)
     return code;
 }
 
-char * call::get_last_header(char * name)
+// you gotta pass in the dialog state this is based on.
+char * call::get_last_header(const char * name, DialogState *ds)
 {
   int len;
 
-  if((!last_recv_msg) || (!strlen(last_recv_msg))) {
+  if((!ds->last_recv_msg) || (!strlen(ds->last_recv_msg))) {
     return NULL;
   }
 
@@ -985,21 +998,22 @@ char * call::get_last_header(char * name)
   }
 
   if (name[len - 1] == ':') {
-    return get_header(last_recv_msg, name, false);
+    return get_header(ds->last_recv_msg, name, false);
   } else {
     char with_colon[MAX_HEADER_LEN];
     sprintf(with_colon, "%s:", name);
-    return get_header(last_recv_msg, with_colon, false);
+    return get_header(ds->last_recv_msg, with_colon, false);
   }
 }
 
-char * call::get_header_content(char* message, char * name)
+// only return payload of the header (not the 'header:' bit.
+char * call::get_header_content(char* message, const char * name)
 {
   return get_header(message, name, true);
 }
 
 /* If content is true, we only return the header's contents. */
-char * call::get_header(char* message, char * name, bool content)
+char * call::get_header(char* message, const char * name, bool content)
 {
   /* non reentrant. consider accepting char buffer as param */
   static char last_header[MAX_HEADER_LEN * 10];
@@ -1163,14 +1177,14 @@ char * call::get_first_line(char * message)
 
 /* Return the last request URI from the To header. On any error returns the
  * empty string.  The caller must free the result. */
-char * call::get_last_request_uri ()
+char * call::get_last_request_uri (DialogState *ds)
 {
      char * tmp;
      char * tmp2;
      char * last_request_uri;
      int tmp_len;
 
-     char * last_To = get_last_header("To:");
+     char * last_To = get_last_header("To:", ds);
      if (!last_To) {
 	return strdup("");
      }
@@ -1375,6 +1389,7 @@ bool call::next()
       new_msg_index = (*msgs)[msg_index]->next;
     }
   }
+callDebug("call::next(): msg_index = %d, new_msg_index = %d", msg_index, new_msg_index);
   msg_index=new_msg_index;
   recv_timeout = 0;
   if(msg_index >= (int)((*msgs).size())) {
@@ -1386,6 +1401,8 @@ bool call::next()
 }
 
 bool call::executeMessage(message *curmsg) {
+  DialogState *ds = get_dialogState(curmsg->dialog_number);
+
   if(curmsg -> pause_distribution || curmsg->pause_variable != -1) {
     unsigned int pause;
     if (curmsg->pause_distribution) {
@@ -1467,13 +1484,13 @@ bool call::executeMessage(message *curmsg) {
     if (!curmsg->send_scheme->isAck() &&
         !curmsg->send_scheme->isCancel() &&
         !curmsg->send_scheme->isResponse()) {
-          ++cseq;
+          ++ds->cseq;
           incr_cseq = 1;
     }
     
     msg_snd = send_scene(msg_index, &send_status, &msgLen);
     if(send_status == -1 && errno == EWOULDBLOCK) {
-      if (incr_cseq) --cseq;
+      if (incr_cseq) --ds->cseq;
       /* Have we set the timeout yet? */
       if (send_timeout) {
 	/* If we have actually timed out. */
@@ -1702,11 +1719,11 @@ bool call::run()
       }
     } else {
       nb_last_delay *= 2;
-      if (global_t2 < nb_last_delay)
+      if (DEFAULT_T2_TIMER_VALUE < nb_last_delay)
       {
         if (!bInviteTransaction)
         {
-          nb_last_delay = global_t2;
+          nb_last_delay = DEFAULT_T2_TIMER_VALUE;
       }
       }
       if(send_raw(last_send_msg, last_send_index, last_send_len) < -1) {
@@ -1734,15 +1751,16 @@ bool call::run()
   return executeMessage(curmsg);
 }
 
-char *default_message_names[] = {
+const char *default_message_names[] = {
 	"3pcc_abort",
 	"ack",
 	"ack2",
 	"bye",
 	"cancel",
 	"200",
+  "200register",
 };
-char *default_message_strings[] = {
+const char *default_message_strings[] = {
 	/* 3pcc_abort */
 	"call-id: [call_id]\ninternal-cmd: abort_call\n\n",
 	/* ack */
@@ -1795,7 +1813,19 @@ char *default_message_strings[] = {
 	"[last_Call-ID:]\n"
 	"[last_CSeq:]\n"
 	"Contact: <sip:[local_ip]:[local_port];transport=[transport]>\n"
+	"Content-Length: 0\n\n",
+	/* 200register */
+	"SIP/2.0 200 OK\n"
+	"[last_Via:]\n"
+	"[last_From:]\n"
+	"[last_To:];tag=abcd\n"
+	"[last_Call-ID:]\n"
+	"[last_CSeq:]\n"
+  "[last_Contact:];expires=120\n"
 	"Content-Length: 0\n\n"
+/* Default used to be 85600, changed to 120 for ATT but really should make this a parameter 
+ 	"Contact: <sip:[service]@[remote_ip]>;expires=180\n"
+*/
 };
 
 SendingMessage **default_messages;
@@ -1892,8 +1922,8 @@ bool call::process_unexpected(char * msg)
     }
 
     // usage of last_ keywords => for call aborting
-    last_recv_msg = (char *) realloc(last_recv_msg, strlen(msg) + 1);
-    strcpy(last_recv_msg, msg);
+    DialogState *ds = get_dialogState(curmsg->dialog_number);
+    setLastMsg(msg, ds);
 
     computeStat(CStat::E_CALL_FAILED);
     computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
@@ -1960,7 +1990,7 @@ bool call::abortCall(bool writeLog)
         /* any answer. */
         /* Do nothing ! */
       }
-    } else if (last_recv_msg) {
+    } else if (last_recv_msg) { 
       /* The call may not be established, if we haven't yet received a message,
        * because the earlier check depends on the first message being an INVITE
        * (although it could be something like a message message, therefore we
@@ -2078,327 +2108,349 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   int    len_offset = 0;
   char *dest = msg_buffer;
   bool supresscrlf = false;
+  // cache default dialog state to prevent repeated lookups (fastpath)
+  DialogState *src_dialog_state = get_dialogState(src->getDialogNumber());
 
   *dest = '\0';
 
   for (int i = 0; i < src->numComponents(); i++) {
     MessageComponent *comp = src->getComponent(i);
     int left = buf_len - (dest - msg_buffer);
+
+    // per-component dialog state may be different than message if explicitly specified via dialog= attribute
+    DialogState *ds = (comp->dialog_number == src->getDialogNumber() ? src_dialog_state : get_dialogState(comp->dialog_number));
+
     switch(comp->type) {
       case E_Message_Literal:
-	if (supresscrlf) {
-	  char *ptr = comp->literal;
-	  while (isspace(*ptr)) ptr++;
-	  dest += snprintf(dest, left, "%s", ptr);
-	  supresscrlf = false;
-	} else {
-	  memcpy(dest, comp->literal, comp->literalLen);
-	  dest += comp->literalLen;
+        if (supresscrlf) {
+          char *ptr = comp->literal;
+          while (isspace(*ptr)) ptr++;
+          dest += snprintf(dest, left, "%s", ptr);
+          supresscrlf = false;
+        } else {
+          memcpy(dest, comp->literal, comp->literalLen);
+          dest += comp->literalLen;
           *dest = '\0';
-	}
-	break;
+        }
+        break;
       case E_Message_Remote_IP:
-	dest += snprintf(dest, left, "%s", remote_ip_escaped);
-	break;
+        dest += snprintf(dest, left, "%s", remote_ip_escaped);
+        break;
       case E_Message_Remote_Host:
-	dest += snprintf(dest, left, "%s", remote_host);
-	break;
+        dest += snprintf(dest, left, "%s", remote_host);
+        break;
       case E_Message_Remote_Port:
-	dest += snprintf(dest, left, "%d", remote_port + comp->offset);
-	break;
+        dest += snprintf(dest, left, "%d", remote_port + comp->offset);
+        break;
       case E_Message_Local_IP:
-	dest += snprintf(dest, left, "%s", local_ip_escaped);
-	break;
+        dest += snprintf(dest, left, "%s", local_ip_escaped);
+        break;
       case E_Message_Local_Port:
-	int port;
-	if((transport == T_UDP) && (multisocket) && (sendMode != MODE_SERVER)) {
-	  port = call_port;
-	} else {
-	  port =  local_port;
-	}
-	dest += snprintf(dest, left, "%d", port + comp->offset);
-	break;
+        int port;
+        if((transport == T_UDP) && (multisocket) && (sendMode != MODE_SERVER)) {
+          port = call_port;
+        } else {
+          port =  local_port;
+        }
+        dest += snprintf(dest, left, "%d", port + comp->offset);
+        break;
       case E_Message_Transport:
-	dest += snprintf(dest, left, "%s", TRANSPORT_TO_STRING(transport));
-	break;
+        dest += snprintf(dest, left, "%s", TRANSPORT_TO_STRING(transport));
+        break;
       case E_Message_Local_IP_Type:
-	dest += snprintf(dest, left, "%s", (local_ip_is_ipv6 ? "6" : "4"));
-	break;
+        dest += snprintf(dest, left, "%s", (local_ip_is_ipv6 ? "6" : "4"));
+        break;
       case E_Message_Server_IP: {
-	  /* We should do this conversion once per socket creation, rather than
-	   * repeating it every single time. */
-	  struct sockaddr_storage server_sockaddr;
+        /* We should do this conversion once per socket creation, rather than
+        * repeating it every single time. */
+        struct sockaddr_storage server_sockaddr;
 
-	  sipp_socklen_t len = SOCK_ADDR_SIZE(&server_sockaddr);
-	  getsockname(call_socket->ss_fd,
-	      (sockaddr *)(void *)&server_sockaddr, &len);
+        sipp_socklen_t len = SOCK_ADDR_SIZE(&server_sockaddr);
+        getsockname(call_socket->ss_fd,
+          (sockaddr *)(void *)&server_sockaddr, &len);
 
-	  if (server_sockaddr.ss_family == AF_INET6) {
-	    char * temp_dest;
-	    temp_dest = (char *) malloc(INET6_ADDRSTRLEN);
-	    memset(temp_dest,0,INET6_ADDRSTRLEN);
-	    inet_ntop(AF_INET6,
-		&((_RCAST(struct sockaddr_in6 *,&server_sockaddr))->sin6_addr),
-		temp_dest,
-		INET6_ADDRSTRLEN);
-	    dest += snprintf(dest, left, "%s",temp_dest);
-	  } else {
-	    dest += snprintf(dest, left, "%s",
-		inet_ntoa((_RCAST(struct sockaddr_in *,&server_sockaddr))->sin_addr));
-	  }
-	}
-	break;
+        if (server_sockaddr.ss_family == AF_INET6) {
+          char * temp_dest;
+          temp_dest = (char *) malloc(INET6_ADDRSTRLEN);
+          memset(temp_dest,0,INET6_ADDRSTRLEN);
+          inet_ntop(AF_INET6,
+            &((_RCAST(struct sockaddr_in6 *,&server_sockaddr))->sin6_addr),
+            temp_dest,
+            INET6_ADDRSTRLEN);
+          dest += snprintf(dest, left, "%s",temp_dest);
+        } else {
+          dest += snprintf(dest, left, "%s",
+            inet_ntoa((_RCAST(struct sockaddr_in *,&server_sockaddr))->sin_addr));
+        }
+                                }
+                                break;
       case E_Message_Media_IP:
-	dest += snprintf(dest, left, "%s", media_ip_escaped);
-	break;
+        dest += snprintf(dest, left, "%s", media_ip_escaped);
+        break;
       case E_Message_Media_Port:
       case E_Message_Auto_Media_Port: {
-	int port = media_port + comp->offset;
-	if (comp->type == E_Message_Auto_Media_Port) {
-	  port = media_port + (4 * (number - 1)) % 10000 + comp->offset;
-	}
+        int port = media_port + comp->offset;
+        if (comp->type == E_Message_Auto_Media_Port) {
+          port = media_port + (4 * (number - 1)) % 10000 + comp->offset;
+        }
 #ifdef PCAPPLAY
-	char *begin = dest;
-	while (begin > msg_buffer) {
-	  if (*begin == '\n') {
-	    break;
-	  }
-	  begin--;
-	}
-	if (begin == msg_buffer) {
-	  ERROR("Can not find beginning of a line for the media port!\n");
-	}
-	if (strstr(begin, "audio")) {
-	  if (media_ip_is_ipv6) {
-	    (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = port;
-	  } else {
-	    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = port;
-	  }
-	} else if (strstr(begin, "video")) {
-	  if (media_ip_is_ipv6) {
-	    (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = port;
-	  } else {
-	    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = port;
-	  }
-	} else {
-	  ERROR("media_port keyword with no audio or video on the current line (%s)", begin);
-	}
+        char *begin = dest;
+        while (begin > msg_buffer) {
+          if (*begin == '\n') {
+            break;
+          }
+          begin--;
+        }
+        if (begin == msg_buffer) {
+          ERROR("Can not find beginning of a line for the media port!\n");
+        }
+        if (strstr(begin, "audio")) {
+          if (media_ip_is_ipv6) {
+            (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = port;
+          } else {
+            (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = port;
+          }
+        } else if (strstr(begin, "video")) {
+          if (media_ip_is_ipv6) {
+            (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = port;
+          } else {
+            (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = port;
+          }
+        } else {
+          ERROR("media_port keyword with no audio or video on the current line (%s)", begin);
+        }
 #endif
-	dest += sprintf(dest, "%u", port);
-	break;
-      }
+        dest += sprintf(dest, "%u", port);
+        break;
+                                      }
       case E_Message_Media_IP_Type:
-	dest += snprintf(dest, left, "%s", (media_ip_is_ipv6 ? "6" : "4"));
-	break;
+        dest += snprintf(dest, left, "%s", (media_ip_is_ipv6 ? "6" : "4"));
+        break;
       case E_Message_Call_Number:
-	dest += snprintf(dest, left, "%u", number);
-	break;
+        dest += snprintf(dest, left, "%u", number);
+        break;
       case E_Message_DynamicId:
         dest += snprintf(dest, left, "%u", call::dynamicId);
         // increment at each request
         dynamicId += stepDynamicId;
         if ( this->dynamicId > maxDynamicId ) { call::dynamicId = call::startDynamicId; } ;
-      break;
+        break;
       case E_Message_Call_ID:
-	dest += snprintf(dest, left, "%s", id);
-	break;
+        if (src_dialog_state->call_id.empty()) {
+          // create new call-id and store with dialog state
+          static char new_id[MAX_HEADER_LEN];
+          static char new_call_id[MAX_HEADER_LEN];
+          compute_id(new_id, MAX_HEADER_LEN);
+          snprintf(new_call_id, MAX_HEADER_LEN, "%d-%s", src->getDialogNumber(), new_id);
+          src_dialog_state->call_id = string(new_call_id);
+        }
+        dest += snprintf(dest, left, "%s", src_dialog_state->call_id.c_str());
+        break;
       case E_Message_CSEQ:
-	dest += snprintf(dest, left, "%u", cseq + comp->offset);
-	break;
+        dest += snprintf(dest, left, "%u", src_dialog_state->cseq + comp->offset);
+        break;
       case E_Message_PID:
-	dest += snprintf(dest, left, "%d", pid);
-	break;
+        dest += snprintf(dest, left, "%d", pid);
+        break;
       case E_Message_Service:
-	dest += snprintf(dest, left, "%s", service);
-	break;
+        dest += snprintf(dest, left, "%s", service);
+        break;
       case E_Message_Branch:
-	/* Branch is magic cookie + call number + message index in scenario */
-	if(P_index == -2){
-	  dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, msg_index-1 + comp->offset);
-	} else {
-	  dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, P_index + comp->offset);
-	}
-	break;
+        /* Branch is magic cookie + call number + message index in scenario */
+        if(P_index == -2){
+          dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, msg_index-1 + comp->offset);
+        } else {
+          dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, P_index + comp->offset);
+        }
+        break;
       case E_Message_Index:
-	dest += snprintf(dest, left, "%d", P_index);
-	break;
+        dest += snprintf(dest, left, "%d", P_index);
+        break;
       case E_Message_Next_Url:
-	if (next_req_url) {
-	  dest += sprintf(dest, "%s", next_req_url);
-	}
-	break;
+        if (ds->next_req_url) {
+          dest += sprintf(dest, "%s", ds->next_req_url);
+        }
+        break;
       case E_Message_Len:
-	length_marker = dest;
-	dest += snprintf(dest, left, "     ");
-	len_offset = comp->offset;
-	break;
+        length_marker = dest;
+        dest += snprintf(dest, left, "     ");
+        len_offset = comp->offset;
+        break;
       case E_Message_Authentication:
-	if (auth_marker) {
-	  ERROR("Only one [authentication] keyword is currently supported!\n");
-	}
-	auth_marker = dest;
-	dest += snprintf(dest, left, "[authentication place holder]");
-	auth_comp = comp;
-	break;
+        if (auth_marker) {
+          ERROR("Only one [authentication] keyword is currently supported!\n");
+        }
+        auth_marker = dest;
+        dest += snprintf(dest, left, "[authentication place holder]");
+        auth_comp = comp;
+        break;
+      case E_Message_Remote_Tag_Param:
       case E_Message_Peer_Tag_Param:
-	if(peer_tag) {
-	  dest += snprintf(dest, left, ";tag=%s", peer_tag);
-	}
-	break;
+        if(ds->peer_tag) {
+          dest += snprintf(dest, left, ";tag=%s", ds->peer_tag);
+        }
+        break;
+      case E_Message_Remote_Tag:
+        if(ds->peer_tag) {
+          dest += snprintf(dest, left, "%s", ds->peer_tag);
+        }
+        break;
       case E_Message_Routes:
-	if (dialog_route_set) {
-	  dest += sprintf(dest, "Route: %s", dialog_route_set);
-	} else if (*(dest - 1) == '\n') {
-	  supresscrlf = true;
-	}
-	break;
+        if (ds->dialog_route_set) {
+          dest += sprintf(dest, "Route: %s", ds->dialog_route_set);
+        } else if (*(dest - 1) == '\n') {
+          supresscrlf = true;
+        }
+        break;
       case E_Message_ClockTick:
-	dest += snprintf(dest, left, "%lu", clock_tick);
-	break;
+        dest += snprintf(dest, left, "%lu", clock_tick);
+        break;
       case E_Message_Timestamp:
-	struct timeval currentTime;
-	gettimeofday(&currentTime, NULL);
-	dest += snprintf(dest, left, "%s", CStat::formatTime(&currentTime));
-	break;
+        struct timeval currentTime;
+        gettimeofday(&currentTime, NULL);
+        dest += snprintf(dest, left, "%s", CStat::formatTime(&currentTime));
+        break;
       case E_Message_Users:
-	dest += snprintf(dest, left, "%d", users);
-	break;
+        dest += snprintf(dest, left, "%d", users);
+        break;
       case E_Message_UserID:
-	dest += snprintf(dest, left, "%d", userId);
-	break;
+        dest += snprintf(dest, left, "%d", userId);
+        break;
       case E_Message_SippVersion:
-	dest += snprintf(dest, left, "%s", SIPP_VERSION);
-	break;
+        dest += snprintf(dest, left, "%s", SIPP_VERSION);
+        break;
       case E_Message_Variable: {
-	 int varId = comp->varId;
-	 CCallVariable *var = M_callVariableTable->getVar(varId);
-	 if(var->isSet()) {
-	   if (var->isRegExp()) {
-	     dest += sprintf(dest, "%s", var->getMatchingValue());
-	   } else if (var->isDouble()) {
-	     dest += sprintf(dest, "%lf", var->getDouble());
-	   } else if (var->isString()) {
-	     dest += sprintf(dest, "%s", var->getString());
-	   } else if (var->isBool()) {
-	     dest += sprintf(dest, "true");
-	   }
-	 } else if (var->isBool()) {
-	   dest += sprintf(dest, "false");
-	 }
-	 if (*(dest - 1) == '\n') {
-	   supresscrlf = true;
-	 }
-	 break;
-      }
+        int varId = comp->varId;
+        CCallVariable *var = M_callVariableTable->getVar(varId);
+        if(var->isSet()) {
+          if (var->isRegExp()) {
+            dest += sprintf(dest, "%s", var->getMatchingValue());
+          } else if (var->isDouble()) {
+            dest += sprintf(dest, "%lf", var->getDouble());
+          } else if (var->isString()) {
+            dest += sprintf(dest, "%s", var->getString());
+          } else if (var->isBool()) {
+            dest += sprintf(dest, "true");
+          }
+        } else if (var->isBool()) {
+          dest += sprintf(dest, "false");
+        }
+        if (*(dest - 1) == '\n') {
+          supresscrlf = true;
+        }
+        break;
+                               }
       case E_Message_Fill: {
         int varId = comp->varId;
-	int length = (int) M_callVariableTable->getVar(varId)->getDouble();
-	if (length < 0) {
-	  length = 0;
-	}
-	char *filltext = comp->literal;
-	int filllen = strlen(filltext);
-	if (filllen == 0) {
-	  ERROR("Internal error: [fill] keyword has zero-length text.");
-	}
-	for (int i = 0, j = 0; i < length; i++, j++) {
-	  *dest++ = filltext[j % filllen];
-	}
-	*dest = '\0';
-	break;
-      }
+        int length = (int) M_callVariableTable->getVar(varId)->getDouble();
+        if (length < 0) {
+          length = 0;
+        }
+        char *filltext = comp->literal;
+        int filllen = strlen(filltext);
+        if (filllen == 0) {
+          ERROR("Internal error: [fill] keyword has zero-length text.");
+        }
+        for (int i = 0, j = 0; i < length; i++, j++) {
+          *dest++ = filltext[j % filllen];
+        }
+        *dest = '\0';
+        break;
+                           }
       case E_Message_File: {
         char buffer[MAX_HEADER_LEN];
-	createSendingMessage(comp->comp_param.filename, -2, buffer, sizeof(buffer));
-	FILE *f = fopen(buffer, "r");
-	if (!f) {
-	  ERROR("Could not open '%s': %s\n", buffer, strerror(errno));
-	}
-	int ret;
-	while ((ret = fread(dest, 1, left, f)) > 0) {
-		left -= ret;
-		dest += ret;
-	}
-	if (ret < 0) {
-	  ERROR("Error reading '%s': %s\n", buffer, strerror(errno));
-	}
-	fclose(f);
-	break;
-      }
+        createSendingMessage(comp->comp_param.filename, -2, buffer, sizeof(buffer));
+        FILE *f = fopen(buffer, "r");
+        if (!f) {
+          ERROR("Could not open '%s': %s\n", buffer, strerror(errno));
+        }
+        int ret;
+        while ((ret = fread(dest, 1, left, f)) > 0) {
+          left -= ret;
+          dest += ret;
+        }
+        if (ret < 0) {
+          ERROR("Error reading '%s': %s\n", buffer, strerror(errno));
+        }
+        fclose(f);
+        break;
+                           }
       case E_Message_Injection: {
-	char *orig_dest = dest;
-	getFieldFromInputFile(comp->comp_param.field_param.filename, comp->comp_param.field_param.field, comp->comp_param.field_param.line, dest);
-	/* We are injecting an authentication line. */
-	if (char *tmp = strstr(orig_dest, "[authentication")) {
-	  if (auth_marker) {
-	    ERROR("Only one [authentication] keyword is currently supported!\n");
-	  }
-	  auth_marker = tmp;
-	  auth_comp = (struct MessageComponent *)calloc(1, sizeof(struct MessageComponent));
-	  if (!auth_comp) { ERROR("Out of memory!"); }
-	  auth_comp_allocated = true;
+        char *orig_dest = dest;
+        getFieldFromInputFile(comp->comp_param.field_param.filename, comp->comp_param.field_param.field, comp->comp_param.field_param.line, dest);
+        /* We are injecting an authentication line. */
+        if (char *tmp = strstr(orig_dest, "[authentication")) {
+          if (auth_marker) {
+            ERROR("Only one [authentication] keyword is currently supported!\n");
+          }
+          auth_marker = tmp;
+          auth_comp = (struct MessageComponent *)calloc(1, sizeof(struct MessageComponent));
+          if (!auth_comp) { ERROR("Out of memory!"); }
+          auth_comp_allocated = true;
 
-	  tmp = strchr(auth_marker, ']');
-	  char c = *tmp;
-	  *tmp = '\0';
-	  SendingMessage::parseAuthenticationKeyword(call_scenario, auth_comp, auth_marker);
-	  *tmp = c;
-	}
-	if (*(dest - 1) == '\n') {
-	  supresscrlf = true;
-	}
-	break;
-      }
+          tmp = strchr(auth_marker, ']');
+          char c = *tmp;
+          *tmp = '\0';
+          SendingMessage::parseAuthenticationKeyword(call_scenario, auth_comp, auth_marker);
+          *tmp = c;
+        }
+        if (*(dest - 1) == '\n') {
+          supresscrlf = true;
+        }
+        break;
+                                }
       case E_Message_Last_Header: {
-	char * last_header = get_last_header(comp->literal);
-	if(last_header) {
-	  dest += sprintf(dest, "%s", last_header);
-	}
-	if (*(dest - 1) == '\n') {
-	  supresscrlf = true;
-	}
-	break;
-      }
+        char * last_header = get_last_header(comp->literal, ds);
+        if(last_header) {
+          dest += sprintf(dest, "%s", last_header);
+        }
+        if (*(dest - 1) == '\n') {
+          supresscrlf = true;
+        }
+        break;
+                                  }
       case E_Message_Custom: {
-	dest += comp->comp_param.fxn(this, comp, dest, left);
-	break;
-      }
+        dest += comp->comp_param.fxn(this, comp, dest, left);
+        break;
+                             }
       case E_Message_Last_Message:
-        if(last_recv_msg && strlen(last_recv_msg)) {
-	  dest += sprintf(dest, "%s", last_recv_msg);
-	}
-	break;
+        if(ds->last_recv_msg && strlen(ds->last_recv_msg)) {
+          dest += sprintf(dest, "%s", ds->last_recv_msg);
+        }
+        break;
       case E_Message_Last_Request_URI: {
-       char * last_request_uri = get_last_request_uri();
-       dest += sprintf(dest, "%s", last_request_uri);
-       free(last_request_uri);
-       break;
-      }
+        char * last_request_uri = get_last_request_uri(ds);
+        dest += sprintf(dest, "%s", last_request_uri);
+        free(last_request_uri);
+        break;
+                                       }
       case E_Message_Last_CSeq_Number: {
-       int last_cseq = 0;
+        int last_cseq = 0;
 
-       char *last_header = get_last_header("CSeq:");
-       if(last_header) {
-	 last_header += 5;
-	 /* Extract the integer value of the field */
-	 while(isspace(*last_header)) last_header++;
-	 sscanf(last_header,"%d", &last_cseq);
-       }
-       dest += sprintf(dest, "%d", last_cseq + comp->offset);
-       break;
-      }
+        char *last_header = get_last_header("CSeq:", ds);
+        if(last_header) {
+          last_header += 5;
+          /* Extract the integer value of the field */
+          while(isspace(*last_header)) last_header++;
+          sscanf(last_header,"%d", &last_cseq);
+        }
+        dest += sprintf(dest, "%d", last_cseq + comp->offset);
+        break;
+                                       }
       case E_Message_TDM_Map:
-	if (!use_tdmmap)
-	  ERROR("[tdmmap] keyword without -tdmmap parameter on command line");
-	dest += snprintf(dest, left, "%d.%d.%d/%d",
-	    tdm_map_x+(int((tdm_map_number)/((tdm_map_b+1)*(tdm_map_c+1))))%(tdm_map_a+1),
-	    tdm_map_h,
-	    tdm_map_y+(int((tdm_map_number)/(tdm_map_c+1)))%(tdm_map_b+1),
-	    tdm_map_z+(tdm_map_number)%(tdm_map_c+1)
-	    );
-	break;
-    }
-  }
+        if (!use_tdmmap)
+          ERROR("[tdmmap] keyword without -tdmmap parameter on command line");
+        dest += snprintf(dest, left, "%d.%d.%d/%d",
+          tdm_map_x+(int((tdm_map_number)/((tdm_map_b+1)*(tdm_map_c+1))))%(tdm_map_a+1),
+          tdm_map_h,
+          tdm_map_y+(int((tdm_map_number)/(tdm_map_c+1)))%(tdm_map_b+1),
+          tdm_map_z+(tdm_map_number)%(tdm_map_c+1)
+          );
+        break;
+    } // switch(comp->type) 
+  } // for (int i = 0; i < src->numComponents(); i++) 
+
+
   /* Need the body for length and auth-int calculation */
   char *body;
   char *auth_body = NULL;
@@ -2450,7 +2502,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     /* Need the Method name from the CSeq of the Challenge */
     char method[MAX_HEADER_LEN];
-    tmp = get_last_header("CSeq:");
+    tmp = get_last_header("CSeq:", src_dialog_state);
     if(!tmp) {
       ERROR("Could not extract method from cseq of challenge");
     }
@@ -2712,7 +2764,7 @@ void call::formatNextReqUrl (char* next_req_url)
 
 }
 
-void call::computeRouteSetAndRemoteTargetUri (char* rr, char* contact, bool bRequestIncoming)
+void call::computeRouteSetAndRemoteTargetUri (char* rr, char* contact, bool bRequestIncoming, DialogState *ds)
 {
   if (0 >=strlen (rr))
   {
@@ -2721,10 +2773,10 @@ void call::computeRouteSetAndRemoteTargetUri (char* rr, char* contact, bool bReq
     //
     if (0 < strlen(contact))
     {
-      strcpy (next_req_url, contact);
+      strcpy (ds->next_req_url, contact);
     }
 
-    formatNextReqUrl(next_req_url);
+    formatNextReqUrl(ds->next_req_url);
 
     return;
   }
@@ -2828,56 +2880,61 @@ void call::computeRouteSetAndRemoteTargetUri (char* rr, char* contact, bool bReq
 
   if (strlen(actual_rr)) 
   {
-    dialog_route_set = (char *)
+    ds->dialog_route_set = (char *)
         calloc(1, strlen(actual_rr) + 2);
-    sprintf(dialog_route_set, "%s", actual_rr);
+    sprintf(ds->dialog_route_set, "%s", actual_rr);
   } 
 
   if (strlen (targetURI))
   {
-    strcpy (next_req_url, targetURI);
-    formatNextReqUrl (next_req_url);
+    strcpy (ds->next_req_url, targetURI);
+    formatNextReqUrl (ds->next_req_url);
   }
 }
 
-bool call::matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *txn)
+bool call::matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *txn, string &call_id)
 {
+  bool result = false;
   message *curmsg = call_scenario->messages[index];
 
   if ((curmsg -> recv_request)) {
     if (curmsg->regexp_match) {
       if (curmsg -> regexp_compile == NULL) {
-	regex_t *re = new regex_t;
-	if (regcomp(re, curmsg -> recv_request, REG_EXTENDED|REG_NOSUB)) {
-	  ERROR("Invalid regular expression for index %d: %s", curmsg->recv_request);
-	}
-	curmsg -> regexp_compile = re;
+        regex_t *re = new regex_t;
+	      if (regcomp(re, curmsg -> recv_request, REG_EXTENDED|REG_NOSUB)) {
+	        ERROR("Invalid regular expression for index %d: %s", curmsg->recv_request);
+	      }
+	      curmsg -> regexp_compile = re;
       }
-      return !regexec(curmsg -> regexp_compile, request, (size_t)0, NULL, 0);
+      result = !regexec(curmsg -> regexp_compile, request, (size_t)0, NULL, 0);
     } else {
-      return !strcmp(curmsg -> recv_request, request);
+      result = !strcmp(curmsg -> recv_request, request);
     }
   } else if (curmsg->recv_response && (curmsg->recv_response == reply_code)) {
     /* This is a potential candidate, we need to match transactions. */
     if (curmsg->response_txn) {
       if (transactions[curmsg->response_txn - 1].txnID && !strcmp(transactions[curmsg->response_txn - 1].txnID, txn)) {
-	return true;
-      } else {
-	return false;
-      }
+	      result = true;
+      } 
     } else if (index == 0) {
       /* Always true for the first message. */
-      return true;
+      result = true;
     } else if (curmsg->recv_response_for_cseq_method_list &&
-	strstr(curmsg->recv_response_for_cseq_method_list, responsecseqmethod)) {
+	    strstr(curmsg->recv_response_for_cseq_method_list, responsecseqmethod)) {
       /* If we do not have a transaction defined, we just check the CSEQ method. */
-      return true;
-    } else {
-      return false;
+      result = true;
+    } 
+  }
+
+  // validate call-id, if dialog-number was specified and dialog-number has been used before
+  if ((result) && (curmsg->dialog_number != -1)) {
+    DialogState *ds = get_dialogState(curmsg->dialog_number);
+    if ((!ds->call_id.empty()) && (ds->call_id != call_id)) {
+      result = false;
     }
   }
 
-  return false;
+  return result;
 }
 
 void call::queue_up(char *msg) {
@@ -2921,20 +2978,20 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
   if((transport == T_UDP) && (retrans_enabled)) {
     /* Detects retransmissions from peer and retransmit the
-     * message which was sent just after this one was received */
+    * message which was sent just after this one was received */
     cookie = hash(msg);
     if((recv_retrans_recv_index >= 0) && (recv_retrans_hash == cookie)) {
 
       int status;
 
       if(lost(recv_retrans_recv_index)) {
-	TRACE_MSG("%s message (retrans) lost (recv).",
-	      TRANSPORT_TO_STRING(transport));
-	callDebug("%s message (retrans) lost (recv) (hash %u)\n", TRANSPORT_TO_STRING(transport), hash(msg));
+        TRACE_MSG("%s message (retrans) lost (recv).",
+          TRANSPORT_TO_STRING(transport));
+        callDebug("%s message (retrans) lost (recv) (hash %u)\n", TRANSPORT_TO_STRING(transport), hash(msg));
 
-	if(comp_state) { comp_free(&comp_state); }
-	call_scenario->messages[recv_retrans_recv_index] -> nb_lost++;
-	return true;
+        if(comp_state) { comp_free(&comp_state); }
+        call_scenario->messages[recv_retrans_recv_index] -> nb_lost++;
+        return true;
       }
 
       call_scenario->messages[recv_retrans_recv_index] -> nb_recv_retrans++;
@@ -2942,10 +2999,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       send_scene(recv_retrans_send_index, &status, NULL);
 
       if(status >= 0) {
-	call_scenario->messages[recv_retrans_send_index] -> nb_sent_retrans++;
-	computeStat(CStat::E_RETRANSMISSION);
+        call_scenario->messages[recv_retrans_send_index] -> nb_sent_retrans++;
+        computeStat(CStat::E_RETRANSMISSION);
       } else if(status < 0) {
-	return false;
+        return false;
       }
 
       return true;
@@ -2970,6 +3027,11 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     }
   }
 
+  // we want call-id for verification with dialog_number
+  string call_id(get_header_content(msg, "Call-ID:"));
+ 
+  // Some updates in next section should become per-dialog (ie peer tags and such).
+
   /* Is it a response ? */
   if((msg[0] == 'S') && 
      (msg[1] == 'I') &&
@@ -2990,8 +3052,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       get_remote_media_addr(msg);
 #endif
     }
-    /* It is a response: update peer_tag */
-    ptr = get_peer_tag(msg);
+    /* It is a response: update peer_tag 
+move to per-dialog section and duplicated to use from tag for incoming requests
+    ptr = get_peer_tag_from_to(msg);
     if (ptr) {
       if(strlen(ptr) > (MAX_HEADER_LEN - 1)) {
         ERROR("Peer tag too long. Change MAX_HEADER_LEN and recompile sipp");
@@ -2999,9 +3062,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       if(peer_tag) { free(peer_tag); }
       peer_tag = strdup(ptr);
       if (!peer_tag) {
-	ERROR("Out of memory allocating peer tag.");
+        ERROR("Out of memory allocating peer tag.");
       }
     }
+*/
     request[0]=0;
     // extract the cseq method from the response
     extract_cseq_method (responsecseqmethod, msg);
@@ -3040,7 +3104,8 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   for(search_index = msg_index;
       search_index < (int)call_scenario->messages.size();
       search_index++) {
-    if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, txn)) {
+
+    if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
       if(call_scenario->messages[search_index] -> optional) {
         continue;
       }
@@ -3063,7 +3128,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
         search_index >= 0;
         search_index--) {
       if (call_scenario->messages[search_index]->optional == OPTIONAL_FALSE) contig = false;
-      if(matches_scenario(search_index, reply_code, request, responsecseqmethod, txn)) {
+      if(matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
         if (contig || call_scenario->messages[search_index]->optional == OPTIONAL_GLOBAL) {
          found = true;
          break;  
@@ -3158,6 +3223,17 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     }
   }
 
+  // Message was found, store call-id if specified
+
+  // Retrieve dialog state for this message so it can be updated
+  DialogState *ds = get_dialogState(call_scenario->messages[search_index]->dialog_number);
+
+  // If first time we've seen this call-id, remeber it for next time
+  if (call_scenario->messages[search_index]->dialog_number != -1) {
+    if (ds->call_id.empty()) 
+      ds->call_id = call_id;
+  }
+
   int test = (!found) ? -1 : call_scenario->messages[search_index]->test;
   /* test==0: No branching"
    * test==-1 branching without testing"
@@ -3173,6 +3249,22 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     if(comp_state) { comp_free(&comp_state); }
     call_scenario->messages[search_index] -> nb_lost++;
     return true;
+  }
+
+  /* Update peer_tag */
+  if (reply_code)
+    ptr = get_peer_tag_from_to(msg);
+  else
+    ptr = get_peer_tag_from_from(msg);
+  if (ptr) {
+    if(strlen(ptr) > (MAX_HEADER_LEN - 1)) {
+      ERROR("Peer tag too long. Change MAX_HEADER_LEN and recompile sipp");
+    }
+    if(ds->peer_tag) { free(ds->peer_tag); }
+    ds->peer_tag = strdup(ptr);
+    if (!ds->peer_tag) {
+      ERROR("Out of memory allocating peer tag.");
+    }
   }
 
   /* If we are part of a transaction, mark this as the final response. */
@@ -3208,7 +3300,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
   if (request) { // update [cseq] with received CSeq
     unsigned long int rcseq = get_cseq_value(msg);
-    if (rcseq > cseq) cseq = rcseq;
+    if (rcseq > ds->cseq) ds->cseq = rcseq;
   }
 
   /* This is an ACK/PRACK or a response, and its index is greater than the 
@@ -3235,8 +3327,8 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       /*
        * We are here due to a provisional response for non INVITE. Update our next retransmit.
        */
-      next_retrans = clock_tick + global_t2;
-      nb_last_delay = global_t2;
+      next_retrans = clock_tick + DEFAULT_T2_TIMER_VALUE;
+      nb_last_delay = DEFAULT_T2_TIMER_VALUE;
 
     }
   }
@@ -3250,9 +3342,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
   /* store the route set only once. TODO: does not support target refreshes!! */
   if (call_scenario->messages[search_index] -> bShouldRecordRoutes &&
-          NULL == dialog_route_set ) {
+          NULL == ds->dialog_route_set ) {
 
-      next_req_url = (char*) realloc(next_req_url, MAX_HEADER_LEN);
+      ds->next_req_url = (char*) realloc(ds->next_req_url, MAX_HEADER_LEN);
 
       char rr[MAX_HEADER_LEN];
       memset(rr, 0, sizeof(rr));
@@ -3272,13 +3364,13 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
       /* should cache the route set */
       if (reply_code) {
-        computeRouteSetAndRemoteTargetUri (rr, ch, false);
+        computeRouteSetAndRemoteTargetUri (rr, ch, false, ds);
       }
       else
       {
-        computeRouteSetAndRemoteTargetUri (rr, ch, true);
+        computeRouteSetAndRemoteTargetUri (rr, ch, true, ds);
       }
-      // WARNING("next_req_url is [%s]", next_req_url);
+      // WARNING("ds->next_req_url is [%s]", next_req_url);
   }
 
 #ifdef _USE_OPENSSL
@@ -3316,8 +3408,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   last_recv_index = search_index;
   last_recv_hash = cookie;
   callDebug("Set Last Recv Hash: %u (recv index %d)\n", last_recv_hash, last_recv_index);
-  last_recv_msg = (char *) realloc(last_recv_msg, strlen(msg) + 1);
-  strcpy(last_recv_msg, msg);
+  setLastMsg(msg, ds);
 
   /* If this was a mandatory message, or if there is an explicit next label set
    * we must update our state machine.  */
@@ -3734,40 +3825,52 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       ERROR("%s", x);
     } else if (currentAction->getActionType() == CAction::E_AT_EXECUTE_CMD) {
       char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
-      // TRACE_MSG("Trying to execute [%s]", x);
+      TRACE_MSG("<exec> of \"%s\"\n");
       pid_t l_pid;
       switch(l_pid = fork())
       {
-	case -1:
-	  // error when forking !
-	  ERROR_NO("Forking error main");
-	  break;
+      case -1:
+        // error when forking !
+        ERROR_NO("Forking error main");
+        break;
 
-	case 0:
-	  // first child process - execute the command
-	  if((l_pid = fork()) < 0) {
-	    ERROR_NO("Forking error child");
-	  } else {
-	    if( l_pid == 0){
-	      int ret;
-	      ret = system(x); // second child runs
-	      if(ret == -1) {
-		WARNING("system call error for %s",x);
-	      }
-	    }
-	    exit(EXIT_OTHER); 
-	  }
-	  break;
-	default:
-	  // parent process continue
-	  // reap first child immediately
-	  pid_t ret;
-	  while ((ret=waitpid(l_pid, NULL, 0)) != l_pid) {
-	    if (ret != -1) {
-	      ERROR("waitpid returns %1d for child %1d",ret,l_pid);
-	    }
-	  }
-	  break;
+      case 0:
+        // first child process - execute the command
+        if((l_pid = fork()) < 0) {
+          ERROR_NO("Forking error child");
+        } else {
+          // Execute shell in different ways.  Because cygwin wrongly returns true for system(0)
+          // even when the shell is not available
+          if( l_pid == 0){
+#ifndef __CYGWIN
+              //TRACE_MSG("Invoke sh via system call ; l_pid = %d, pid=%d\n", l_pid, getpid());
+              ret = system(x); // second child runs
+              // For some reason if system is invoked when sh is not available the program seg faults.
+              // This is avoided by ifdef'ing otu the system() call in favor of exec of cmd.exe.
+              //TRACE_MSG("system call returned %d ; l_pid = %d, pid=%d\n", ret, l_pid, getpid());
+            int ret;
+            if(ret == -1) {
+              WARNING("system call error for %s",x);
+            }
+#else
+              // sh not available, use exec(command)
+              int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
+              ERROR_NO("Exec of cmd.exe /c %s failed", x);
+#endif
+          }
+          exit(EXIT_OTHER); 
+        }
+        break;
+      default:
+        // parent process continue
+        // reap first child immediately
+        pid_t ret;
+        while ((ret=waitpid(l_pid, NULL, 0)) != l_pid) {
+          if (ret != -1) {
+            ERROR("waitpid returns %1d for child %1d",ret,l_pid);
+          }
+        }
+        break;
       }
     } else if (currentAction->getActionType() == CAction::E_AT_EXEC_INTCMD) {
       switch (currentAction->getIntCmd())
@@ -3924,28 +4027,34 @@ call::T_AutoMode call::checkAutomaticResponseMode(char * P_recv) {
   } else if (((strcmp(P_recv, "INFO") == 0) || (strcmp(P_recv, "NOTIFY") == 0) || (strcmp(P_recv, "UPDATE") == 0)) 
                && (auto_answer == true)){
     return E_AM_AA;
+  } else if ((strcmp(P_recv, "REGISTER") == 0)
+               && (auto_answer == true)){
+    return E_AM_AA_REGISTER;
   } else {
     return E_AM_DEFAULT;
   }
 }
 
-void call::setLastMsg(const char *msg) {
-  last_recv_msg = (char *) realloc(last_recv_msg, strlen(msg) + 1);
-  strcpy(last_recv_msg, msg);
+// update the dialog state's last_recv_msg and
+// store globally for retransmission and auto-responder
+void call::setLastMsg(const char *msg, DialogState *ds) {
+  ds->last_recv_msg = (char *) realloc(ds->last_recv_msg, strlen(msg) + 1);
+  strcpy(ds->last_recv_msg, msg);
+  last_recv_msg = ds->last_recv_msg; 
 }
+
 
 bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
 {
-
-  int res ;
   char * old_last_recv_msg = NULL;
-  bool last_recv_msg_saved = false;
+  int res ;
+
+  DialogState *ds = get_dialogState(-1);
 
   switch (P_case) {
   case E_AM_UNEXP_BYE: // response for an unexpected BYE
     // usage of last_ keywords
-    last_recv_msg = (char *) realloc(last_recv_msg, strlen(P_recv) + 1);
-    strcpy(last_recv_msg, P_recv);
+    setLastMsg(P_recv, ds);
 
     // The BYE is unexpected, count it
     call_scenario->messages[msg_index] -> nb_unexp++;
@@ -3969,8 +4078,7 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
       
   case E_AM_UNEXP_CANCEL: // response for an unexpected cancel
     // usage of last_ keywords
-    last_recv_msg = (char *) realloc(last_recv_msg, strlen(P_recv) + 1);
-    strcpy(last_recv_msg, P_recv);
+    setLastMsg(P_recv, ds);
 
     // The CANCEL is unexpected, count it
     call_scenario->messages[msg_index] -> nb_unexp++;
@@ -3996,8 +4104,7 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
       
   case E_AM_PING: // response for a random ping
     // usage of last_ keywords
-    last_recv_msg = (char *) realloc(last_recv_msg, strlen(P_recv) + 1);
-    strcpy(last_recv_msg, P_recv);
+    setLastMsg(P_recv, ds);
     
    if (default_behaviors & DEFAULT_BEHAVIOR_PINGREPLY) {
     WARNING("Automatic response mode for an unexpected PING for call: %s", (id==NULL)?"none":id);
@@ -4016,32 +4123,30 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     }
     break ;
 
-  case E_AM_AA: // response for a random INFO, UPDATE or NOTIFY
-    // store previous last msg if msg is INFO, UPDATE or NOTIFY
-    // restore last_recv_msg to previous one
-    // after sending ok
-    old_last_recv_msg = NULL;
-    if (last_recv_msg != NULL) {
-      last_recv_msg_saved = true;
-      old_last_recv_msg = (char *) malloc(strlen(last_recv_msg)+1);
-      strcpy(old_last_recv_msg,last_recv_msg);
-    }
-    // usage of last_ keywords
-    last_recv_msg = (char *) realloc(last_recv_msg, strlen(P_recv) + 1);
-    strcpy(last_recv_msg, P_recv);
+  case E_AM_AA:          // response for a random INFO, UPDATE or NOTIFY
+  case E_AM_AA_REGISTER: // response for a random REGISTER
+    // store previous last msg if msg is REGISTER, INFO, UPDATE or NOTIFY
+    // so we can restore last_recv_msg to previous one after sending ok
+    old_last_recv_msg = ds->last_recv_msg;
+    // usage of last_ keywords (note get_last_header) inserts 0's into header.
+    ds->last_recv_msg = P_recv;
 
-    WARNING("Automatic response mode for an unexpected INFO, UPDATE or NOTIFY for call: %s", (id==NULL)?"none":id);
-    sendBuffer(createSendingMessage(get_default_message("200"), -1));
+    WARNING("Automatic response mode for an unexpected REGISTER, INFO, UPDATE or NOTIFY for call: %s", (id==NULL)?"none":id);
+    if (P_case == E_AM_AA)
+      sendBuffer(createSendingMessage(get_default_message("200"), -1));
+    else
+      sendBuffer(createSendingMessage(get_default_message("200register"), -1));
 
     // restore previous last msg
-    if (last_recv_msg_saved == true) {
-      last_recv_msg = (char *) realloc(last_recv_msg, strlen(old_last_recv_msg) + 1);
-      strcpy(last_recv_msg, old_last_recv_msg);
+    ds->last_recv_msg = old_last_recv_msg;
+/*    if (last_recv_msg_saved == true) {
+      setLastMsg(last_recv_msg, ds);
       if (old_last_recv_msg != NULL) {
         free(old_last_recv_msg);
         old_last_recv_msg = NULL;
       }
     }
+*/
     CStat::globalStat(CStat::E_AUTO_ANSWERED);
     return true;
     break;
@@ -4071,3 +4176,32 @@ void *send_wrapper(void *arg)
   return NULL;
 }
 #endif
+
+
+// Returns dialog state associated with dialog_number.  
+// If no state exists for dialog_number, a new entry is created.
+DialogState *call::get_dialogState(int dialog_number) {
+  perDialogStateMap::iterator dialog_it;
+  dialog_it = per_dialog_state.find(perDialogStateMap::key_type(dialog_number));
+  if (dialog_it == per_dialog_state.end()) {
+    DialogState *d = new DialogState(base_cseq);
+    if (!d) ERROR("Unable to allocate memory for new dialog state");
+    per_dialog_state.insert(pair<perDialogStateMap::key_type,DialogState *>(perDialogStateMap::key_type(dialog_number), d));
+    return d;
+  }
+  
+  return dialog_it->second;
+
+} // get_dialogState
+
+void call::free_dialogState() {
+ for(perDialogStateMap::const_iterator it = per_dialog_state.begin(); it != per_dialog_state.end(); ++it)
+    {
+        if (it->second->last_recv_msg) free(it->second->last_recv_msg);
+        free(it->second);
+    }
+  per_dialog_state.clear();
+
+  last_dialog_state = 0;
+}
+

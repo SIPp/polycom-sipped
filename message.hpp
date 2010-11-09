@@ -69,6 +69,8 @@ typedef enum {
   E_Message_Next_Url,
   E_Message_Len,
   E_Message_Peer_Tag_Param,
+  E_Message_Remote_Tag_Param,
+  E_Message_Remote_Tag,
   E_Message_Routes,
   E_Message_Variable,
   E_Message_Fill,
@@ -90,7 +92,7 @@ typedef enum {
 
 class SendingMessage {
   public:
-    SendingMessage(scenario *msg_scenario, char *msg, bool skip_sanity = false);
+    SendingMessage(scenario *msg_scenario, const char *msg, bool skip_sanity = false, int dialog_number = -1);
     ~SendingMessage();
 
     struct MessageComponent *getComponent(int);
@@ -102,6 +104,8 @@ class SendingMessage {
     bool isResponse();
     bool isAck();
     bool isCancel();
+
+    int getDialogNumber() { return dialog_number; }
 
     static void parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword);
     static void freeMessageComponent(struct MessageComponent *comp);
@@ -117,10 +121,18 @@ class SendingMessage {
 
     scenario *msg_scenario;
 
+    // Must store dialog number as many keywords will have different values depending on this
+    int dialog_number; 
+
     // Get parameters from a [keyword]
     static void getQuotedParam(char * dest, char * src, int * len);
     static void getHexStringParam(char * dest, char * src, int * len);
-    static void getKeywordParam(char * src, char * param, char * output);
+    static void getKeywordParam(char * src, const char * param, char * output);
+
+    // store dialog number in message component if specified with tag
+    // return value of true indicates dialog= keyword was found
+    bool parse_dialog_number(char * src, struct MessageComponent* newcomp);
+
 };
 
 /* Custom Keyword Function Type. */
@@ -136,6 +148,7 @@ struct MessageComponent {
   int literalLen;
   int offset;
   int varId;
+  int dialog_number; // component may refer to another dialog in case of _n syntax
   union u {
     /* Authentication Parameters. */
     struct {

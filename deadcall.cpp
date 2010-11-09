@@ -50,9 +50,9 @@
 #include "assert.h"
 
 /* Defined in call.cpp. */
-extern timewheel paused_calls;
+//extern timewheel paused_calls;
 
-deadcall::deadcall(char *id, char *reason) : listener(id, true) {
+deadcall::deadcall(char *id, const char *reason) : listener(id, true) {
   this->expiration = clock_tick + deadcall_wait;
   this->reason = strdup(reason);
   setPaused();

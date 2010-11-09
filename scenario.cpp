@@ -575,10 +575,10 @@ void scenario::apply_labels(msgvec v, str_int_map labels) {
   }
 }
 
-int get_cr_number(char *src)
+int get_cr_number(const char *src)
 {
   int res=0;
-  char *ptr = src;
+  const char *ptr = src;
   while(*ptr) {
     if(*ptr == '\n') res++;
     *ptr++;
@@ -814,7 +814,10 @@ scenario::scenario(char * filename, int deflt)
 	}
 	char *tsrc = msg;
 	while(*tsrc++);
-	curmsg -> send_scheme = new SendingMessage(this, msg);
+
+  curmsg -> dialog_number = xp_get_long("dialog", "dialog number", -1);
+
+	curmsg -> send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number);
 	free(msg);
 
 	// If this is a request we are sending, then store our transaction/method matching information.
@@ -856,7 +859,9 @@ scenario::scenario(char * filename, int deflt)
 
 	curmsg -> retrans_delay = xp_get_long("retrans", "retransmission timer", 0);
 	curmsg -> timeout = xp_get_long("timeout", "message send timeout", 0);
-      } else if(!strcmp(elem, (char *)"recv")) {
+      } // end of "send" section
+
+      else if(!strcmp(elem, (char *)"recv")) {
         curmsg->M_type = MSG_TYPE_RECV;
         /* Received messages descriptions */
         if((ptr = xp_get_value((char *)"response"))) {
@@ -875,6 +880,8 @@ scenario::scenario(char * filename, int deflt)
 	    ERROR("response_txn can only be used for recieved responses.");
 	  }
         }
+
+  curmsg -> dialog_number = xp_get_long("dialog", "dialog number", -1);
 
 	curmsg->optional = xp_get_optional("optional", "recv");
 	last_recv_optional = curmsg->optional;
@@ -908,7 +915,8 @@ scenario::scenario(char * filename, int deflt)
 	  }
 #endif
         }
-      } else if(!strcmp(elem, "pause") || !strcmp(elem, "timewait")) {
+      } // end of "recv" section
+      else if(!strcmp(elem, "pause") || !strcmp(elem, "timewait")) {
 	checkOptionalRecv(elem, scenario_file_cursor);
         curmsg->M_type = MSG_TYPE_PAUSE;
 	if (!strcmp(elem, "timewait")) {
@@ -951,6 +959,8 @@ scenario::scenario(char * filename, int deflt)
 	curmsg->optional = xp_get_optional("optional", "recv");
 	last_recv_optional = curmsg->optional;
 
+  curmsg->dialog_number = xp_get_long("dialog", "dialog number", -1);
+
 	/* 3pcc extended mode */
         if((ptr = xp_get_value((char *)"src"))) {
            curmsg ->peer_src = strdup(ptr);
@@ -961,6 +971,8 @@ scenario::scenario(char * filename, int deflt)
 	checkOptionalRecv(elem, scenario_file_cursor);
         curmsg->M_type = MSG_TYPE_SENDCMD;
         /* Sent messages descriptions */
+
+  curmsg->dialog_number = xp_get_long("dialog", "dialog number", -1);
 
 	/* 3pcc extended mode  */
 	if((ptr = xp_get_value((char *)"dest"))) { 
@@ -986,7 +998,7 @@ scenario::scenario(char * filename, int deflt)
         }
 	char *msg = clean_cdata(ptr);
 
-	curmsg -> M_sendCmdData = new SendingMessage(this, msg, true /* skip sanity */);
+	curmsg -> M_sendCmdData = new SendingMessage(this, msg, true /* skip sanity */, curmsg->dialog_number);
 	free(msg);
       }
       else {
@@ -1077,7 +1089,7 @@ scenario::~scenario() {
 
 CSample *parse_distribution(bool oldstyle = false) {
   CSample *distribution;
-  char *distname;
+  const char *distname;
   char *ptr;
 
   if(!(distname = xp_get_value("distribution"))) {
@@ -1304,7 +1316,7 @@ void scenario::computeSippMode()
       ERROR("Unable to determine send mode of the tool (server, client)\n");
 }
 
-void scenario::handle_rhs(CAction *tmpAction, char *what) {
+void scenario::handle_rhs(CAction *tmpAction, const char *what) {
   if (xp_get_value("value")) {
     tmpAction->setDoubleValue(xp_get_double("value", what));
     if (xp_get_value("variable")) {
@@ -1320,12 +1332,12 @@ void scenario::handle_rhs(CAction *tmpAction, char *what) {
   }
 }
 
-void scenario::handle_arithmetic(CAction *tmpAction, char *what) {
+void scenario::handle_arithmetic(CAction *tmpAction, const char *what) {
   tmpAction->setVarId(xp_get_var("assign_to", what));
   handle_rhs(tmpAction, what);
 }
 
-void scenario::parseAction(CActions *actions) {
+void scenario::parseAction(CActions *actions, int dialog_number) {
   char *        actionElem;
   unsigned int recvScenarioLen = 0;
   char *        currentRegExp = NULL;
@@ -1336,7 +1348,7 @@ void scenario::parseAction(CActions *actions) {
   int           sub_currentNbVarId;
 
   while((actionElem = xp_open_element(recvScenarioLen))) {
-    CAction *tmpAction = new CAction(this);
+    CAction *tmpAction = new CAction(this, dialog_number);
 
     if(!strcmp(actionElem, "ereg")) {
       ptr = xp_get_string("regexp", "ereg");
@@ -1426,7 +1438,8 @@ void scenario::parseAction(CActions *actions) {
 	delete[] currentRegExp;
       }
       currentRegExp = NULL;
-    } /* end !strcmp(actionElem, "ereg") */ else if(!strcmp(actionElem, "log")) {
+    } /* end !strcmp(actionElem, "ereg") */ 
+    else if(!strcmp(actionElem, "log")) {
       tmpAction->setMessage(xp_get_string("message", "log"));
       tmpAction->setActionType(CAction::E_AT_LOG_TO_FILE);
     } else if(!strcmp(actionElem, "warning")) {
@@ -1637,7 +1650,7 @@ void scenario::getActionForThisMessage(message *message)
   }
   message->M_actions = new CActions();
 
-  parseAction(message->M_actions);
+  parseAction(message->M_actions, message->dialog_number);
   xp_close_element();
 }
 
@@ -1854,7 +1867,7 @@ void freeStringTable(char ** stringList, int sizeOfList) {
 }
 
 /* These are the names of the scenarios, they must match the default_scenario table. */
-char *scenario_table[] = {
+const char *scenario_table[] = {
 	"uac",
 	"uas",
 	"regexp",

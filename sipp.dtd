@@ -18,9 +18,9 @@
 
 <!ELEMENT exec EMPTY >
 <!-- one of command or int_cmd must be present -->
-<!ATTLIST exec command CDATA >
+<!ATTLIST exec command CDATA #REQUIRED >
 <!ATTLIST exec int_cmd (stop_now|stop_gracefully|stop_call) "stop_call" >
-<!ATTLIST exec play_pcap CDATA >
+<!ATTLIST exec play_pcap CDATA #REQUIRED >
 
 <!ELEMENT pause EMPTY >
 <!ATTLIST pause milliseconds NMTOKEN #IMPLIED >
@@ -38,17 +38,19 @@
 <!ATTLIST recv rtd (true|false) #IMPLIED >
 <!ATTLIST recv rrs (true|false) #IMPLIED >
 <!ATTLIST recv start_rtd (true|false) #IMPLIED >
+<!ATTLIST recv dialog NMTOKEN #IMPLIED >
 
 <!ELEMENT scenario ( CallLengthRepartition | ResponseTimeRepartition | pause | recv | send | sendCmd | recvCmd | label)* >
 <!ATTLIST scenario name CDATA #REQUIRED >
 
-<!ELEMENT send ( action? ) >
+<!ELEMENT send ( #PCDATA | action )* >
 <!ATTLIST send retrans NMTOKEN #IMPLIED >
 <!ATTLIST send next NMTOKEN #IMPLIED >
 <!ATTLIST send test NMTOKEN #IMPLIED >
 <!ATTLIST send lost NMTOKEN #IMPLIED >
 <!ATTLIST send rtd (true|false) #IMPLIED >
 <!ATTLIST send start_rtd (true|false) #IMPLIED >
+<!ATTLIST send dialog NMTOKEN #IMPLIED >
 
 <!ELEMENT sendCmd ( #PCDATA ) >
 

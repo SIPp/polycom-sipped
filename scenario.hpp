@@ -117,6 +117,10 @@ public:
   int		 on_timeout;
   char *         onTimeoutLabel;
 
+  /* user can specify messages as belonging to a particular dialog via the dialog="n" attribute */
+  /* default to -1, if set, state (cseq, call-id, to, from, etc) will be based only on messages with same id set */
+	int            dialog_number; 
+
   /* Statistics */
   unsigned long   nb_sent;
   unsigned long   nb_recv;
@@ -172,6 +176,7 @@ public:
 
   void runInit();
 
+	/* One message for each command in XML file (ie <send>, <recv>, <nop>, etc*/
   msgvec messages;
   msgvec initmessages;
   char *name;
@@ -204,9 +209,9 @@ private:
   void getBookKeeping(message *message);
   void getCommonAttributes(message *message);
   void getActionForThisMessage(message *message);
-  void parseAction(CActions *actions);
-  void handle_arithmetic(CAction *tmpAction, char *what);
-  void handle_rhs(CAction *tmpAction, char *what);
+  void parseAction(CActions *actions, int dialog_number);
+  void handle_arithmetic(CAction *tmpAction, const char *what);
+  void handle_rhs(CAction *tmpAction, const char *what);
   void checkOptionalRecv(char *elem, unsigned int scenario_file_cursor);
 
   void apply_labels(msgvec v, str_int_map labels);
@@ -264,6 +269,6 @@ bool get_bool(const char *ptr, const char *what);
 int time_string(double ms, char *res, int reslen);
 int get_var(const char *varName, const char *what);
 
-extern int get_cr_number(char *msg);
+extern int get_cr_number(const char *msg);
 
 #endif

@@ -64,6 +64,40 @@ struct txnInstanceInfo {
   int ackIndex;
 };
 
+
+// Ed: Maybe this is per-call
+class DialogState {
+public:
+  string         call_id;
+  /* cseq value for [cseq] keyword */
+  unsigned int   cseq;
+
+  // Last received message (expected, not optional, and not retransmitted)
+  char           * last_recv_msg;
+
+  // same as remote_tag. Populated by incoming responses 
+  char           *peer_tag;
+
+  /* holds the route set */
+  char         * dialog_route_set;
+  char         * next_req_url; // (contact header)
+
+public:
+  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), peer_tag(0), dialog_route_set(0), next_req_url(0),
+  last_recv_msg(0) {};
+
+  ~DialogState() 
+  { 
+    if (last_recv_msg) free (last_recv_msg); 
+    if(peer_tag) free(peer_tag);
+    if(dialog_route_set) free(dialog_route_set);
+    if(next_req_url) free(next_req_url);
+  }
+};
+
+
+typedef std::map<int, DialogState*> perDialogStateMap;
+
 class call : virtual public task, virtual public listener, public virtual socketowner {
 public:
   /* These are wrappers for various circumstances, (private) init does the real work. */
@@ -71,7 +105,7 @@ public:
   call(char *p_id, bool use_ipv6, int userId, struct sockaddr_storage *dest);
   call(char *p_id, struct sipp_socket *socket, struct sockaddr_storage *dest);
   static call *add_call(int userId, bool ipv6, struct sockaddr_storage *dest);
-  call(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall);
+  call(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, const char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall);
 
   virtual ~call();
 
@@ -99,18 +133,22 @@ public:
       E_AM_UNEXP_CANCEL,
       E_AM_PING,
       E_AM_AA,
+      E_AM_AA_REGISTER,
       E_AM_OOCALL,
     };
 
-  void setLastMsg(const char *msg);
+  void setLastMsg(const char *msg, DialogState *ds);
   bool  automaticResponseMode(T_AutoMode P_case, char* P_recv);
-  const char *getLastReceived() { return last_recv_msg; };
+//  const char *getLastReceived() { return last_recv_msg; };
 
 private:
   /* This is the core constructor function. */
-  void init(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall);
+  void init(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, const char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall);
   /* This this call for initialization? */
   bool initCall;
+
+  /* compute call_id based on specified % formatted string */
+  static void compute_id(char *call_id, int length);
 
   struct sockaddr_storage call_peer;
 
@@ -130,6 +168,12 @@ private:
   int		msg_index;
   int		zombie;
 
+  /* store state associated with most recent messages */
+  DialogState          *last_dialog_state;
+  /* store state store by dialog (call="n" parameter) */
+  /* call-id verification is performed */
+  perDialogStateMap    per_dialog_state;
+
   /* Last message sent from scenario step (retransmitions do not
    * change this index. Only message sent from the scenario
    * are kept in this index.) */
@@ -144,8 +188,9 @@ private:
    * retransmitted) and the associated hash. Stills setted until a new
    * scenario steps sends a message */
   unsigned long    last_recv_hash;
-  int		   last_recv_index;
+  int              last_recv_index;
   char           * last_recv_msg;
+
 
   /* Recv message characteristics when we sent a valid message
    *  (scneario, no retrans) just after a valid reception. This was
@@ -156,12 +201,14 @@ private:
   int   recv_retrans_send_index;
   unsigned int   recv_timeout;
 
-  /* holds the route set */
+  /* holds the route set 
   char         * dialog_route_set;
   char         * next_req_url;
+  moved to perDialogState
+*/
 
   /* cseq value for [cseq] keyword */
-  unsigned int   cseq;
+// moved to perDialogState  unsigned int   cseq;
 
 #ifdef PCAPPLAY
   int hasMediaInformation;
@@ -187,7 +234,7 @@ private:
   unsigned long long *start_time_rtd;
   bool           *rtd_done;
 
-  char           *peer_tag;
+//  char           *peer_tag;
   
   struct sipp_socket *call_remote_socket;
   int            call_port;
@@ -228,8 +275,8 @@ private:
   
   /* rc == true means call not deleted by processing */
   void formatNextReqUrl (char* next_req_url);
-  void computeRouteSetAndRemoteTargetUri (char* rrList, char* contact, bool bRequestIncoming);
-  bool matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *txn);
+  void computeRouteSetAndRemoteTargetUri (char* rrList, char* contact, bool bRequestIncoming, DialogState *ds);
+  bool matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *txn, string &call_id);
 
   bool executeMessage(message *curmsg);
   T_ActionResult executeAction(char * msg, message *message);
@@ -287,13 +334,17 @@ private:
   char * send_scene(int index, int *send_status, int *msgLen);
   bool   connect_socket_if_needed();
 
-  char * compute_cseq(char * src);
+  char * compute_cseq(char * src, DialogState *ds);
   char * get_header_field_code(char * msg, char * code);
-  char * get_last_header(char * name);
-  char * get_header_content(char* message, char * name);
-  char * get_header(char* message, char * name, bool content);
+  char * get_last_header(const char * name, DialogState *ds);
+
+  // only return payload of the header (not the 'header:' bit.
+  char * get_header_content(char* message, const char * name);
+
+  /* If content is true, we only return the header's contents. */
+  char * get_header(char* message, const char * name, bool content);
   char * get_first_line(char* message);
-  char * get_last_request_uri();
+  char * get_last_request_uri(DialogState *ds);
   unsigned long hash(char * msg);
 
   typedef std::map <std::string, int> file_line_map;
@@ -320,9 +371,19 @@ private:
   BIO       *m_bio     ;
 #endif
 
-  int _callDebug(char *fmt, ...);
+  int _callDebug(const char *fmt, ...);
   char *debugBuffer;
   int debugLength;
+
+  // DialogState helper routines
+
+  // Returns dialog state associated with dialog_number.  
+  // If no state exists for dialog_number, a new entry is created.
+  DialogState *get_dialogState(int dialog_number);
+
+  // Releases all memory allocated to store dialog state
+  void free_dialogState();
+
 };
 
 

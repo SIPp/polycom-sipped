@@ -130,6 +130,7 @@ struct sipp_option {
 #define SIPP_OPTION_LFNAME	  36
 #define SIPP_OPTION_LFOVERWRITE	  37
 #define SIPP_OPTION_PLUGIN	  38
+#define SIPP_OPTION_NO_CALL_ID_CHECK 39
 
 /* Put Each option, its help text, and type in this table. */
 struct sipp_option options_table[] = {
@@ -138,7 +139,7 @@ struct sipp_option options_table[] = {
 	{"h", NULL, SIPP_OPTION_HELP, NULL, 0},
 	{"help", NULL, SIPP_OPTION_HELP, NULL, 0},
 
-	{"aa", "Enable automatic 200 OK answer for INFO, UPDATE and NOTIFY messages.", SIPP_OPTION_SETFLAG, &auto_answer, 1},
+	{"aa", "Enable automatic 200 OK answer for INFO, UPDATE, REGISTER and NOTIFY messages.", SIPP_OPTION_SETFLAG, &auto_answer, 1},
 #ifdef _USE_OPENSSL
 	{"auth_uri", "Force the value of the URI for authentication.\n"
                      "By default, the URI is composed of remote_ip:remote_port.", SIPP_OPTION_STRING, &auth_uri, 1},
@@ -219,6 +220,9 @@ struct sipp_option options_table[] = {
 	        "- On unexpected PING send a 200 OK and continue the call\n"
 	        "- On any other unexpected message, abort the call by sending a BYE or a CANCEL\n",
 		SIPP_OPTION_UNSETFLAG, &default_behaviors, 1},
+       {"mc", "Enable multiple-dialog support by directing all messages to one scenario regardless of call-id.\n"
+       "Only 1 concurrent call is possible and stop calls (-m) defaults to 1", 
+       SIPP_OPTION_NO_CALL_ID_CHECK, NULL, 1}, 
 	{"nr", "Disable retransmission in UDP mode.", SIPP_OPTION_UNSETFLAG, &retrans_enabled, 1},
 
 	{"nostdin", "Disable stdin.\n", SIPP_OPTION_SETFLAG, &nostdin, 1},
@@ -301,8 +305,6 @@ struct sipp_option options_table[] = {
 	{"timer_resol", "Set the timer resolution. Default unit is milliseconds.  This option has an impact on timers precision."
                       "Small values allow more precise scheduling but impacts CPU usage."
                       "If the compression is on, the value is set to 50ms. The default value is 10ms.", SIPP_OPTION_TIME_MS, &timer_resolution, 1},
-
-	{"T2", "Global T2-timer in milli seconds", SIPP_OPTION_TIME_MS, &global_t2, 1},
 
 	{"sendbuffer_warn", "Produce warnings instead of errors on SendBuffer failures.", SIPP_OPTION_BOOL, &sendbuffer_warn, 1},
 
@@ -938,16 +940,19 @@ void print_stats_in_file(FILE * f, int last)
     }
     
     if(SendingMessage *src = curmsg -> send_scheme) {
+      char dialog_str[10] = "";
+      if (curmsg->dialog_number != -1)
+    	  sprintf(dialog_str, "(%-2d)", curmsg->dialog_number);
       if (src->isResponse()) {
-	sprintf(temp_str, "%d", src->getCode());
+        sprintf(temp_str, "%d%s", src->getCode(), dialog_str);
       } else {
-	sprintf(temp_str, "%s", src->getMethod());
+        sprintf(temp_str, "%s%s", src->getMethod(), dialog_str);
       }
 
       if(creationMode == MODE_SERVER) {
-        fprintf(f,"  <---------- %-10s ", temp_str);
+        fprintf(f,"  <---------- %-14s ", temp_str);
       } else {
-        fprintf(f,"  %10s ----------> ", temp_str);
+        fprintf(f,"  %14s ----------> ", temp_str);
       }
       if (curmsg -> start_rtd) {
 	fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
@@ -971,10 +976,14 @@ void print_stats_in_file(FILE * f, int last)
                "" /* Unexpected. */);
       }
     } else if(curmsg -> recv_response) {
+      if (curmsg->dialog_number != -1)
+    	  sprintf(temp_str, "%d(%-2d)", curmsg -> recv_response, curmsg->dialog_number);
+      else
+    	  sprintf(temp_str, "%d", curmsg -> recv_response);
       if(creationMode == MODE_SERVER) {
-	fprintf(f,"  ----------> %-10d ", curmsg -> recv_response);
+        fprintf(f,"  ----------> %-14s ", temp_str);
       } else { 
-	fprintf(f,"  %10d <---------- ", curmsg -> recv_response);
+        fprintf(f,"  %14s <---------- ", temp_str);
       }
 
       if (curmsg -> start_rtd) {
@@ -1023,10 +1032,14 @@ void print_stats_in_file(FILE * f, int last)
       fprintf(f,"%-9d", curmsg->sessions);
       fprintf(f,"                     %-9lu" , curmsg->nb_unexp);
     } else if(curmsg -> recv_request) {
+      if (curmsg->dialog_number != -1)
+    	  sprintf(temp_str, "%s(%-2d)", curmsg -> recv_request, curmsg->dialog_number);
+      else
+    	  sprintf(temp_str, "%s", curmsg -> recv_request);
       if(creationMode == MODE_SERVER) {
-	fprintf(f,"  ----------> %-10s ", curmsg -> recv_request);
+        fprintf(f,"  ----------> %-14s ", temp_str);
       } else {
-	fprintf(f,"  %10s <---------- ", curmsg -> recv_request);
+        fprintf(f,"  %14s <---------- ", temp_str);
       }
 
       if (curmsg -> start_rtd) {
@@ -1986,43 +1999,54 @@ void handle_stdin_socket() {
 
 /*************************** Mini SIP parser ***************************/
 
-char * get_peer_tag(char *msg)
+char * get_peer_tag(char *msg, bool toHeader)
 {
-  char        * to_hdr;
+  char        * hdr;
   char        * ptr; 
   char        * end_ptr;
   static char   tag[MAX_HEADER_LEN];
   int           tag_i = 0;
   
-  to_hdr = strstr(msg, "\r\nTo:");
-  if(!to_hdr) to_hdr = strstr(msg, "\r\nto:");
-  if(!to_hdr) to_hdr = strstr(msg, "\r\nTO:");
-  if(!to_hdr) to_hdr = strstr(msg, "\r\nt:");
-  if(!to_hdr) {
-    ERROR("No valid To: header in reply");
+  if (toHeader) {
+    hdr = strcasestr(msg, "\r\nTo:");
+//    if(!hdr) hdr = strcasestr(msg, "\r\nto:");
+//    if(!hdr) hdr = strcasestr(msg, "\r\nTO:");
+    if(!hdr) hdr = strcasestr(msg, "\r\nt:");
+    if(!hdr) {
+      ERROR("No valid To: header in reply");
+    }
+  } else {
+    hdr = strcasestr(msg, "\r\nFrom:");
+//    if(!hdr) hdr = strstr(msg, "\r\nfrom:");
+//    if(!hdr) hdr = strstr(msg, "\r\nFROM:");
+    if(!hdr) hdr = strstr(msg, "\r\nf:");
+    if(!hdr) {
+      ERROR("No valid From: header in message");
+    }
   }
+  
 
   // Remove CRLF
-  to_hdr += 2;
+  hdr += 2;
 
-  end_ptr = strchr(to_hdr,'\n');
+  end_ptr = strchr(hdr,'\n');
 
-  ptr = strchr(to_hdr, '>');
+  ptr = strchr(hdr, '>');
   if (!ptr) {
     return NULL;
   }
   
-  ptr = strchr(to_hdr, ';'); 
+  ptr = strchr(hdr, ';'); 
   
   if(!ptr) {
     return NULL;
   }
   
-  to_hdr = ptr;
+  hdr = ptr;
 
-  ptr = strstr(to_hdr, "tag");
-  if(!ptr) { ptr = strstr(to_hdr, "TAG"); }
-  if(!ptr) { ptr = strstr(to_hdr, "Tag"); }
+  ptr = strcasestr(hdr, "tag");
+//  if(!ptr) { ptr = strstr(hdr, "TAG"); }
+//  if(!ptr) { ptr = strstr(hdr, "Tag"); }
 
   if(!ptr) {
     return NULL;
@@ -2035,7 +2059,7 @@ char * get_peer_tag(char *msg)
   ptr = strchr(ptr, '='); 
   
   if(!ptr) {
-    ERROR("Invalid tag param in To: header");
+    ERROR("Invalid tag param in header");
   }
 
   ptr ++;
@@ -2053,6 +2077,16 @@ char * get_peer_tag(char *msg)
   tag[tag_i] = 0;
   
   return tag;
+}
+
+char * get_peer_tag_from_to(char *msg)
+{
+  return get_peer_tag(msg, true);
+}
+
+char * get_peer_tag_from_from(char *msg)
+{
+  return get_peer_tag(msg, false);
 }
 
 char * get_incoming_header_content(char* message, char * name)
@@ -3032,7 +3066,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
     WARNING("SIP message without Call-ID discarded");
     return;
   }
-  listener *listener_ptr = get_listener(call_id);
+  listener *listener_ptr = get_listener(no_call_id_check == false ? call_id : NULL);
  
   if (useShortMessagef == 1) {
               struct timeval currentTime;
@@ -3135,7 +3169,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   {
     listener_ptr -> process_incoming(msg, src);
   }
-}
+} // process_message
 
 void pollset_process(int wait)
 {
@@ -4202,7 +4236,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPp v3.1"
+	  printf("\n SIPped v3.13"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4418,8 +4452,20 @@ int main(int argc, char *argv[])
 	  if (users >= 0) {
 	    ERROR("Can not set open call limit (-l) when -users is specified.");
 	  }
+	  if (no_call_id_check) {
+	    ERROR("Can not set open call limit (-l) when -mc is specified.");
+	  }
 	  open_calls_allowed = get_long(argv[argi], argv[argi - 1]);
 	  open_calls_user_setting = 1;
+	  break;
+	case SIPP_OPTION_NO_CALL_ID_CHECK:
+	  CHECK_PASS();
+    no_call_id_check = true;
+	  open_calls_allowed = 1;
+	  open_calls_user_setting = 1;
+    // default is to stop after 1 call if value not changed on command line.
+    if (stop_after == 0xffffffff)
+      stop_after = 1;
 	  break;
 	case SIPP_OPTION_USERS:
 	  REQUIRE_ARG();
@@ -4754,7 +4800,13 @@ int main(int argc, char *argv[])
     if(!screenf) {
       ERROR("Unable to create '%s'", L_file_name);
     }
-  }  
+  }
+
+  //check if no_call_id_check is enabled with call limit 1
+  //this feature can run just with 1 active call
+  if (no_call_id_check == true && open_calls_allowed > 1) {
+      ERROR("-no_check_call_id can is allowed just with -l 1, it means just 1 call can be active.");
+  }
 
    // TODO: finish the -trace_timeout option implementation    
 
@@ -5764,7 +5816,7 @@ void rotate_errorf() {
 #ifdef __cplusplus
 extern "C" {
 #endif
-int _trace (struct logfile_info *lfi, char *fmt, va_list ap) {
+int _trace (struct logfile_info *lfi, const char *fmt, va_list ap) {
   int ret = 0;
   if(lfi->fptr) {
     ret = vfprintf(lfi->fptr, fmt, ap);
@@ -5786,7 +5838,7 @@ int _trace (struct logfile_info *lfi, char *fmt, va_list ap) {
 }
 
 
-int TRACE_MSG(char *fmt, ...) {
+int TRACE_MSG(const char *fmt, ...) {
   int ret;
   va_list ap;
 
@@ -5797,7 +5849,7 @@ int TRACE_MSG(char *fmt, ...) {
   return ret;
 }
 
-int TRACE_SHORTMSG(char *fmt, ...) {
+int TRACE_SHORTMSG(const char *fmt, ...) {
   int ret;
   va_list ap;
 
@@ -5808,7 +5860,7 @@ int TRACE_SHORTMSG(char *fmt, ...) {
   return ret;
 }
 
-int LOG_MSG(char *fmt, ...) {
+int LOG_MSG(const char *fmt, ...) {
   int ret;
   va_list ap;
 
@@ -5819,7 +5871,7 @@ int LOG_MSG(char *fmt, ...) {
   return ret;
 }
 
-int TRACE_CALLDEBUG(char *fmt, ...) {
+int TRACE_CALLDEBUG(const char *fmt, ...) {
   int ret;
   va_list ap;
 

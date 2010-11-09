@@ -268,6 +268,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   if(fatal) {
     if(!screen_inited) {
       if(error == EADDRINUSE) {
+        fprintf(stderr, "Address in use\n");
         exit(EXIT_BIND_ERROR);
       } else {
       exit(EXIT_FATAL_ERROR);
