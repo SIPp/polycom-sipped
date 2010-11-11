@@ -1,3 +1,51 @@
-Initial checkin is based on trunk version from sourceforge as of November 11, 2010, SIPp version 3.1.
+This file tracks changes responsible for version number updates.
 
-This file will track major changes responsible for version number updates.
+
+3.14ed xx-xx-xxxx
+- Implement make install and make test targets
+- Implement aa_expires option
+- Implement ruby-based test harness in src/test directory
+- Merge in two changes from sourceforge svn tree
+  * Revision: 594 ENH: Added option to configure global T2 Timer (Patch contributed by sipp@hirschbichler.biz)
+  * Revision: 595 FIX: sipp crashes when the line is too large. BugID-2968740(Patch contributed by Mitko-Mitev)
+
+Initial cvs checkin is based on trunk version from sourceforge as of November 11, 2010, SIPp version 3.1.
+All changes to date for enabling functional testing and improved ease of use:
+
+* -mc option to enable dialog="n" option to messages
+* allow dialog specification in keywords where this makes sense
+* move per-dialog keywords (ie cseq) to per-dialog structure
+* add additional keywords
+* <xi:include> tag support
+* auto-answer REGISTER requests when -aa is specified
+* remove case sensitivity when parsing for To & From tags.
+* print error message if address to bind to is in use (instead of silent quit)
+* fix crash related to global statistics update
+* Fix support for <exec> on Windows
+* change char * to const char * where possible to reduce compiler warnings
+* add additional debug target to makefile
+* Fix worst formatting mistakes in terms of tab & indendation mis-usage
+
+======================================
+pre-CVS versions:
+
+3.13ed 11-04-2010
+- Fix <exec> on windows (by using cmd.exe instead of system command which requires sh)
+
+3.12ed 10-27-2010
+- Improve call_id auto-generation, important when using same dialog number in multiple files.
+- Require "/> rather than "> in xi:include tag
+
+3.11ed 10-18-2010
+- support <xi:include pname="file"/> for include
+- 
+
+
+3.1e 09-28-2010 - initial offering
+- support -no_call_id_check
+- support dialog=n tags for storing multiple dialogs state
+- support auto-response to register requests
+- fix crash in statistics
+
+
+
