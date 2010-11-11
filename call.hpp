@@ -46,6 +46,7 @@
 #define MAX_SUB_MESSAGE_LENGTH  2049
 #define DEFAULT_T2_TIMER_VALUE  4000
 #define SIP_TRANSACTION_TIMEOUT 32000
+#define DEFAULT_AUTO_ANSWER_EXPIRES 3600
 
 /* Retransmission check methods. */
 #define RTCHECK_FULL	1

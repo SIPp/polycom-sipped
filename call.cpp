@@ -1719,11 +1719,11 @@ bool call::run()
       }
     } else {
       nb_last_delay *= 2;
-      if (DEFAULT_T2_TIMER_VALUE < nb_last_delay)
+      if (global_t2 < nb_last_delay)
       {
         if (!bInviteTransaction)
         {
-          nb_last_delay = DEFAULT_T2_TIMER_VALUE;
+          nb_last_delay = global_t2;
       }
       }
       if(send_raw(last_send_msg, last_send_index, last_send_len) < -1) {
@@ -1821,20 +1821,22 @@ const char *default_message_strings[] = {
 	"[last_To:];tag=abcd\n"
 	"[last_Call-ID:]\n"
 	"[last_CSeq:]\n"
-  "[last_Contact:];expires=120\n"
+  "[last_Contact:];expires=%d\n"
 	"Content-Length: 0\n\n"
-/* Default used to be 85600, changed to 120 for ATT but really should make this a parameter 
- 	"Contact: <sip:[service]@[remote_ip]>;expires=180\n"
-*/
 };
 
 SendingMessage **default_messages;
 
 void init_default_messages() {
+  const int MAX_MESSAGE_TO_SEND = 2000; // allocate max size on stack
+  char message_to_send[MAX_MESSAGE_TO_SEND];
+
   int messages = sizeof(default_message_strings)/sizeof(default_message_strings[0]);
   default_messages = new SendingMessage* [messages];
   for (int i = 0; i < messages; i++) {
-    default_messages[i] = new SendingMessage(main_scenario, default_message_strings[i]);
+    // Replace %d in message with expires value.
+    snprintf(message_to_send, MAX_MESSAGE_TO_SEND, default_message_strings[i], auto_answer_expires);
+    default_messages[i] = new SendingMessage(main_scenario, message_to_send);
   }
 }
 
@@ -3327,8 +3329,8 @@ move to per-dialog section and duplicated to use from tag for incoming requests
       /*
        * We are here due to a provisional response for non INVITE. Update our next retransmit.
        */
-      next_retrans = clock_tick + DEFAULT_T2_TIMER_VALUE;
-      nb_last_delay = DEFAULT_T2_TIMER_VALUE;
+      next_retrans = clock_tick + global_t2;
+      nb_last_delay = global_t2;
 
     }
   }
@@ -4132,8 +4134,9 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     WARNING("Automatic response mode for an unexpected REGISTER, INFO, UPDATE or NOTIFY for call: %s", (id==NULL)?"none":id);
     if (P_case == E_AM_AA)
       sendBuffer(createSendingMessage(get_default_message("200"), -1));
-    else
+    else {
       sendBuffer(createSendingMessage(get_default_message("200register"), -1));
+    }
 
     // restore previous last msg
     ds->last_recv_msg = old_last_recv_msg;

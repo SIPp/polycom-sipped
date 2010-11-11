@@ -22,6 +22,9 @@
 SVN_VERSION=$(shell if test -d .svn ; then svnversion . | sed -e 's/^/svn/;' ;  else echo unknown ; fi)
 VERINFO=-DSVN_VERSION="\"$(SVN_VERSION)\""
 
+# directory prefix used by install target
+prefix = /usr/local
+
 # Output binary to be built
 OUTPUT=sipp
 
@@ -217,6 +220,14 @@ archive:
 	cp TMP_TAR_FILE.tar.gz $(ARCHIVE)
 	rm -f TMP_TAR_FILE.*
 
+.PHONY: test
+test:
+	@pushd test > /dev/null; ./test.rb; popd > /dev/null
+	
+.PHONY: install
+install: all
+	install -m 0755 sipp $(prefix)/bin
+	install -m 0755 tapress.pl $(prefix)/bin
 
 # Files types rules
 .SUFFIXES: .o .cpp .c .h .hpp

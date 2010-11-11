@@ -229,7 +229,10 @@ extern bool		  skip_rlimit		  _DEFVAL(false);
 extern unsigned int       timer_resolution        _DEFVAL(DEFAULT_TIMER_RESOLUTION);
 extern int                max_recv_loops          _DEFVAL(MAX_RECV_LOOPS_PER_CYCLE);
 extern int                max_sched_loops         _DEFVAL(MAX_SCHED_LOOPS_PER_CYCLE);
- 
+
+extern unsigned int       global_t2               _DEFVAL(DEFAULT_T2_TIMER_VALUE);
+extern unsigned int       auto_answer_expires     _DEFVAL(DEFAULT_AUTO_ANSWER_EXPIRES);
+
 extern char               local_ip[40];
 extern char               local_ip_escaped[42];
 extern bool               local_ip_is_ipv6;    

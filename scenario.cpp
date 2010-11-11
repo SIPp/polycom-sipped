@@ -672,7 +672,7 @@ scenario::scenario(char * filename, int deflt)
     ERROR("No element in xml scenario file");
   }
   if(strcmp("scenario", elem)) {
-    ERROR("No 'scenario' section in xml scenario file");
+    ERROR("'scenario' section in xml scenario file must be first xml version and DOCTYPE.");
   }
 
   if(char *ptr = xp_get_value((char *)"name")) {

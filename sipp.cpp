@@ -140,6 +140,8 @@ struct sipp_option options_table[] = {
 	{"help", NULL, SIPP_OPTION_HELP, NULL, 0},
 
 	{"aa", "Enable automatic 200 OK answer for INFO, UPDATE, REGISTER and NOTIFY messages.", SIPP_OPTION_SETFLAG, &auto_answer, 1},
+	{"aa_expires", "Expires value used in auto responses that require one (currently only REGISTER response). Default unit is seconds. Default value is 3600.", SIPP_OPTION_INT, &auto_answer_expires, 1},
+
 #ifdef _USE_OPENSSL
 	{"auth_uri", "Force the value of the URI for authentication.\n"
                      "By default, the URI is composed of remote_ip:remote_port.", SIPP_OPTION_STRING, &auth_uri, 1},
@@ -306,7 +308,9 @@ struct sipp_option options_table[] = {
                       "Small values allow more precise scheduling but impacts CPU usage."
                       "If the compression is on, the value is set to 50ms. The default value is 10ms.", SIPP_OPTION_TIME_MS, &timer_resolution, 1},
 
-	{"sendbuffer_warn", "Produce warnings instead of errors on SendBuffer failures.", SIPP_OPTION_BOOL, &sendbuffer_warn, 1},
+	{"T2", "Global T2-timer in milli seconds", SIPP_OPTION_TIME_MS, &global_t2, 1},
+
+  {"sendbuffer_warn", "Produce warnings instead of errors on SendBuffer failures.", SIPP_OPTION_BOOL, &sendbuffer_warn, 1},
 
 	{"trace_msg", "Displays sent and received SIP messages in <scenario file name>_<pid>_messages.log", SIPP_OPTION_SETFLAG, &useMessagef, 1},
   {"trace_shortmsg", "Displays sent and received SIP messages as CSV in <scenario file name>_<pid>_shortmessages.log", SIPP_OPTION_SETFLAG, &useShortMessagef, 1},
@@ -4236,7 +4240,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.13"
+	  printf("\n SIPped v3.14"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
