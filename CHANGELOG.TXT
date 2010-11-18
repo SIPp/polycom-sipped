@@ -1,7 +1,11 @@
 This file tracks changes responsible for version number updates.
 
+3.2.5ed 11-17-2010
+- Version format changed to parallel SF SIPp trunk which bumped version from 3.1 to 3.2
+- Make <include> work relative to -sf directory and support embeded directories
+- Extend test harness for cygwin to support windows test execution
 
-3.14ed xx-xx-xxxx
+3.14ed 11-10-2010
 - Implement make install and make test targets
 - Implement aa_expires option
 - Implement ruby-based test harness in src/test directory
