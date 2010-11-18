@@ -5,12 +5,13 @@
 # Author: Edward Estabrook <edward.estabrook@polycom.com>
 #
 
+
 require 'test/unit'
 require 'sipp_test'
 
-class AaExpiresDefault < Test::Unit::TestCase
+class IncludeDirectory < Test::Unit::TestCase
   def test_expires
-    test = SippTest.new("aa_expires_default", "-sf aa_expires_default.sipp -m 1 -l 1", "-sn uas -aa ")
+    test = SippTest.new("include_directory", "-sf include_directory/include_directory.sipp -m 1 -l 1")
     assert(test.run())
   end
 end

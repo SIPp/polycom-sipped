@@ -1,0 +1,5 @@
+
+  <!-- include file in sub-directory -->
+  <xi:include href="include_subdir/include_file2.xml"/>
+
+

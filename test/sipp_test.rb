@@ -13,12 +13,16 @@ require 'English'
 # Todo:
 # - Fix for Windows
 # - command-line options for logging, screen verbosity, ports, etc
+# - pass params to initialize via hash for more flexibility
 # - catch server-startup failure in client
+# - detect non-existence of sipp in path for better error reporting
+# - recursively kill sub-children of sipp in case invoked script performed exec (ie pcap_play)
+#   [see http://t-a-w.blogspot.com/2010/04/how-to-kill-all-your-children.html]
 
 class SippTest
   attr_accessor :client_options, :server_options
   
-  def initialize(name, client_options, server_options)
+  def initialize(name, client_options, server_options = '')
     @name = name
     @client_options = client_options
     @server_options = server_options
@@ -28,8 +32,8 @@ class SippTest
     @sipp_path = "../sipp"
     @logging = "normal" # silent, normal, verbose
     @error_message = "";
-    @server_screen_destination = "/dev/null" # {@name}_server.out
-    @client_screen_destination = "/dev/null" # {@name}_client.out
+    @server_screen_destination = "client_console.out" #"/dev/null" # "#{@name}_server.out"
+    @client_screen_destination = "server_console.out" #"/dev/null" # "#{@name}_client.out"
 
     @server_pid = -1
     @server_aborted = false
@@ -37,7 +41,7 @@ class SippTest
   end
 
   def run
-    print "Test #{@name} " unless @logging =="silent"
+    print "Test #{@name} " unless @logging == "silent"
 
     start_sipp_server(server_commandline)
 
@@ -69,9 +73,8 @@ class SippTest
 
   def start_sipp_client(testcase_client)
     success = false;
-    if (@logging == "verbose")
-      puts "Executing client with '#{testcase_client}'"
-    end
+    puts "\nExecuting client with '#{testcase_client}'" unless @logging != "verbose"
+
     if (!system(testcase_client))
       if ($CHILD_STATUS.exitstatus == -1)
         @error_message = "[ERROR] - Failed to execute"
@@ -96,9 +99,8 @@ class SippTest
 
   # run server sipp process in background, saving pid
   def start_sipp_server(testcase_server)
-    if (@logging == "verbose")
-      puts "Executing server with '#{testcase_server}'"
-    end
+    @server_options.empty? and return false
+    puts "Executing server with '#{testcase_server}'" unless @logging != "verbose"
 
     @server_pid = fork do
       if (!exec(testcase_server))
@@ -111,10 +113,17 @@ class SippTest
   end #start_sipp_server
 
   def stop_sipp_server
-    # kill background SIPp server.
+    # kill background SIPp server if it was started
+    @server_options.empty? and return false
 
-    # ugly and won't work on windows...
-    system("killall sipp")
+    # kill immediate children of the shell whose pid is stored in @server_pid
+    # may want to
+    Hash[*`ps -f`.scan(/\s\d+\s/).map{|x|x.to_i}].each{ |pid,ppid|
+      if (ppid == @server_pid)
+        puts "killing #{pid} because has parent ppid of #{@server_pid}\n" unless @logging != "verbose"
+        Process.kill("SIGINT", pid)
+      end
+    }
 
     Process.wait(@server_pid)
 
