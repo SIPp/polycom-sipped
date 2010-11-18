@@ -174,21 +174,51 @@ int xp_set_xml_buffer_from_string(char * str)
   return 1;
 }
 
-// return 1 on success, 0 on error 
-int xp_open_and_buffer_file(char * filename, int *index)
+// return index where path ends (and file spec begins) or 0 if it is missing
+// so filename[end] will be at first letter of filename
+int xp_get_start_index_of_filename(char * filename)
 {
-  FILE * f = fopen(filename, "rb");
-  int c;
+  int end = strlen(filename);
+  for (; ((end>0) && (filename[end-1] != '/') && (filename[end-1] != '\\')); end--);
+  return end;
+}
 
+// return 1 on success, 0 on error 
+int xp_open_and_buffer_file(char * filename, char * path, int *index)
+{
   int include_index = 0;
   const char* include_tag = "<xi:include href=\"";
   int include_tag_length = strlen(include_tag);
   char include_file_name[XP_MAX_NAME_LEN];
+  char new_path[XP_MAX_NAME_LEN];
+  char path_and_filename[XP_MAX_NAME_LEN];
 
-  if(!f) { 
-    printf("Unable to open file name '%s'\n", filename);
-    return 0; 
-  }
+  // combine path and filename for file open if open without fails; 
+  // add file path to existing path (or replace if absolute) for recursive opens
+  if ((filename[0] != '\\') && (filename[0] != '/') )
+    snprintf(path_and_filename, XP_MAX_NAME_LEN, "%s%s", path, filename);
+  else
+    strcpy(path_and_filename, filename);    
+  int new_path_length = xp_get_start_index_of_filename(path_and_filename);
+  strncpy(new_path, path_and_filename, new_path_length);
+  new_path[new_path_length] = 0;
+printf("filename = '%s', path = '%s', path_and_filename = '%s', new_path = '%s'\n", filename, path, path_and_filename, new_path);
+
+  int c;
+  FILE * f = fopen(filename, "rb");
+  if (!f) {
+    if ((filename[0] != '\\') && (filename[0] != '/') && (strlen(path)) ) {
+      f = fopen(path_and_filename, "rb");
+        if(!f) { 
+          printf("Unable to open file name '%s' directly or in '%s'\n", filename, new_path);
+          return 0; 
+        }
+    }
+    else {
+      printf("Unable to open file name '%s'\n", filename);
+      return 0; 
+    }
+  } // if !f
 
   while((c = fgetc(f)) != EOF) {
     // Handle match for include file
@@ -217,7 +247,7 @@ int xp_open_and_buffer_file(char * filename, int *index)
         }
         include_file_name[include_index] = 0;      
        
-        if (!xp_open_and_buffer_file(include_file_name, index)) 
+        if (!xp_open_and_buffer_file(include_file_name, new_path, index)) 
           return 0;  
         include_index = 0;
       } // if include_index >= include_tag_length
@@ -245,7 +275,7 @@ int xp_set_xml_buffer_from_file(char * filename)
 {
   int index = 0;
 
-  int result = xp_open_and_buffer_file(filename, &index);
+  int result = xp_open_and_buffer_file(filename, "", &index);
   xp_file[index++] = 0;
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
