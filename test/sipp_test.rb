@@ -32,8 +32,8 @@ class SippTest
     @sipp_path = "../sipp"
     @logging = "normal" # silent, normal, verbose
     @error_message = "";
-    @server_screen_destination = "client_console.out" #"/dev/null" # "#{@name}_server.out"
-    @client_screen_destination = "server_console.out" #"/dev/null" # "#{@name}_client.out"
+    @server_screen_destination = "client_console.out" # "#{@name}_server.out"
+    @client_screen_destination = "server_console.out" # "#{@name}_client.out"
 
     @server_pid = -1
     @server_aborted = false
@@ -42,6 +42,7 @@ class SippTest
 
   def run
     print "Test #{@name} " unless @logging == "silent"
+    print "\n" unless @logging != "verbose"
 
     start_sipp_server(server_commandline)
 
@@ -73,7 +74,7 @@ class SippTest
 
   def start_sipp_client(testcase_client)
     success = false;
-    puts "\nExecuting client with '#{testcase_client}'" unless @logging != "verbose"
+    puts "Executing client with '#{testcase_client}'" unless @logging != "verbose"
 
     if (!system(testcase_client))
       if ($CHILD_STATUS.exitstatus == -1)
@@ -118,10 +119,12 @@ class SippTest
 
     # kill immediate children of the shell whose pid is stored in @server_pid
     # may want to
-    Hash[*`ps -f`.scan(/\s\d+\s/).map{|x|x.to_i}].each{ |pid,ppid|
-      if (ppid == @server_pid)
-        puts "killing #{pid} because has parent ppid of #{@server_pid}\n" unless @logging != "verbose"
-        Process.kill("SIGINT", pid)
+#    Hash[*`ps -f`.scan(/\s\d+\s/).map{|x|x.to_i}].each{ |pid,ppid|
+    `ps -f`.each{|s|
+      a = s.split()
+      if (a[2].to_i == @server_pid)
+        puts "Killing #{a[1]} because its ppid of #{@server_pid} matches the server process.\n" unless @logging != "verbose"
+        Process.kill("SIGINT", a[1].to_i)
       end
     }
 

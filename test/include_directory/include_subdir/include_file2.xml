@@ -1,3 +1,6 @@
+  <!-- include file in parent directory -->
+  <xi:include href="../include_file3_from_child.xml"/>
+
  <!-- sent message irrelevent, test passes if it loads -->
   <send >
     <![CDATA[

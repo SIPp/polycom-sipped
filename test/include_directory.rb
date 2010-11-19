@@ -10,8 +10,9 @@ require 'test/unit'
 require 'sipp_test'
 
 class IncludeDirectory < Test::Unit::TestCase
-  def test_expires
+  def test_include_directory
     test = SippTest.new("include_directory", "-sf include_directory/include_directory.sipp -m 1 -l 1")
     assert(test.run())
   end
+
 end
