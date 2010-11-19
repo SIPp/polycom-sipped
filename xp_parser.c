@@ -202,7 +202,8 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index)
   int new_path_length = xp_get_start_index_of_filename(path_and_filename);
   strncpy(new_path, path_and_filename, new_path_length);
   new_path[new_path_length] = 0;
-printf("filename = '%s', path = '%s', path_and_filename = '%s', new_path = '%s'\n", filename, path, path_and_filename, new_path);
+  // useful for debugging recursive directory issues
+  // printf("filename = '%s', path = '%s', path_and_filename = '%s', new_path = '%s'\n", filename, path, path_and_filename, new_path);
 
   int c;
   FILE * f = fopen(filename, "rb");
