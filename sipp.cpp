@@ -47,6 +47,7 @@ void rotate_messagef();
 void rotate_calldebugf();
 void rotate_shortmessagef();
 void rotate_logfile();
+void rotate_debugf();
 
 #ifdef _USE_OPENSSL
 SSL_CTX  *sip_trp_ssl_ctx = NULL; /* For SSL cserver context */
@@ -317,6 +318,7 @@ struct sipp_option options_table[] = {
 	{"trace_screen", "Dump statistic screens in the <scenario_name>_<pid>_screens.log file when quitting SIPp. Useful to get a final status report in background mode (-bg option).", SIPP_OPTION_SETFLAG, &useScreenf, 1},
 	{"trace_err", "Trace all unexpected messages in <scenario file name>_<pid>_errors.log.", SIPP_OPTION_SETFLAG, &print_all_responses, 1},
 //	{"trace_timeout", "Displays call ids for calls with timeouts in <scenario file name>_<pid>_timeout.log", SIPP_OPTION_SETFLAG, &useTimeoutf, 1},
+	{"trace_debug", "Dumps debugging information about SIPp execution and ALL other messages to <scenario_name>_<pid>_DEBUG.log file.", SIPP_OPTION_SETFLAG, &useDebugf, 1},
 	{"trace_calldebug", "Dumps debugging information about aborted calls to <scenario_name>_<pid>_calldebug.log file.", SIPP_OPTION_SETFLAG, &useCallDebugf, 1},
 	{"trace_stat", "Dumps all statistics in <scenario_name>_<pid>.csv file. Use the '-h stat' option for a detailed description of the statistics file content.", SIPP_OPTION_SETFLAG, &dumpInFile, 1},
 	{"trace_counts", "Dumps individual message counts in a CSV file.", SIPP_OPTION_SETFLAG, &useCountf, 1},
@@ -1800,12 +1802,16 @@ void process_trace(char *what) {
 }
 
 void process_dump(char *what) {
+  if (!what) {
+      WARNING("Must specify dump type of 'tasks' or variables'.");
+      return;
+  }
   if (!strcmp(what, "tasks")) {
     dump_tasks();
   } else if (!strcmp(what, "variables")) {
     display_scenario->allocVars->dump();
   } else {
-    WARNING("Unknown dump type: %s", what);
+    WARNING("Unknown dump type: %s. Must specify dump type of 'tasks' or variables'", what);
   }
 }
 
@@ -2324,6 +2330,7 @@ void free_socketbuf(struct socketbuf *socketbuf) {
 
 size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
 {
+  DEBUG_IN();
   if(compression && len) {
     if (useMessagef == 1) {	  
     struct timeval currentTime;
@@ -2370,6 +2377,7 @@ size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
       return 0;
     }
   }
+  DEBUG_OUT();
   return len;
 }
 
@@ -2429,6 +2437,7 @@ void sipp_customize_socket(struct sipp_socket *socket)
 
 static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, size_t len, struct sockaddr_storage *dest) {
   ssize_t rc;
+  DEBUG_IN("actually performs send_to() call");
 
   /* Refuse to write to invalid sockets. */
   if (socket->ss_invalid) {
@@ -2439,6 +2448,7 @@ static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, 
 
   /* Always check congestion before sending. */
   if (socket->ss_congested) {
+    DEBUG("socket->ss_congested so returning EWOULDBLOCK");
     errno = EWOULDBLOCK;
     return -1;
   }
@@ -2476,6 +2486,7 @@ static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, 
       ERROR("Internal error, unknown transport type %d\n", socket->ss_transport);
   }
 
+  DEBUG_OUT("return %d", rc);
   return rc;
 }
 
@@ -2495,6 +2506,7 @@ int enter_congestion(struct sipp_socket *socket, int again) {
 
 
 static int write_error(struct sipp_socket *socket, int ret) {
+  DEBUG_IN();
   const char *errstring = strerror(errno);
 
 #ifndef EAGAIN
@@ -2535,6 +2547,7 @@ static int write_error(struct sipp_socket *socket, int ret) {
 
   WARNING("Unable to send %s message: %s", TRANSPORT_TO_STRING(socket->ss_transport), errstring);
   nb_net_send_errors++;
+  DEBUG_OUT();
   return -1;
 }
 
@@ -2675,6 +2688,7 @@ void buffer_read(struct sipp_socket *socket, struct socketbuf *newbuf) {
 /* Write data to a socket. */
 int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flags, struct sockaddr_storage *dest) {
   int rc;
+  DEBUG_IN();
   if ( socket == NULL ) {
     //FIX coredump when trying to send data but no master yet ... ( for example after unexpected mesdsage)
     return 0;
@@ -2685,10 +2699,10 @@ int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flag
     TRACE_MSG("Attempted socket flush returned %d\r\n", rc);
     if (rc < 0) {
       if ((errno == EWOULDBLOCK) && (flags & WS_BUFFER)) {
-	buffer_write(socket, buffer, len, dest);
-	return len;
+        buffer_write(socket, buffer, len, dest);
+        return len;
       } else {
-	return rc;
+        return rc;
       }
     }
   }
@@ -2708,6 +2722,7 @@ int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flag
 	    len, len, buffer);
     }
   } else if (rc <= 0) {
+    DEBUG("else if (rc <= 0) : Entered");
     if ((errno == EWOULDBLOCK) && (flags & WS_BUFFER)) {
       buffer_write(socket, buffer, len, dest);
       enter_congestion(socket, errno);
@@ -2738,6 +2753,7 @@ int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flag
     enter_congestion(socket, errno);
   }
 
+  DEBUG_OUT("return %d", rc);
   return rc;
 }
 
@@ -3003,6 +3019,7 @@ void sipp_close_socket (struct sipp_socket *socket) {
 
 static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, struct sockaddr_storage *src) {
   size_t avail;
+  DEBUG_IN();
 
   if (!socket->ss_msglen)
     return 0;
@@ -3052,11 +3069,12 @@ static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, s
 	  avail, buf);
   }
 
+  DEBUG_OUT();
   return avail;
 }
 
 void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, struct sockaddr_storage *src) {
-  // TRACE_MSG(" msg_size %d and pollset_index is %d \n", msg_size, pollset_index));
+  DEBUG_IN();
   if(msg_size <= 0) {
     return;
   }
@@ -3081,14 +3099,16 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
 
   if(!listener_ptr)
   {
+    DEBUG("get_listener() returned 0 (so new call must be created)");
     if(thirdPartyMode == MODE_3PCC_CONTROLLER_B || thirdPartyMode == MODE_3PCC_A_PASSIVE
 	|| thirdPartyMode == MODE_MASTER_PASSIVE || thirdPartyMode == MODE_SLAVE)
     {
       // Adding a new OUTGOING call !
+      DEBUG("Adding a new OUTGOING 3PCC call");
       main_scenario->stats->computeStat(CStat::E_CREATE_OUTGOING_CALL);
       call *new_ptr = new call(call_id, is_ipv6, 0, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
       if (!new_ptr) {
-	ERROR("Out of memory allocating a call!");
+	      ERROR("Out of memory allocating a call!");
       }
 
       outbound_congestion = false;
@@ -3162,6 +3182,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
 
   /* If the call was not created above, we just drop this message. */
   if (!listener_ptr) {
+    DEBUG("Call not created above so dropping message");
     return;
   }
 
@@ -3173,6 +3194,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   {
     listener_ptr -> process_incoming(msg, src);
   }
+  DEBUG_OUT();
 } // process_message
 
 void pollset_process(int wait)
@@ -3335,6 +3357,7 @@ void timeout_alarm(int param){
 
 void traffic_thread()
 {
+  DEBUG_IN();
   /* create the file */
   char         L_file_name [MAX_PATH];
   sprintf (L_file_name, "%s_%d_screen.log", scenario_file, getpid());
@@ -3469,6 +3492,7 @@ void traffic_thread()
     /* Receive incoming messages */
     pollset_process(running_tasks->size() == 0);
   }
+  DEBUG_OUT();
 }
 
 /*************** RTP ECHO THREAD ***********************/
@@ -4240,7 +4264,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.5"
+	  printf("\n SIPped v3.2.6"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4785,6 +4809,16 @@ int main(int argc, char *argv[])
     }
 #endif
 
+  if (useDebugf) {
+    rotate_debugf();
+
+    // enable all other logging to ensure we get everything.
+    useMessagef = 1;
+    useCallDebugf = 1;
+    useLogf = 1;
+    print_all_responses = 1;
+  }
+  
   if (useMessagef == 1) {
     rotate_messagef();
   }
@@ -4809,7 +4843,7 @@ int main(int argc, char *argv[])
   //check if no_call_id_check is enabled with call limit 1
   //this feature can run just with 1 active call
   if (no_call_id_check == true && open_calls_allowed > 1) {
-      ERROR("-no_check_call_id can is allowed just with -l 1, it means just 1 call can be active.");
+      ERROR("-mc is only allowed with -l 1, meaning just 1 call can be active.");
   }
 
    // TODO: finish the -trace_timeout option implementation    
@@ -4876,6 +4910,8 @@ int main(int argc, char *argv[])
                FD_SETSIZE);
     }
   }
+
+  DEBUG("Configuration complete, initializing...");
   
   /* Load default scenario in case nothing was loaded */
   if(!main_scenario) {
@@ -4916,6 +4952,7 @@ int main(int argc, char *argv[])
   /* checking if we need to launch the tool in background mode */ 
   if(backgroundMode == true)
     {
+      DEBUG("Entering background mode (forking)");
       pid_t l_pid;
       switch(l_pid = fork())
         {
@@ -5817,6 +5854,10 @@ void rotate_errorf() {
   strcpy(screen_logfile, error_lfi.file_name);
 }
 
+void rotate_debugf() {
+  rotatef(&debug_lfi);
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -5842,7 +5883,7 @@ int _trace (struct logfile_info *lfi, const char *fmt, va_list ap) {
 }
 
 
-int TRACE_MSG(const char *fmt, ...) {
+int _TRACE_MSG(const char *fmt, ...) {
   int ret;
   va_list ap;
 
@@ -5853,7 +5894,7 @@ int TRACE_MSG(const char *fmt, ...) {
   return ret;
 }
 
-int TRACE_SHORTMSG(const char *fmt, ...) {
+int _TRACE_SHORTMSG(const char *fmt, ...) {
   int ret;
   va_list ap;
 
@@ -5864,7 +5905,7 @@ int TRACE_SHORTMSG(const char *fmt, ...) {
   return ret;
 }
 
-int LOG_MSG(const char *fmt, ...) {
+int _LOG_MSG(const char *fmt, ...) {
   int ret;
   va_list ap;
 
@@ -5875,12 +5916,23 @@ int LOG_MSG(const char *fmt, ...) {
   return ret;
 }
 
-int TRACE_CALLDEBUG(const char *fmt, ...) {
+int _TRACE_CALLDEBUG(const char *fmt, ...) {
   int ret;
   va_list ap;
 
   va_start(ap, fmt);
   ret = _trace(&calldebug_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
+int _DEBUG_LOG(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  va_start(ap, fmt);
+  ret = _trace(&debug_lfi, fmt, ap);
   va_end(ap);
 
   return ret;

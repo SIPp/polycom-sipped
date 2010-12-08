@@ -28,6 +28,8 @@ int fortune(call *call, MessageComponent *comp, char *buf, int len) {
 	int ret;
 	int written = 0;
 
+  DEBUG_IN();
+
 	if (pipe(pipes) == -1) {
 		ERROR("Could not create pipes!\n");
 	}
@@ -75,6 +77,7 @@ int fortune(call *call, MessageComponent *comp, char *buf, int len) {
 		break;
 	}
 
+  DEBUG_OUT();
 	return written;
 }
 

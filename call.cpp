@@ -52,7 +52,7 @@
 #include "deadcall.hpp"
 #include "assert.h"
 
-#define callDebug(args...) do { if (useCallDebugf) { _callDebug( args ); } } while (0)
+#define callDebug(args...) do { if (useDebugf) { DEBUG(args); } if (useCallDebugf) { _callDebug( args ); } } while (0)
 
 #ifdef _USE_OPENSSL
 extern  SSL                 *ssl_list[];
@@ -366,6 +366,7 @@ call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest)
 
 void call::init(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, const char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall)
 {
+  DEBUG_IN();
   this->call_scenario = call_scenario;
   zombie = false;
 
@@ -552,6 +553,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   callDebug("Starting call %s\n", id);
 
   setRunning();
+  DEBUG_OUT();
 }
 
 int call::_callDebug(const char *fmt, ...) {
@@ -584,6 +586,7 @@ int call::_callDebug(const char *fmt, ...) {
 
 call::~call()
 {
+  DEBUG_IN();
   computeStat(CStat::E_ADD_CALL_DURATION, clock_tick - start_time);
 
   if(comp_state) { comp_free(&comp_state); }
@@ -647,6 +650,7 @@ call::~call()
   free(start_time_rtd);
   free(rtd_done);
   free(debugBuffer);
+  DEBUG_OUT();
 }
 
 void call::computeStat (CStat::E_Action P_action) {
@@ -913,15 +917,18 @@ int call::send_raw(char * msg, int index, int len)
 
   rc = write_socket(sock, msg, len, WS_BUFFER, &call_peer);
   if(rc == -1 && errno == EWOULDBLOCK) {
+    DEBUG("write_socket returned -1 and errno == EWOULDBLOCK; returning -1");
     return -1;
   }
 
   if(rc < 0) {
     computeStat(CStat::E_CALL_FAILED);
     computeStat(CStat::E_FAILED_CANNOT_SEND_MSG);
+    DEBUG("rc < 0 so deleting call");
     delete this;
   }
 
+  DEBUG_OUT("return %d", rc);
   return rc; /* OK */
 }
 
@@ -929,6 +936,7 @@ int call::send_raw(char * msg, int index, int len)
 /* part of the XML scenario                          */
 void call::sendBuffer(char * msg, int len)
 {
+  DEBUG_IN();
   /* call send_raw but with a special scenario index */
   if (send_raw(msg, -1, len) < 0) {
     if (sendbuffer_warn) {
@@ -937,6 +945,7 @@ void call::sendBuffer(char * msg, int len)
       WARNING_NO("Error sending raw message");
     }
   }
+  DEBUG_OUT();
 }
 
 
@@ -1222,6 +1231,7 @@ char * call::send_scene(int index, int *send_status, int *len)
   char *L_ptr1 ;
   char *L_ptr2 ;
   int uselen = 0;
+  DEBUG_IN();
 
   assert(send_status);
 
@@ -1265,6 +1275,7 @@ char * call::send_scene(int index, int *send_status, int *len)
 
   *send_status = send_raw(dest, index, *len);
 
+  DEBUG_OUT();
   return dest;
 }
 
@@ -1401,6 +1412,7 @@ callDebug("call::next(): msg_index = %d, new_msg_index = %d", msg_index, new_msg
 }
 
 bool call::executeMessage(message *curmsg) {
+  DEBUG_IN();
   DialogState *ds = get_dialogState(curmsg->dialog_number);
 
   if(curmsg -> pause_distribution || curmsg->pause_variable != -1) {
@@ -1420,8 +1432,8 @@ bool call::executeMessage(message *curmsg) {
     paused_until = clock_tick + pause;
 
     /* This state is used as the last message of a scenario, just for handling
-     * final retransmissions. If the connection closes, we do not mark it is
-     * failed. */
+    * final retransmissions. If the connection closes, we do not mark it is
+    * failed. */
     this->timewait = curmsg->timewait;
 
     /* Increment the number of sessions in pause state */
@@ -1464,7 +1476,7 @@ bool call::executeMessage(message *curmsg) {
     int send_status;
 
     /* Do not send a new message until the previous one which had
-     * retransmission enabled is acknowledged */
+    * retransmission enabled is acknowledged */
 
     if(next_retrans) {
       setPaused();
@@ -1475,48 +1487,48 @@ bool call::executeMessage(message *curmsg) {
     do_bookkeeping(curmsg);
 
     /* decide whether to increment cseq or not 
-     * basically increment for anything except response, ACK or CANCEL 
-     * Note that cseq is only used by the [cseq] keyword, and
-     * not by default
-     */
+    * basically increment for anything except response, ACK or CANCEL 
+    * Note that cseq is only used by the [cseq] keyword, and
+    * not by default
+    */
 
     int incr_cseq = 0;
     if (!curmsg->send_scheme->isAck() &&
-        !curmsg->send_scheme->isCancel() &&
-        !curmsg->send_scheme->isResponse()) {
-          ++ds->cseq;
-          incr_cseq = 1;
+      !curmsg->send_scheme->isCancel() &&
+      !curmsg->send_scheme->isResponse()) {
+        ++ds->cseq;
+        incr_cseq = 1;
     }
-    
+
     msg_snd = send_scene(msg_index, &send_status, &msgLen);
     if(send_status == -1 && errno == EWOULDBLOCK) {
       if (incr_cseq) --ds->cseq;
       /* Have we set the timeout yet? */
       if (send_timeout) {
-	/* If we have actually timed out. */
-	if (clock_tick > send_timeout) {
-	  WARNING("Call-Id: %s, send timeout on message %s:%d: aborting call",
-	      id, curmsg->desc, curmsg->index);
-	  computeStat(CStat::E_CALL_FAILED);
-	  computeStat(CStat::E_FAILED_TIMEOUT_ON_SEND);
-	  if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-	    return (abortCall(true));
-	  } else {
-	    delete this;
-	    return false;
-	  }
-	}
+        /* If we have actually timed out. */
+        if (clock_tick > send_timeout) {
+          WARNING("Call-Id: %s, send timeout on message %s:%d: aborting call",
+            id, curmsg->desc, curmsg->index);
+          computeStat(CStat::E_CALL_FAILED);
+          computeStat(CStat::E_FAILED_TIMEOUT_ON_SEND);
+          if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
+            return (abortCall(true));
+          } else {
+            delete this;
+            return false;
+          }
+        }
       } else if (curmsg->timeout) {
-	/* Initialize the send timeout to the per message timeout. */
-	send_timeout = clock_tick + curmsg->timeout;
+        /* Initialize the send timeout to the per message timeout. */
+        send_timeout = clock_tick + curmsg->timeout;
       } else if (defl_send_timeout) {
-	/* Initialize the send timeout to the global timeout. */
-	send_timeout = clock_tick + defl_send_timeout;
+        /* Initialize the send timeout to the global timeout. */
+        send_timeout = clock_tick + defl_send_timeout;
       }
       return true; /* No step, nothing done, retry later */
     } else if(send_status < 0) { /* Send error */
       /* The call was already deleted by connect_socket_if_needed or send_raw,
-       * so we should no longer access members. */
+      * so we should no longer access members. */
       return false;
     }
     /* We have sent the message, so the timeout is no longer needed. */
@@ -1538,7 +1550,7 @@ bool call::executeMessage(message *curmsg) {
 
     if(last_recv_index >= 0) {
       /* We are sending just after msg reception. There is a great
-       * chance that we will be asked to retransmit this message */
+      * chance that we will be asked to retransmit this message */
       recv_retrans_hash       = last_recv_hash;
       recv_retrans_recv_index = last_recv_index;
       recv_retrans_send_index = curmsg->index;
@@ -1546,7 +1558,7 @@ bool call::executeMessage(message *curmsg) {
       callDebug("Set Retransmission Hash: %u (recv index %d, send index %d)\n", recv_retrans_hash, recv_retrans_recv_index, recv_retrans_send_index);
 
       /* Prevent from detecting the cause relation between send and recv 
-       * in the next valid send */
+      * in the next valid send */
       last_recv_hash = 0;
     }
 
@@ -1568,25 +1580,42 @@ bool call::executeMessage(message *curmsg) {
 
     return next();
   } else if (curmsg->M_type == MSG_TYPE_RECV
-         || curmsg->M_type == MSG_TYPE_RECVCMD
-                                                 ) {
-    if (queued_msg) {
-      char *msg = queued_msg;
-      queued_msg = NULL;
-      bool ret = process_incoming(msg);
-      free(msg);
-      return ret;
-    } else if (recv_timeout) {
-      if(recv_timeout > getmilliseconds()) {
-	setPaused();
-	return true;
-      }
-      recv_timeout = 0;
-      curmsg->nb_timeout++;
-      if (curmsg->on_timeout < 0) {
-        // if you set a timeout but not a label, the call is aborted 
-        WARNING("Call-Id: %s, receive timeout on message %s:%d without label to jump to (ontimeout attribute): aborting call",
-                   id, curmsg->desc, curmsg->index);
+    || curmsg->M_type == MSG_TYPE_RECVCMD
+    ) {
+      if (queued_msg) {
+        char *msg = queued_msg;
+        queued_msg = NULL;
+        bool ret = process_incoming(msg);
+        free(msg);
+        return ret;
+      } else if (recv_timeout) {
+        if(recv_timeout > getmilliseconds()) {
+          setPaused();
+          return true;
+        }
+        recv_timeout = 0;
+        curmsg->nb_timeout++;
+        if (curmsg->on_timeout < 0) {
+          // if you set a timeout but not a label, the call is aborted 
+          WARNING("Call-Id: %s, receive timeout on message %s:%d without label to jump to (ontimeout attribute): aborting call",
+            id, curmsg->desc, curmsg->index);
+          computeStat(CStat::E_CALL_FAILED);
+          computeStat(CStat::E_FAILED_TIMEOUT_ON_RECV);
+          if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
+            return (abortCall(true));
+          } else {
+            delete this;
+            return false;
+          }
+        }
+        WARNING("Call-Id: %s, receive timeout on message %s:%d, jumping to label %d",
+          id, curmsg->desc, curmsg->index, curmsg->on_timeout);
+        /* FIXME: We should do something like set index here, but it probably
+        * does not matter too much as only nops are allowed in the init stanza. */
+        msg_index = curmsg->on_timeout;
+        recv_timeout = 0;
+        if (msg_index < (int)call_scenario->messages.size()) return true;
+        // special case - the label points to the end - finish the call
         computeStat(CStat::E_CALL_FAILED);
         computeStat(CStat::E_FAILED_TIMEOUT_ON_RECV);
         if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
@@ -1595,44 +1624,29 @@ bool call::executeMessage(message *curmsg) {
           delete this;
           return false;
         }
-      }
-      WARNING("Call-Id: %s, receive timeout on message %s:%d, jumping to label %d",
-                  id, curmsg->desc, curmsg->index, curmsg->on_timeout);
-      /* FIXME: We should do something like set index here, but it probably
-       * does not matter too much as only nops are allowed in the init stanza. */
-      msg_index = curmsg->on_timeout;
-      recv_timeout = 0;
-      if (msg_index < (int)call_scenario->messages.size()) return true;
-      // special case - the label points to the end - finish the call
-      computeStat(CStat::E_CALL_FAILED);
-      computeStat(CStat::E_FAILED_TIMEOUT_ON_RECV);
-      if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-        return (abortCall(true));
+      } else if (curmsg->timeout || defl_recv_timeout) {
+        if (curmsg->timeout)
+          // If timeout is specified on message receive, use it
+          recv_timeout = getmilliseconds() + curmsg->timeout;
+        else
+          // Else use the default timeout if specified
+          recv_timeout = getmilliseconds() + defl_recv_timeout;
+        return true;
       } else {
-        delete this;
-        return false;
+        /* We are going to wait forever. */
+        setPaused();
       }
-    } else if (curmsg->timeout || defl_recv_timeout) {
-      if (curmsg->timeout)
-        // If timeout is specified on message receive, use it
-        recv_timeout = getmilliseconds() + curmsg->timeout;
-      else
-        // Else use the default timeout if specified
-        recv_timeout = getmilliseconds() + defl_recv_timeout;
-	return true;
-    } else {
-	/* We are going to wait forever. */
-	setPaused();
-    }
   } else {
     WARNING("Unknown message type at %s:%d: %d", curmsg->desc, curmsg->index, curmsg->M_type);
   }
+  DEBUG_OUT();
   return true;
 }
 
 bool call::run()
 {
   bool            bInviteTransaction = false;
+  DEBUG_IN();
 
   assert(running);
 
@@ -1661,11 +1675,11 @@ bool call::run()
   if (curmsg->condexec != -1) {
     bool exec = M_callVariableTable->getVar(curmsg->condexec)->isSet();
     if (curmsg->condexec_inverse) {
-	exec = !exec;
+      exec = !exec;
     }
     if (!exec) {
-     callDebug("Conditional variable %s %s set, so skipping message %d.\n", call_scenario->allocVars->getName(curmsg->condexec), curmsg->condexec_inverse ? "" : "not", msg_index);
-     return next();
+      callDebug("Conditional variable %s %s set, so skipping message %d.\n", call_scenario->allocVars->getName(curmsg->condexec), curmsg->condexec_inverse ? "" : "not", msg_index);
+      return next();
     }
   }
 
@@ -1685,26 +1699,26 @@ bool call::run()
     if(nb_retrans > rtAllowed) {
       call_scenario->messages[last_send_index] -> nb_timeout ++;
       if (call_scenario->messages[last_send_index]->on_timeout >= 0) {  // action on timeout
-          WARNING("Call-Id: %s, timeout on max UDP retrans for message %d, jumping to label %d ",
-                      id, msg_index, call_scenario->messages[last_send_index]->on_timeout);
-          msg_index = call_scenario->messages[last_send_index]->on_timeout;
-          next_retrans = 0;
-          recv_timeout = 0;
-          if (msg_index < (int)call_scenario->messages.size()) {
-		return true;
-	  }
+        WARNING("Call-Id: %s, timeout on max UDP retrans for message %d, jumping to label %d ",
+          id, msg_index, call_scenario->messages[last_send_index]->on_timeout);
+        msg_index = call_scenario->messages[last_send_index]->on_timeout;
+        next_retrans = 0;
+        recv_timeout = 0;
+        if (msg_index < (int)call_scenario->messages.size()) {
+          return true;
+        }
 
-          // here if asked to go to the last label  delete the call
-          computeStat(CStat::E_CALL_FAILED);
-          computeStat(CStat::E_FAILED_MAX_UDP_RETRANS);
-          if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-            // Abort the call by sending proper SIP message
-            return(abortCall(true));
-          } else {
-            // Just delete existing call
-            delete this;
-            return false;
-          }
+        // here if asked to go to the last label  delete the call
+        computeStat(CStat::E_CALL_FAILED);
+        computeStat(CStat::E_FAILED_MAX_UDP_RETRANS);
+        if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
+          // Abort the call by sending proper SIP message
+          return(abortCall(true));
+        } else {
+          // Just delete existing call
+          delete this;
+          return false;
+        }
       }
       computeStat(CStat::E_CALL_FAILED);
       computeStat(CStat::E_FAILED_MAX_UDP_RETRANS);
@@ -1724,8 +1738,9 @@ bool call::run()
         if (!bInviteTransaction)
         {
           nb_last_delay = global_t2;
+        }
       }
-      }
+
       if(send_raw(last_send_msg, last_send_index, last_send_len) < -1) {
         return false;
       }
@@ -1748,6 +1763,7 @@ bool call::run()
     paused_until = 0;
     return next();
   }
+  DEBUG_OUT("Calling return executeMessage(curmsg)");
   return executeMessage(curmsg);
 }
 
@@ -1876,6 +1892,7 @@ bool call::process_unexpected(char * msg)
 {
   char buffer[MAX_HEADER_LEN];
   char *desc = buffer;
+  DEBUG_IN();
 
   message *curmsg = call_scenario->messages[msg_index];
 
@@ -1937,6 +1954,7 @@ bool call::process_unexpected(char * msg)
     }
   } else {
     // Do not abort call nor send anything in reply if default behavior is disabled
+    DEBUG_OUT("Returning false; do not abort call nor send anything in reply because default behavior is disabled");
     return false;
   }
 }
@@ -1951,6 +1969,7 @@ bool call::abortCall(bool writeLog)
   int is_inv;
 
   char * src_recv = NULL ;
+  DEBUG_IN();
 
   callDebug("Aborting call %s (index %d).\n", id, msg_index);
 
@@ -2018,6 +2037,7 @@ bool call::abortCall(bool writeLog)
   }
   delete this;
 
+  DEBUG_OUT();
   return false;
 }
 
@@ -2957,6 +2977,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   T_ActionResult  actionResult;
 
   getmilliseconds();
+  DEBUG_IN();
   callDebug("Processing %d byte incoming message for call-ID %s (hash %u):\n%s\n\n", strlen(msg), id, hash(msg), msg);
 
   setRunning();
@@ -3451,6 +3472,7 @@ move to per-dialog section and duplicated to use from tag for incoming requests
 
     setPaused();
   }
+  DEBUG_OUT();
   return true;
 }
 
@@ -3468,6 +3490,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
   CAction*   currentAction;
 
   actions = curmsg->M_actions;
+  DEBUG_IN();
   // looking for action to do on this message
   if(actions == NULL) {
     return(call::E_AR_NO_ERROR);
@@ -3930,6 +3953,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       ERROR("call::executeAction unknown action");
     }
   } // end for
+  DEBUG_OUT();
   return(call::E_AR_NO_ERROR);
 }
 

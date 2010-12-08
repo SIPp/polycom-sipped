@@ -64,6 +64,7 @@ deadcall::~deadcall() {
 
 bool deadcall::process_incoming(char * msg, struct sockaddr_storage *src) {
   char buffer[MAX_HEADER_LEN];
+  DEBUG_IN();
 
   CStat::globalStat(CStat::E_DEAD_CALL_MSGS);
 
@@ -78,6 +79,8 @@ bool deadcall::process_incoming(char * msg, struct sockaddr_storage *src) {
 	     id, TRANSPORT_TO_STRING(transport), msg);
 
   expiration = clock_tick + deadcall_wait;
+
+  DEBUG_OUT();
   return run();
 }
 

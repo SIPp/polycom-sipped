@@ -206,7 +206,10 @@ debug_pcap_ossl:
 	@DEBUG_FLAGS=-g ; export DEBUG_FLAGS ; make pcapplay_ossl
 
 debug_pcap_cygwin:
-	@DEBUG_FLAGS=-g ; export DEBUG_FLAGS ; $(MAKE) pcapplay_ossl_cygwin
+	@DEBUG_FLAGS=-g ; export DEBUG_FLAGS ; $(MAKE) pcapplay_cygwin
+
+debug_pcap_ossl_cygwin:
+	@DEBUG_FLAGS=-g ; export DEBUG_FLAGS ; make pcapplay_ossl_cygwin
 
 clean:
 	rm -f *.o $(OUTPUT) *~ $(TOCLEAN) 

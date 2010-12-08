@@ -1,5 +1,9 @@
 This file tracks changes responsible for version number updates.
 
+3.2.6 12-08-2010
+- Add -trace_debug option to output information about SIPp execution
+- Fix seg fault when using dump command without a parameter
+
 3.2.5ed 11-17-2010
 - Version format changed to parallel SF SIPp trunk which bumped version from 3.1 to 3.2
 - Make <include> work relative to -sf directory and support embeded directories
