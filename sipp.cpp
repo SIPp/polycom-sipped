@@ -2384,6 +2384,7 @@ size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
 void sipp_customize_socket(struct sipp_socket *socket)
 {
   unsigned int buffsize = buff_size;
+  DEBUG_IN();
 
   /* Allows fast TCP reuse of the socket */
   if (socket->ss_transport == T_TCP || socket->ss_transport == T_TLS ) {
@@ -2433,11 +2434,12 @@ void sipp_customize_socket(struct sipp_socket *socket)
                 sizeof(buffsize))) {
     ERROR_NO("Unable to set socket rcvbuf");
   }
+  DEBUG_OUT();
 }
 
 static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, size_t len, struct sockaddr_storage *dest) {
   ssize_t rc;
-  DEBUG_IN("actually performs send_to() call");
+  DEBUG_IN("this method actually performs send_to() call");
 
   /* Refuse to write to invalid sockets. */
   if (socket->ss_invalid) {
@@ -2467,18 +2469,19 @@ static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, 
       break;
     case T_UDP:
       if(compression) {
-	static char comp_msg[SIPP_MAX_MSG_SIZE];
-	strcpy(comp_msg, buffer);
-	if(comp_compress(&socket->ss_comp_state,
-	      comp_msg,
-	      (unsigned int *) &len) != COMP_OK) {
-	  ERROR("Compression pluggin error");
-	}
-	buffer = (char *)comp_msg;
+        static char comp_msg[SIPP_MAX_MSG_SIZE];
+        strcpy(comp_msg, buffer);
+        if(comp_compress(&socket->ss_comp_state,
+          comp_msg,
+          (unsigned int *) &len) != COMP_OK) {
+            ERROR("Compression pluggin error");
+        }
+        buffer = (char *)comp_msg;
 
-	TRACE_MSG("---\nCompressed message len: %d\n", len);
+        TRACE_MSG("---\nCompressed message len: %d\n", len);
       }
 
+      DEBUG("sendto(%d, buffer, %d, 0, %s:%hu [&=%p], %d)", socket->ss_fd, len, inet_ntoa( ((struct sockaddr_in*)dest)->sin_addr ), ntohs(((struct sockaddr_in*)dest)->sin_port), dest, SOCK_ADDR_SIZE(dest));
       rc = sendto(socket->ss_fd, buffer, len, 0, (struct sockaddr *)dest, SOCK_ADDR_SIZE(dest));
 
       break;
@@ -2628,6 +2631,7 @@ static int flush_socket(struct sipp_socket *socket) {
   struct socketbuf *buf;
   int ret;
 
+  DEBUG_IN();
   while ((buf = socket->ss_out)) {
     ssize_t size = buf->len - buf->offset;
     ret = socket_write_primitive(socket, buf->buf + buf->offset, size, &buf->addr);
@@ -2648,11 +2652,14 @@ static int flush_socket(struct sipp_socket *socket) {
     }
   }
 
+  DEBUG_OUT();
   return 0;
 }
 
 void buffer_write(struct sipp_socket *socket, char *buffer, size_t len, struct sockaddr_storage *dest) {
   struct socketbuf *buf = socket->ss_out;
+
+  DEBUG_IN();
 
   if (!buf) {
 	socket->ss_out = alloc_socketbuf(buffer, len, DO_COPY, dest);
@@ -2666,6 +2673,7 @@ void buffer_write(struct sipp_socket *socket, char *buffer, size_t len, struct s
 
   buf->next = alloc_socketbuf(buffer, len, DO_COPY, dest);
   TRACE_MSG("Appended buffered message to socket %d\n", socket->ss_fd);
+  DEBUG_OUT();
 }
 
 void buffer_read(struct sipp_socket *socket, struct socketbuf *newbuf) {
@@ -2920,6 +2928,7 @@ static int empty_socket(struct sipp_socket *socket) {
   struct socketbuf *socketbuf;
   char *buffer;
   int ret;
+  DEBUG_IN();
   /* Where should we start sending packets to, ideally we should begin to parse
    * the Via, Contact, and Route headers.  But for now SIPp always sends to the
    * host specified on the command line; or for UAS mode to the address that
@@ -2963,12 +2972,14 @@ static int empty_socket(struct sipp_socket *socket) {
     }
   }
 
+  DEBUG_OUT("return %d", ret);
   return ret;
 }
 
 void sipp_socket_invalidate(struct sipp_socket *socket) {
   int pollidx;
 
+  DEBUG_IN();
   if (socket->ss_invalid) {
     return;
   }
@@ -3004,6 +3015,7 @@ void sipp_socket_invalidate(struct sipp_socket *socket) {
   {
      pending_messages--;
   }
+  DEBUG_OUT();
 }
 
 void sipp_close_socket (struct sipp_socket *socket) {
@@ -3036,6 +3048,7 @@ static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, s
 
   memcpy(buf, socket->ss_in->buf + socket->ss_in->offset, avail);
   memcpy(src, &socket->ss_in->addr, SOCK_ADDR_SIZE(&socket->ss_in->addr));
+  DEBUG("socket->ss_in->addr assigned %s:%hu", inet_ntoa( ((struct sockaddr_in*)&(socket->ss_in->addr))->sin_addr ), ntohs(((struct sockaddr_in*)&(socket->ss_in->addr))->sin_port) );
 
   /* Update our buffer and return value. */
   buf[avail] = '\0';
@@ -3866,6 +3879,7 @@ char* remove_pattern(char* P_buffer, char* P_extensionPattern) {
 
 static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd, int accepting) {
   struct sipp_socket *ret = NULL;
+  DEBUG_IN();
 
   ret = (struct sipp_socket *)malloc(sizeof(struct sipp_socket));
   if (!ret) {
@@ -3914,6 +3928,7 @@ static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, in
   pollfiles[ret->ss_pollidx].events  = POLLIN | POLLERR;
   pollfiles[ret->ss_pollidx].revents = 0;
 
+  DEBUG_OUT("return %d", ret);
   return ret;
 }
 
@@ -3942,6 +3957,7 @@ int socket_fd(bool use_ipv6, int transport) {
     ERROR("Unable to get a %s socket (3)", TRANSPORT_TO_STRING(transport));
   }
 
+  DEBUG_OUT("socket fd = %d", fd);
   return fd;
 }
 
@@ -4079,6 +4095,7 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
 int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr, int *port) {
   int ret;
   int len;
+  DEBUG_IN();
 
   if (socket->ss_ipv6) {
     len = sizeof(struct sockaddr_in6);
@@ -4104,6 +4121,7 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
     *port = ntohs((short)((_RCAST(struct sockaddr_in *, saddr))->sin_port));
   }
 
+  DEBUG_OUT();
   return 0;
 }
 
@@ -4138,6 +4156,7 @@ int sipp_connect_socket(struct sipp_socket *socket, struct sockaddr_storage *des
 }
 
 int sipp_reconnect_socket(struct sipp_socket *socket) {
+  DEBUG_IN();
   assert(socket->ss_fd == -1);
 
   socket->ss_fd = socket_fd(socket->ss_ipv6, socket->ss_transport);
@@ -4172,6 +4191,7 @@ int sipp_reconnect_socket(struct sipp_socket *socket) {
     socket->ss_invalid = false;
   }
 
+  DEBUG_OUT("return sipp_do_connect_socket(socket)");
   return sipp_do_connect_socket(socket);
 }
 
