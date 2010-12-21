@@ -34,6 +34,7 @@
 /*******************  Include files *********************/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -155,18 +156,20 @@ char * xp_find_local_end()
 
 /********************* Interface routines ********************/
 
-int xp_set_xml_buffer_from_string(char * str)
+int xp_set_xml_buffer_from_string(char * str, int dumpxml)
 {
   size_t len = strlen(str);
 
   if(len > XP_MAX_FILE_LEN) {
     return 0;
   }
-
   strcpy(xp_file, str);
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
   
+  if (dumpxml) 
+    printf("%s", &xp_file);
+
   if(strstr(xp_position[xp_stack], "<?xml") != xp_position[xp_stack]) return 0;
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
   xp_position[xp_stack] = xp_position[xp_stack] + 2;
@@ -183,12 +186,24 @@ int xp_get_start_index_of_filename(char * filename)
   return end;
 }
 
+#define DEBUG(x, ...) { if (0) { printf(x, ##__VA_ARGS__); } }
+
 // return 1 on success, 0 on error 
-int xp_open_and_buffer_file(char * filename, char * path, int *index)
+int xp_open_and_buffer_file(char * filename, char * path, int *index, unsigned *sub_list, unsigned sub_length)
 {
   int include_index = 0;
   const char* include_tag = "<xi:include href=\"";
   int include_tag_length = strlen(include_tag);
+  int dialog_index = 0;
+  const char* dialog_param = "dialog=\"";
+  int dialog_param_length = strlen(dialog_param);
+  int replace_index = 0;
+  const char* replace_param = "dialogs=\"";
+  int replace_param_length = strlen(replace_param);
+  const int XP_MAX_LOCAL_SUB_LIST_LEN = 26;
+  unsigned local_sub_list[XP_MAX_LOCAL_SUB_LIST_LEN];
+  unsigned local_sub_length = 0;
+
   char include_file_name[XP_MAX_NAME_LEN];
   char new_path[XP_MAX_NAME_LEN];
   char path_and_filename[XP_MAX_NAME_LEN];
@@ -202,8 +217,7 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index)
   int new_path_length = xp_get_start_index_of_filename(path_and_filename);
   strncpy(new_path, path_and_filename, new_path_length);
   new_path[new_path_length] = 0;
-  // useful for debugging recursive directory issues
-  // printf("filename = '%s', path = '%s', path_and_filename = '%s', new_path = '%s'\n", filename, path, path_and_filename, new_path);
+  DEBUG("filename = '%s', path = '%s', path_and_filename = '%s', new_path = '%s'\n", filename, path, path_and_filename, new_path);
 
   int c;
   FILE * f = fopen(filename, "rb");
@@ -240,17 +254,108 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index)
           include_file_name[include_index] = c;
           include_index++;
         } // while fgetc != '"'
-        char ch = fgetc(f);
-        if (ch != '/' || fgetc(f) != '>') {
-          printf("xi:include tag must be formatted exactly '<xi:include href=\"filename\"/>'  '/>' must follow '\"'.\n");
+
+        c = getc(f);
+        while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace  
+
+        if (c != '/') { // if not closing tab, specifying dialogs="1,2,3"
+          DEBUG("dialogs parameter expected.\n");
+
+          // match 'dialogs="'
+          replace_index = 0;
+          while ( (replace_index < replace_param_length) && (c == replace_param[replace_index]) ) {
+            c = fgetc(f);
+            replace_index++;
+          }
+          if (replace_index != replace_param_length) { 
+            printf("Error: only valid option to xi:include is 'dialogs=\"1,2,3\"'.\n");
+            fclose(f);
+            return 0;
+          }
+          // extract n1,n2,n3 until " is encountered
+          DEBUG("dialogs tag matched, extracting list.\n");
+          char number_str[8];
+          int number_len = 0;
+          do {
+            if ((c >= '0' && c <= '9') || (toupper(c) >= 'A' && toupper(c) <= 'Z')) {
+              number_str[number_len] = c;
+              number_len++;
+              if (number_len > 6) {
+                number_str[number_len] = 0;
+                printf("Error in '%s': dialogs substitution string %s is too long. dialogs tag value must be comma separated numbers.\n", filename, number_str);
+                fclose(f);
+                return 0;
+              }
+            }
+            else if (c == ',' || c == '"') {
+              if (number_len > 0) {
+                // add numbers / letters
+                int d;
+                if (local_sub_length >= XP_MAX_LOCAL_SUB_LIST_LEN) {
+                  printf("Error in '%s': Too many substitution parameters. Maximum is %d.\n", filename, XP_MAX_LOCAL_SUB_LIST_LEN);
+                  fclose(f);
+                  return 0;
+                }
+                number_str[number_len] = 0;
+                if (number_str[0] >= '0' && number_str[0] <= '9') {
+                  d = atoi(number_str);
+                  if (d > 99) {
+                    printf("Error in '%s': Maximum dialog ID for substitution is 99.\n", filename);
+                    fclose(f);
+                    return 0;
+                  }
+                }
+                else if ((toupper(number_str[0]) >= 'A') && (toupper(number_str[0]) <= 'Z') && 
+                  (toupper(number_str[1]) == toupper(number_str[0])) && (number_len == 2)) {
+                  d = number_str[0] - (int)'A';
+                  if (d >= sub_length) {
+                    printf("'Error in '%s': %s' => %d is greater than largest substitution available of %d.\n", filename, number_str, d+1, sub_length);
+                    fclose(f);
+                    return 0;
+                  }
+                  DEBUG("number_str = %s => %d. sub_list[%d] = %d\n", number_str, d, d, sub_list[d]);
+                  d = sub_list[d];
+                }
+                else {
+                  printf("Invalid dialogs parameter value '%s'.\n", number_str);
+                  fclose(f);
+                  return 0;
+                }
+
+                DEBUG("Adding %d to local_sub_list[%d].\n", d, local_sub_length);
+                local_sub_list[local_sub_length] = d;
+                local_sub_length++;
+                number_len = 0;
+              }
+              if (c == '"') 
+                break;
+            } // if c== ',' || '"'
+            else {
+              printf("Error, xi:include tag's dialogs list must contain numbers separated with commas and no whitespace.\n");
+              fclose(f);
+              return 0;
+            }
+            c = fgetc(f);
+          } while (1);
+
+          c = fgetc(f);
+          while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace          
+         
+        } // if dialogs option specified
+
+
+        if (c != '/' || fgetc(f) != '>') {
+          printf("xi:include tag must be formatted exactly '<xi:include href=\"filename\" dialogs=\"1,2,3\"] />'  '/>' must be together.\n");
           fclose(f);
           return 0;
         }
         include_file_name[include_index] = 0;      
        
-        if (!xp_open_and_buffer_file(include_file_name, new_path, index)) 
+        if (!xp_open_and_buffer_file(include_file_name, new_path, index, local_sub_list, local_sub_length)) 
           return 0;  
         include_index = 0;
+        local_sub_length = 0;
+        c = '\r'; // don't add this letter if returning from recursive parse.
       } // if include_index >= include_tag_length
     } // if c == include_tag[include_index])
     else
@@ -259,6 +364,57 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index)
     // Handle parsing file into xp_file
     if(c == '\r') continue;
     xp_file[(*index)++] = c;
+    // check for dialog="nn" substitution
+    if (sub_list) {
+      // check 'dialog="' part
+      if (dialog_index < dialog_param_length) {
+        if (dialog_param[dialog_index] == c)
+          dialog_index++;
+        else 
+          dialog_index = 0;
+      } // dialog_index < dialog_param_length
+      // check for 1st letter
+      else if (dialog_index == dialog_param_length) {
+        if ((toupper(c) >= 'A') && (toupper(c) <= 'Z')) 
+          dialog_index++;
+        else
+          dialog_index = 0;
+      }
+      // check 1st & second letters match each other (ie AA not AB)
+      else if (dialog_index == dialog_param_length+1) {
+        if (xp_file[(*index)-2] == c) 
+          dialog_index++;
+        else
+          dialog_index = 0;
+      }
+      // final quote: substitute number
+      // Note this implementation replaces 2 letters with 2 digits, but algorithm could
+      // easily be extended to accomodate variable-length substitution as replacement 
+      // is performed inline.
+      else if (dialog_index == dialog_param_length+2) {
+        if (c == '"') {
+          // convert to integer s = [AA => 0, BB => 1, etc]
+          // Note: index is new spot; i-1 is ", i-2 & i-3 are the letters to replace
+          int sub_idx = toupper(xp_file[(*index)-2] ) - (int)'A';
+          if (sub_idx >= sub_length) {
+            printf("Error in '%s': not enough include parameters while attempting to substitute '%s'. This requires at least %d dialog id(s) specified with the include, but there were only %d.\n", filename, (char *) &xp_file[(*index)-(dialog_param_length+4)], sub_idx+1, sub_length);
+            fclose(f);
+            return 0; 
+          }
+
+          char str[3];
+          snprintf(str, 3, "%.2d", sub_list[sub_idx]);
+          xp_file[(*index)-3] = str[0];
+          xp_file[(*index)-2] = str[1];
+          // (if not in index, error)
+        }
+        dialog_index = 0;
+      }
+
+      if (dialog_index == 0 && dialog_param[0] == c)
+        dialog_index = 1;
+    } // if sub_list != 0
+
     if(*index >= XP_MAX_FILE_LEN) {
       printf("Error: XML definition too long.\n");
       fclose(f);
@@ -272,12 +428,15 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index)
 
 
 // return 1 on success, 0 on error 
-int xp_set_xml_buffer_from_file(char * filename)
+int xp_set_xml_buffer_from_file(char * filename, int dumpxml)
 {
   int index = 0;
 
-  int result = xp_open_and_buffer_file(filename, "", &index);
-  xp_file[index++] = 0;
+  int result = xp_open_and_buffer_file(filename, "", &index, 0, 0);
+  if (dumpxml)
+    printf("%s", &xp_file);
+
+    xp_file[index++] = 0;
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
 

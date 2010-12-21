@@ -71,6 +71,8 @@ typedef enum {
   E_Message_Peer_Tag_Param,
   E_Message_Remote_Tag_Param,
   E_Message_Remote_Tag,
+  E_Message_Local_Tag_Param,
+  E_Message_Local_Tag,
   E_Message_Routes,
   E_Message_Variable,
   E_Message_Fill,

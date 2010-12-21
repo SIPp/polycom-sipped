@@ -24,8 +24,8 @@ extern "C" {
 #endif
 
 int    xp_replace(char *source, char *dest, const char *search, const char *replace);
-int    xp_set_xml_buffer_from_string(char * str);
-int    xp_set_xml_buffer_from_file(char * filename);
+int    xp_set_xml_buffer_from_string(char * str, int dump_xml);
+int    xp_set_xml_buffer_from_file(char * filename, int dump_xml);
 char * xp_open_element(int index);
 void   xp_close_element();
 int    xp_search_element_from_name(char * element, int occurence);

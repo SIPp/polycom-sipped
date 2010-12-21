@@ -171,7 +171,7 @@ typedef std::vector<txnControlInfo> txnvec;
 
 class scenario {
 public:
-  scenario(char * filename, int deflt);
+  scenario(char * filename, int deflt, int dumpxml);
   ~scenario();
 
   void runInit();

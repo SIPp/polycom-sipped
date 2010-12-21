@@ -172,6 +172,8 @@ struct sipp_option options_table[] = {
 		"- pingreply\tReply to ping requests\n"
 		"If a behavior is prefaced with a -, then it is turned off.  Example: all,-bye\n",
 		SIPP_OPTION_DEFAULTS, &default_behaviors, 1},
+	{"dump_xml", "Dump expanded XML to screen. Useful for debugging includes", SIPP_OPTION_SETFLAG, &dump_xml, 1},
+	{"dump_sequence_diagram", "Dump sequence diagram.", SIPP_OPTION_SETFLAG, &dump_sequence_diagram, 1},
 
 	{"error_file", "Set the name of the error log file.", SIPP_OPTION_LFNAME, &error_lfi, 1},
 	{"error_overwrite", "Overwrite the error log file (default true).", SIPP_OPTION_LFOVERWRITE, &error_lfi, 1},
@@ -760,7 +762,7 @@ bool sipMsgCheck (const char *P_msg, int P_msgSize, struct sipp_socket *socket) 
 
 /************** Statistics display & User control *************/
 
-void print_stats_in_file(FILE * f, int last)
+void print_stats_in_file(FILE * f, int last, int diagram_only=0)
 {
   static char temp_str[256];
   int divisor;
@@ -772,338 +774,351 @@ void print_stats_in_file(FILE * f, int last)
     return;
   }
 
-  /* Optional timestamp line for files only */
-  if(f != stdout) {
-    time_t tim;
-    time(&tim);
-    fprintf(f, "  Timestamp: %s" SIPP_ENDL, ctime(&tim));
-  }
-  
-  /* Header line with global parameters */
-  if (users >= 0) {
-    sprintf(temp_str, "%d (%d ms)", users, duration);
-  } else {
-    sprintf(temp_str, "%3.1f(%d ms)/%5.3fs", rate, duration, (double)rate_period_ms / 1000.0);
-  }
-  unsigned long long total_calls = display_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + display_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated);
-  if( creationMode == MODE_SERVER) {
-    fprintf
-      (f,
-       "  Port   Total-time  Total-calls  Transport" 
-       SIPP_ENDL
-       "  %-5d %6lu.%02lu s     %8llu  %s"
-       SIPP_ENDL SIPP_ENDL,
-       local_port,
-       clock_tick / 1000, (clock_tick % 1000) / 10,
-       total_calls,
-       TRANSPORT_TO_STRING(transport));
-  } else {
-    assert(creationMode == MODE_CLIENT);
-    if (users >= 0) {
-      fprintf(f, "     Users (length)");
-    } else {
-      fprintf(f, "  Call-rate(length)");
+  if (!diagram_only) {
+    /* Optional timestamp line for files only */
+    if(f != stdout) {
+      time_t tim;
+      time(&tim);
+      fprintf(f, "  Timestamp: %s" SIPP_ENDL, ctime(&tim));
     }
-    fprintf(f, "   Port   Total-time  Total-calls  Remote-host" SIPP_ENDL
-       "%19s   %-5d %6lu.%02lu s     %8llu  %s:%d(%s)" SIPP_ENDL SIPP_ENDL,
-       temp_str,
-       local_port,
-       clock_tick / 1000, (clock_tick % 1000) / 10,
-       total_calls,
-       remote_ip,
-       remote_port,
-       TRANSPORT_TO_STRING(transport));
-  }
-  
-  /* 1st line */
-  if(total_calls < stop_after) {
-    sprintf(temp_str, "%llu new calls during %lu.%03lu s period ",
-	display_scenario->stats->GetStat(CStat::CPT_PD_IncomingCallCreated) +
-	display_scenario->stats->GetStat(CStat::CPT_PD_OutgoingCallCreated),
-	(clock_tick-last_report_time) / 1000,
-	((clock_tick-last_report_time) % 1000));
-  } else {
-    sprintf(temp_str, "Call limit reached (-m %lu), %lu.%03lu s period ",
-            stop_after,
-            (clock_tick-last_report_time) / 1000, 
-            ((clock_tick-last_report_time) % 1000));
-  }
-  divisor = scheduling_loops; if(!divisor) { divisor = 1; }
-  fprintf(f,"  %-38s %lu ms scheduler resolution" 
-         SIPP_ENDL,
-         temp_str,
-         (clock_tick-last_report_time) / divisor);
 
-  /* 2nd line */
-  if( creationMode == MODE_SERVER) {
-    sprintf(temp_str, "%llu calls", display_scenario->stats->GetStat(CStat::CPT_C_CurrentCall));
-  } else {
-    sprintf(temp_str, "%llu calls (limit %d)", display_scenario->stats->GetStat(CStat::CPT_C_CurrentCall), open_calls_allowed);
-  }
-  fprintf(f,"  %-38s Peak was %llu calls, after %llu s" SIPP_ENDL,
-         temp_str, 
-         display_scenario->stats->GetStat(CStat::CPT_C_CurrentCallPeak),
-         display_scenario->stats->GetStat(CStat::CPT_C_CurrentCallPeakTime));
-  fprintf(f,"  %d Running, %d Paused, %d Woken up" SIPP_ENDL,
-	 last_running_calls, last_paused_calls, last_woken_calls);
-  last_woken_calls = 0;
+    /* Header line with global parameters */
+    if (users >= 0) {
+      sprintf(temp_str, "%d (%d ms)", users, duration);
+    } else {
+      sprintf(temp_str, "%3.1f(%d ms)/%5.3fs", rate, duration, (double)rate_period_ms / 1000.0);
+    }
+    unsigned long long total_calls = display_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + display_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated);
+    if( creationMode == MODE_SERVER) {
+      fprintf
+        (f,
+        "  Port   Total-time  Total-calls  Transport" 
+        SIPP_ENDL
+        "  %-5d %6lu.%02lu s     %8llu  %s"
+        SIPP_ENDL SIPP_ENDL,
+        local_port,
+        clock_tick / 1000, (clock_tick % 1000) / 10,
+        total_calls,
+        TRANSPORT_TO_STRING(transport));
+    } else {
+      assert(creationMode == MODE_CLIENT);
+      if (users >= 0) {
+        fprintf(f, "     Users (length)");
+      } else {
+        fprintf(f, "  Call-rate(length)");
+      }
+      fprintf(f, "   Port   Total-time  Total-calls  Remote-host" SIPP_ENDL
+        "%19s   %-5d %6lu.%02lu s     %8llu  %s:%d(%s)" SIPP_ENDL SIPP_ENDL,
+        temp_str,
+        local_port,
+        clock_tick / 1000, (clock_tick % 1000) / 10,
+        total_calls,
+        remote_ip,
+        remote_port,
+        TRANSPORT_TO_STRING(transport));
+    }
 
-  /* 3rd line dead call msgs, and optional out-of-call msg */
-  sprintf(temp_str,"%llu dead call msg (discarded)",
+    /* 1st line */
+    if(total_calls < stop_after) {
+      sprintf(temp_str, "%llu new calls during %lu.%03lu s period ",
+        display_scenario->stats->GetStat(CStat::CPT_PD_IncomingCallCreated) +
+        display_scenario->stats->GetStat(CStat::CPT_PD_OutgoingCallCreated),
+        (clock_tick-last_report_time) / 1000,
+        ((clock_tick-last_report_time) % 1000));
+    } else {
+      sprintf(temp_str, "Call limit reached (-m %lu), %lu.%03lu s period ",
+        stop_after,
+        (clock_tick-last_report_time) / 1000, 
+        ((clock_tick-last_report_time) % 1000));
+    }
+    divisor = scheduling_loops; if(!divisor) { divisor = 1; }
+    fprintf(f,"  %-38s %lu ms scheduler resolution" 
+      SIPP_ENDL,
+      temp_str,
+      (clock_tick-last_report_time) / divisor);
+
+    /* 2nd line */
+    if( creationMode == MODE_SERVER) {
+      sprintf(temp_str, "%llu calls", display_scenario->stats->GetStat(CStat::CPT_C_CurrentCall));
+    } else {
+      sprintf(temp_str, "%llu calls (limit %d)", display_scenario->stats->GetStat(CStat::CPT_C_CurrentCall), open_calls_allowed);
+    }
+    fprintf(f,"  %-38s Peak was %llu calls, after %llu s" SIPP_ENDL,
+      temp_str, 
+      display_scenario->stats->GetStat(CStat::CPT_C_CurrentCallPeak),
+      display_scenario->stats->GetStat(CStat::CPT_C_CurrentCallPeakTime));
+    fprintf(f,"  %d Running, %d Paused, %d Woken up" SIPP_ENDL,
+      last_running_calls, last_paused_calls, last_woken_calls);
+    last_woken_calls = 0;
+
+    /* 3rd line dead call msgs, and optional out-of-call msg */
+    sprintf(temp_str,"%llu dead call msg (discarded)",
       display_scenario->stats->GetStat(CStat::CPT_G_C_DeadCallMsgs));
-  fprintf(f,"  %-37s", temp_str);
-  if( creationMode == MODE_CLIENT) {
-    sprintf(temp_str,"%llu out-of-call msg (discarded)",
-            display_scenario->stats->GetStat(CStat::CPT_G_C_OutOfCallMsgs));
     fprintf(f,"  %-37s", temp_str);
-  }
-  fprintf(f,SIPP_ENDL);
-
-  if(compression) {
-    fprintf(f,"  Comp resync: %d sent, %d recv" , 
-           resynch_send, resynch_recv);
+    if( creationMode == MODE_CLIENT) {
+      sprintf(temp_str,"%llu out-of-call msg (discarded)",
+        display_scenario->stats->GetStat(CStat::CPT_G_C_OutOfCallMsgs));
+      fprintf(f,"  %-37s", temp_str);
+    }
     fprintf(f,SIPP_ENDL);
-  }
 
-  /* 4th line , sockets and optional errors */ 
-  sprintf(temp_str,"%d open sockets", 
-          pollnfds);
-  fprintf(f,"  %-38s", temp_str);
-  if(nb_net_recv_errors || nb_net_send_errors || nb_net_cong) {
-    fprintf(f,"  %lu/%lu/%lu %s errors (send/recv/cong)" SIPP_ENDL,
-           nb_net_send_errors, 
-           nb_net_recv_errors,
-           nb_net_cong,
-           TRANSPORT_TO_STRING(transport));
-  } else {
-    fprintf(f,SIPP_ENDL);
-  }
+    if(compression) {
+      fprintf(f,"  Comp resync: %d sent, %d recv" , 
+        resynch_send, resynch_recv);
+      fprintf(f,SIPP_ENDL);
+    }
+
+    /* 4th line , sockets and optional errors */ 
+    sprintf(temp_str,"%d open sockets", 
+      pollnfds);
+    fprintf(f,"  %-38s", temp_str);
+    if(nb_net_recv_errors || nb_net_send_errors || nb_net_cong) {
+      fprintf(f,"  %lu/%lu/%lu %s errors (send/recv/cong)" SIPP_ENDL,
+        nb_net_send_errors, 
+        nb_net_recv_errors,
+        nb_net_cong,
+        TRANSPORT_TO_STRING(transport));
+    } else {
+      fprintf(f,SIPP_ENDL);
+    }
 
 #ifdef PCAPPLAY
-  /* if has media abilities */
-  if (hasMedia != 0) {
-    sprintf(temp_str, "%lu Total RTP pckts sent ",
-            rtp_pckts_pcap);
-    if (clock_tick-last_report_time) {
-       fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
-              temp_str,
-              (rtp_bytes_pcap)/(clock_tick-last_report_time),
-              (rtp_bytes_pcap)%(clock_tick-last_report_time));
+    /* if has media abilities */
+    if (hasMedia != 0) {
+      sprintf(temp_str, "%lu Total RTP pckts sent ",
+        rtp_pckts_pcap);
+      if (clock_tick-last_report_time) {
+        fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
+          temp_str,
+          (rtp_bytes_pcap)/(clock_tick-last_report_time),
+          (rtp_bytes_pcap)%(clock_tick-last_report_time));
+      }
+      rtp_bytes_pcap = 0;
+      rtp2_bytes_pcap = 0;
     }
-    rtp_bytes_pcap = 0;
-    rtp2_bytes_pcap = 0;
-  }
 #endif
 
-  /* 5th line, RTP echo statistics */
-  if (rtp_echo_enabled && (media_socket > 0)) {
-    sprintf(temp_str, "%lu Total echo RTP pckts 1st stream",
-            rtp_pckts);
+    /* 5th line, RTP echo statistics */
+    if (rtp_echo_enabled && (media_socket > 0)) {
+      sprintf(temp_str, "%lu Total echo RTP pckts 1st stream",
+        rtp_pckts);
 
-    // AComment: Fix for random coredump when using RTP echo
-    if (clock_tick-last_report_time) {
-       fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
-              temp_str,
-              (rtp_bytes)/(clock_tick-last_report_time),
-              (rtp_bytes)%(clock_tick-last_report_time));
+      // AComment: Fix for random coredump when using RTP echo
+      if (clock_tick-last_report_time) {
+        fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
+          temp_str,
+          (rtp_bytes)/(clock_tick-last_report_time),
+          (rtp_bytes)%(clock_tick-last_report_time));
+      }
+      /* second stream statitics: */
+      sprintf(temp_str, "%lu Total echo RTP pckts 2nd stream",
+        rtp2_pckts);
+
+      // AComment: Fix for random coredump when using RTP echo
+      if (clock_tick-last_report_time) {
+        fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
+          temp_str,
+          (rtp2_bytes)/(clock_tick-last_report_time),
+          (rtp2_bytes)%(clock_tick-last_report_time));
+      }
+      rtp_bytes = 0;
+      rtp2_bytes = 0;
     }
-    /* second stream statitics: */
-    sprintf(temp_str, "%lu Total echo RTP pckts 2nd stream",
-            rtp2_pckts);
 
-    // AComment: Fix for random coredump when using RTP echo
-    if (clock_tick-last_report_time) {
-      fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
-	      temp_str,
-	      (rtp2_bytes)/(clock_tick-last_report_time),
-	      (rtp2_bytes)%(clock_tick-last_report_time));
-    }
-    rtp_bytes = 0;
-    rtp2_bytes = 0;
-  }
-
-  /* Scenario counters */
-  fprintf(f,SIPP_ENDL);
-  if(!lose_packets) {
-    fprintf(f,"                                 "
-           "Messages  Retrans   Timeout   Unexpected-Msg" 
-           SIPP_ENDL);
-  } else {
-    fprintf(f,"                                 "
-           "Messages  Retrans   Timeout   Unexp.    Lost" 
-           SIPP_ENDL);
-  }
-  for(unsigned long index = 0;
-      index < display_scenario->messages.size();
-      index ++) {
-    message *curmsg = display_scenario->messages[index];
-
-    if(do_hide && curmsg->hide) {
-      continue;
-    }
-    if (show_index) {
-	fprintf(f, "%-2lu:", index);
-    }
-    
-    if(SendingMessage *src = curmsg -> send_scheme) {
-      char dialog_str[10] = "";
-      if (curmsg->dialog_number != -1)
-    	  sprintf(dialog_str, "(%-2d)", curmsg->dialog_number);
-      if (src->isResponse()) {
-        sprintf(temp_str, "%d%s", src->getCode(), dialog_str);
-      } else {
-        sprintf(temp_str, "%s%s", src->getMethod(), dialog_str);
-      }
-
-      if(creationMode == MODE_SERVER) {
-        fprintf(f,"  <---------- %-14s ", temp_str);
-      } else {
-        fprintf(f,"  %14s ----------> ", temp_str);
-      }
-      if (curmsg -> start_rtd) {
-	fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
-      } else if (curmsg -> stop_rtd) {
-	fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
-      } else {
-	fprintf(f, "        ");
-      }
-
-      if(curmsg -> retrans_delay) {
-        fprintf(f,"%-9lu %-9lu %-9lu %-9s" ,
-               curmsg -> nb_sent,
-               curmsg -> nb_sent_retrans,
-               curmsg -> nb_timeout,
-               "" /* Unexpected */);
-      } else {
-        fprintf(f,"%-9lu %-9lu %-9s %-9s" ,
-               curmsg -> nb_sent,
-               curmsg -> nb_sent_retrans,
-               "", /* Timeout. */
-               "" /* Unexpected. */);
-      }
-    } else if(curmsg -> recv_response) {
-      if (curmsg->dialog_number != -1)
-    	  sprintf(temp_str, "%d(%-2d)", curmsg -> recv_response, curmsg->dialog_number);
-      else
-    	  sprintf(temp_str, "%d", curmsg -> recv_response);
-      if(creationMode == MODE_SERVER) {
-        fprintf(f,"  ----------> %-14s ", temp_str);
-      } else { 
-        fprintf(f,"  %14s <---------- ", temp_str);
-      }
-
-      if (curmsg -> start_rtd) {
-	fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
-      } else if (curmsg -> stop_rtd) {
-	fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
-      } else {
-	fprintf(f, "        ");
-      }
-
-      if(curmsg->retrans_delay) {
-        fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
-               curmsg->nb_recv,
-               curmsg->nb_recv_retrans,
-               curmsg->nb_timeout,
-               curmsg->nb_unexp);
-      } else {
-        fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
-               curmsg -> nb_recv,
-               curmsg -> nb_recv_retrans,
-               curmsg -> nb_timeout,
-               curmsg -> nb_unexp);
-      }
-    } else if (curmsg -> pause_distribution ||
-	       (curmsg -> pause_variable != -1)) {
-      char *desc = curmsg->pause_desc;
-      if (!desc) {
-	desc = (char *)malloc(24);
-	if (curmsg->pause_distribution) {
-	  desc[0] = '\0';
-	  curmsg->pause_distribution->timeDescr(desc, 23);
-	} else {
-	  snprintf(desc, 23, "$%s", display_scenario->allocVars->getName(curmsg->pause_variable));
-	}
-	desc[23] = '\0';
-	curmsg->pause_desc = desc;
-      }
-      int len = strlen(desc) < 9 ? 9 : strlen(desc);
-
-      if(creationMode == MODE_SERVER) {
-	fprintf(f,"  [%9s] Pause%*s", desc, 23 - len > 0 ? 23 - len : 0, "");
-      } else {
-	fprintf(f,"       Pause [%9s]%*s", desc, 18 - len > 0 ? 18 - len : 0, "");
-      }
-
-      fprintf(f,"%-9d", curmsg->sessions);
-      fprintf(f,"                     %-9lu" , curmsg->nb_unexp);
-    } else if(curmsg -> recv_request) {
-      if (curmsg->dialog_number != -1)
-    	  sprintf(temp_str, "%s(%-2d)", curmsg -> recv_request, curmsg->dialog_number);
-      else
-    	  sprintf(temp_str, "%s", curmsg -> recv_request);
-      if(creationMode == MODE_SERVER) {
-        fprintf(f,"  ----------> %-14s ", temp_str);
-      } else {
-        fprintf(f,"  %14s <---------- ", temp_str);
-      }
-
-      if (curmsg -> start_rtd) {
-	fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
-      } else if (curmsg -> stop_rtd) {
-	fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
-      } else {
-	fprintf(f, "        ");
-      }
-
-      fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
-	  curmsg -> nb_recv,
-	  curmsg -> nb_recv_retrans,
-	  curmsg -> nb_timeout,
-	  curmsg -> nb_unexp);
-    }
-    else if(curmsg -> M_type == MSG_TYPE_NOP) {
-      if (curmsg->display_str) {
-	fprintf(f," %s", curmsg->display_str);
-      } else {
-	fprintf(f,"              [ NOP ]              ");
-      }
-    }
-    else if(curmsg -> M_type == MSG_TYPE_RECVCMD) {
-      fprintf(f,"    [ Received Command ]         ");
-      if(curmsg->retrans_delay) {
-        fprintf(f,"%-9ld %-9s %-9ld %-9s" ,
-                curmsg->M_nbCmdRecv,
-                "",
-                curmsg->nb_timeout,
-                "");
-      } else {
-         fprintf(f,"%-9ld %-9s           %-9s" ,
-                curmsg -> M_nbCmdRecv,
-                "",
-                "");
-      }
-    } else if(curmsg -> M_type == MSG_TYPE_SENDCMD) {
-      fprintf(f,"        [ Sent Command ]         ");
-      fprintf(f,"%-9lu %-9s           %-9s" ,
-             curmsg -> M_nbCmdSent,
-             "",
-             "");
-    }
-    else {
-      ERROR("Scenario command not implemented in display\n");
-    }
-    
-    if(lose_packets && (curmsg -> nb_lost)) {
-      fprintf(f," %-9lu" SIPP_ENDL,
-             curmsg -> nb_lost);
+    /* Scenario counters */
+    fprintf(f,SIPP_ENDL);
+    if(!lose_packets) {
+      fprintf(f,"                                 "
+        "Messages  Retrans   Timeout   Unexpected-Msg" 
+        SIPP_ENDL);
     } else {
-      fprintf(f,SIPP_ENDL);
+      fprintf(f,"                                 "
+        "Messages  Retrans   Timeout   Unexp.    Lost" 
+        SIPP_ENDL);
     }
-    
-    if(curmsg -> crlf) {
-      fprintf(f,SIPP_ENDL);
-    }
+  } // if diagram_only
+  for(unsigned long index = 0;
+    index < display_scenario->messages.size();
+    index ++) {
+      message *curmsg = display_scenario->messages[index];
+
+      if(do_hide && curmsg->hide) {
+        continue;
+      }
+      if (show_index) {
+        fprintf(f, "%-2lu:", index);
+      }
+
+      if(SendingMessage *src = curmsg -> send_scheme) {
+        char dialog_str[10] = "";
+        if (curmsg->dialog_number != -1)
+          sprintf(dialog_str, "(%-2d)", curmsg->dialog_number);
+        if (src->isResponse()) {
+          sprintf(temp_str, "%d%s", src->getCode(), dialog_str);
+        } else {
+          sprintf(temp_str, "%s%s", src->getMethod(), dialog_str);
+        }
+
+        if(creationMode == MODE_SERVER) {
+          fprintf(f,"  <---------- %-14s ", temp_str);
+        } else {
+          fprintf(f,"  %14s ----------> ", temp_str);
+        }
+        if (!diagram_only) {
+          if (curmsg -> start_rtd) {
+            fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
+          } else if (curmsg -> stop_rtd) {
+            fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
+          } else {
+            fprintf(f, "        ");
+          }
+
+          if(curmsg -> retrans_delay) {
+            fprintf(f,"%-9lu %-9lu %-9lu %-9s" ,
+              curmsg -> nb_sent,
+              curmsg -> nb_sent_retrans,
+              curmsg -> nb_timeout,
+              "" /* Unexpected */);
+          } else {
+            fprintf(f,"%-9lu %-9lu %-9s %-9s" ,
+              curmsg -> nb_sent,
+              curmsg -> nb_sent_retrans,
+              "", /* Timeout. */
+              "" /* Unexpected. */);
+          }
+        } // if !diagram_only
+      } else if(curmsg -> recv_response) {
+        if (curmsg->dialog_number != -1)
+          sprintf(temp_str, "%d(%-2d)", curmsg -> recv_response, curmsg->dialog_number);
+        else
+          sprintf(temp_str, "%d", curmsg -> recv_response);
+        if(creationMode == MODE_SERVER) {
+          fprintf(f,"  ----------> %-14s ", temp_str);
+        } else { 
+          fprintf(f,"  %14s <---------- ", temp_str);
+        }
+
+        if (!diagram_only) {
+          if (curmsg -> start_rtd) {
+            fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
+          } else if (curmsg -> stop_rtd) {
+            fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
+          } else {
+            fprintf(f, "        ");
+          }
+
+          if(curmsg->retrans_delay) {
+            fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
+              curmsg->nb_recv,
+              curmsg->nb_recv_retrans,
+              curmsg->nb_timeout,
+              curmsg->nb_unexp);
+          } else {
+            fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
+              curmsg -> nb_recv,
+              curmsg -> nb_recv_retrans,
+              curmsg -> nb_timeout,
+              curmsg -> nb_unexp);
+          }
+        } // !diagram_only
+      } else if (curmsg -> pause_distribution ||
+        (curmsg -> pause_variable != -1)) {
+          char *desc = curmsg->pause_desc;
+          if (!desc) {
+            desc = (char *)malloc(24);
+            if (curmsg->pause_distribution) {
+              desc[0] = '\0';
+              curmsg->pause_distribution->timeDescr(desc, 23);
+            } else {
+              snprintf(desc, 23, "$%s", display_scenario->allocVars->getName(curmsg->pause_variable));
+            }
+            desc[23] = '\0';
+            curmsg->pause_desc = desc;
+          }
+          int len = strlen(desc) < 9 ? 9 : strlen(desc);
+
+          if(creationMode == MODE_SERVER) {
+            fprintf(f,"  [%9s] Pause%*s", desc, 23 - len > 0 ? 23 - len : 0, "");
+          } else {
+            fprintf(f,"       Pause [%9s]%*s", desc, 18 - len > 0 ? 18 - len : 0, "");
+          }
+
+          if (!diagram_only) {
+            fprintf(f,"%-9d", curmsg->sessions);
+            fprintf(f,"                     %-9lu" , curmsg->nb_unexp);
+          }
+      } else if(curmsg -> recv_request) {
+        if (curmsg->dialog_number != -1)
+          sprintf(temp_str, "%s(%-2d)", curmsg -> recv_request, curmsg->dialog_number);
+        else
+          sprintf(temp_str, "%s", curmsg -> recv_request);
+        if(creationMode == MODE_SERVER) {
+          fprintf(f,"  ----------> %-14s ", temp_str);
+        } else {
+          fprintf(f,"  %14s <---------- ", temp_str);
+        }
+
+        if (!diagram_only) {
+          if (curmsg -> start_rtd) {
+            fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
+          } else if (curmsg -> stop_rtd) {
+            fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
+          } else {
+            fprintf(f, "        ");
+          }
+
+          fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
+            curmsg -> nb_recv,
+            curmsg -> nb_recv_retrans,
+            curmsg -> nb_timeout,
+            curmsg -> nb_unexp);
+        } // !diagram_only
+      }
+      else if(curmsg -> M_type == MSG_TYPE_NOP) {
+        if (curmsg->display_str) {
+          fprintf(f," %s", curmsg->display_str);
+        } else {
+          fprintf(f,"              [ NOP ]              ");
+        }
+      }
+      else if(curmsg -> M_type == MSG_TYPE_RECVCMD) {
+        fprintf(f,"    [ Received Command ]         ");
+        if (!diagram_only) {
+          if(curmsg->retrans_delay) {
+            fprintf(f,"%-9ld %-9s %-9ld %-9s" ,
+              curmsg->M_nbCmdRecv,
+              "",
+              curmsg->nb_timeout,
+              "");
+          } else {
+            fprintf(f,"%-9ld %-9s           %-9s" ,
+              curmsg -> M_nbCmdRecv,
+              "",
+              "");
+          }
+        } // !diagram_only
+      } else if(curmsg -> M_type == MSG_TYPE_SENDCMD) {
+        fprintf(f,"        [ Sent Command ]         ");
+        if (!diagram_only)
+          fprintf(f,"%-9lu %-9s           %-9s" ,
+          curmsg -> M_nbCmdSent,
+          "",
+          "");
+      }
+      else {
+        ERROR("Scenario command not implemented in display\n");
+      }
+
+      if(lose_packets && (curmsg -> nb_lost) && (!diagram_only)) {
+        fprintf(f," %-9lu" SIPP_ENDL,
+          curmsg -> nb_lost);
+      } else {
+        fprintf(f,SIPP_ENDL);
+      }
+
+      if(curmsg -> crlf) {
+        fprintf(f,SIPP_ENDL);
+      }
   }
 }
 
@@ -2009,7 +2024,7 @@ void handle_stdin_socket() {
 
 /*************************** Mini SIP parser ***************************/
 
-char * get_peer_tag(char *msg, bool toHeader)
+char * get_to_or_from_tag(char *msg, bool toHeader)
 {
   char        * hdr;
   char        * ptr; 
@@ -2019,16 +2034,22 @@ char * get_peer_tag(char *msg, bool toHeader)
   
   if (toHeader) {
     hdr = strcasestr(msg, "\r\nTo:");
-//    if(!hdr) hdr = strcasestr(msg, "\r\nto:");
-//    if(!hdr) hdr = strcasestr(msg, "\r\nTO:");
-    if(!hdr) hdr = strcasestr(msg, "\r\nt:");
+/*
+    hdr = strstr(msg, "\r\nTo:");
+    if(!hdr) hdr = strstr(msg, "\r\nto:");
+    if(!hdr) hdr = strstr(msg, "\r\nTO:");
+*/
+    if(!hdr) hdr = strstr(msg, "\r\nt:");
     if(!hdr) {
       ERROR("No valid To: header in reply");
     }
   } else {
     hdr = strcasestr(msg, "\r\nFrom:");
-//    if(!hdr) hdr = strstr(msg, "\r\nfrom:");
-//    if(!hdr) hdr = strstr(msg, "\r\nFROM:");
+/*
+    hdr = strstr(msg, "\r\nFrom:");
+    if(!hdr) hdr = strstr(msg, "\r\nfrom:");
+    if(!hdr) hdr = strstr(msg, "\r\nFROM:");
+*/
     if(!hdr) hdr = strstr(msg, "\r\nf:");
     if(!hdr) {
       ERROR("No valid From: header in message");
@@ -2055,8 +2076,11 @@ char * get_peer_tag(char *msg, bool toHeader)
   hdr = ptr;
 
   ptr = strcasestr(hdr, "tag");
-//  if(!ptr) { ptr = strstr(hdr, "TAG"); }
-//  if(!ptr) { ptr = strstr(hdr, "Tag"); }
+/*
+  ptr = strstr(hdr, "tag");
+  if(!ptr) { ptr = strstr(hdr, "TAG"); }
+  if(!ptr) { ptr = strstr(hdr, "Tag"); }
+*/
 
   if(!ptr) {
     return NULL;
@@ -2089,14 +2113,14 @@ char * get_peer_tag(char *msg, bool toHeader)
   return tag;
 }
 
-char * get_peer_tag_from_to(char *msg)
+char * get_tag_from_to(char *msg)
 {
-  return get_peer_tag(msg, true);
+  return get_to_or_from_tag(msg, true);
 }
 
-char * get_peer_tag_from_from(char *msg)
+char * get_tag_from_from(char *msg)
 {
-  return get_peer_tag(msg, false);
+  return get_to_or_from_tag(msg, false);
 }
 
 char * get_incoming_header_content(char* message, char * name)
@@ -4284,7 +4308,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.6"
+	  printf("\n SIPped v3.2.7"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4569,12 +4593,12 @@ int main(int argc, char *argv[])
 	    if (useLogf == 1) {
 	      rotate_logfile();
 	    }
-	    main_scenario = new scenario(argv[argi], 0);
+	    main_scenario = new scenario(argv[argi], 0, dump_xml);
 	    main_scenario->stats->setFileName(scenario_file, (char*)".csv");
 	  } else if (!strcmp(argv[argi - 1], "-sn")) {
 	    int i = find_scenario(argv[argi]);
 
-	    main_scenario = new scenario(0, i);
+	    main_scenario = new scenario(0, i, dump_xml);
 	    scenario_file = new char [strlen(argv[argi])+1] ;
 	    sprintf(scenario_file,"%s", argv[argi]);
 	    main_scenario->stats->setFileName(argv[argi], (char*)".csv");
@@ -4590,10 +4614,10 @@ int main(int argc, char *argv[])
 	  REQUIRE_ARG();
 	  CHECK_PASS();
 	  if (!strcmp(argv[argi - 1], "-oocsf")) {
-	    ooc_scenario = new scenario(argv[argi], 0);
+	    ooc_scenario = new scenario(argv[argi], 0, 0);
 	  } else if (!strcmp(argv[argi - 1], "-oocsn")) {
 	    int i = find_scenario(argv[argi]);
-	    ooc_scenario = new scenario(0, i);
+	    ooc_scenario = new scenario(0, i, 0);
 	  } else {
 	    ERROR("Internal error, I don't recognize %s as a scenario option\n", argv[argi] - 1);
 	  }
@@ -4820,6 +4844,7 @@ int main(int argc, char *argv[])
     sprintf(scenario_file, "%s", "sipp");
   }
 
+  if (!dump_xml && !dump_sequence_diagram)
    screen_init(print_last_stats);
 
 #ifdef _USE_OPENSSL
@@ -4837,6 +4862,7 @@ int main(int argc, char *argv[])
     useCallDebugf = 1;
     useLogf = 1;
     print_all_responses = 1;
+    useScreenf = 1;
   }
   
   if (useMessagef == 1) {
@@ -4935,15 +4961,21 @@ int main(int argc, char *argv[])
   
   /* Load default scenario in case nothing was loaded */
   if(!main_scenario) {
-    main_scenario = new scenario(0, 0);
+    main_scenario = new scenario(0, 0, dump_xml);
     main_scenario->stats->setFileName((char*)"uac", (char*)".csv");
     sprintf(scenario_file,"uac");
   }
   if(!ooc_scenario) {
-    ooc_scenario = new scenario(0, find_scenario("ooc_default"));
+    ooc_scenario = new scenario(0, find_scenario("ooc_default"), 0);
     ooc_scenario->stats->setFileName((char*)"ooc_default", (char*)".csv");
   }
   display_scenario = main_scenario;
+
+  if (dump_sequence_diagram) 
+    print_stats_in_file(stdout, 0, 1);
+
+  if (dump_sequence_diagram || dump_xml)
+    exit(0);
 
   init_default_messages();
   for (int i = 1; i <= users; i++) {

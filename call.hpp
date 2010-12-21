@@ -76,21 +76,25 @@ public:
   // Last received message (expected, not optional, and not retransmitted)
   char           * last_recv_msg;
 
-  // same as remote_tag. Populated by incoming responses 
+  // remote tag, populated by incoming responses. Referenced by [peer_tag], [remote_tag], [remote_tag_param]
   char           *peer_tag;
+
+  // local tag, populated by incoming responses. Referenced by [local_tag], [local_tag_param]
+  char           *local_tag;
 
   /* holds the route set */
   char         * dialog_route_set;
   char         * next_req_url; // (contact header)
 
 public:
-  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), peer_tag(0), dialog_route_set(0), next_req_url(0),
+  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), peer_tag(0), local_tag(0), dialog_route_set(0), next_req_url(0),
   last_recv_msg(0) {};
 
   ~DialogState() 
   { 
     if (last_recv_msg) free (last_recv_msg); 
     if(peer_tag) free(peer_tag);
+    if(local_tag) free(local_tag);
     if(dialog_route_set) free(dialog_route_set);
     if(next_req_url) free(next_req_url);
   }
@@ -235,8 +239,6 @@ private:
   unsigned long long *start_time_rtd;
   bool           *rtd_done;
 
-//  char           *peer_tag;
-  
   struct sipp_socket *call_remote_socket;
   int            call_port;
 

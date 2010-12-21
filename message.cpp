@@ -90,6 +90,8 @@ struct KeywordMap DialogSpecificKeywords[] = {
   {"peer_tag_param", E_Message_Peer_Tag_Param },
   {"remote_tag_param", E_Message_Remote_Tag_Param },
   {"remote_tag", E_Message_Remote_Tag },
+  {"local_tag_param", E_Message_Local_Tag_Param },
+  {"local_tag", E_Message_Local_Tag },
 // to_uri, to_value, from_uri, from_value
 // contact_number, contact_uri, contact_value
 // local_tag, local_tag_param

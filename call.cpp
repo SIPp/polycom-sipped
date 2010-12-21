@@ -522,7 +522,6 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   media_thread = 0;
 #endif
 
-//  peer_tag = NULL;
   recv_timeout = 0;
   send_timeout = 0;
   timewait = false;
@@ -615,19 +614,7 @@ call::~call()
 
   free_dialogState();
 
-//  if(last_recv_msg) { free(last_recv_msg); } nope: now it points to dialogState's copy
   if(last_send_msg) { free(last_send_msg); }
-//  if(peer_tag) { free(peer_tag); }
-
-/*
-  if(dialog_route_set) {
-       free(dialog_route_set);
-  }
-
-  if(next_req_url) {
-       free(next_req_url);
-  }
-*/
 
 #ifdef _USE_OPENSSL
   if(dialog_authentication) {
@@ -2318,6 +2305,27 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           dest += snprintf(dest, left, "%s", ds->peer_tag);
         }
         break;
+      case E_Message_Local_Tag_Param:
+      case E_Message_Local_Tag:
+        if (!ds->local_tag) { 
+          // generate tag if 1st time used          
+          ds->local_tag = (char *)malloc(MAX_HEADER_LEN);
+          if (!ds->local_tag) 
+            ERROR("Unable to allocate memory for local_tag\n");
+          int idx;
+          if(P_index == -2)
+            idx = msg_index-1 + comp->offset;
+          else 
+            idx = P_index + comp->offset;
+          snprintf(ds->local_tag, MAX_HEADER_LEN, "local-%u-%u-%d", pid, number, idx);
+          DEBUG("Auto-generating local_tag '%s'", ds->local_tag);
+        }
+        if(comp->type == E_Message_Local_Tag_Param) 
+          dest += snprintf(dest, left, ";tag=%s", ds->local_tag);
+        else
+          dest += snprintf(dest, left, "%s", ds->local_tag);        
+        break;
+
       case E_Message_Routes:
         if (ds->dialog_route_set) {
           dest += sprintf(dest, "Route: %s", ds->dialog_route_set);
@@ -3035,18 +3043,18 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
     if((last_recv_index >= 0) && (last_recv_hash == cookie)) {
       /* This one has already been received, but not processed
-       * yet => (has not triggered something yet) so we can discard.
-       *
-       * This case appears when the UAS has send a 200 but not received
-       * a ACK yet. Thus, the UAS retransmit the 200 (invite transaction)
-       * until it receives a ACK. In this case, it nevers sends the 200
-       * from the  BYE, until it has reveiced the previous 200. Thus,
-       * the UAC retransmit the BYE, and this BYE is considered as an
-       * unexpected.
-       *
-       * This case can also appear in case of message duplication by
-       * the network. This should not be considered as an unexpected.
-       */
+      * yet => (has not triggered something yet) so we can discard.
+      *
+      * This case appears when the UAS has send a 200 but not received
+      * a ACK yet. Thus, the UAS retransmit the 200 (invite transaction)
+      * until it receives a ACK. In this case, it nevers sends the 200
+      * from the  BYE, until it has reveiced the previous 200. Thus,
+      * the UAC retransmit the BYE, and this BYE is considered as an
+      * unexpected.
+      *
+      * This case can also appear in case of message duplication by
+      * the network. This should not be considered as an unexpected.
+      */
       call_scenario->messages[last_recv_index]->nb_recv_retrans++;
       return true;
     }
@@ -3054,47 +3062,35 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
   // we want call-id for verification with dialog_number
   string call_id(get_header_content(msg, "Call-ID:"));
- 
+
   // Some updates in next section should become per-dialog (ie peer tags and such).
 
   /* Is it a response ? */
   if((msg[0] == 'S') && 
-     (msg[1] == 'I') &&
-     (msg[2] == 'P') &&
-     (msg[3] == '/') &&
-     (msg[4] == '2') &&
-     (msg[5] == '.') &&
-     (msg[6] == '0')    ) {    
+    (msg[1] == 'I') &&
+    (msg[2] == 'P') &&
+    (msg[3] == '/') &&
+    (msg[4] == '2') &&
+    (msg[5] == '.') &&
+    (msg[6] == '0')    ) {    
 
-    reply_code = get_reply_code(msg);
-    if(!reply_code) {
-      if (!process_unexpected(msg)) {
-        return false; // Call aborted by unexpected message handling
-      }
+      reply_code = get_reply_code(msg);
+      if(!reply_code) {
+        if (!process_unexpected(msg)) {
+          DEBUG("Response is missing reply code");
+          return false; // Call aborted by unexpected message handling
+        }
 #ifdef PCAPPLAY
-    } else if ((hasMedia == 1) && *(strstr(msg, "\r\n\r\n")+4) != '\0') {
-      /* Get media info if we find something like an SDP */
-      get_remote_media_addr(msg);
+      } else if ((hasMedia == 1) && *(strstr(msg, "\r\n\r\n")+4) != '\0') {
+        /* Get media info if we find something like an SDP */
+        get_remote_media_addr(msg);
 #endif
-    }
-    /* It is a response: update peer_tag 
-move to per-dialog section and duplicated to use from tag for incoming requests
-    ptr = get_peer_tag_from_to(msg);
-    if (ptr) {
-      if(strlen(ptr) > (MAX_HEADER_LEN - 1)) {
-        ERROR("Peer tag too long. Change MAX_HEADER_LEN and recompile sipp");
       }
-      if(peer_tag) { free(peer_tag); }
-      peer_tag = strdup(ptr);
-      if (!peer_tag) {
-        ERROR("Out of memory allocating peer tag.");
-      }
-    }
-*/
-    request[0]=0;
-    // extract the cseq method from the response
-    extract_cseq_method (responsecseqmethod, msg);
-    extract_transaction (txn, msg);
+
+      request[0]=0;
+      // extract the cseq method from the response
+      extract_cseq_method (responsecseqmethod, msg);
+      extract_transaction (txn, msg);
   } else if((ptr = strchr(msg, ' '))) {
     if((ptr - msg) < 64) {
       memcpy(request, msg, ptr - msg);
@@ -3105,145 +3101,148 @@ move to per-dialog section and duplicated to use from tag for incoming requests
       }
 #ifdef PCAPPLAY
       /* In case of INVITE or re-INVITE, ACK or PRACK
-         get the media info if needed (= we got a pcap
-         play action) */
+      get the media info if needed (= we got a pcap
+      play action) */
       if ((strncmp(request, "INVITE", 6) == 0) 
-       || (strncmp(request, "ACK", 3) == 0) 
-       || (strncmp(request, "PRACK", 5) == 0)     		
-       && (hasMedia == 1)) 
+        || (strncmp(request, "ACK", 3) == 0) 
+        || (strncmp(request, "PRACK", 5) == 0)     		
+        && (hasMedia == 1)) 
         get_remote_media_addr(msg);
 #endif
 
       reply_code = 0;
     } else {
       ERROR("SIP method too long in received message '%s'",
-               msg);
+        msg);
     }
   } else {
     ERROR("Invalid sip message received '%s'",
-             msg);
+      msg);
   }
 
   /* Try to find it in the expected non mandatory responses
-   * until the first mandatory response  in the scenario */
+  * until the first mandatory response  in the scenario */
   for(search_index = msg_index;
-      search_index < (int)call_scenario->messages.size();
-      search_index++) {
+    search_index < (int)call_scenario->messages.size();
+    search_index++) {
 
-    if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
-      if(call_scenario->messages[search_index] -> optional) {
-        continue;
+      if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
+        if(call_scenario->messages[search_index] -> optional) {
+          continue;
+        }
+        /* The received message is different for the expected one */
+        break;
       }
-      /* The received message is different for the expected one */
-      break;
-    }
 
-    found = true;
-    /* TODO : this is a little buggy: If a 100 trying from an INVITE
-     * is delayed by the network until the BYE is sent, it may
-     * stop BYE transmission erroneously, if the BYE also expects
-     * a 100 trying. */    
-    break;
+      found = true;
+      /* TODO : this is a little buggy: If a 100 trying from an INVITE
+      * is delayed by the network until the BYE is sent, it may
+      * stop BYE transmission erroneously, if the BYE also expects
+      * a 100 trying. */    
+      break;
   }
 
   /* Try to find it in the old non-mandatory receptions */
   if(!found) {
     bool contig = true;
     for(search_index = msg_index - 1;
-        search_index >= 0;
-        search_index--) {
-      if (call_scenario->messages[search_index]->optional == OPTIONAL_FALSE) contig = false;
-      if(matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
-        if (contig || call_scenario->messages[search_index]->optional == OPTIONAL_GLOBAL) {
-         found = true;
-         break;  
-        } else {
-	  if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
-	    /* This is a reply to an old transaction. */
-	    if (!strcmp(transactions[checkTxn - 1].txnID, txn)) {
-		/* This reply is provisional, so it should have no effect if we recieve it out-of-order. */
-		if (reply_code >= 100 && reply_code <= 199) {
-		  TRACE_MSG("-----------------------------------------------\n"
-		      "Ignoring provisional %s message for transaction %s:\n\n%s\n",
-		      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, msg);
-		  callDebug("Ignoring provisional %s message for transaction %s (hash %u):\n\n%s\n",
-		      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
-		  return true;
-		} else if (int ackIndex = transactions[checkTxn - 1].ackIndex) {
-		  /* This is the message before an ACK, so verify that this is an invite transaction. */
-		  assert (call_scenario->transactions[checkTxn - 1].isInvite);
-		  sendBuffer(createSendingMessage(call_scenario->messages[ackIndex] -> send_scheme, ackIndex));
-		  return true;
-		} else {
-		  assert (!call_scenario->transactions[checkTxn - 1].isInvite);
-		  /* This is a non-provisional message for the transaction, and
-		   * we have already gotten our allowable response.  Just make sure
-		   * that it is not a retransmission of the final response. */
-		  if (transactions[checkTxn - 1].txnResp == hash(msg)) {
-		    /* We have gotten this retransmission out-of-order, let's just ignore it. */
-		    TRACE_MSG("-----------------------------------------------\n"
-			"Ignoring final %s message for transaction %s:\n\n%s\n",
-			TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, msg);
-		    callDebug("Ignoring final %s message for transaction %s (hash %u):\n\n%s\n",
-			TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
-		    WARNING("Ignoring final %s message for transaction %s (hash %u):\n\n%s\n",
-			TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
-		    return true;
-		  }
-		}
-	    }
-	  } else {
-	    /*
-	     * we received a non mandatory msg for an old transaction (this could be due to a retransmit.
-	     * If this response is for an INVITE transaction, retransmit the ACK to quench retransmits.
-	     */
-	    if ( (reply_code) &&
-		(0 == strncmp (responsecseqmethod, "INVITE", strlen(responsecseqmethod)) ) &&
-		(call_scenario->messages[search_index+1]->M_type == MSG_TYPE_SEND) &&
-		(call_scenario->messages[search_index+1]->send_scheme->isAck()) ) {
-	      sendBuffer(createSendingMessage(call_scenario->messages[search_index+1] -> send_scheme, (search_index+1)));
-	      return true;
-	    }
-	  }
+      search_index >= 0;
+      search_index--) {
+        if (call_scenario->messages[search_index]->optional == OPTIONAL_FALSE) contig = false;
+        if(matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
+          if (contig || call_scenario->messages[search_index]->optional == OPTIONAL_GLOBAL) {
+            found = true;
+            break;  
+          } else {
+            if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
+              /* This is a reply to an old transaction. */
+              if (!strcmp(transactions[checkTxn - 1].txnID, txn)) {
+                /* This reply is provisional, so it should have no effect if we recieve it out-of-order. */
+                if (reply_code >= 100 && reply_code <= 199) {
+                  TRACE_MSG("-----------------------------------------------\n"
+                    "Ignoring provisional %s message for transaction %s:\n\n%s\n",
+                    TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, msg);
+                  callDebug("Ignoring provisional %s message for transaction %s (hash %u):\n\n%s\n",
+                    TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
+                  return true;
+                } else if (int ackIndex = transactions[checkTxn - 1].ackIndex) {
+                  /* This is the message before an ACK, so verify that this is an invite transaction. */
+                  assert (call_scenario->transactions[checkTxn - 1].isInvite);
+                  sendBuffer(createSendingMessage(call_scenario->messages[ackIndex] -> send_scheme, ackIndex));
+                  return true;
+                } else {
+                  assert (!call_scenario->transactions[checkTxn - 1].isInvite);
+                  /* This is a non-provisional message for the transaction, and
+                  * we have already gotten our allowable response.  Just make sure
+                  * that it is not a retransmission of the final response. */
+                  if (transactions[checkTxn - 1].txnResp == hash(msg)) {
+                    /* We have gotten this retransmission out-of-order, let's just ignore it. */
+                    TRACE_MSG("-----------------------------------------------\n"
+                      "Ignoring final %s message for transaction %s:\n\n%s\n",
+                      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, msg);
+                    callDebug("Ignoring final %s message for transaction %s (hash %u):\n\n%s\n",
+                      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
+                    WARNING("Ignoring final %s message for transaction %s (hash %u):\n\n%s\n",
+                      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
+                    return true;
+                  }
+                }
+              }
+            } else {
+              /*
+              * we received a non mandatory msg for an old transaction (this could be due to a retransmit.
+              * If this response is for an INVITE transaction, retransmit the ACK to quench retransmits.
+              */
+              if ( (reply_code) &&
+                (0 == strncmp (responsecseqmethod, "INVITE", strlen(responsecseqmethod)) ) &&
+                (call_scenario->messages[search_index+1]->M_type == MSG_TYPE_SEND) &&
+                (call_scenario->messages[search_index+1]->send_scheme->isAck()) ) {
+                  sendBuffer(createSendingMessage(call_scenario->messages[search_index+1] -> send_scheme, (search_index+1)));
+                  return true;
+              }
+            }
+          }
         }
-      }
     }
   }
 
   /* If it is still not found, process an unexpected message */
   if(!found) {
+    DEBUG("Message not matched: processing an unexpected message");
     if (call_scenario->unexpected_jump >= 0) {
       bool recursive = false;
       if (call_scenario->retaddr >= 0) {
-	if (M_callVariableTable->getVar(call_scenario->retaddr)->getDouble() != 0) {
-	  /* We are already in a jump! */
-	  recursive = true;
-	} else {
-	  M_callVariableTable->getVar(call_scenario->retaddr)->setDouble(msg_index);
-	}
+        if (M_callVariableTable->getVar(call_scenario->retaddr)->getDouble() != 0) {
+          /* We are already in a jump! */
+          recursive = true;
+        } else {
+          M_callVariableTable->getVar(call_scenario->retaddr)->setDouble(msg_index);
+        }
       }
       if (!recursive) {
-	if (call_scenario->pausedaddr >= 0) {
-	  M_callVariableTable->getVar(call_scenario->pausedaddr)->setDouble(paused_until);
-	}
-	msg_index = call_scenario->unexpected_jump;
-	queue_up(msg);
-	paused_until = 0;
-	return run();
+        if (call_scenario->pausedaddr >= 0) {
+          M_callVariableTable->getVar(call_scenario->pausedaddr)->setDouble(paused_until);
+        }
+        msg_index = call_scenario->unexpected_jump;
+        queue_up(msg);
+        paused_until = 0;
+        return run();
       } else {
-	if (!process_unexpected(msg)) {
-	  return false; // Call aborted by unexpected message handling
-	}
+        if (!process_unexpected(msg)) {
+          DEBUG("Call aborted by unexpected message handling");
+          return false; // Call aborted by unexpected message handling
+        }
       }
     } else {
       T_AutoMode L_case;
       if ((L_case = checkAutomaticResponseMode(request)) == 0) {
-	if (!process_unexpected(msg)) {
-	  return false; // Call aborted by unexpected message handling
-	}
+        if (!process_unexpected(msg)) {
+          DEBUG("Call aborted by unexpected message handling");
+          return false; // Call aborted by unexpected message handling
+        }
       } else {
-	// call aborted by automatic response mode if needed
-	return automaticResponseMode(L_case, msg);
+        // call aborted by automatic response mode if needed
+        return automaticResponseMode(L_case, msg);
       }
     }
   }
@@ -3261,36 +3260,61 @@ move to per-dialog section and duplicated to use from tag for incoming requests
 
   int test = (!found) ? -1 : call_scenario->messages[search_index]->test;
   /* test==0: No branching"
-   * test==-1 branching without testing"
-   * test>0   branching with testing
-   */
+  * test==-1 branching without testing"
+  * test>0   branching with testing
+  */
 
   /* Simulate loss of messages */
   if(lost(search_index)) {
     TRACE_MSG("%s message lost (recv).",
-               TRANSPORT_TO_STRING(transport));
+      TRANSPORT_TO_STRING(transport));
     callDebug("%s message lost (recv) (hash %u).\n",
-               TRANSPORT_TO_STRING(transport), hash(msg));
+      TRANSPORT_TO_STRING(transport), hash(msg));
     if(comp_state) { comp_free(&comp_state); }
     call_scenario->messages[search_index] -> nb_lost++;
     return true;
   }
 
-  /* Update peer_tag */
+  /* Update peer_tag (remote) */
   if (reply_code)
-    ptr = get_peer_tag_from_to(msg);
+    ptr = get_tag_from_to(msg);
   else
-    ptr = get_peer_tag_from_from(msg);
+    ptr = get_tag_from_from(msg);
   if (ptr) {
-    if(strlen(ptr) > (MAX_HEADER_LEN - 1)) {
+    if(strlen(ptr) > (MAX_HEADER_LEN - 1)) 
       ERROR("Peer tag too long. Change MAX_HEADER_LEN and recompile sipp");
+    
+    if (ds->peer_tag && strcmp(ds->peer_tag, ptr)) {
+      LOG_MSG("Remote tag already specified as '%s' but message received changes it to '%s'. Unusual unless running a forking scenario.\n", ds->peer_tag, ptr);
     }
     if(ds->peer_tag) { free(ds->peer_tag); }
     ds->peer_tag = strdup(ptr);
-    if (!ds->peer_tag) {
+    if (!ds->peer_tag) 
       ERROR("Out of memory allocating peer tag.");
-    }
+   
   }
+  /* Update local_tag */
+  if (reply_code)
+    ptr = get_tag_from_from(msg);
+  else
+    ptr = get_tag_from_to(msg);
+  if (ptr) {
+    if(strlen(ptr) > (MAX_HEADER_LEN - 1))
+      ERROR("Local tag too long. Change MAX_HEADER_LEN and recompile sipp");
+    
+    if (ds->local_tag && strcmp(ds->local_tag, ptr)) {
+      LOG_MSG("Local tag already specified as '%s' but message received changes it to '%s'\n", ds->local_tag, ptr);
+    }
+    if(ds->local_tag) { free(ds->local_tag); }
+    ds->local_tag = strdup(ptr);
+    if (!ds->local_tag) 
+      ERROR("Out of memory allocating local tag.");    
+  }
+  else if (ds->local_tag) {
+    LOG_MSG("Message received without local tag, though local tag '%s' has been specified. Local tag will not be removed.", ds->local_tag);
+  }
+  
+
 
   /* If we are part of a transaction, mark this as the final response. */
   if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
@@ -3315,10 +3339,10 @@ move to per-dialog section and duplicated to use from tag for incoming requests
       // and go on with the scenario
       call::last_action_result = actionResult;
       if (actionResult == E_AR_STOP_CALL) {
-          return rejectCall();
+        return rejectCall();
       } else if (actionResult == E_AR_CONNECT_FAILED) {
-	  terminate(CStat::E_FAILED_TCP_CONNECT);
-	  return false;
+        terminate(CStat::E_FAILED_TCP_CONNECT);
+        return false;
       }
     }
   }
@@ -3329,45 +3353,45 @@ move to per-dialog section and duplicated to use from tag for incoming requests
   }
 
   /* This is an ACK/PRACK or a response, and its index is greater than the 
-   * current active retransmission message, so we stop the retrans timer. 
-   * True also for CANCEL and BYE that we also want to answer to */
+  * current active retransmission message, so we stop the retrans timer. 
+  * True also for CANCEL and BYE that we also want to answer to */
   if(((reply_code) ||
-      ((!strcmp(request, "ACK")) ||
-       (!strcmp(request, "CANCEL")) || (!strcmp(request, "BYE")) ||
-       (!strcmp(request, "PRACK"))))  &&
-     (search_index > last_send_index)) {
-   /*
-    * We should stop any retransmission timers on receipt of a provisional response only for INVITE
-    * transactions. Non INVITE transactions continue to retransmit at T2 until a final response is 
-    * received
-    */
-    if ( (0 == reply_code) || // means this is a request.
-         (200 <= reply_code) ||  // final response
-         ((0 != reply_code) && (0 == strncmp (responsecseqmethod, "INVITE", strlen(responsecseqmethod)))) ) // prov for INVITE
-    {
-    next_retrans = 0;
-  }
-    else
-    {
+    ((!strcmp(request, "ACK")) ||
+    (!strcmp(request, "CANCEL")) || (!strcmp(request, "BYE")) ||
+    (!strcmp(request, "PRACK"))))  &&
+    (search_index > last_send_index)) {
       /*
-       * We are here due to a provisional response for non INVITE. Update our next retransmit.
-       */
-      next_retrans = clock_tick + global_t2;
-      nb_last_delay = global_t2;
+      * We should stop any retransmission timers on receipt of a provisional response only for INVITE
+      * transactions. Non INVITE transactions continue to retransmit at T2 until a final response is 
+      * received
+      */
+      if ( (0 == reply_code) || // means this is a request.
+        (200 <= reply_code) ||  // final response
+        ((0 != reply_code) && (0 == strncmp (responsecseqmethod, "INVITE", strlen(responsecseqmethod)))) ) // prov for INVITE
+      {
+        next_retrans = 0;
+      }
+      else
+      {
+        /*
+        * We are here due to a provisional response for non INVITE. Update our next retransmit.
+        */
+        next_retrans = clock_tick + global_t2;
+        nb_last_delay = global_t2;
 
-    }
+      }
   }
 
   /* This is a response with 200 so set the flag indicating that an
-   * ACK is pending (used to prevent from release a call with CANCEL
-   * when an ACK+BYE should be sent instead)                         */
+  * ACK is pending (used to prevent from release a call with CANCEL
+  * when an ACK+BYE should be sent instead)                         */
   if (reply_code == 200) {
     ack_is_pending = true;
   }
 
   /* store the route set only once. TODO: does not support target refreshes!! */
   if (call_scenario->messages[search_index] -> bShouldRecordRoutes &&
-          NULL == ds->dialog_route_set ) {
+    NULL == ds->dialog_route_set ) {
 
       ds->next_req_url = (char*) realloc(ds->next_req_url, MAX_HEADER_LEN);
 
@@ -3382,9 +3406,9 @@ move to per-dialog section and duplicated to use from tag for incoming requests
       /* decorate the contact with '<' and '>' if it does not have it */
       char* contDecorator = strchr(ch, '<');
       if (NULL == contDecorator) {
-         char tempBuffer[MAX_HEADER_LEN];
-         sprintf(tempBuffer, "<%s>", ch);
-         strcpy(ch, tempBuffer);
+        char tempBuffer[MAX_HEADER_LEN];
+        sprintf(tempBuffer, "<%s>", ch);
+        strcpy(ch, tempBuffer);
       }
 
       /* should cache the route set */
@@ -3401,7 +3425,7 @@ move to per-dialog section and duplicated to use from tag for incoming requests
 #ifdef _USE_OPENSSL
   /* store the authentication info */
   if ((call_scenario->messages[search_index] -> bShouldAuthenticate) &&
-          (reply_code == 401 || reply_code == 407)) {
+    (reply_code == 401 || reply_code == 407)) {
 
       /* is a challenge */
       char auth[MAX_HEADER_LEN];
@@ -3428,23 +3452,23 @@ move to per-dialog section and duplicated to use from tag for incoming requests
   }
 
   /* Store last received message information for all messages so that we can
-   * correctly identify retransmissions, and use its body for inclusion
-   * in our messages. */
+  * correctly identify retransmissions, and use its body for inclusion
+  * in our messages. */
   last_recv_index = search_index;
   last_recv_hash = cookie;
   callDebug("Set Last Recv Hash: %u (recv index %d)\n", last_recv_hash, last_recv_index);
   setLastMsg(msg, ds);
 
   /* If this was a mandatory message, or if there is an explicit next label set
-   * we must update our state machine.  */
+  * we must update our state machine.  */
   if (!(call_scenario->messages[search_index] -> optional) ||
-       call_scenario->messages[search_index]->next &&
-       ((test == -1) || (M_callVariableTable->getVar(test)->isSet()))
-     ) {
-    /* If we are paused, then we need to wake up so that we properly go through the state machine. */
-    paused_until = 0;
-    msg_index = search_index;
-    return next();
+    call_scenario->messages[search_index]->next &&
+    ((test == -1) || (M_callVariableTable->getVar(test)->isSet()))
+    ) {
+      /* If we are paused, then we need to wake up so that we properly go through the state machine. */
+      paused_until = 0;
+      msg_index = search_index;
+      return next();
   } else {
     unsigned int timeout = wake();
     unsigned int candidate;
@@ -3454,21 +3478,21 @@ move to per-dialog section and duplicated to use from tag for incoming requests
     }
 
     /* We are just waiting for a message to be received, if any of the
-     * potential messages have a timeout we set it as our timeout. We
-     * start from the next message and go until any non-receives. */
+    * potential messages have a timeout we set it as our timeout. We
+    * start from the next message and go until any non-receives. */
     for(search_index++; search_index < (int)call_scenario->messages.size(); search_index++) {
       if(call_scenario->messages[search_index] -> M_type != MSG_TYPE_RECV) {
-	break;
+        break;
       }
       candidate = call_scenario->messages[search_index] -> timeout;
       if (candidate == 0) {
-	if (defl_recv_timeout == 0) {
-	  continue;
-	}
-	candidate = defl_recv_timeout;
+        if (defl_recv_timeout == 0) {
+          continue;
+        }
+        candidate = defl_recv_timeout;
       }
       if (!timeout || (clock_tick + candidate < timeout)) {
-	timeout = clock_tick + candidate;
+        timeout = clock_tick + candidate;
       }
     }
 
@@ -3854,7 +3878,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       ERROR("%s", x);
     } else if (currentAction->getActionType() == CAction::E_AT_EXECUTE_CMD) {
       char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
-      TRACE_MSG("<exec> of \"%s\"\n");
+      TRACE_MSG("<exec> of \"%s\"\n", x);
       pid_t l_pid;
       switch(l_pid = fork())
       {

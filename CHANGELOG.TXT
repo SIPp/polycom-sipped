@@ -1,5 +1,10 @@
 This file tracks changes responsible for version number updates.
 
+3.2.7 12-20-2010
+- Add [local_tag] [local_tag_param]
+- Ad dump_xml  and -dump_sequence_diagram options
+- Add parameterized includes
+
 3.2.6 12-08-2010
 - Add -trace_debug option to output information about SIPp execution
 - Fix seg fault when using dump command without a parameter

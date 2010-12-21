@@ -642,7 +642,7 @@ void scenario::checkOptionalRecv(char *elem, unsigned int scenario_file_cursor) 
   last_recv_optional = false;
 }
 
-scenario::scenario(char * filename, int deflt)
+scenario::scenario(char * filename, int deflt, int dumpxml)
 {
   char * elem;
   char *method_list = NULL;
@@ -653,11 +653,11 @@ scenario::scenario(char * filename, int deflt)
   last_recv_optional = false;
 
   if(filename) {
-    if(!xp_set_xml_buffer_from_file(filename)) {
+    if(!xp_set_xml_buffer_from_file(filename, dumpxml)) {
       ERROR("Unable to load or parse '%s' xml scenario file", filename);
     }
   } else {
-    if(!xp_set_xml_buffer_from_string(default_scenario[deflt])) {
+    if(!xp_set_xml_buffer_from_string(default_scenario[deflt], dumpxml)) {
       ERROR("Unable to load default xml scenario file");
     }
   }

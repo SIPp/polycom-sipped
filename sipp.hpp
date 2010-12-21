@@ -283,6 +283,8 @@ extern char             * auth_uri                _DEFVAL(0);
 extern const char       * call_id_string          _DEFVAL("%u-%p@%s");
 extern char             **generic[100];
 extern bool              no_call_id_check         _DEFVAL(false);
+extern int               dump_xml                  _DEFVAL(0);
+extern int               dump_sequence_diagram      _DEFVAL(0);
 
 /* TDM map */
 extern bool               use_tdmmap              _DEFVAL(false);
@@ -517,8 +519,8 @@ void print_count_file(FILE *f, int header);
 /********************* Mini-Parser Routines *******************/
 
 int get_method(char *msg);
-char * get_peer_tag_from_to(char *msg);
-char * get_peer_tag_from_from(char *msg);
+char * get_tag_from_to(char *msg);
+char * get_tag_from_from(char *msg);
 unsigned long int get_cseq_value(char *msg);
 unsigned long get_reply_code(char *msg);
 
