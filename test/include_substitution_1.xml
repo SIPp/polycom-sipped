@@ -1,0 +1,27 @@
+
+  <!-- include_substitution_1 file has directly specified parameters -->
+  <xi:include href="include_directory/include_substitution_2.xml" dialogs="BB,AA"/>
+  
+
+  <send request="INVITE" dialog="AA">
+   <![CDATA[
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+
+  <send request="BYE" dialog="BB">
+   <![CDATA[
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      cseq: [cseq dialog="AA"]
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+  <send request="SUBSCRIBE" dialog="CC">
+   <![CDATA[
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+  

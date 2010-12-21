@@ -12,6 +12,7 @@ require 'English'
 #
 # Todo:
 # - Fix for Windows
+# - better integration of console output validation, don't output [PASS] before post-run validations
 # - command-line options for logging, screen verbosity, ports, etc
 # - pass params to initialize via hash for more flexibility
 # - catch server-startup failure in client
@@ -20,7 +21,7 @@ require 'English'
 #   [see http://t-a-w.blogspot.com/2010/04/how-to-kill-all-your-children.html]
 
 class SippTest
-  attr_accessor :client_options, :server_options
+  attr_accessor :client_options, :server_options, :logging, :expected_client_output, :expected_server_output
   
   def initialize(name, client_options, server_options = '')
     @name = name
@@ -32,8 +33,8 @@ class SippTest
     @sipp_path = "../sipp"
     @logging = "normal" # silent, normal, verbose
     @error_message = "";
-    @server_screen_destination = "client_console.out" # "#{@name}_server.out"
-    @client_screen_destination = "server_console.out" # "#{@name}_client.out"
+    @server_screen_destination = "server_console.out" # "#{@name}_server.out"
+    @client_screen_destination = "client_console.out" # "#{@name}_client.out"
 
     @server_pid = -1
     @server_aborted = false
@@ -68,8 +69,24 @@ class SippTest
   end
 
   def post_execution_validation
-    #override to perform any additional follow-up tests here.
-    return true
+    result = true
+	if (!@expected_client_output.nil?)
+      if (@expected_client_output != get_client_output())
+	    puts "Expected client output does not match actual.\n" unless @logging == "silent"
+		puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
+		result = false;
+	  end
+	end
+	if (!@expected_server_output.nil?)
+      if (@expected_server_output != get_server_output())
+	    puts "Expected server output does not match actual.\n" unless @logging == "silent"
+		puts "Expected = '#{@expected_server_output}'\nActual = '#{get_server_output()}'\n" if @logging == "verbose"
+		result = false;
+	  end
+	end
+	
+   #override to perform any additional follow-up tests here.
+   return result
   end
 
   def start_sipp_client(testcase_client)
@@ -97,7 +114,15 @@ class SippTest
       return @error_message
     end
   end
+  
+  def get_client_output()
+    return IO.read(@server_screen_destination)
+  end
 
+  def get_client_output()
+    return IO.read(@client_screen_destination)
+  end
+  
   # run server sipp process in background, saving pid
   def start_sipp_server(testcase_server)
     @server_options.empty? and return false
@@ -131,6 +156,20 @@ class SippTest
     Process.wait(@server_pid)
 
   end # stop_sipp_server
+  
+# helper routine for implementing test cases
+# outputs a string for assigning to a string variable in code for validating sipp output
+# to use, add the following to your test *before* to output a string that will pass when 
+# specified as the expected_client_output parameter (manually verify test first time!)
+#	client_output = test.get_client_output()
+#	test.puts_escaped_string(client_output)
+ 
+  def puts_escaped_string(astring)
+	output = astring.gsub("\n", "\\n")
+	output.gsub!("\r", "\\r")
+	output.gsub!("!", "\\!")
+	puts "%Q!#{output}!"
+  end
 
 end # class SippTest
 

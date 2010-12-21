@@ -1,0 +1,639 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="TC012586_Primary">
+
+<!-- register both lines and do BLA -->
+  <!-- Accept line 1 registration -->
+<recv request="REGISTER" rrs="true" dialog="1">
+  <!-- extract to & from uri -->
+  <!-- for line 1, to=3218, from=3218 -->
+  <action>
+    <ereg regexp="<(.*)>" search_in="hdr" header="From:" check_it="true" assign_to="2,line1_from_uri"/>
+    <ereg regexp="<(.*)>" search_in="hdr" header="To:" check_it="true" assign_to="2,line1_to_uri"/>
+    <trim assign_to="2"/>
+    <log message="Line 1 register: contact=[next_url] ; from_uri=[$line1_from_uri] ; to_uri=[$line1_to_uri]"/>
+  </action>
+</recv>
+
+<send dialog="1">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:];tag=[call_number]
+[last_Call-Id]
+[last_Cseq]
+User-Agent: SIPp
+[last_Contact:];expires=120
+Content-Length: [len]
+
+]]>
+</send>
+
+
+<!-- Send line1 BLA subscription and send initial BLA state -->
+<send dialog="2">
+<![CDATA[
+SUBSCRIBE [next_url dialog="1"] SIP/2.0
+From: State_Agent [$line1_to_uri];tag=a59ec025
+To: [$line1_from_uri]
+CSeq: [cseq] SUBSCRIBE
+Call-Id: [call_id]
+Event: dialog;sla;include-session-description
+User-Agent: Sipp
+Contact: <sip:[local_ip]:[local_port]>
+Expires: 3600
+Max-Forwards: 20
+Via: SIP/2.0/UDP [local_ip];branch=z9hG4bK-fbf2a8fcfe1af30350d645eda93d0014
+Content-Length: [len]
+]]>
+</send>
+
+<recv response="200" dialog="2"></recv>
+
+<!-- BLA Notify -->
+  <recv request="NOTIFY" dialog="2"></recv>
+
+<send dialog="2">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Event: dialog;sla;include-session-description
+User-Agent: SIPp
+Accept-Language: en
+Accept: application/csta+xml
+Content-Length: [len]
+
+]]>
+</send>
+
+
+ 
+
+<!-- Receive phone's BLA subscription and sent initial BLA state -->
+<recv request="SUBSCRIBE" dialog="3"></recv>
+
+<send dialog="3"> 
+<![CDATA[
+SIP/2.0 202 Accepted
+[last_From:]
+[last_To:];tag=thirdTag
+[last_Call-id:]
+[last_cseq:]
+[last_via:]
+Allow: NOTIFY,SUBSCRIBE
+Allow-Events: dialog;sla;include-session-description
+Contact: <sip:SD13aq5-meccfempfbv5t3uqkvm0iji012k6hv@[local_ip]:[local_port];transport=udp>
+Expires: 3700
+Content-Length: 0
+]]>
+
+</send>
+
+<send dialog="3">
+<![CDATA[
+NOTIFY [next_url dialog="1"] SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=z9hG4bKq1f19h20bo809kbasduisk000.1
+To: <[$line1_from_uri]>[peer_tag_param]
+From: <[$line1_to_uri]>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+<recv response="200" dialog="3" crlf="true"></recv>
+
+
+
+
+    <recv request="REGISTER" dialog="1">
+  </recv>
+  
+  <send dialog="1" >
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:];expires=120
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+
+
+  <!-- Establish call  -->
+    <!-- Dial the phone -->
+  <nop>
+    <action>
+  	  <exec command="pressKeys.pl [remote_ip] NewCall"/>
+    </action>
+  </nop>
+     
+  <!-- BLA Notify -->
+  <recv request="NOTIFY" dialog="2"></recv>
+
+<send dialog="2">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Event: dialog;sla;include-session-description
+User-Agent: SIPp
+Accept-Language: en
+Accept: application/csta+xml
+Content-Length: [len]
+
+]]>
+</send>
+
+
+ 
+  
+  <!-- After successful line seize, dial number and press send -->
+  <nop>
+    <action>
+	  <exec command="pressKeys.pl [remote_ip] 1234 Send"/>
+    </action>
+  </nop>
+  
+  <!-- Receive INVITE from phone -->
+  <recv request="INVITE" dialog="4" crlf="true">
+  </recv>
+
+  <!-- Answer incoming call -->
+  <send dialog="4" >
+    <![CDATA[
+
+      SIP/2.0 183 Session Progress
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=UDP>
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=user1 53655765 2353687637 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+
+    ]]>
+  </send>
+
+  <!-- BLA Notify -->
+  <recv request="NOTIFY" dialog="2"></recv>
+
+<send dialog="2">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Event: dialog;sla;include-session-description
+User-Agent: SIPp
+Accept-Language: en
+Accept: application/csta+xml
+Content-Length: [len]
+
+]]>
+</send>
+
+
+ 
+  
+  <!-- OK SDP -->
+  <send dialog="4">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=UDP>
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=user1 53655765 2353687637 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+
+    ]]>
+  </send>
+
+  <!-- Finish sequence with ACK -->
+  <recv request="ACK" dialog="4">
+  </recv>
+  
+  <!-- confirmed -->
+  <recv request="NOTIFY" dialog="2"></recv>
+
+<send dialog="2">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Event: dialog;sla;include-session-description
+User-Agent: SIPp
+Accept-Language: en
+Accept: application/csta+xml
+Content-Length: [len]
+
+]]>
+</send>
+
+
+
+  
+  <!-- Call established, leave it running for a little while -->
+  <pause milliseconds="2000"/>
+    
+  <!-- press conference key, expect hold + line sieze pairs until NOTIFY triggers fail-over -->
+  <nop>
+    <action>
+  	  <exec command="pressKeys.pl [remote_ip] Hold"/>
+    </action> 
+  </nop>
+  
+  <recv request="INVITE" dialog="4"></recv>
+  <recv request="INVITE" dialog="4"></recv>
+  <recv request="INVITE" dialog="4"></recv> 
+  <recv request="INVITE" dialog="4"></recv>
+  <recv request="INVITE" dialog="4"></recv>
+  <recv request="INVITE" dialog="4"></recv>
+  <recv request="INVITE" dialog="4" crlf="true"></recv>
+  
+  <!-- Phone fails over and receives no response -->
+  
+  <!-- fails back -->
+  
+  <recv request="REGISTER" dialog="1"></recv>
+  <recv request="REGISTER" dialog="1"></recv>
+  <recv request="REGISTER" dialog="1"></recv>
+  <recv request="REGISTER" dialog="1"></recv> 
+  <recv request="REGISTER" dialog="1"></recv>
+  <recv request="REGISTER" dialog="1"></recv> 
+  <recv request="REGISTER" dialog="1"></recv> 
+  <recv request="REGISTER" dialog="1"></recv>
+  <recv request="REGISTER" dialog="1"></recv> 
+  <recv request="REGISTER" dialog="1"></recv> 
+  
+  <!-- Press end Call. -->
+  
+  
+  <recv request="REGISTER" dialog="7"></recv>
+  <recv request="REGISTER" dialog="7"></recv> 
+  <recv request="REGISTER" dialog="7"></recv> 
+  
+  <!-- register both lines and do BLA -->
+  <!-- Accept line 1 registration -->
+<recv request="REGISTER" rrs="true" dialog="11">
+  <!-- extract to & from uri -->
+  <!-- for line 1, to=3218, from=3218 -->
+  <action>
+    <ereg regexp="<(.*)>" search_in="hdr" header="From:" check_it="true" assign_to="2,line1_from_uri"/>
+    <ereg regexp="<(.*)>" search_in="hdr" header="To:" check_it="true" assign_to="2,line1_to_uri"/>
+    <trim assign_to="2"/>
+    <log message="Line 1 register: contact=[next_url] ; from_uri=[$line1_from_uri] ; to_uri=[$line1_to_uri]"/>
+  </action>
+</recv>
+
+<send dialog="11">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:];tag=[call_number]
+[last_Call-Id]
+[last_Cseq]
+User-Agent: SIPp
+[last_Contact:];expires=120
+Content-Length: [len]
+
+]]>
+</send>
+
+
+<!-- Send line1 BLA subscription and send initial BLA state -->
+<send dialog="12">
+<![CDATA[
+SUBSCRIBE [next_url dialog="11"] SIP/2.0
+From: State_Agent [$line1_to_uri];tag=a59ec025
+To: [$line1_from_uri]
+CSeq: [cseq] SUBSCRIBE
+Call-Id: [call_id]
+Event: dialog;sla;include-session-description
+User-Agent: Sipp
+Contact: <sip:[local_ip]:[local_port]>
+Expires: 3600
+Max-Forwards: 20
+Via: SIP/2.0/UDP [local_ip];branch=z9hG4bK-fbf2a8fcfe1af30350d645eda93d0014
+Content-Length: [len]
+]]>
+</send>
+
+<recv response="200" dialog="12"></recv>
+
+<recv request="NOTIFY" dialog="12"></recv>
+
+<send dialog="12">
+<![CDATA[
+SIP/2.0 200 OK
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Allow: INVITE, ACK, CANCEL, BYE, REFER, OPTIONS, NOTIFY
+[last_via:]
+Content-Length: [len]
+]]>
+</send>
+
+<!-- Receive phone's BLA subscription and sent initial BLA state -->
+<recv request="SUBSCRIBE" dialog="13"></recv>
+
+<send dialog="13"> 
+<![CDATA[
+SIP/2.0 202 Accepted
+[last_From:]
+[last_To:];tag=thirdTag
+[last_Call-id:]
+[last_cseq:]
+[last_via:]
+Allow: NOTIFY,SUBSCRIBE
+Allow-Events: dialog;sla;include-session-description
+Contact: <sip:SD13aq5-meccfempfbv5t3uqkvm0iji012k6hv@[local_ip]:[local_port];transport=udp>
+Expires: 3700
+Content-Length: 0
+]]>
+
+</send>
+
+<send dialog="13">
+<![CDATA[
+NOTIFY [next_url dialog="11"] SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=z9hG4bKq1f19h20bo809kbasduisk000.1
+To: <[$line1_from_uri]>[peer_tag_param]
+From: <[$line1_to_uri]>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="11"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+<recv response="200" dialog="13" crlf="true"></recv>
+
+
+
+  
+  <pause milliseconds="1000" crlf="true"/>
+  
+  <!-- Establish call 1 -->
+    <!-- Dial the phone -->
+  <nop>
+    <action>
+  	  <exec command="pressKeys.pl [remote_ip] NewCall"/>
+    </action>
+  </nop>
+     
+  <!-- BLA Notify -->
+  <recv request="NOTIFY" dialog="12"></recv>
+
+<send dialog="12">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Event: dialog;sla;include-session-description
+User-Agent: SIPp
+Accept-Language: en
+Accept: application/csta+xml
+Content-Length: [len]
+
+]]>
+</send>
+
+
+ 
+  
+  <!-- After successful line seize, dial number and press send -->
+  <nop>
+    <action>
+	  <exec command="pressKeys.pl [remote_ip] 1234 Send"/>
+    </action>
+  </nop>
+  
+  <!-- Receive INVITE from phone -->
+  <recv request="INVITE" dialog="14" crlf="true">
+  </recv>
+
+  <!-- Answer incoming call -->
+  <send dialog="14" >
+    <![CDATA[
+
+      SIP/2.0 183 Session Progress
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=UDP>
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=user1 53655765 2353687637 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+
+    ]]>
+  </send>
+
+  <!-- BLA Notify -->
+  <recv request="NOTIFY" dialog="12"></recv>
+
+<send dialog="12">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Event: dialog;sla;include-session-description
+User-Agent: SIPp
+Accept-Language: en
+Accept: application/csta+xml
+Content-Length: [len]
+
+]]>
+</send>
+
+
+ 
+  
+<!-- OK SDP -->
+  <send dialog="14">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=UDP>
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=user1 53655765 2353687637 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+
+    ]]>
+  </send>
+
+  <!-- Finish sequence with ACK -->
+  <recv request="ACK" dialog="14"></recv>
+  
+  <!-- confirmed -->
+  <recv request="NOTIFY" dialog="12"></recv>
+
+<send dialog="12">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Event: dialog;sla;include-session-description
+User-Agent: SIPp
+Accept-Language: en
+Accept: application/csta+xml
+Content-Length: [len]
+
+]]>
+</send>
+
+
+
+  
+    <recv request="REGISTER" dialog="11">
+  </recv>
+  
+  <send dialog="11" >
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:];expires=120
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+
+  
+    <recv request="REGISTER" dialog="11">
+  </recv>
+  
+  <send dialog="11" >
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:];expires=120
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+
+
+</scenario>

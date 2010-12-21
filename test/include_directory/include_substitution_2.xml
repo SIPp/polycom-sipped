@@ -1,0 +1,21 @@
+
+  <!-- include_substitution_2 file in sub-directory, inherits substitution -->
+  
+  <send request="INVITE" dialog="AA">
+   <![CDATA[
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+
+  <send request="BYE" dialog="BB">
+   <![CDATA[
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      cseq: [cseq dialog="AA"]
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+
+
+
