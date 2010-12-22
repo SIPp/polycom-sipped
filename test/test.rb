@@ -16,6 +16,7 @@ require "aa_expires_specified.rb"
 require "include_directory.rb"
 require "include_substitution.rb"
 require "verify_keywords.rb"
+require "dump_sequence_diagram.rb"
 
 def show_help_message
   puts "Usage: test \n\n";

@@ -163,6 +163,7 @@ class SippTest
 # specified as the expected_client_output parameter (manually verify test first time!)
 #	client_output = test.get_client_output()
 #	test.puts_escaped_string(client_output)
+# Note that test which compare output to must use -skip_rlimit flag to eliminate FD_SETSIZE errors
  
   def puts_escaped_string(astring)
 	output = astring.gsub("\n", "\\n")
