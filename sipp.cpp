@@ -5006,6 +5006,9 @@ int main(int argc, char *argv[])
   call::dynamicId      = startDynamicId;
   call::stepDynamicId  = stepDynamicId;
 
+  /* In which mode the tool is launched ? */
+  main_scenario->computeSippMode();
+
   /* initialize [remote_ip] and [local_ip] keywords for use in <init> section */
   determine_remote_and_local_ip();
 
@@ -5013,8 +5016,6 @@ int main(int argc, char *argv[])
   main_scenario->runInit();
   ooc_scenario->runInit();
 
-  /* In which mode the tool is launched ? */
-  main_scenario->computeSippMode();
 
   /* checking if we need to launch the tool in background mode */ 
   if(backgroundMode == true)
