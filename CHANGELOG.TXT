@@ -1,7 +1,7 @@
 This file tracks changes responsible for version number updates.
 3.2.8 01-13-2011
 - Add -trace_exec, -exec_file, -exec_overwrite parameters (to log stdout/stderr output from <exec>).
-- Add-debug_file, -debug_overwrite parameters
+- Add -debug_file, -debug_overwrite parameters
 - Add [contact_uri], [contact_value], [to_uri], [to_value], [from_uri], [from_value] keywords
 - Add <exec verify="..."> option that waits for command to exit and validates return code was 0, aborting if not.
 - Allow use of [remote_ip] and [local_ip] keywords in <init> section
