@@ -462,6 +462,7 @@ extern bool   useShortMessagef                    _DEFVAL(0);
 extern bool   useScreenf                          _DEFVAL(0);
 extern bool   useLogf                             _DEFVAL(0);
 extern bool   useDebugf                           _DEFVAL(0);
+extern bool   useExecf                           _DEFVAL(0);
 //extern bool   useTimeoutf                         _DEFVAL(0);
 extern bool   dumpInFile                          _DEFVAL(0);
 extern bool   dumpInRtt                           _DEFVAL(0);
@@ -508,8 +509,10 @@ LOGFILE(shortmessage_lfi, "shortmessages", true);
 LOGFILE(log_lfi, "logs", true);
 LOGFILE(error_lfi, "errors", false);
 LOGFILE(debug_lfi, "debug", false);
+LOGFILE(exec_lfi, "exec", false);
 
 void rotate_errorf();
+void log_off(struct logfile_info *lfi);
 
 /* Screen/Statistics Printing Functions. */
 void print_statistics(int last);
@@ -618,6 +621,8 @@ int close_connections();
 int open_connections();
 void timeout_alarm(int);
 
+int determine_remote_and_local_ip();
+
 /* extended 3PCC mode */
 struct sipp_socket **get_peer_socket(char *);
 bool is_a_peer_socket(struct sipp_socket *);
@@ -640,6 +645,7 @@ void free_peer_addr_map();
 #define TRACE_CALLDEBUG(x, ...) { _TRACE_CALLDEBUG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
 #define TRACE_SHORTMSG(x, ...)  { _TRACE_SHORTMSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
 #define LOG_MSG(x, ...)         { _LOG_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
+#define TRACE_EXEC(x, ...)  { _TRACE_EXEC(x, ##__VA_ARGS__); _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
 
 #define DEBUG(x, ...) _DEBUG_LOG("%s() in %s:%d - " x "\n",  __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__)
 #define DEBUG_IN(x, ...) DEBUG("(Entered) - " x, ##__VA_ARGS__)
@@ -652,6 +658,7 @@ int _TRACE_MSG(const char *fmt, ...);
 int _TRACE_CALLDEBUG(const char *fmt, ...);
 int _TRACE_SHORTMSG(const char *fmt, ...);
 int _LOG_MSG(const char *fmt, ...);
+int _TRACE_EXEC(const char *fmt, ...);
 int _DEBUG_LOG(const char *fmt, ...);
 
 #ifdef __cplusplus

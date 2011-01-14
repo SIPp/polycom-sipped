@@ -1355,13 +1355,13 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
 
       // keeping regexp expression in memory
       if(currentRegExp != NULL)
-	delete[] currentRegExp;
+        delete[] currentRegExp;
       currentRegExp = new char[strlen(ptr)+1];
       buffer = new char[strlen(ptr)+1];
       xp_replace(ptr, buffer, "&lt;", "<");
       xp_replace(buffer, currentRegExp, "&gt;", ">");
       if(buffer != NULL)
-	delete[] buffer;
+        delete[] buffer;
       tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_REGEXP);
 
       // warning - although these are detected for both msg and hdr
@@ -1371,49 +1371,49 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
 
       free(ptr);
       if ( 0 != ( ptr = xp_get_value((char *)"search_in") ) ) {
-	tmpAction->setOccurence(1);
+        tmpAction->setOccurence(1);
 
-	if ( 0 == strcmp(ptr, (char *)"msg") ) {
-	  tmpAction->setLookingPlace(CAction::E_LP_MSG);
-	  tmpAction->setLookingChar (NULL);
-	} else if ( 0 == strcmp(ptr, (char *)"body") ) {
-	  tmpAction->setLookingPlace(CAction::E_LP_BODY);
-	  tmpAction->setLookingChar (NULL);
-	} else if (!strcmp(ptr, (char *)"var")) {
-	  tmpAction->setVarInId(xp_get_var("variable", "ereg"));
-	  tmpAction->setLookingPlace(CAction::E_LP_VAR);
-	} else if (!strcmp(ptr, (char *)"hdr")) {
-	  ptr = xp_get_value((char *)"header");
-	  if (!ptr || !strlen(ptr)) {
-	    ERROR("search_in=\"hdr\" requires header field");
-	  }
-	  tmpAction->setLookingPlace(CAction::E_LP_HDR);
-	  tmpAction->setLookingChar(ptr);
-	  if (0 != (ptr = xp_get_value((char *)"occurence"))) {
-	    tmpAction->setOccurence (atol(ptr));
-	  }
-	  if (0 != (ptr = xp_get_value((char *)"occurrence"))) {
-	    tmpAction->setOccurence (atol(ptr));
-	  }
-	} else {
-	  ERROR("Unknown search_in value %s", ptr);
-	}
+        if ( 0 == strcmp(ptr, (char *)"msg") ) {
+          tmpAction->setLookingPlace(CAction::E_LP_MSG);
+          tmpAction->setLookingChar (NULL);
+        } else if ( 0 == strcmp(ptr, (char *)"body") ) {
+          tmpAction->setLookingPlace(CAction::E_LP_BODY);
+          tmpAction->setLookingChar (NULL);
+        } else if (!strcmp(ptr, (char *)"var")) {
+          tmpAction->setVarInId(xp_get_var("variable", "ereg"));
+          tmpAction->setLookingPlace(CAction::E_LP_VAR);
+        } else if (!strcmp(ptr, (char *)"hdr")) {
+          ptr = xp_get_value((char *)"header");
+          if (!ptr || !strlen(ptr)) {
+            ERROR("search_in=\"hdr\" requires header field");
+          }
+          tmpAction->setLookingPlace(CAction::E_LP_HDR);
+          tmpAction->setLookingChar(ptr);
+          if (0 != (ptr = xp_get_value((char *)"occurence"))) {
+            tmpAction->setOccurence (atol(ptr));
+          }
+          if (0 != (ptr = xp_get_value((char *)"occurrence"))) {
+            tmpAction->setOccurence (atol(ptr));
+          }
+        } else {
+          ERROR("Unknown search_in value %s", ptr);
+        }
       } else {
-	tmpAction->setLookingPlace(CAction::E_LP_MSG);
-	tmpAction->setLookingChar(NULL);
+        tmpAction->setLookingPlace(CAction::E_LP_MSG);
+        tmpAction->setLookingChar(NULL);
       } // end if-else search_in
 
       if (xp_get_value("check_it")) {
-      tmpAction->setCheckIt(xp_get_bool("check_it", "ereg", false));
-          if (xp_get_value("check_it_inverse")) {
-              ERROR("Can not have both check_it and check_it_inverse for ereg!");
-          }
+        tmpAction->setCheckIt(xp_get_bool("check_it", "ereg", false));
+        if (xp_get_value("check_it_inverse")) {
+          ERROR("Can not have both check_it and check_it_inverse for ereg!");
+        }
       } else {
-          tmpAction->setCheckItInverse(xp_get_bool("check_it_inverse", "ereg", false));
+        tmpAction->setCheckItInverse(xp_get_bool("check_it_inverse", "ereg", false));
       }
 
       if (!(ptr = xp_get_value((char *) "assign_to"))) {
-	ERROR("assign_to value is missing");
+        ERROR("assign_to value is missing");
       }
 
       createStringTable(ptr, &currentTabVarName, &currentNbVarNames);
@@ -1423,19 +1423,19 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
 
       tmpAction->setRegExp(currentRegExp);
       if (currentNbVarNames > 1 ) {
-	sub_currentNbVarId = currentNbVarNames - 1 ;
-	tmpAction->setNbSubVarId(sub_currentNbVarId);
+        sub_currentNbVarId = currentNbVarNames - 1 ;
+        tmpAction->setNbSubVarId(sub_currentNbVarId);
 
-	for(int i=1; i<= sub_currentNbVarId; i++) {
-	  int varId = get_var(currentTabVarName[i], "sub expression assign_to");
-	  tmpAction->setSubVarId(varId);
-	}
+        for(int i=1; i<= sub_currentNbVarId; i++) {
+          int varId = get_var(currentTabVarName[i], "sub expression assign_to");
+          tmpAction->setSubVarId(varId);
+        }
       }
 
       freeStringTable(currentTabVarName, currentNbVarNames);
 
       if(currentRegExp != NULL) {
-	delete[] currentRegExp;
+        delete[] currentRegExp;
       }
       currentRegExp = NULL;
     } /* end !strcmp(actionElem, "ereg") */ 
@@ -1459,11 +1459,11 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_GETTIMEOFDAY);
 
       if (!(ptr = xp_get_value((char *) "assign_to"))) {
-	ERROR("assign_to value is missing");
+        ERROR("assign_to value is missing");
       }
       createStringTable(ptr, &currentTabVarName, &currentNbVarNames);
       if (currentNbVarNames != 2 ) {
-	ERROR("The gettimeofday action requires two output variables!");
+        ERROR("The gettimeofday action requires two output variables!");
       }
       tmpAction->setNbSubVarId(1);
 
@@ -1495,9 +1495,9 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setActionType(CAction::E_AT_VAR_DIVIDE);
       handle_arithmetic(tmpAction, "divide");
       if (tmpAction->getVarInId() == 0) {
-	if (tmpAction->getDoubleValue() == 0.0) {
-	  ERROR("divide actions can not have a value of zero!");
-	}
+        if (tmpAction->getDoubleValue() == 0.0) {
+          ERROR("divide actions can not have a value of zero!");
+        }
       }
     } else if(!strcmp(actionElem, "sample")) {
       tmpAction->setVarId(xp_get_var("assign_to", "sample"));
@@ -1511,29 +1511,29 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setVarId(xp_get_var("assign_to", "test"));
       tmpAction->setVarInId(xp_get_var("variable", "test"));
       if (xp_get_value("value")) {
-	tmpAction->setDoubleValue(xp_get_double("value", "test"));
-	if (xp_get_value("variable2")) {
-	  ERROR("Can not have both a value and a variable2 for test!");
-	}
+        tmpAction->setDoubleValue(xp_get_double("value", "test"));
+        if (xp_get_value("variable2")) {
+          ERROR("Can not have both a value and a variable2 for test!");
+        }
       } else {
-	tmpAction->setVarIn2Id(xp_get_var("variable2", "test"));
+        tmpAction->setVarIn2Id(xp_get_var("variable2", "test"));
       }
       tmpAction->setActionType(CAction::E_AT_VAR_TEST);
       ptr = xp_get_string("compare", "test");
       if (!strcmp(ptr, "equal")) {
-	tmpAction->setComparator(CAction::E_C_EQ);
+        tmpAction->setComparator(CAction::E_C_EQ);
       } else if (!strcmp(ptr, "not_equal")) {
-	tmpAction->setComparator(CAction::E_C_NE);
+        tmpAction->setComparator(CAction::E_C_NE);
       } else if (!strcmp(ptr, "greater_than")) {
-	tmpAction->setComparator(CAction::E_C_GT);
+        tmpAction->setComparator(CAction::E_C_GT);
       } else if (!strcmp(ptr, "less_than")) {
-	tmpAction->setComparator(CAction::E_C_LT);
+        tmpAction->setComparator(CAction::E_C_LT);
       } else if (!strcmp(ptr, "greater_than_equal")) {
-	tmpAction->setComparator(CAction::E_C_GEQ);
+        tmpAction->setComparator(CAction::E_C_GEQ);
       } else if (!strcmp(ptr, "less_than_equal")) {
-	tmpAction->setComparator(CAction::E_C_LEQ);
+        tmpAction->setComparator(CAction::E_C_LEQ);
       } else {
-	ERROR("Invalid 'compare' parameter: %s", ptr);
+        ERROR("Invalid 'compare' parameter: %s", ptr);
       }
       free(ptr);
     } else if(!strcmp(actionElem, "verifyauth")) {
@@ -1570,12 +1570,12 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setVarId(xp_get_var("assign_to", "strcmp"));
       tmpAction->setVarInId(xp_get_var("variable", "strcmp"));
       if (xp_get_value("value")) {
-	tmpAction->setStringValue(xp_get_string("value", "strcmp"));
-	if (xp_get_value("variable2")) {
-	  ERROR("Can not have both a value and a variable2 for strcmp!");
-	}
+        tmpAction->setStringValue(xp_get_string("value", "strcmp"));
+        if (xp_get_value("variable2")) {
+          ERROR("Can not have both a value and a variable2 for strcmp!");
+        }
       } else {
-	tmpAction->setVarIn2Id(xp_get_var("variable2", "strcmp"));
+        tmpAction->setVarIn2Id(xp_get_var("variable2", "strcmp"));
       }
       tmpAction->setActionType(CAction::E_AT_VAR_STRCMP);
     } else if(!strcmp(actionElem, "trim")) {
@@ -1583,47 +1583,52 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setActionType(CAction::E_AT_VAR_TRIM);
     } else if(!strcmp(actionElem, "exec")) {
       if((ptr = xp_get_value((char *)"command"))) {
-	tmpAction->setActionType(CAction::E_AT_EXECUTE_CMD);
-	tmpAction->setMessage(ptr);
-      } /* end (ptr = xp_get_value("command")  */ else if((ptr = xp_get_value((char *)"int_cmd"))) {
-	CAction::T_IntCmdType type(CAction::E_INTCMD_STOPCALL); /* assume the default */
+        tmpAction->setActionType(CAction::E_AT_EXECUTE_CMD);
+        tmpAction->setMessage(ptr);
+      } /* end (ptr = xp_get_value("command")  */ 
+      else if((ptr = xp_get_value((char *)"verify"))) {
+        tmpAction->setActionType(CAction::E_AT_VERIFY_CMD);
+        tmpAction->setMessage(ptr);
+      } /* end (ptr = xp_get_value("verify")  */ 
+      else if((ptr = xp_get_value((char *)"int_cmd"))) {
+        CAction::T_IntCmdType type(CAction::E_INTCMD_STOPCALL); /* assume the default */
 
-	if (!strcmp(ptr, "stop_now")) {
-	  type = CAction::E_INTCMD_STOP_NOW;
-	} else if (!strcmp(ptr, "stop_gracefully")) {
-	  type = CAction::E_INTCMD_STOP_ALL;
-	} else if (!strcmp(ptr, "stop_call")) {
-	  type = CAction::E_INTCMD_STOPCALL;
-	}
+        if (!strcmp(ptr, "stop_now")) {
+          type = CAction::E_INTCMD_STOP_NOW;
+        } else if (!strcmp(ptr, "stop_gracefully")) {
+          type = CAction::E_INTCMD_STOP_ALL;
+        } else if (!strcmp(ptr, "stop_call")) {
+          type = CAction::E_INTCMD_STOPCALL;
+        }
 
-	/* the action is well formed, adding it in the */
-	/* tmpActionTable */
-	tmpAction->setActionType(CAction::E_AT_EXEC_INTCMD);
-	tmpAction->setIntCmd(type);
+        /* the action is well formed, adding it in the */
+        /* tmpActionTable */
+        tmpAction->setActionType(CAction::E_AT_EXEC_INTCMD);
+        tmpAction->setIntCmd(type);
 #ifdef PCAPPLAY
       } else if ((ptr = xp_get_value((char *) "play_pcap_audio"))) {
-	tmpAction->setPcapArgs(ptr);
-	tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_AUDIO);
-	hasMedia = 1;
+        tmpAction->setPcapArgs(ptr);
+        tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_AUDIO);
+        hasMedia = 1;
       } else if ((ptr = xp_get_value((char *) "play_pcap_video"))) {
-	tmpAction->setPcapArgs(ptr);
-	tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
-	hasMedia = 1;
+        tmpAction->setPcapArgs(ptr);
+        tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
+        hasMedia = 1;
 #else
       } else if ((ptr = xp_get_value((char *) "play_pcap_audio"))) {
-	ERROR("play_pcap_audio requires pcap support! Please recompile SIPp");
+        ERROR("play_pcap_audio requires pcap support! Please recompile SIPp");
       } else if ((ptr = xp_get_value((char *) "play_pcap_video"))) {
-	ERROR("play_pcap_video requires pcap support! Please recompile SIPp");
+        ERROR("play_pcap_video requires pcap support! Please recompile SIPp");
 #endif
       } else {
-	ERROR("illegal <exec> in the scenario\n");
+        ERROR("illegal <exec> in the scenario\n");
       }
     } else {
       ERROR("Unknown action: %s", actionElem);
     }
 
     /* If the action was not well-formed, there should have already been an
-     * ERROR declaration, thus it is safe to add it here at the end of the loop. */
+    * ERROR declaration, thus it is safe to add it here at the end of the loop. */
     actions->setAction(tmpAction);
 
     xp_close_element();

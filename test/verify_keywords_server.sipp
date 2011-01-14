@@ -36,6 +36,29 @@
     ]]>
   </send>
 
+  <recv request="INVITE" dialog="2" />
+
+   <send dialog="2" >
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      FromNameAndUri: [from_name_and_uri]
+      FromUri: [from_uri]
+      ToNameAndUri: [to_name_and_uri]
+      ToUri: [to_uri]
+      ContactNameAndUri: [contact_name_and_uri]
+      ContactUri: [contact_uri]	  
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+
+    ]]>
+  </send>
+  
 </scenario>
 
 

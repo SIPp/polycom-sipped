@@ -120,6 +120,7 @@ void screen_exit(int rc)
 
   if (rc != EXIT_TEST_RES_UNKNOWN) {
     // Exit is not a normal exit. Just use the passed exit code.
+    DEBUG("exit(%d)\n", rc);
     exit(rc);
   } else {
     // Normal exit: we need to determine if the calls were all
@@ -130,11 +131,14 @@ void screen_exit(int rc)
       
       if ((timeout_exit) && (counter_value_success < 1)) {
         
+      DEBUG("exit(EXIT_TEST_RES_INTERNAL=%d)\n", EXIT_TEST_RES_INTERNAL);
         exit (EXIT_TEST_RES_INTERNAL);
       } else {
+      DEBUG("exit(EXIT_TEST_OK=%d)\n", EXIT_TEST_OK);
         exit(EXIT_TEST_OK);
       }
     } else {
+      DEBUG("exit(EXIT_TEST_FAILED=%d)\n", EXIT_TEST_FAILED);
       exit(EXIT_TEST_FAILED);
     }
   }
@@ -222,7 +226,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
 
   GET_TIME (&currentTime);
-  
+
   c+= sprintf(c, "%s: ", CStat::formatTime(&currentTime));
   c+= vsprintf(c, fmt, ap);
   if (use_errno) {
@@ -235,15 +239,17 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     rotate_errorf();
     if(!error_lfi.fptr) {
       c += sprintf(c, "%s: Unable to create '%s': %s.\n",
-                   screen_exename, screen_logfile, strerror(errno));
+        screen_exename, screen_logfile, strerror(errno));
       screen_exit(EXIT_FATAL_ERROR);
     } else {
+      DEBUG("%s: The following events occured:\n", screen_exename);
       fprintf(error_lfi.fptr, "%s: The following events occured:\n",
-              screen_exename);
+        screen_exename);
       fflush(error_lfi.fptr);
     }
   }
 
+  DEBUG("%s", screen_last_error);
   if(error_lfi.fptr) {
     count += fprintf(error_lfi.fptr, "%s", screen_last_error);
     fflush(error_lfi.fptr);
@@ -254,10 +260,10 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     if (max_log_size && count > max_log_size) {
       print_all_responses = 0;
       if (error_lfi.fptr) {
-	fflush(error_lfi.fptr);
-	fclose(error_lfi.fptr);
-	error_lfi.fptr = NULL;
-	error_lfi.overwrite = false;
+        fflush(error_lfi.fptr);
+        fclose(error_lfi.fptr);
+        error_lfi.fptr = NULL;
+        error_lfi.overwrite = false;
       }
     }
   } else if (fatal) {
@@ -269,17 +275,20 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     if(!screen_inited) {
       if(error == EADDRINUSE) {
         fprintf(stderr, "Address in use\n");
+        DEBUG("Address in use\n");
+        DEBUG("exit(EXIT_BIND_ERROR=%d)\n", EXIT_BIND_ERROR);
         exit(EXIT_BIND_ERROR);
       } else {
-      exit(EXIT_FATAL_ERROR);
+        DEBUG("exit(EXIT_FATAL_ERROR=%d)\n", EXIT_FATAL_ERROR);
+        exit(EXIT_FATAL_ERROR);
       }
     } else {
       if(error == EADDRINUSE) {
         screen_exit(EXIT_BIND_ERROR);
-    } else {
-      screen_exit(EXIT_FATAL_ERROR);
+      } else {
+        screen_exit(EXIT_FATAL_ERROR);
+      }
     }
-  }
   }
 }
 

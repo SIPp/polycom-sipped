@@ -77,24 +77,45 @@ public:
   char           * last_recv_msg;
 
   // remote tag, populated by incoming responses. Referenced by [peer_tag], [remote_tag], [remote_tag_param]
-  char           *peer_tag;
+  char           * peer_tag;
 
   // local tag, populated by incoming responses. Referenced by [local_tag], [local_tag_param]
-  char           *local_tag;
+  char           * local_tag;
+
+  // contact header, populated by incoming responses. Referenced by [contact_uri], [contact_name_and_uri]
+  char           contact_name_and_uri[MAX_HEADER_LEN];
+  char           contact_uri[MAX_HEADER_LEN];
+
+  // to header, populated by incoming responses. Referenced by [to_uri], [to_name_and_uri]
+  char           to_name_and_uri[MAX_HEADER_LEN];
+  char           to_uri[MAX_HEADER_LEN];
+
+  // from header, populated by incoming responses. Referenced by [from_uri], [from_name_and_uri]
+  char           from_name_and_uri[MAX_HEADER_LEN];
+  char           from_uri[MAX_HEADER_LEN];
 
   /* holds the route set */
-  char         * dialog_route_set;
-  char         * next_req_url; // (contact header)
+  char           * dialog_route_set;
+  char           * next_req_url; // (contact header)
 
 public:
-  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), peer_tag(0), local_tag(0), dialog_route_set(0), next_req_url(0),
-  last_recv_msg(0) {};
+  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), peer_tag(0), local_tag(0), 
+    dialog_route_set(0), next_req_url(0), last_recv_msg(0) 
+  {
+    contact_name_and_uri[0] = 0;
+    contact_uri[0] = 0;
+    to_name_and_uri[0] = 0;
+    to_uri[0] = 0;
+    from_name_and_uri[0] = 0;
+    from_uri[0] = 0;
+  };
 
   ~DialogState() 
   { 
     if (last_recv_msg) free (last_recv_msg); 
     if(peer_tag) free(peer_tag);
     if(local_tag) free(local_tag);
+
     if(dialog_route_set) free(dialog_route_set);
     if(next_req_url) free(next_req_url);
   }
@@ -205,15 +226,6 @@ private:
   int   recv_retrans_recv_index;
   int   recv_retrans_send_index;
   unsigned int   recv_timeout;
-
-  /* holds the route set 
-  char         * dialog_route_set;
-  char         * next_req_url;
-  moved to perDialogState
-*/
-
-  /* cseq value for [cseq] keyword */
-// moved to perDialogState  unsigned int   cseq;
 
 #ifdef PCAPPLAY
   int hasMediaInformation;
@@ -332,6 +344,8 @@ private:
 
   void  extract_cseq_method (char* responseCseq, char* msg);
   void  extract_transaction (char* txn, char* msg);
+
+  int   extract_name_and_uri (char* uri, char* name_and_uri, char* msg, const char *name);
 
   int   send_raw(char * msg, int index, int len);
   char * send_scene(int index, int *send_status, int *msgLen);

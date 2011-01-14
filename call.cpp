@@ -386,8 +386,6 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   recv_retrans_recv_index = -1;
   recv_retrans_send_index = -1;
 
-//  dialog_route_set = NULL;
-//  next_req_url = NULL;
 
   last_dialog_state = get_dialogState(-1);
   assert(last_dialog_state);
@@ -408,7 +406,6 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   start_time = clock_tick;
   call_established=false ;
   ack_is_pending=false ;
-//  cseq = base_cseq;
   nb_last_delay = 0;
   use_ipv6 = ipv6;
   queued_msg = NULL;
@@ -2326,6 +2323,25 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           dest += snprintf(dest, left, "%s", ds->local_tag);        
         break;
 
+      case E_Message_Contact_Uri:
+        dest += snprintf(dest, left, "%s", ds->contact_uri);
+        break;
+      case E_Message_Contact_Name_And_Uri:
+        dest += snprintf(dest, left, "%s", ds->contact_name_and_uri);
+        break;
+      case E_Message_To_Uri:
+        dest += snprintf(dest, left, "%s", ds->to_uri);
+        break;
+      case E_Message_To_Name_And_Uri:
+        dest += snprintf(dest, left, "%s", ds->to_name_and_uri);
+        break;
+      case E_Message_From_Uri:
+        dest += snprintf(dest, left, "%s", ds->from_uri);
+        break;
+      case E_Message_From_Name_And_Uri:
+        dest += snprintf(dest, left, "%s", ds->from_name_and_uri);
+        break;
+
       case E_Message_Routes:
         if (ds->dialog_route_set) {
           dest += sprintf(dest, "Route: %s", ds->dialog_route_set);
@@ -2923,6 +2939,41 @@ void call::computeRouteSetAndRemoteTargetUri (char* rr, char* contact, bool bReq
   }
 }
 
+/* Expects uri and name_and_uri to be allocated and of size at least MAX_HEADER_LEN */
+/* If header 'name' found in msg, uri and name_and_uri are set, possibly to blank. If not specified, no values changed */
+/* Returns 1 if header found, 0 if not */
+int call::extract_name_and_uri (char* uri, char* name_and_uri, char* msg, const char *name)
+{
+  char *header = get_header_content(msg, name);
+  if (!header) {
+    return 0;
+  }
+
+  char* start_uri = strchr(header, '<');
+  if (start_uri) 
+  {
+    /* Existence of < indicates stuff preceeding is display name, put both in name_and_uri */
+    char *end_uri = strrchr(header, '>');
+    strncpy(name_and_uri, header, end_uri - header + 1);
+    name_and_uri[end_uri-header+1] = 0;
+
+    /* And put stuff inside <...> in uri */
+    strncpy(uri, start_uri + 1, MAX_HEADER_LEN);
+    start_uri = strrchr(uri, '>');
+    *start_uri = '\0';
+  }
+  else {
+    /* No < specified, entire message copied to both */
+    strncpy(uri, header, MAX_HEADER_LEN);
+    strncpy(name_and_uri, header, MAX_HEADER_LEN);
+  }
+
+  DEBUG_OUT("%s has uri '%s' and name_and_uri '%s'", name, uri, name_and_uri);
+  return 1;
+}
+
+
+
 bool call::matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *txn, string &call_id)
 {
   bool result = false;
@@ -3314,7 +3365,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     LOG_MSG("Message received without local tag, though local tag '%s' has been specified. Local tag will not be removed.", ds->local_tag);
   }
   
-
+  /* Update contact_, to_ & from_  _name_and_uri & _uri variables */
+  extract_name_and_uri(ds->contact_uri, ds->contact_name_and_uri, msg, "Contact:");
+  extract_name_and_uri(ds->to_uri, ds->to_name_and_uri, msg, "To:");
+  extract_name_and_uri(ds->from_uri, ds->from_name_and_uri, msg, "From:");
 
   /* If we are part of a transaction, mark this as the final response. */
   if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
@@ -3399,7 +3453,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       memset(rr, 0, sizeof(rr));
       strcpy(rr, get_header_content(msg, (char*)"Record-Route:"));
 
-      // WARNING("rr [%s]", rr);
+      DEBUG("rr [%s]", rr);
       char ch[MAX_HEADER_LEN];
       strcpy(ch, get_header_content(msg, (char*)"Contact:"));
 
@@ -3419,7 +3473,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       {
         computeRouteSetAndRemoteTargetUri (rr, ch, true, ds);
       }
-      // WARNING("ds->next_req_url is [%s]", next_req_url);
+      DEBUG("ds->next_req_url is [%s]", ds->next_req_url ? ds->next_req_url : "NULL");
   }
 
 #ifdef _USE_OPENSSL
@@ -3508,6 +3562,30 @@ double call::get_rhs(CAction *currentAction) {
   } else {
     return currentAction->getDoubleValue();
   }
+}
+
+void execute_system_shell_and_exit(char *x)
+{
+// Execute shell in different ways via compiler check.
+// This is required because cygwin wrongly returns true for system(0)
+// even when the shell is not available
+// For some reason if system is invoked when sh is not available the program seg faults.
+// This is avoided by ifdef'ing out the system() call in favor of exec of cmd.exe on Windows.
+#ifndef __CYGWIN
+  int ret = system(x); // second child runs
+  if(ret == -1) {
+    WARNING("system call error for %s",x);
+  }
+  TRACE_MSG("Exec of '%s' returned %d", x, WEXITSTATUS(ret));
+  exit(WEXITSTATUS(ret));
+
+
+#else
+  // sh not available, use exec(command)
+  int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
+  ERROR_NO("Exec of 'cmd.exe /c %s' failed", x);
+#endif
+
 }
 
 call::T_ActionResult call::executeAction(char * msg, message *curmsg)
@@ -3876,9 +3954,29 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
     } else if (currentAction->getActionType() == CAction::E_AT_LOG_ERROR) {
       char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
       ERROR("%s", x);
-    } else if (currentAction->getActionType() == CAction::E_AT_EXECUTE_CMD) {
+    } else if ((currentAction->getActionType() == CAction::E_AT_EXECUTE_CMD) ||
+               (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD)) {
       char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
-      TRACE_MSG("<exec> of \"%s\"\n", x);
+      char redirect_command[MAX_HEADER_LEN];
+      bool verify_result = (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD);
+
+      // Add redirct to command and point x at modified string.
+      if (useExecf) {
+        DEBUG("Appending logging information to exec command\n");
+        snprintf(redirect_command, MAX_HEADER_LEN, "%s >> %s 2>&1", x, exec_lfi.file_name);
+        x = redirect_command;
+      }
+
+      if (verify_result) {
+        TRACE_EXEC("<exec> verify \"%s\"\n", x);
+      }
+      else {
+        TRACE_EXEC("<exec> command \"%s\"\n", x);
+      }
+
+      if (useExecf)
+        log_off(&exec_lfi);
+
       pid_t l_pid;
       switch(l_pid = fork())
       {
@@ -3889,38 +3987,45 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
       case 0:
         // first child process - execute the command
-        if((l_pid = fork()) < 0) {
-          ERROR_NO("Forking error child");
-        } else {
-          if( l_pid == 0){
-            // Execute shell in different ways via compiler check.
-            // This is required because cygwin wrongly returns true for system(0)
-            // even when the shell is not available
-            // For some reason if system is invoked when sh is not available the program seg faults.
-            // This is avoided by ifdef'ing out the system() call in favor of exec of cmd.exe on Windows.
-#ifndef __CYGWIN
-            int ret = system(x); // second child runs
-            if(ret == -1) {
-              WARNING("system call error for %s",x);
-            }
-#else
-            // sh not available, use exec(command)
-            int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
-            ERROR_NO("Exec of cmd.exe /c %s failed", x);
-#endif
-          }
-          exit(EXIT_OTHER); 
+        if (verify_result) {
+          /* run command in this process and return exit code to waiting main sipp process */
+          execute_system_shell_and_exit(x);
         }
+        else {
+          /* fork again so command runs in background (this process will return EXIT_SUCCESS if system/exec works) */
+          if((l_pid = fork()) < 0) {
+            ERROR_NO("Forking error child");
+          } else {
+            if( l_pid == 0){
+              execute_system_shell_and_exit(x);
+            } // if ( l_pid == 0) 
+            exit(EXIT_SUCCESS);
+          }
+        } // if (verify_result)
         break;
       default:
         // parent process continue
         // reap first child immediately
         pid_t ret;
-        while ((ret=waitpid(l_pid, NULL, 0)) != l_pid) {
+        int status;
+        DEBUG("E_AT_EXECUTE_CMD: parent process continue.");
+        while ((ret=waitpid(l_pid, &status, 0)) != l_pid) {
+          DEBUG("E_AT_EXECUTE_CMD: waitpid returned other than l_pid (%d), exited = %d, status = %d.", ret, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
           if (ret != -1) {
-            ERROR("waitpid returns %1d for child %1d",ret,l_pid);
+            ERROR("waitpid returns %1d for child %1d", ret,l_pid);
           }
         }
+        DEBUG("E_AT_EXECUTE_CMD: parent complete, exited = %d, status = %d.", WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
+        if (verify_result) {
+          if (!WIFEXITED(status)) {
+            ERROR("'%s' did not exit normally (status = %d)", x, status);
+          }
+          else if (WEXITSTATUS(status) != EXIT_SUCCESS) {
+            ERROR("'%s' returned result code %d", x, WEXITSTATUS(status));
+          }
+        } // if (verify_result)
+
+
         break;
       }
     } else if (currentAction->getActionType() == CAction::E_AT_EXEC_INTCMD) {

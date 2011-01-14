@@ -21,7 +21,10 @@ require 'English'
 #   [see http://t-a-w.blogspot.com/2010/04/how-to-kill-all-your-children.html]
 
 class SippTest
-  attr_accessor :client_options, :server_options, :logging, :expected_client_output, :expected_server_output
+  attr_accessor :client_options, :server_options, :logging, 
+                :expected_client_output, :expected_server_output, 
+				:expected_minimum_run_time, :expected_maximum_run_time, :run_time,
+				:expected_exitstatus
   
   def initialize(name, client_options, server_options = '')
     @name = name
@@ -38,12 +41,16 @@ class SippTest
 
     @server_pid = -1
     @server_aborted = false
+	
+	@run_time = 0;
+	@expected_exitstatus = 0;
 
   end
 
   def run
     print "Test #{@name} " unless @logging == "silent"
-    print "\n" unless @logging != "verbose"
+
+    start_time = Time.now
 
     start_sipp_server(server_commandline)
 
@@ -51,12 +58,14 @@ class SippTest
 
     stop_sipp_server()
 
+    @run_time = Time.now - start_time
+	
     if (success)
       success = post_execution_validation()
     end
 
-    puts result_message(success) unless @logging == "silent"
-    
+    puts "#{result_message(success)}\n" unless @logging == "silent"
+	
     return success;
   end
 
@@ -84,6 +93,18 @@ class SippTest
 		result = false;
 	  end
 	end
+	if (!@expected_minimum_run_time.nil?)
+      if (@expected_minimum_run_time > @run_time)
+	    puts "Run time #{@run_time} is less than expected minimum of #{@expected_minimum_run_time}.\n" unless @logging == "silent"
+		result = false;
+	  end
+	end
+	if (!@expected_maximum_run_time.nil?)
+      if (@expected_maximum_run_time < @run_time)
+	    puts "Run time #{@run_time} is greater than expected maximum of #{@expected_maximum_run_time}.\n" unless @logging == "silent"
+		result = false;
+	  end
+	end
 	
    #override to perform any additional follow-up tests here.
    return result
@@ -93,21 +114,30 @@ class SippTest
     success = false;
     puts "Executing client with '#{testcase_client}'" unless @logging != "verbose"
 
-    if (!system(testcase_client))
-      if ($CHILD_STATUS.exitstatus == -1)
-        @error_message = "[ERROR] - Failed to execute"
-      elsif ($CHILD_STATUS.exitstatus & 127)
-        @error_message =  "[ERROR] - child died with signal #{$CHILD_STATUS.exitstatus & 127}"
-      elsif ($CHILD_STATUS.exitstatus != 0)
-        @error_message =  "[FAIL] exited with value #{$CHILD_STATUS.exitstatus >> 8}"
+    result = system(testcase_client)
+	print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n"
+	
+	if (result && @expected_exitstatus == 0)
+	  success = true
+    elsif ($CHILD_STATUS.exitstatus == -1)
+      @error_message = "[ERROR] - Failed to execute"
+    elsif ($CHILD_STATUS.signaled?)
+      @error_message =  "[ERROR] - child died with signal #{$CHILD_STATUS.termsig}]"
+    elsif ($CHILD_STATUS.exited?)
+	  if ($CHILD_STATUS.exitstatus != @expected_exitstatus)
+		@error_message =  "[FAIL] exited with value #{$CHILD_STATUS.exitstatus} while expecting #{@expected_exitstatus}."
+	  else
+		success = true
       end
-    else
-      success = true;
+	else 
+	  @error_message = "Unknown failure: #{$CHILD_STATUS.to_s}"
     end
+	print "Success = #{success} \n";
     return success
   end
 
   def result_message(success)
+    print "\nTest #{@name} " if @logging == "verbose"
     if (success)
       return "[PASS]"
     else

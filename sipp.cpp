@@ -48,6 +48,7 @@ void rotate_calldebugf();
 void rotate_shortmessagef();
 void rotate_logfile();
 void rotate_debugf();
+void rotate_execf();
 
 #ifdef _USE_OPENSSL
 SSL_CTX  *sip_trp_ssl_ctx = NULL; /* For SSL cserver context */
@@ -174,9 +175,13 @@ struct sipp_option options_table[] = {
 		SIPP_OPTION_DEFAULTS, &default_behaviors, 1},
 	{"dump_xml", "Dump expanded XML to screen. Useful for debugging includes", SIPP_OPTION_SETFLAG, &dump_xml, 1},
 	{"dump_sequence_diagram", "Dump sequence diagram.", SIPP_OPTION_SETFLAG, &dump_sequence_diagram, 1},
+	{"debug_file", "Set the name of the call debug file.", SIPP_OPTION_LFNAME, &debug_lfi, 1},
+	{"debug_overwrite", "Overwrite the call debug file (default true).", SIPP_OPTION_LFOVERWRITE, &debug_lfi, 1},
 
 	{"error_file", "Set the name of the error log file.", SIPP_OPTION_LFNAME, &error_lfi, 1},
 	{"error_overwrite", "Overwrite the error log file (default true).", SIPP_OPTION_LFOVERWRITE, &error_lfi, 1},
+	{"exec_file", "Set the name of the exec log file.", SIPP_OPTION_LFNAME, &exec_lfi, 1},
+	{"exec_overwrite", "Overwrite the call debug file (default true).", SIPP_OPTION_LFOVERWRITE, &exec_lfi, 1},
 
 	{"f", "Set the statistics report frequency on screen. Default is 1 and default unit is seconds.", SIPP_OPTION_TIME_SEC, &report_freq, 1},
 	{"fd", "Set the statistics dump log report frequency. Default is 60 and default unit is seconds.", SIPP_OPTION_TIME_SEC, &report_freq_dumpLog, 1},
@@ -321,6 +326,7 @@ struct sipp_option options_table[] = {
 	{"trace_err", "Trace all unexpected messages in <scenario file name>_<pid>_errors.log.", SIPP_OPTION_SETFLAG, &print_all_responses, 1},
 //	{"trace_timeout", "Displays call ids for calls with timeouts in <scenario file name>_<pid>_timeout.log", SIPP_OPTION_SETFLAG, &useTimeoutf, 1},
 	{"trace_debug", "Dumps debugging information about SIPp execution and ALL other messages to <scenario_name>_<pid>_DEBUG.log file.", SIPP_OPTION_SETFLAG, &useDebugf, 1},
+	{"trace_exec", "Redirects output from <exec> commands to <scenario_name>_<pid>_EXEC.log file.", SIPP_OPTION_SETFLAG, &useExecf, 1},
 	{"trace_calldebug", "Dumps debugging information about aborted calls to <scenario_name>_<pid>_calldebug.log file.", SIPP_OPTION_SETFLAG, &useCallDebugf, 1},
 	{"trace_stat", "Dumps all statistics in <scenario_name>_<pid>.csv file. Use the '-h stat' option for a detailed description of the statistics file content.", SIPP_OPTION_SETFLAG, &dumpInFile, 1},
 	{"trace_counts", "Dumps individual message counts in a CSV file.", SIPP_OPTION_SETFLAG, &useCountf, 1},
@@ -800,7 +806,7 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
         clock_tick / 1000, (clock_tick % 1000) / 10,
         total_calls,
         TRANSPORT_TO_STRING(transport));
-    } else {
+    } else if( creationMode == MODE_CLIENT)  {
       assert(creationMode == MODE_CLIENT);
       if (users >= 0) {
         fprintf(f, "     Users (length)");
@@ -816,6 +822,8 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
         remote_ip,
         remote_port,
         TRANSPORT_TO_STRING(transport));
+    } else {
+      fprintf(f, "Neither CLIENT nor SERVER mode.");
     }
 
     /* 1st line */
@@ -4308,7 +4316,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.7"
+	  printf("\n SIPped v3.2.8"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4863,6 +4871,7 @@ int main(int argc, char *argv[])
     useLogf = 1;
     print_all_responses = 1;
     useScreenf = 1;
+    useExecf = 1;
   }
   
   if (useMessagef == 1) {
@@ -4877,7 +4886,11 @@ int main(int argc, char *argv[])
     rotate_calldebugf();
   }
   
-  if (useScreenf == 1) {
+ if (useExecf) {
+    rotate_execf();
+  }
+  
+ if (useScreenf == 1) {
     char L_file_name [MAX_PATH];
     sprintf (L_file_name, "%s_%d_screen.log", scenario_file, getpid());
     screenf = fopen(L_file_name, "w");
@@ -4993,6 +5006,8 @@ int main(int argc, char *argv[])
   call::dynamicId      = startDynamicId;
   call::stepDynamicId  = stepDynamicId;
 
+  /* initialize [remote_ip] and [local_ip] keywords for use in <init> section */
+  determine_remote_and_local_ip();
 
   /* Now Initialize the scenarios. */
   main_scenario->runInit();
@@ -5260,10 +5275,7 @@ void close_calls(struct sipp_socket *socket) {
   delete owners;
 }
 
-int open_connections() {
-  int status=0;
-  local_port = 0;
-  
+int determine_remote_ip() {
   if(!strlen(remote_host)) {
     if((sendMode != MODE_SERVER)) {
       ERROR("Missing remote host parameter. This scenario requires it");
@@ -5274,7 +5286,7 @@ int open_connections() {
     if (temp_remote_port != 0) {
       remote_port = temp_remote_port;
     }
- 
+
     /* Resolving the remote IP */
     {
       struct addrinfo   hints;
@@ -5288,18 +5300,18 @@ int open_connections() {
 
       /* FIXME: add DNS SRV support using liburli? */
       if (getaddrinfo(remote_host,
-                      NULL,
-                      &hints,
-                      &local_addr) != 0) {
-        ERROR("Unknown remote host '%s'.\n"
-                 "Use 'sipp -h' for details", remote_host);
+        NULL,
+        &hints,
+        &local_addr) != 0) {
+          ERROR("Unknown remote host '%s'.\n"
+            "Use 'sipp -h' for details", remote_host);
       }
 
       memset(&remote_sockaddr, 0, sizeof( remote_sockaddr ));
       memcpy(&remote_sockaddr,
-             local_addr->ai_addr,
-             SOCK_ADDR_SIZE(
-               _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
+        local_addr->ai_addr,
+        SOCK_ADDR_SIZE(
+        _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
 
       freeaddrinfo(local_addr);
 
@@ -5315,8 +5327,11 @@ int open_connections() {
       }
       fprintf(stderr,"Done.\n");
     }
-   }
+  }
 
+} // determine_remote_ip
+
+int determine_local_ip() {
   if(gethostname(hostname,64) != 0) {
     ERROR_NO("Can't get local hostname in 'gethostname(hostname,64)'");
   }
@@ -5367,7 +5382,17 @@ int open_connections() {
       strcpy(local_ip_escaped, local_ip);
     }
   }
+} // determine_local_ip
 
+int determine_remote_and_local_ip() {
+  determine_remote_ip();
+  determine_local_ip();
+} // determine_remote_and_local_ip
+
+int open_connections() {
+  int status=0;
+  local_port = 0;
+  
   /* Creating and binding the local socket */
   if ((main_socket = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
     ERROR_NO("Unable to get the local socket");
@@ -5610,7 +5635,7 @@ int open_connections() {
     }
 
   return status;
-            }
+            } // open_connections
 
 
 void connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *peer_sockaddr, char *peer_ip, struct sipp_socket **peer_socket) {
@@ -5837,14 +5862,14 @@ void rotatef(struct logfile_info *lfi) {
 
   if (ringbuffer_files > 0) {
     if (!lfi->ftimes) {
-	lfi->ftimes = (struct logfile_id *)calloc(ringbuffer_files, sizeof(struct logfile_id));
+      lfi->ftimes = (struct logfile_id *)calloc(ringbuffer_files, sizeof(struct logfile_id));
     }
     /* We need to rotate away an existing file. */
     if (lfi->nfiles == ringbuffer_files) {
       if ((lfi->ftimes)[0].n) {
-	sprintf(L_rotate_file_name, "%s_%d_%s_%lu.%d.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[0].start, (lfi->ftimes)[0].n);
+        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.%d.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[0].start, (lfi->ftimes)[0].n);
       } else {
-	sprintf(L_rotate_file_name, "%s_%d_%s_%lu.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[0].start);
+        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[0].start);
       }
       unlink(L_rotate_file_name);
       lfi->nfiles--;
@@ -5855,12 +5880,12 @@ void rotatef(struct logfile_info *lfi) {
       (lfi->ftimes)[lfi->nfiles].n = 0;
       /* If we have the same time, then we need to append an identifier. */
       if (lfi->nfiles && ((lfi->ftimes)[lfi->nfiles].start == (lfi->ftimes)[lfi->nfiles - 1].start)) {
-	  (lfi->ftimes)[lfi->nfiles].n = (lfi->ftimes)[lfi->nfiles - 1].n + 1;
+        (lfi->ftimes)[lfi->nfiles].n = (lfi->ftimes)[lfi->nfiles - 1].n + 1;
       }
       if ((lfi->ftimes)[lfi->nfiles].n) {
-	sprintf(L_rotate_file_name, "%s_%d_%s_%lu.%d.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[lfi->nfiles].start, (lfi->ftimes)[lfi->nfiles].n);
+        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.%d.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[lfi->nfiles].start, (lfi->ftimes)[lfi->nfiles].n);
       } else {
-	sprintf(L_rotate_file_name, "%s_%d_%s_%lu.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[lfi->nfiles].start);
+        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[lfi->nfiles].start);
       }
       lfi->nfiles++;
       fflush(lfi->fptr);
@@ -5879,7 +5904,7 @@ void rotatef(struct logfile_info *lfi) {
   }
   if(lfi->check && !lfi->fptr) {
     /* We can not use the error functions from this function, as we may be rotating the error log itself! */
-    ERROR("Unable to create '%s'", lfi->file_name);
+    ERROR("Unable to open/create '%s'", lfi->file_name);
   }
 }
 
@@ -5909,6 +5934,11 @@ void rotate_errorf() {
 void rotate_debugf() {
   rotatef(&debug_lfi);
 }
+
+void rotate_execf() {
+  rotatef(&exec_lfi);
+}
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -5974,6 +6004,21 @@ int _TRACE_CALLDEBUG(const char *fmt, ...) {
 
   va_start(ap, fmt);
   ret = _trace(&calldebug_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
+int _TRACE_EXEC(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  // re-open exec log file if not open from previous exec command
+  if (useExecf && !exec_lfi.fptr)
+    rotatef(&exec_lfi);
+
+  va_start(ap, fmt);
+  ret = _trace(&exec_lfi, fmt, ap);
   va_end(ap);
 
   return ret;

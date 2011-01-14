@@ -35,6 +35,7 @@ foreach my $request (@ARGV)
     {
     	print "Pressing $request \n";
     	post_request($TA_PRESS, $request);
+        sleep $DELAY;
     }
 }
 

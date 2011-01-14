@@ -92,9 +92,13 @@ struct KeywordMap DialogSpecificKeywords[] = {
   {"remote_tag", E_Message_Remote_Tag },
   {"local_tag_param", E_Message_Local_Tag_Param },
   {"local_tag", E_Message_Local_Tag },
-// to_uri, to_value, from_uri, from_value
-// contact_number, contact_uri, contact_value
-// local_tag, local_tag_param
+  {"contact_uri", E_Message_Contact_Uri },
+  {"contact_name_and_uri", E_Message_Contact_Name_And_Uri },
+  {"to_uri", E_Message_To_Uri },
+  {"to_name_and_uri", E_Message_To_Name_And_Uri },
+  {"from_uri", E_Message_From_Uri },
+  {"from_name_and_uri", E_Message_From_Name_And_Uri },
+// contact_number
 };
 
 #define KEYWORD_SIZE 256
