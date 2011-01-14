@@ -115,7 +115,7 @@ class SippTest
     puts "Executing client with '#{testcase_client}'" unless @logging != "verbose"
 
     result = system(testcase_client)
-	print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n"
+	print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" unless @logging != "verbose"
 	
 	if (result && @expected_exitstatus == 0)
 	  success = true
@@ -132,7 +132,6 @@ class SippTest
 	else 
 	  @error_message = "Unknown failure: #{$CHILD_STATUS.to_s}"
     end
-	print "Success = #{success} \n";
     return success
   end
 

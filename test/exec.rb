@@ -11,7 +11,7 @@ require 'sipp_test'
 class Exec < Test::Unit::TestCase
   def test_exec_command
   	# verify <exec command=""> [runs fast, doesn't mind 123 exit code]
-    test = SippTest.new("exec_command", "-sf exec_command.sipp -m 1 -l 1 -trace_exec -key command \"sleep 2 && echo test && perl -e 'exit 123'\"", "-sn uas -aa ")
+    test = SippTest.new("exec_command", "-sf exec_command.sipp -m 1 -l 1 -key command \"sleep 2 && echo test && perl -e 'exit 123'\"", "-sn uas -aa ")
 	test.expected_maximum_run_time = 1
     assert(test.run())
 	sleep 2 # be sure child process has finished before test case finishes so address is no longer in use.
@@ -19,7 +19,7 @@ class Exec < Test::Unit::TestCase
   
   def test_exec_verify_pass
 	# verify <exec verify=""> with pass [runs slow, passes with 0 exit code]
-    test = SippTest.new("exec_verify_pass", "-sf exec_verify.sipp -m 1 -l 1 -trace_exec -key command \"sleep 2 && echo test && perl -e 'exit 0'\"", "-sn uas -aa ")
+    test = SippTest.new("exec_verify_pass", "-sf exec_verify.sipp -m 1 -l 1 -key command \"sleep 2 && echo test && perl -e 'exit 0'\"", "-sn uas -aa ")
 	test.expected_minimum_run_time = 2
     assert(test.run())
   end
