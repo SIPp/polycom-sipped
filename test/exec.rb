@@ -35,7 +35,7 @@ class Exec < Test::Unit::TestCase
   def test_exec_logging
 	# verify <exec command> with stdout & stderr logging. [log file to end up with output]
 	atime = Time.now
-    test = SippTest.new("test_exec_logging", "-sf exec_two_verifies.sipp -m 1 -l 1 -exec_file exec_output.log -key command \"echo #{atime.to_s}\"", "-sn uas -aa ")
+    test = SippTest.new("test_exec_logging", "-sf exec_two_verifies.sipp -m 1 -l 1 -trace_exec -exec_file exec_output.log -key command \"echo #{atime.to_s}\"", "-sn uas -aa ")
     assert(test.run())
 	# verify that exec_output.log  contains #{atime.to_s}
 	data = File.read("exec_output.log")
