@@ -11,23 +11,23 @@ require 'sipp_test'
 class Exec < Test::Unit::TestCase
   def test_exec_command
   	# verify <exec command=""> [runs fast, doesn't mind 123 exit code]
-    test = SippTest.new("exec_command", "-sf exec_command.sipp -m 1 -l 1 -key command \"sleep 2 && echo test && perl -e 'exit 123'\"", "-sn uas -aa ")
-	test.expected_maximum_run_time = 1
+    test = SippTest.new("exec_command", "-sf exec_command.sipp -m 1 -l 1 -key command \"sleep 3 && echo test \"", "-sn uas -aa ")
+	test.expected_maximum_run_time = 2.5
     assert(test.run())
-	sleep 2 # be sure child process has finished before test case finishes so address is no longer in use.
+	sleep 3 # be sure child process has finished before test case finishes so address is no longer in use.
   end
   
   def test_exec_verify_pass
 	# verify <exec verify=""> with pass [runs slow, passes with 0 exit code]
-    test = SippTest.new("exec_verify_pass", "-sf exec_verify.sipp -m 1 -l 1 -key command \"sleep 2 && echo test && perl -e 'exit 0'\"", "-sn uas -aa ")
-	test.expected_minimum_run_time = 2
+    test = SippTest.new("exec_verify_pass", "-sf exec_verify.sipp -m 1 -l 1 -key command \"perl -e 'sleep 3; exit 0;'\"", "-sn uas -aa ")
+	test.expected_minimum_run_time = 3
     assert(test.run())
   end
   
   def test_exec_verify_fail
 	# verify <exec verify=""> with fail [runs slow, causes sipp to exit with failure code]
-    test = SippTest.new("exec_verify_fail", "-sf exec_verify.sipp -m 1 -l 1 -key command \"sleep 2 && echo test && perl -e 'exit 123'\"", "-sn uas -aa ")
-	test.expected_minimum_run_time = 2
+    test = SippTest.new("exec_verify_fail", "-sf exec_verify.sipp -m 1 -l 1 -key command \"perl -e 'sleep 3; exit 123;'\"", "-sn uas -aa ")
+	test.expected_minimum_run_time = 3
 	test.expected_exitstatus = 255
     assert(test.run())
   end
@@ -39,8 +39,8 @@ class Exec < Test::Unit::TestCase
     assert(test.run())
 	# verify that exec_output.log  contains #{atime.to_s}
 	data = File.read("exec_output.log")
-	expected = "<exec> verify \"echo #{atime.to_s} >> exec_output.log 2>&1\"\n#{atime.to_s}\n<exec> verify \"echo #{atime.to_s} >> exec_output.log 2>&1\"\n#{atime.to_s}\n"
-	assert(data == expected)
+	expected = test.remove_space_and_crlf("<exec> verify \"echo #{atime.to_s} >> exec_output.log 2>&1\"\n#{atime.to_s}\n<exec> verify \"echo #{atime.to_s} >> exec_output.log 2>&1\"\n#{atime.to_s}\n")
+	assert(test.remove_space_and_crlf(data) == expected, "data == expected")
   end
 
 end

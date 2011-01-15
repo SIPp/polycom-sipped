@@ -201,5 +201,12 @@ class SippTest
 	puts "%Q!#{output}!"
   end
 
+  def remove_space_and_crlf(astring)
+	output = astring.gsub("\r", "")
+	output.gsub!("\n", "")
+	output.gsub!(" ", "")	
+	return output
+  end
+  
 end # class SippTest
 
