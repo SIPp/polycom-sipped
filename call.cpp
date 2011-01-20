@@ -1385,10 +1385,11 @@ bool call::next()
       new_msg_index = (*msgs)[msg_index]->next;
     }
   }
-  DEBUG("msg_index = %d, new_msg_index = %d", msg_index, new_msg_index);
+  DEBUG("msg_index = %d, new_msg_index = %d, msgs.size = %d", msg_index, new_msg_index, (int)((*msgs).size()) );
   msg_index=new_msg_index;
   recv_timeout = 0;
   if(msg_index >= (int)((*msgs).size())) {
+    DEBUG("Processed all messages: terminating successfully.");
     terminate(CStat::E_CALL_SUCCESSFULLY_ENDED);
     return false;
   }
@@ -3571,6 +3572,7 @@ void execute_system_shell_and_exit(char *x)
 // even when the shell is not available
 // For some reason if system is invoked when sh is not available the program seg faults.
 // This is avoided by ifdef'ing out the system() call in favor of exec of cmd.exe on Windows.
+  DEBUG_IN("pid = %d", getpid());
 #ifndef __CYGWIN
   int ret = system(x); // second child runs
   if(ret == -1) {
@@ -3960,12 +3962,17 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       char redirect_command[MAX_HEADER_LEN];
       bool verify_result = (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD);
 
+
       // Add redirct to command and point x at modified string.
+
+#ifndef __CYGWIN
       if (useExecf) {
         DEBUG("Appending logging information to exec command\n");
         snprintf(redirect_command, MAX_HEADER_LEN, "%s >> %s 2>&1", x, exec_lfi.file_name);
         x = redirect_command;
+        log_off(&exec_lfi);
       }
+#endif
 
       if (verify_result) {
         TRACE_EXEC("<exec> verify \"%s\"\n", x);
@@ -3973,9 +3980,6 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       else {
         TRACE_EXEC("<exec> command \"%s\"\n", x);
       }
-
-      if (useExecf)
-        log_off(&exec_lfi);
 
       pid_t l_pid;
       switch(l_pid = fork())
@@ -3999,7 +4003,8 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
             if( l_pid == 0){
               execute_system_shell_and_exit(x);
             } // if ( l_pid == 0) 
-            exit(EXIT_SUCCESS);
+          DEBUG("E_AT_EXECUTE_CMD: second fork's parent process is calling exit(EXIT_SUCCESS). l_pid = %d.", l_pid);
+          exit(EXIT_SUCCESS);
           }
         } // if (verify_result)
         break;
@@ -4008,7 +4013,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         // reap first child immediately
         pid_t ret;
         int status;
-        DEBUG("E_AT_EXECUTE_CMD: parent process continue.");
+        DEBUG("E_AT_EXECUTE_CMD: parent process continue (l_pid = %d).", l_pid);
         while ((ret=waitpid(l_pid, &status, 0)) != l_pid) {
           DEBUG("E_AT_EXECUTE_CMD: waitpid returned other than l_pid (%d), exited = %d, status = %d.", ret, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
           if (ret != -1) {
@@ -4024,7 +4029,6 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
             ERROR("'%s' returned result code %d", x, WEXITSTATUS(status));
           }
         } // if (verify_result)
-
 
         break;
       }

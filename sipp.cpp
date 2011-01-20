@@ -1517,11 +1517,11 @@ void print_statistics(int last)
 	} else {
 	  printf("Last Error: %s" SIPP_ENDL, errstart);
 	}
-	fflush(stdout);
+  fflush(stdout);
     }
     if (command_mode) {
 	printf("Command: %s", command_buffer ? command_buffer : "");
-	fflush(stdout);
+  fflush(stdout);
     }
     if(last) { fprintf(stdout,"\n"); }
   }
@@ -4887,7 +4887,7 @@ int main(int argc, char *argv[])
   }
   
  if (useExecf) {
-    rotate_execf();
+ //   rotate_execf();
   }
   
  if (useScreenf == 1) {
