@@ -3972,14 +3972,20 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         x = redirect_command;
         log_off(&exec_lfi);
       }
-#endif
-
       if (verify_result) {
         TRACE_EXEC("<exec> verify \"%s\"\n", x);
       }
       else {
         TRACE_EXEC("<exec> command \"%s\"\n", x);
       }
+#else
+      if (verify_result) {
+        DEBUG("<exec> verify \"%s\"\n", x);
+      }
+      else {
+        DEBUG("<exec> command \"%s\"\n", x);
+      }
+#endif
 
       pid_t l_pid;
       switch(l_pid = fork())

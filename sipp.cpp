@@ -4886,9 +4886,7 @@ int main(int argc, char *argv[])
     rotate_calldebugf();
   }
   
- if (useExecf) {
- //   rotate_execf();
-  }
+  // don't need to call rotate for Execf as it's handled each time in TRACE_EXEC
   
  if (useScreenf == 1) {
     char L_file_name [MAX_PATH];
