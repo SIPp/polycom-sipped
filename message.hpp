@@ -62,6 +62,9 @@ typedef enum {
   E_Message_DynamicId,   // general usage, global, autoincrementing and wrapping counter
   E_Message_Call_ID,
   E_Message_CSEQ,
+  E_Message_CSEQ_Method,
+  E_Message_Received_CSEQ,
+  E_Message_Received_CSEQ_Method,
   E_Message_PID,
   E_Message_Service,
   E_Message_Branch,
@@ -86,6 +89,7 @@ typedef enum {
   E_Message_Last_Header,
   E_Message_Last_Request_URI,
   E_Message_Last_CSeq_Number,
+  E_Message_Last_Branch,
   E_Message_Last_Message,
   E_Message_TDM_Map,
   E_Message_Authentication,
@@ -154,7 +158,7 @@ struct MessageComponent {
   MessageCompType type;
   char *literal;
   int literalLen;
-  int offset;
+  int offset;        // amount added or subtracted from stored value (-1 in case of [cseq-1])
   int varId;
   int dialog_number; // component may refer to another dialog in case of _n syntax
   union u {

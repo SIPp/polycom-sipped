@@ -436,7 +436,7 @@ int xp_set_xml_buffer_from_file(char * filename, int dumpxml)
   if (dumpxml)
     printf("%s", &xp_file);
 
-    xp_file[index++] = 0;
+  xp_file[index++] = 0;
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
 
@@ -452,70 +452,115 @@ int xp_set_xml_buffer_from_file(char * filename, int dumpxml)
 
 char * xp_open_element(int index)
 {
+  return xp_open_element_skip_control(index, 1);
+}
+
+char * debug_buffer(char * ptr)
+{
+    static char          buf[50];
+    int i=0;
+
+    if (ptr) {
+      for (; (i<49&&ptr[i]!=0); i++) {
+        buf[i] = ptr[i];
+      }
+    }
+  buf[i] = 0;
+  return buf;
+}
+
+char * xp_open_element_skip_control(int index, int skip_scenario)
+{
   char * ptr = xp_position[xp_stack];
   int level = 0;
   static char name[XP_MAX_NAME_LEN];
 
+  DEBUG("xp_open_element: index = %d, skip_scenario = %d, xp_stack = %d, ptr = '%s'\n", index, skip_scenario, xp_stack, debug_buffer(ptr));
+
   while(*ptr) {
     if (*ptr == '<') {
       if ((*(ptr+1) == '!') && 
-          (*(ptr+2) == '[') &&
-          (strstr(ptr,"<![CDATA[") == ptr)) {
-        char * cdata_end = strstr(ptr, "]]>");
-        if(!cdata_end) return NULL;
-        ptr = cdata_end + 3;
+        (*(ptr+2) == '[') &&
+        (strstr(ptr,"<![CDATA[") == ptr)) {
+          char * cdata_end = strstr(ptr, "]]>");
+          if(!cdata_end) return NULL;
+          ptr = cdata_end + 3;
       } else if ((*(ptr+1) == '!') && 
-          (*(ptr+2) == '-') &&
-          (strstr(ptr,"<!--") == ptr)) {
-        char * comment_end = strstr(ptr, "-->");
-        if(!comment_end) return NULL;
-        ptr = comment_end + 3;
+        (*(ptr+2) == '-') &&
+        (strstr(ptr,"<!--") == ptr)) {
+          char * comment_end = strstr(ptr, "-->");
+          if(!comment_end) return NULL;
+          ptr = comment_end + 3;
+      } else if (strstr(ptr,"<?xml") == ptr) {
+        char * xml_end = strstr(ptr, "?>");
+        if(!xml_end) return NULL;
+        ptr = xml_end + 2;
       } else if (strstr(ptr,"<!DOCTYPE") == ptr) {
         char * doctype_end = strstr(ptr, ">");
         if(!doctype_end) return NULL;
-        ptr = doctype_end + 2;
-      } else if(*(ptr+1) == '/') {
-        level--;
-        if(level < 0) return NULL;
+        ptr = doctype_end + 1;
+      } else if ((skip_scenario) && (strstr(ptr,"<scenario") == ptr) ) {
+        char * scenario_end = strstr(ptr, ">");
+        DEBUG("  Skipping over embedded <scenario> tag (%d bytes); level = %d, index = %d\n", scenario_end-ptr, level, index);
+        if(!scenario_end) return NULL;
+        ptr = scenario_end + 1;
+      } else if (*(ptr+1) == '/') {
+        if ((*(ptr+2) == 's') && (*(ptr+3) == 'c') && (strstr(ptr,"</scenario") == ptr) ) {
+          char * scenario_end = strstr(ptr, ">");
+          DEBUG("  Skipping over embedded </scenario> tag (%d bytes); level = %d, index = %d\n", scenario_end-ptr, level, index);
+          if(!scenario_end) return NULL;
+          ptr = scenario_end + 1;
+        }
+        else {
+          level--;
+          if(level < 0) return NULL;
+        }
       } else {
-	if(level==0) {
-	  if (index) {
-	    index --;
-	  } else {
-	    char * end = xp_find_start_tag_end(ptr + 1);
-	    char * p;
-	    if(!end) return NULL;
+        // It's a < but not special
+        if(level==0) {
+          if (index) {
+            index --;
+            DEBUG("  < found, level=0, index>0: decrementing index; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
+          } else {
+            char * end = xp_find_start_tag_end(ptr + 1);
+            char * p;
+            if(!end) return NULL;
 
-	    p = strchr(ptr, ' ');
-	    if(p && (p < end))  { end = p; }
-	    p = strchr(ptr, '\t');
-	    if(p && (p < end))  { end = p; }
-	    p = strchr(ptr, '\r');
-	    if(p && (p < end))  { end = p; }
-	    p = strchr(ptr, '\n');
-	    if(p && (p < end))  { end = p; }
-	    p = strchr(ptr, '/');
-	    if(p && (p < end))  { end = p; }
+            p = strchr(ptr, ' ');
+            if(p && (p < end))  { end = p; }
+            p = strchr(ptr, '\t');
+            if(p && (p < end))  { end = p; }
+            p = strchr(ptr, '\r');
+            if(p && (p < end))  { end = p; }
+            p = strchr(ptr, '\n');
+            if(p && (p < end))  { end = p; }
+            p = strchr(ptr, '/');
+            if(p && (p < end))  { end = p; }
 
-	    memcpy(name, ptr + 1, end-ptr-1);
-	    name[end-ptr-1] = 0;
+            memcpy(name, ptr + 1, end-ptr-1);
+            name[end-ptr-1] = 0;
 
-	    xp_position[++xp_stack] = end;
-	    return name;
-	  }
-	}
+            xp_position[++xp_stack] = end;
+            DEBUG("  Returning element '%s'; level = %d, index = %d, xp_stack = %d, ptr='%s'\n", name, level, index, xp_stack, debug_buffer(ptr));
+            return name;
+          }
+        }
 
-	/* We want to skip over this particular element .*/
-	ptr = xp_find_start_tag_end(ptr + 1);
-	if (ptr) ptr--;
-	level ++;
+        /* We want to skip over this particular element .*/
+        DEBUG("  We want to skip over this particular element, calling xp_find_start_tag_end; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
+        ptr = xp_find_start_tag_end(ptr + 1);
+        if (ptr) ptr--;
+        level ++;
       }
     } else if((*ptr == '/') && (*(ptr+1) == '>')) {
       level --;
+      DEBUG("  Found />; level<0 => return null; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
       if(level < 0) return NULL;
     }
     ptr++;
   }
+
+  DEBUG("  Reached end of file, returning NULL; level = %d, index = %d\n", level, index);
   return NULL;
 }
 

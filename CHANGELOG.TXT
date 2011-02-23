@@ -1,4 +1,17 @@
 This file tracks changes responsible for version number updates.
+3.2.10 02-23-2011
+- Correct [cseq] keyword behavior to only reflect outgoing transactions (no longer updated on recv)
+- Add last_cseq_number (extracted from last_cseq), received_cseq and received_cseq_method (based on last received request), cseq_method (based on last sent request), last_branch 
+- Update parser to ignore embedded <scenario> <?xml> and <!DOCTYPE tags to facilitate xml-compliant include files
+- Untested implementation of improved start-txn and use-txn tags
+- Minor parser bug-fixes including ability now to place <scenario> tag immediately following <!DOCTYPE> tag.
+
+3.2.9 02-07-2011
+- Start in client mode even when first message is <recv> if <nop> preceeds it and -mc was specified (this eliminates need for <init> section in most cases).
+- Fix bug associated with <exec command> as first statement
+- Improve redirected output on windows, including waiting and retrying opening of exec log file to serialize exec output.
+- Ensure dialog parameter not used with -mc option.
+
 3.2.8 01-13-2011
 - Add -trace_exec, -exec_file, -exec_overwrite parameters (to log stdout/stderr output from <exec>).
 - Add -debug_file, -debug_overwrite parameters

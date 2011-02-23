@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
 <!DOCTYPE scenario SYSTEM "sipp.dtd">
 
-<scenario name="include_directories" params="-m 1 -l 1">
+<scenario name="include_directories" params="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
 
   <!-- include file in current sub-directory -->
   <xi:include href="include_file1.xml"/>
 
 </scenario>
-
-<!-- <run params="-m 1 -l 1" require=""/> -->
-

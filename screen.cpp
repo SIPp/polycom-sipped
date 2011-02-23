@@ -131,14 +131,14 @@ void screen_exit(int rc)
       
       if ((timeout_exit) && (counter_value_success < 1)) {
         
-      DEBUG("exit(EXIT_TEST_RES_INTERNAL=%d)\n", EXIT_TEST_RES_INTERNAL);
+      DEBUG("exit(EXIT_TEST_RES_INTERNAL=%d)", EXIT_TEST_RES_INTERNAL);
         exit (EXIT_TEST_RES_INTERNAL);
       } else {
-      DEBUG("exit(EXIT_TEST_OK=%d)\n", EXIT_TEST_OK);
+      DEBUG("exit(EXIT_TEST_OK=%d)", EXIT_TEST_OK);
         exit(EXIT_TEST_OK);
       }
     } else {
-      DEBUG("exit(EXIT_TEST_FAILED=%d)\n", EXIT_TEST_FAILED);
+      DEBUG("exit(EXIT_TEST_FAILED=%d)", EXIT_TEST_FAILED);
       exit(EXIT_TEST_FAILED);
     }
   }
@@ -274,12 +274,12 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   if(fatal) {
     if(!screen_inited) {
       if(error == EADDRINUSE) {
-        fprintf(stderr, "Address in use\n");
+        fprintf(stderr, "Address in use");
         DEBUG("Address in use\n");
-        DEBUG("exit(EXIT_BIND_ERROR=%d)\n", EXIT_BIND_ERROR);
+        DEBUG("exit(EXIT_BIND_ERROR=%d)", EXIT_BIND_ERROR);
         exit(EXIT_BIND_ERROR);
       } else {
-        DEBUG("exit(EXIT_FATAL_ERROR=%d)\n", EXIT_FATAL_ERROR);
+        DEBUG("exit(EXIT_FATAL_ERROR=%d)", EXIT_FATAL_ERROR);
         exit(EXIT_FATAL_ERROR);
       }
     } else {

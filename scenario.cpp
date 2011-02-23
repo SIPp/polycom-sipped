@@ -105,6 +105,7 @@ message::message(int index, const char *desc)
 
   /* How to match responses to this message. */
   start_txn = 0;
+  use_txn = 0;
   response_txn = 0;
   ack_txn = 0;
   recv_response_for_cseq_method_list = NULL;
@@ -293,6 +294,17 @@ long xp_get_long(const char *name, const char *what, long defval) {
   return xp_get_long(name, what);
 }
 
+long xp_get_long_only_if_no_call_id_check(const char *name, const char *what, long defval) {
+  char *result = xp_get_value(name);
+  if (!result) {
+    return defval;
+  }
+  if ((!no_call_id_check) && (result)) {
+    ERROR("Can not use 'dialog' parameter without -mc option");
+  }
+  return xp_get_long(name, what);
+}
+
 
 double xp_get_bool(const char *name, const char *what) {
   char *ptr;
@@ -317,7 +329,13 @@ double xp_get_bool(const char *name, const char *what, bool defval) {
   return xp_get_bool(name, what);
 }
 
-int scenario::get_txn(const char *txnName, const char *what, bool start, bool isInvite, bool isAck) {
+// Return the index to txnName, creating it if it does not already exist.
+// Counters (started, acks, responses) are updated / initialized for script error checking.
+// start, isAck are supposed to be mutually exclusive and if false assumes  
+// txnName is name as passed into start_txn, ack_txn or resposne_txn attribute
+// what is used in error messages to describe the attribute
+// isInvite and isAck are booleans to indicate if the request is an INVITE or an ACK (NOT based on ack_txn, surprisingly!)
+int scenario::get_txn_index(const char *txnName, const char *what, bool start, bool isInvite, bool isAck) {
   /* Check the name's validity. */
   if (txnName[0] == '\0') {
     ERROR("Variable names may not be empty for %s\n", what);
@@ -326,7 +344,7 @@ int scenario::get_txn(const char *txnName, const char *what, bool start, bool is
     ERROR("Variable names may not contain $ or , for %s\n", what);
   }
 
-  /* If this transaction has already been used, then we have nothing to do. */
+  /* If this transaction has already been used, then update counters and return it */
   str_int_map::iterator txn_it = txnMap.find(txnName);
   if (txn_it != txnMap.end()) {
     if (start) {
@@ -340,7 +358,7 @@ int scenario::get_txn(const char *txnName, const char *what, bool start, bool is
     return txn_it->second;
   }
 
-  /* Assign this variable the next slot. */
+   /* Transaction has not already been used: Assign this variable the next slot. */
   struct txnControlInfo transaction;
 
   transaction.name = strdup(txnName);
@@ -350,7 +368,7 @@ int scenario::get_txn(const char *txnName, const char *what, bool start, bool is
     transaction.acks = 0;
     transaction.isInvite = isInvite;
   } else if (isAck) {
-    /* Does not start or respond to this txn. */
+    /* Does not start or respond to this branch. */
     transaction.started = 0;
     transaction.responses = 0;
     transaction.acks = 1;
@@ -543,15 +561,20 @@ void scenario::validate_txn_usage() {
   for (unsigned int i = 0; i < transactions.size(); i++) {
     if(transactions[i].started == 0) {
       ERROR("Transaction %s is never started!\n", transactions[i].name);
-    } else if(transactions[i].responses == 0) {
-      ERROR("Transaction %s has no responses defined!\n", transactions[i].name);
-    }
-    if (transactions[i].isInvite && transactions[i].acks == 0) {
-      ERROR("Transaction %s is an INVITE transaction without an ACK!\n", transactions[i].name);
-    }
-    if (!transactions[i].isInvite && (transactions[i].acks > 0)) {
-      ERROR("Transaction %s is a non-INVITE transaction with an ACK!\n", transactions[i].name);
-    }
+    } 
+    
+    if (!no_call_id_check) {
+      // -mc disables 'proper-transaction' verification to facilitate manual retransmissions and negative testing
+      if(transactions[i].responses == 0) {
+        ERROR("Transaction %s has no responses defined!\n", transactions[i].name);
+      }
+      if (transactions[i].isInvite && transactions[i].acks == 0) {
+        ERROR("Transaction %s is an INVITE transaction without an ACK!\n", transactions[i].name);
+      }
+      if (!transactions[i].isInvite && (transactions[i].acks > 0)) {
+        ERROR("Transaction %s is a non-INVITE transaction with an ACK!\n", transactions[i].name);
+      }
+    } 
   }
 }
 
@@ -649,6 +672,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
   unsigned int scenario_file_cursor = 0;
   int    L_content_length = 0 ;
   char * peer; 
+  bool found_scenario_tag = false;
 
   last_recv_optional = false;
 
@@ -667,12 +691,12 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
 
   hidedefault = false;
 
-  elem = xp_open_element(0);
+  elem = xp_open_element_skip_control(0, 0);
   if (!elem) {
     ERROR("No element in xml scenario file");
   }
   if(strcmp("scenario", elem)) {
-    ERROR("'scenario' section in xml scenario file must be first xml version and DOCTYPE.");
+    ERROR("'scenario' section in xml scenario file must be first after <?xml> version and <!DOCTYPE>.");
   }
 
   if(char *ptr = xp_get_value((char *)"name")) {
@@ -706,7 +730,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
 
       createStringTable(ptr, &currentTabVarName, &currentNbVarNames);
       for (int i = 0; i < currentNbVarNames; i++) {
-	globalVariables->find(currentTabVarName[i], true);
+        globalVariables->find(currentTabVarName[i], true);
       }
       freeStringTable(currentTabVarName, currentNbVarNames);
       free(ptr);
@@ -718,7 +742,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
 
       createStringTable(ptr, &currentTabVarName, &currentNbVarNames);
       for (int i = 0; i < currentNbVarNames; i++) {
-	userVariables->find(currentTabVarName[i], true);
+        userVariables->find(currentTabVarName[i], true);
       }
       freeStringTable(currentTabVarName, currentNbVarNames);
       free(ptr);
@@ -730,17 +754,17 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
 
       createStringTable(ptr, &currentTabVarName, &currentNbVarNames);
       for (int i = 0; i < currentNbVarNames; i++) {
-	int id = allocVars->find(currentTabVarName[i], false);
-	if (id == -1) {
-	  ERROR("Could not reference non-existant variable '%s'", currentTabVarName[i]);
-	}
+        int id = allocVars->find(currentTabVarName[i], false);
+        if (id == -1) {
+          ERROR("Could not reference non-existant variable '%s'", currentTabVarName[i]);
+        }
       }
       freeStringTable(currentTabVarName, currentNbVarNames);
       free(ptr);
     } else if(!strcmp(elem, "DefaultMessage")) {
       char *id = xp_get_string("id", "DefaultMessage");
       if(!(ptr = xp_get_cdata())) {
-	ERROR("No CDATA in 'send' section of xml scenario file");
+        ERROR("No CDATA in 'send' section of xml scenario file");
       }
       char *msg = clean_cdata(ptr);
       set_default_message(id, msg);
@@ -749,7 +773,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
     } else if(!strcmp(elem, "label")) {
       ptr = xp_get_string("id", "label");
       if (labelMap.find(ptr) != labelMap.end()) {
-	ERROR("The label name '%s' is used twice.", ptr);
+        ERROR("The label name '%s' is used twice.", ptr);
       }
       labelMap[ptr] = messages.size();
       free(ptr);
@@ -758,137 +782,154 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
       int nop_cursor = 0;
       char *initelem;
       while ((initelem = xp_open_element(nop_cursor++))) {
-	if (!strcmp(initelem, "nop")) {
-	  /* We should parse this. */
-	  message *nopmsg = new message(initmessages.size(), "scenario initialization");
-	  initmessages.push_back(nopmsg);
-	  nopmsg->M_type = MSG_TYPE_NOP;
-	  getCommonAttributes(nopmsg);
-	} else if (!strcmp(initelem, "label")) {
-	  /* Add an init label. */
-	  ptr = xp_get_value((char *)"id");
-	  if (initLabelMap.find(ptr) != initLabelMap.end()) {
-	    ERROR("The label name '%s' is used twice.", ptr);
-	  }
-	  initLabelMap[ptr] = initmessages.size();
-	} else {
-	  ERROR("Invalid element in an init stanza: '%s'", initelem);
-	}
-	xp_close_element();
+        if (!strcmp(initelem, "nop")) {
+          /* We should parse this. */
+          message *nopmsg = new message(initmessages.size(), "scenario initialization");
+          initmessages.push_back(nopmsg);
+          nopmsg->M_type = MSG_TYPE_NOP;
+          getCommonAttributes(nopmsg);
+        } else if (!strcmp(initelem, "label")) {
+          /* Add an init label. */
+          ptr = xp_get_value((char *)"id");
+          if (initLabelMap.find(ptr) != initLabelMap.end()) {
+            ERROR("The label name '%s' is used twice.", ptr);
+          }
+          initLabelMap[ptr] = initmessages.size();
+        } else {
+          ERROR("Invalid element in an init stanza: '%s'", initelem);
+        }
+        xp_close_element();
       }
+    } else if (!strcmp(elem, "scenario")) {
+        DEBUG("Embedded <%s> tag in script.  Assumed to be due to include file and ignoring.", elem);
+        found_scenario_tag = true; // don't want to jump to </scenario> right away.      
     } else { /** Message Case */
       if (found_timewait) {
-	ERROR("<timewait> can only be the last message in a scenario!\n");
+        ERROR("<timewait> can only be the last message in a scenario!\n");
       }
       message *curmsg = new message(messages.size(), name ? name : "unknown scenario");
       messages.push_back(curmsg);
 
       if(!strcmp(elem, "send")) {
-	checkOptionalRecv(elem, scenario_file_cursor);
-	curmsg->M_type = MSG_TYPE_SEND;
+        checkOptionalRecv(elem, scenario_file_cursor);
+        curmsg->M_type = MSG_TYPE_SEND;
         /* Sent messages descriptions */
         if(!(ptr = xp_get_cdata())) {
           ERROR("No CDATA in 'send' section of xml scenario file");
         }
 
-	int removed_clrf = 0;
-	char * msg = clean_cdata(ptr, &removed_clrf);
+        int removed_clrf = 0;
+        char * msg = clean_cdata(ptr, &removed_clrf);
 
-	L_content_length = xp_get_content_length(msg);
-	switch (L_content_length) {
-	  case  -1 :
-	    // the msg does not contain content-length field
-	    break ;
-	  case  0 :
-	    curmsg -> content_length_flag =
-	      message::ContentLengthValueZero;   // Initialize to No present
-	    break ;
-	  default :
-	    curmsg -> content_length_flag =
-	      message::ContentLengthValueNoZero;   // Initialize to No present
-	    break ;
-	}
+        L_content_length = xp_get_content_length(msg);
+        switch (L_content_length) {
+        case  -1 :
+          // the msg does not contain content-length field
+          break ;
+        case  0 :
+          curmsg -> content_length_flag =
+            message::ContentLengthValueZero;   // Initialize to No present
+          break ;
+        default :
+          curmsg -> content_length_flag =
+            message::ContentLengthValueNoZero;   // Initialize to No present
+          break ;
+        }
 
-	if((msg[strlen(msg) - 1] != '\n') && (removed_clrf)) {
-	  strcat(msg, "\n");
-	}
-	char *tsrc = msg;
-	while(*tsrc++);
+        if((msg[strlen(msg) - 1] != '\n') && (removed_clrf)) {
+          strcat(msg, "\n");
+        }
+        char *tsrc = msg;
+        while(*tsrc++);
 
-  curmsg -> dialog_number = xp_get_long("dialog", "dialog number", -1);
+        curmsg -> dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
-	curmsg -> send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number);
-	free(msg);
+        curmsg -> send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number);
+        free(msg);
 
-	// If this is a request we are sending, then store our transaction/method matching information.
-	if (!curmsg->send_scheme->isResponse()) {
-	  char *method = curmsg->send_scheme->getMethod();
-	  bool isInvite = !strcmp(method, "INVITE");
-	  bool isAck = !strcmp(method, "ACK");
+        if ((xp_get_value("ack_txn")) || (xp_get_value("response_txn"))) {
+          ERROR("The ack_txn and response_txn attributes have been replaced with use_txn.");
+        }
 
-	  if ((ptr = xp_get_value("start_txn"))) {
-	    if (isAck) {
-		ERROR("An ACK message can not start a transaction!");
-	    }
-	    curmsg->start_txn = get_txn(ptr, "start transaction", true, isInvite, false);
-	  } else if ((ptr = xp_get_value("ack_txn"))) {
-	    if (!isAck) {
-		ERROR("The ack_txn attribute is valid only for ACK messages!");
-	    }
-	    curmsg->ack_txn = get_txn(ptr, "ack transaction", false, false, true);
-	  } else {
-	    int len = method_list ? strlen(method_list) : 0;
-	    method_list = (char *)realloc(method_list, len + strlen(method) + 1);
-	    if (!method_list) {
-		ERROR_NO("Out of memory allocating method_list!");
-	    }
-	    strcpy(method_list + len, method);
-	  }
-	} else {
-	  if ((ptr = xp_get_value("start_txn"))) {
-	    ERROR("Responses can not start a transaction");
-	  }
-	  if ((ptr = xp_get_value("ack_txn"))) {
-	    ERROR("Responses can not ACK a transaction");
-	  }
-	}
+        // If this is a request we are sending, then store our transaction/method matching information.
+        if (!curmsg->send_scheme->isResponse()) {
+          char *method = curmsg->send_scheme->getMethod(); 
+          bool isInvite = !strcmp(method, "INVITE");
+          bool isAck = !strcmp(method, "ACK");
+          bool isCancel = !strcmp(method, "CANCEL");
 
-	if ((ptr = xp_get_value("response_txn"))) {
-	  ERROR("response_txn can only be used for recieved messages.");
-	}
+          if ((ptr = xp_get_value("start_txn"))) {
+            if (isAck) 
+              ERROR("An ACK message can not start a transaction");
+            if (isCancel) 
+              ERROR("Cannot use start_txn with CANCEL.  Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction).");            
+            curmsg->start_txn = get_txn_index(ptr, "start transaction", true, isInvite, false);
+          } else if ((ptr = xp_get_value("use_txn"))) {
+            if (isAck)
+              curmsg->use_txn = curmsg->ack_txn = get_txn_index(ptr, "ack transaction", false, false, true);
+            else
+              curmsg->use_txn = get_txn_index(ptr, "use transaction", false, false, false);
+          } else {
+            // no transaction-related attribute so fall back on cseq method
+            int len = method_list ? strlen(method_list) : 0;
+            method_list = (char *)realloc(method_list, len + strlen(method) + 1);
+            if (!method_list) {
+              ERROR_NO("Out of memory allocating method_list!");
+            }
+            strcpy(method_list + len, method);
+          }
+        } else {
+          // Message is a response
+          if ((ptr = xp_get_value("use_txn"))) {
+            curmsg->use_txn = get_txn_index(ptr, "use transaction", false, false, false);
+          } else if ((ptr = xp_get_value("start_txn"))) {
+            ERROR("Responses can not start a transaction");
+          } 
+        } // else
 
-	curmsg -> retrans_delay = xp_get_long("retrans", "retransmission timer", 0);
-	curmsg -> timeout = xp_get_long("timeout", "message send timeout", 0);
+        curmsg -> retrans_delay = xp_get_long("retrans", "retransmission timer", 0);
+        curmsg -> timeout = xp_get_long("timeout", "message send timeout", 0);
       } // end of "send" section
 
       else if(!strcmp(elem, (char *)"recv")) {
         curmsg->M_type = MSG_TYPE_RECV;
+
+        if ((ptr = xp_get_value("response_txn"))) {
+          ERROR("response_txn attribute has been replaced with use_txn.");
+        }
         /* Received messages descriptions */
         if((ptr = xp_get_value((char *)"response"))) {
           curmsg ->recv_response = get_long(ptr, "response code");
-	  if (method_list) {
-	    curmsg->recv_response_for_cseq_method_list = strdup(method_list);
-	  }
-	  if ((ptr = xp_get_value("response_txn"))) {
-	    curmsg->response_txn = get_txn(ptr, "transaction response", false, false, false);
-	  }
-        }
+          if (method_list) {
+            curmsg->recv_response_for_cseq_method_list = strdup(method_list);
+          }          
+
+          if ((ptr = xp_get_value("use_txn"))) {
+            curmsg->use_txn = curmsg->response_txn = get_txn_index(ptr, "use received transaction response", false, false, false);
+          } else if ((xp_get_value("start_txn"))) {
+            ERROR("Responses can not start a transaction");
+          } 
+        } // response
 
         if((ptr = xp_get_value((char *)"request"))) {
           curmsg -> recv_request = strdup(ptr);
-	  if ((ptr = xp_get_value("response_txn"))) {
-	    ERROR("response_txn can only be used for recieved responses.");
-	  }
+          if ((xp_get_value("start_txn"))) {
+            // mark as start so values are stored when message is received
+            curmsg->start_txn = get_txn_index(ptr, "start received transaction request", true, false, false);
+          } else if ((ptr = xp_get_value("use_txn"))) {
+            // mark use_txn for message validation
+            curmsg->use_txn = get_txn_index(ptr, "use received transaction request", false, false, false);
+          }          
+        } // request
+
+        curmsg -> dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
+
+        curmsg->optional = xp_get_optional("optional", "recv");
+        last_recv_optional = curmsg->optional;
+        curmsg->advance_state = xp_get_bool("advance_state", "recv", true);
+        if (!curmsg->advance_state && curmsg->optional == OPTIONAL_FALSE) {
+          ERROR("advance_state is allowed only for optional messages (index = %d)\n", messages.size() - 1);
         }
-
-  curmsg -> dialog_number = xp_get_long("dialog", "dialog number", -1);
-
-	curmsg->optional = xp_get_optional("optional", "recv");
-	last_recv_optional = curmsg->optional;
-	curmsg->advance_state = xp_get_bool("advance_state", "recv", true);
-	if (!curmsg->advance_state && curmsg->optional == OPTIONAL_FALSE) {
-	  ERROR("advance_state is allowed only for optional messages (index = %d)\n", messages.size() - 1);
-	}
 
         if (0 != (ptr = xp_get_value((char *)"regexp_match"))) {
           if(!strcmp(ptr, "true")) {
@@ -896,110 +937,110 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
           }
         }
 
-	curmsg->timeout = xp_get_long("timeout", "message timeout", 0);
+        curmsg->timeout = xp_get_long("timeout", "message timeout", 0);
 
         /* record the route set  */
         /* TODO disallow optional and rrs to coexist? */
         if((ptr = xp_get_value((char *)"rrs"))) {
-	  curmsg -> bShouldRecordRoutes = get_bool(ptr, "record route set");
+          curmsg -> bShouldRecordRoutes = get_bool(ptr, "record route set");
         }
 
         /* record the authentication credentials  */
         if((ptr = xp_get_value((char *)"auth"))) {
-	  bool temp = get_bool(ptr, "message authentication");
+          bool temp = get_bool(ptr, "message authentication");
 #ifdef _USE_OPENSSL
-	  curmsg -> bShouldAuthenticate = temp;
+          curmsg -> bShouldAuthenticate = temp;
 #else
-	  if (temp) {
-	    ERROR("Authentication requires OpenSSL support!");
-	  }
+          if (temp) {
+            ERROR("Authentication requires OpenSSL support!");
+          }
 #endif
         }
       } // end of "recv" section
       else if(!strcmp(elem, "pause") || !strcmp(elem, "timewait")) {
-	checkOptionalRecv(elem, scenario_file_cursor);
+        checkOptionalRecv(elem, scenario_file_cursor);
         curmsg->M_type = MSG_TYPE_PAUSE;
-	if (!strcmp(elem, "timewait")) {
-	  curmsg->timewait = true;
-	  found_timewait = true;
-	}
+        if (!strcmp(elem, "timewait")) {
+          curmsg->timewait = true;
+          found_timewait = true;
+        }
 
-	int var;
-	if ((var = xp_get_var("variable", "pause", -1)) != -1) {
-	  curmsg->pause_variable = var;
-	} else {
-	  CSample *distribution = parse_distribution(true);
+        int var;
+        if ((var = xp_get_var("variable", "pause", -1)) != -1) {
+          curmsg->pause_variable = var;
+        } else {
+          CSample *distribution = parse_distribution(true);
 
-	  bool sanity_check = xp_get_bool("sanity_check", "pause", true);
+          bool sanity_check = xp_get_bool("sanity_check", "pause", true);
 
-	  double pause_duration = distribution->cdfInv(0.99);
-	  if (sanity_check && (pause_duration > INT_MAX)) {
-	    char percentile[100];
-	    char desc[100];
+          double pause_duration = distribution->cdfInv(0.99);
+          if (sanity_check && (pause_duration > INT_MAX)) {
+            char percentile[100];
+            char desc[100];
 
-	    distribution->timeDescr(desc, sizeof(desc));
-	    time_string(pause_duration, percentile, sizeof(percentile));
+            distribution->timeDescr(desc, sizeof(desc));
+            time_string(pause_duration, percentile, sizeof(percentile));
 
-	    ERROR("The distribution %s has a 99th percentile of %s, which is larger than INT_MAX.  You should chose different parameters.", desc, percentile);
-	  }
+            ERROR("The distribution %s has a 99th percentile of %s, which is larger than INT_MAX.  You should chose different parameters.", desc, percentile);
+          }
 
-	  curmsg->pause_distribution = distribution;
-	  /* Update scenario duration with max duration */
-	  duration += (int)pause_duration;
-	}
+          curmsg->pause_distribution = distribution;
+          /* Update scenario duration with max duration */
+          duration += (int)pause_duration;
+        }
       }
       else if(!strcmp(elem, "nop")) {
-	checkOptionalRecv(elem, scenario_file_cursor);
-	/* Does nothing at SIP level.  This message type can be used to handle
-	 * actions, increment counters, or for RTDs. */
-	curmsg->M_type = MSG_TYPE_NOP;
+        checkOptionalRecv(elem, scenario_file_cursor);
+        /* Does nothing at SIP level.  This message type can be used to handle
+        * actions, increment counters, or for RTDs. */
+        curmsg->M_type = MSG_TYPE_NOP;
       }
       else if(!strcmp(elem, "recvCmd")) {
         curmsg->M_type = MSG_TYPE_RECVCMD;
-	curmsg->optional = xp_get_optional("optional", "recv");
-	last_recv_optional = curmsg->optional;
+        curmsg->optional = xp_get_optional("optional", "recv");
+        last_recv_optional = curmsg->optional;
 
-  curmsg->dialog_number = xp_get_long("dialog", "dialog number", -1);
+        curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
-	/* 3pcc extended mode */
+        /* 3pcc extended mode */
         if((ptr = xp_get_value((char *)"src"))) {
-           curmsg ->peer_src = strdup(ptr);
+          curmsg ->peer_src = strdup(ptr);
         } else if (extendedTwinSippMode) {
-	  ERROR("You must specify a 'src' for recvCmd when using extended 3pcc mode!");
-	}
+          ERROR("You must specify a 'src' for recvCmd when using extended 3pcc mode!");
+        }
       } else if(!strcmp(elem, "sendCmd")) {
-	checkOptionalRecv(elem, scenario_file_cursor);
+        checkOptionalRecv(elem, scenario_file_cursor);
         curmsg->M_type = MSG_TYPE_SENDCMD;
         /* Sent messages descriptions */
 
-  curmsg->dialog_number = xp_get_long("dialog", "dialog number", -1);
+        curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
-	/* 3pcc extended mode  */
-	if((ptr = xp_get_value((char *)"dest"))) { 
-	   peer = strdup(ptr) ;
-	   curmsg ->peer_dest = peer ;
-           peer_map::iterator peer_it;
-	   peer_it = peers.find(peer_map::key_type(peer));
-	   if(peer_it == peers.end())  /* the peer (slave or master)
-					  has not been added in the map
-					  (first occurence in the scenario) */
-	   {
-	     T_peer_infos infos;
-	     infos.peer_socket = 0;
-	     strcpy(infos.peer_host, get_peer_addr(peer));
-             peers[std::string(peer)] = infos; 
-	   }
-	} else if (extendedTwinSippMode) {
-	  ERROR("You must specify a 'dest' for sendCmd with extended 3pcc mode!");
-	}
+        /* 3pcc extended mode  */
+        if((ptr = xp_get_value((char *)"dest"))) { 
+          peer = strdup(ptr) ;
+          curmsg ->peer_dest = peer ;
+          peer_map::iterator peer_it;
+          peer_it = peers.find(peer_map::key_type(peer));
+          if(peer_it == peers.end())  /* the peer (slave or master)
+                                      has not been added in the map
+                                      (first occurence in the scenario) */
+          {
+            T_peer_infos infos;
+            infos.peer_socket = 0;
+            strcpy(infos.peer_host, get_peer_addr(peer));
+            peers[std::string(peer)] = infos; 
+          }
+        } else if (extendedTwinSippMode) {
+          ERROR("You must specify a 'dest' for sendCmd with extended 3pcc mode!");
+        }
 
         if(!(ptr = xp_get_cdata())) {
           ERROR("No CDATA in 'sendCmd' section of xml scenario file");
         }
-	char *msg = clean_cdata(ptr);
+        char *msg = clean_cdata(ptr);
 
-	curmsg -> M_sendCmdData = new SendingMessage(this, msg, true /* skip sanity */, curmsg->dialog_number);
-	free(msg);
+        curmsg -> M_sendCmdData = new SendingMessage(this, msg, true /* skip sanity */, curmsg->dialog_number);
+        free(msg);
       }
       else {
         ERROR("Unknown element '%s' in xml scenario file", elem);
@@ -1007,9 +1048,13 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
 
       getCommonAttributes(curmsg);
     } /** end * Message case */
-    xp_close_element();
+    if (!found_scenario_tag)
+      xp_close_element();
+    else
+      found_scenario_tag = false;
   } // end while
 
+  DEBUG("Finished processing elements.\n");
   free(method_list);
 
   str_int_map::iterator label_it = labelMap.find("_unexp.main");
@@ -1217,8 +1262,10 @@ void parse_slave_cfg()
 // launched (client, server, 3pcc client, 3pcc server, 3pcc extended master or slave)
 void scenario::computeSippMode()
 {
+  DEBUG_IN();
   bool isRecvCmdFound = false;
   bool isSendCmdFound = false;
+  bool encounteredNop = false;
 
   creationMode = -1;
   sendMode = -1;
@@ -1231,8 +1278,11 @@ void scenario::computeSippMode()
     switch(messages[i]->M_type)
     {
     case MSG_TYPE_PAUSE:
+      /* Allow pauses to go first. */
+      continue;
     case MSG_TYPE_NOP:
-      /* Allow pauses or nops to go first. */
+      /* Allow nops to go first, but force to client if server and mc specified. */
+      encounteredNop = true;
       continue;
     case MSG_TYPE_SEND:
       if (sendMode == -1) {
@@ -1244,11 +1294,22 @@ void scenario::computeSippMode()
       break;
 
     case MSG_TYPE_RECV:
-      if (sendMode == -1) {
+     if (sendMode == -1) {
+       DEBUG("MSG_TYPE_RECV: encounteredNop = %d, no_call_id_check = %d", encounteredNop, no_call_id_check);
+       if (encounteredNop && no_call_id_check) {
+         DEBUG("sendMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check.");
+         sendMode = MODE_CLIENT;
+       }
+       else
         sendMode = MODE_SERVER;
       }
       if (creationMode == -1) {
-        creationMode = MODE_SERVER;
+        if (encounteredNop && no_call_id_check) {
+          DEBUG("creationMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check.");
+          creationMode = MODE_CLIENT;
+        }
+        else
+          creationMode = MODE_SERVER;
       }
       break;
     case MSG_TYPE_SENDCMD:
@@ -1314,6 +1375,7 @@ void scenario::computeSippMode()
     ERROR("Unable to determine creation mode of the tool (server, client)\n");
   if(sendMode == -1)
     ERROR("Unable to determine send mode of the tool (server, client)\n");
+  DEBUG_OUT("sendMode = %d, creationMode = %d [MODE_CLIENT = %d, MODE_SERVER = %d]", sendMode, creationMode, MODE_CLIENT, MODE_SERVER);
 }
 
 void scenario::handle_rhs(CAction *tmpAction, const char *what) {
@@ -1934,10 +1996,10 @@ char * default_scenario [] = {
 "\n"
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
 "      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 INVITE\n"
+"      CSeq: [cseq] INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -1949,6 +2011,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [media_port] RTP/AVP 0\n"
 "      a=rtpmap:0 PCMU/8000\n"
 "\n"
@@ -1978,10 +2041,10 @@ char * default_scenario [] = {
 "\n"
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 ACK\n"
+"      CSeq: [cseq] ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2000,10 +2063,10 @@ char * default_scenario [] = {
 "\n"
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 2 BYE\n"
+"      CSeq: [cseq] BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2099,6 +2162,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [media_port] RTP/AVP 0\n"
 "      a=rtpmap:0 PCMU/8000\n"
 "\n"
@@ -2172,10 +2236,10 @@ char * default_scenario [] = {
 "\n"
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag02[call_number]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
 "      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 INVITE\n"
+"      CSeq: [cseq] INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2187,6 +2251,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [media_port] RTP/AVP 0\n"
 "      a=rtpmap:0 PCMU/8000\n"
 "\n"
@@ -2249,10 +2314,10 @@ char * default_scenario [] = {
 "    <![CDATA[\n"
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag02[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 ACK\n"
+"      CSeq: [cseq] ACK\n"
 "      retrievedIp: [$1]\n"
 "      retrievedContact:[$6]\n"
 "      retrievedSdpOrigin:[$3]\n"
@@ -2276,10 +2341,10 @@ char * default_scenario [] = {
 "\n"
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag02[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 2 BYE\n"
+"      CSeq: [cseq] BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2348,7 +2413,7 @@ char * default_scenario [] = {
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag03[call_number]\n"
 "      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 INVITE\n"
+"      CSeq: [cseq] INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2391,9 +2456,9 @@ char * default_scenario [] = {
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag03[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 ACK\n"
+"      CSeq: [cseq] ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2411,9 +2476,9 @@ char * default_scenario [] = {
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag03[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 2 BYE\n"
+"      CSeq: [cseq] BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2485,7 +2550,7 @@ char * default_scenario [] = {
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag04[call_number]\n"
 "      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 INVITE\n"
+"      CSeq: [cseq] INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2512,9 +2577,9 @@ char * default_scenario [] = {
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag04[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 ACK\n"
+"      CSeq: [cseq] ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2541,9 +2606,9 @@ char * default_scenario [] = {
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag04[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 2 BYE\n"
+"      CSeq: [cseq] BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2621,6 +2686,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [media_port] RTP/AVP 0\n"
 "      a=rtpmap:0 PCMU/8000\n"
 "\n"
@@ -2717,6 +2783,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [media_port] RTP/AVP 0\n"
 "      a=rtpmap:0 PCMU/8000\n"
 "\n"
@@ -2774,15 +2841,15 @@ char * default_scenario [] = {
 "<!--                                                                    -->\n"
 "\n"
 "<scenario name=\"branch_client\">\n"
-"  <send retrans=\"500\">\n"
+"  <send retrans=\"500\" dialog=\"1\">\n"
 "    <![CDATA[\n"
 "\n"
 "      REGISTER sip:CA.cym.com SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: ua1 <sip:ua1@nnl.cym:[local_port]>;tag=[pid]SIPpTag07[call_number]\n"
+"      From: ua1 <sip:ua1@nnl.cym:[local_port]>[local_tag_param]\n"
 "      To: ua1 <sip:ua1@nnl.cym:[local_port]>\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 REGISTER\n"
+"      CSeq: [cseq] REGISTER\n"
 "      Contact: sip:ua1@[local_ip]:[local_port]\n"
 "      Content-Length: 0\n"
 "      Expires: 300\n"
@@ -2799,15 +2866,15 @@ char * default_scenario [] = {
 "\n"
 "  <label id=\"5\"/>\n"
 "\n"
-"  <send retrans=\"500\">\n"
+"  <send retrans=\"500\" dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      INVITE sip:ua2@CA.cym.com SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: ua[call_number] <sip:ua1@nnl.cym:[local_port]>;tag=[pid]SIPpTag07b[call_number]\n"
+"      From: ua[call_number] <sip:ua1@nnl.cym:[local_port]>[local_tag_param]\n"
 "      To: ua2 <sip:ua2@nnl.cym:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 INVITE\n"
+"      CSeq: [cseq] INVITE\n"
 "      Contact: sip:ua1@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2819,6 +2886,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [media_port] RTP/AVP 0\n"
 "      a=rtpmap:0 PCMU/8000\n"
 "\n"
@@ -2848,15 +2916,15 @@ char * default_scenario [] = {
 "  </recv>\n"
 "\n"
 "  <!-- set variable 8 above on 25th call, send the ACK but skip the pause for it   -->\n"
-"  <send next=\"1\" test=\"8\">\n"
+"  <send next=\"1\" test=\"8\" dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      ACK sip:ua2@CA.cym.com SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: ua1 <sip:ua1@nnl.cym:[local_port]>;tag=[pid]SIPpTag07b[call_number]\n"
-"      To: ua2 <sip:ua2@nnl.cym:[remote_port]>[peer_tag_param]\n"
+"      From: ua1 <sip:ua1@nnl.cym:[local_port]>[local_tag_param]\n"
+"      To: ua2 <sip:ua2@nnl.cym:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 ACK\n"
+"      CSeq: [cseq] ACK\n"
 "      Contact: sip:ua1@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2869,15 +2937,15 @@ char * default_scenario [] = {
 "\n"
 "  <label id=\"1\"/>\n"
 "\n"
-"  <send retrans=\"500\">\n"
+"  <send retrans=\"500\" dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      BYE sip:ua2@CA.cym.com SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: ua1 <sip:ua1@nnl.cym:[local_port]>;tag=[pid]SIPpTag07b[call_number]\n"
-"      To: ua2 <sip:ua2@nnl.cym:[remote_port]>[peer_tag_param]\n"
+"      From: ua1 <sip:ua1@nnl.cym:[local_port]>[local_tag_param]\n"
+"      To: ua2 <sip:ua2@nnl.cym:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 2 BYE\n"
+"      CSeq: [cseq] BYE\n"
 "      Contact: sip:ua1@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -2924,16 +2992,16 @@ char * default_scenario [] = {
 "<!--                                                                    -->\n"
 "\n"
 "<scenario name=\"branch_server\">\n"
-"  <recv request=\"REGISTER\">\n"
+"  <recv request=\"REGISTER\" dialog=\"1\">\n"
 "  </recv>\n"
 "\n"
-"  <send>\n"
+"  <send dialog=\"1\">\n"
 "    <![CDATA[\n"
 "\n"
 "      SIP/2.0 200 OK\n"
 "      [last_Via:]\n"
 "      [last_From:]\n"
-"      [last_To:];tag=[pid]SIPpTag08[call_number]\n"
+"      [last_To:][local_tag_param]\n"
 "      [last_Call-ID:]\n"
 "      [last_CSeq:]\n"
 "      Contact: <sip:[local_ip]:[local_port];transport=[transport]>\n"
@@ -2944,7 +3012,7 @@ char * default_scenario [] = {
 "  </send>\n"
 "\n"
 "  <!-- Set variable 3 if the ua is of the form ua2... -->\n"
-"  <recv request=\"INVITE\" crlf=\"true\">\n"
+"  <recv request=\"INVITE\" crlf=\"true\" dialog=\"2\">\n"
 "    <action>\n"
 "      <ereg regexp=\"ua2\"\n"
 "            search_in=\"hdr\"\n"
@@ -2954,13 +3022,13 @@ char * default_scenario [] = {
 "  </recv>\n"
 "\n"
 "  <!-- send 180 then trying if variable 3 is set -->\n"
-"  <send next=\"1\" test=\"3\">\n"
+"  <send next=\"1\" test=\"3\" dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      SIP/2.0 180 Ringing\n"
 "      [last_Via:]\n"
 "      [last_From:]\n"
-"      [last_To:];tag=[pid]SIPpTag08b[call_number]\n"
+"      [last_To:][local_tag_param]\n"
 "      [last_Call-ID:]\n"
 "      [last_CSeq:]\n"
 "      Contact: <sip:[local_ip]:[local_port];transport=[transport]>\n"
@@ -2970,13 +3038,13 @@ char * default_scenario [] = {
 "  </send>\n"
 "\n"
 "  <!-- if not, send a 403 error then skip to wait for a BYE -->\n"
-"  <send next=\"2\">\n"
+"  <send next=\"2\" dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      SIP/2.0 403 Error\n"
 "      [last_Via:]\n"
 "      [last_From:]\n"
-"      [last_To:];tag=[pid]SIPpTag08b[call_number]\n"
+"      [last_To:][local_tag_param]\n"
 "      [last_Call-ID:]\n"
 "      [last_CSeq:]\n"
 "      Contact: <sip:[local_ip]:[local_port];transport=[transport]>\n"
@@ -2987,13 +3055,13 @@ char * default_scenario [] = {
 "\n"
 "  <label id=\"1\"/>\n"
 "\n"
-"  <send>\n"
+"  <send dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      SIP/2.0 100 Trying\n"
 "      [last_Via:]\n"
 "      [last_From:]\n"
-"      [last_To:];tag=[pid]SIPpTag08b[call_number]\n"
+"      [last_To:][local_tag_param]\n"
 "      [last_Call-ID:]\n"
 "      [last_CSeq:]\n"
 "      Contact: <sip:[local_ip]:[local_port];transport=[transport]>\n"
@@ -3002,13 +3070,13 @@ char * default_scenario [] = {
 "    ]]>\n"
 "  </send>\n"
 "\n"
-"  <send retrans=\"500\">\n"
+"  <send retrans=\"500\" dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      SIP/2.0 200 OK\n"
 "      [last_Via:]\n"
 "      [last_From:]\n"
-"      [last_To:];tag=[pid]SIPpTag08b[call_number]\n"
+"      [last_To:][local_tag_param]\n"
 "      [last_Call-ID:]\n"
 "      [last_CSeq:]\n"
 "      Contact: <sip:[local_ip]:[local_port];transport=[transport]>\n"
@@ -3020,6 +3088,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [media_port] RTP/AVP 0\n"
 "      a=rtpmap:0 PCMU/8000\n"
 "\n"
@@ -3029,15 +3098,15 @@ char * default_scenario [] = {
 "  <recv request=\"ACK\"\n"
 "        optional=\"true\"\n"
 "        rtd=\"true\"\n"
-"        crlf=\"true\">\n"
+"        crlf=\"true\" dialog=\"2\">\n"
 "  </recv>\n"
 "\n"
 "  <label id=\"2\"/>\n"
 "\n"
-"  <recv request=\"BYE\">\n"
+"  <recv request=\"BYE\" dialog=\"2\">\n"
 "  </recv>\n"
 "\n"
-"  <send>\n"
+"  <send dialog=\"2\">\n"
 "    <![CDATA[\n"
 "\n"
 "      SIP/2.0 200 OK\n"
@@ -3100,10 +3169,10 @@ char * default_scenario [] = {
 "\n"
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag09[call_number]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
 "      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 INVITE\n"
+"      CSeq: [cseq] INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -3115,6 +3184,7 @@ char * default_scenario [] = {
 "      s=-\n"
 "      c=IN IP[local_ip_type] [local_ip]\n"
 "      t=0 0\n"
+"      a=sendrecv\n"
 "      m=audio [auto_media_port] RTP/AVP 8 101\n"
 "      a=rtpmap:8 PCMA/8000\n"
 "      a=rtpmap:101 telephone-event/8000\n"
@@ -3142,10 +3212,10 @@ char * default_scenario [] = {
 "\n"
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag09[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 1 ACK\n"
+"      CSeq: [cseq] ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"
@@ -3180,10 +3250,10 @@ char * default_scenario [] = {
 "\n"
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
-"      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag09[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]\n"
+"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[remote_tag_param]\n"
 "      Call-ID: [call_id]\n"
-"      CSeq: 2 BYE\n"
+"      CSeq: [cseq] BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
 "      Max-Forwards: 70\n"
 "      Subject: Performance Test\n"

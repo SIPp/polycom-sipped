@@ -79,9 +79,14 @@ struct KeywordMap SimpleKeywords[] = {
 };
 
 /* These keywords take an optional dialog= parameter and no other processing. */
+/* Note: must place longer keyword names before shorter ones with same base (ie [cseq_method] before [cseq]) */
 struct KeywordMap DialogSpecificKeywords[] = {
+  {"cseq_method", E_Message_CSEQ_Method },
   {"cseq", E_Message_CSEQ },
+  {"received_cseq_method", E_Message_Received_CSEQ_Method },
+  {"received_cseq", E_Message_Received_CSEQ },
   {"last_cseq_number", E_Message_Last_CSeq_Number },
+  {"last_branch", E_Message_Last_Branch },
   {"last_Request_URI", E_Message_Last_Request_URI },
   {"call_id", E_Message_Call_ID },
   {"last_message", E_Message_Last_Message },
@@ -104,372 +109,372 @@ struct KeywordMap DialogSpecificKeywords[] = {
 #define KEYWORD_SIZE 256
 
 SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number) {
-// should we parse out the _n portion of call here or later? Here would be faster and more
-// in keepin with the existing style, I suppose...
-    const char *osrc = src;
-    char * literal;
-    int    literalLen;
-    char * dest;
-    char * key;
-    char   current_line[MAX_HEADER_LEN];
-    const char * line_mark = NULL;
-    const char * tsrc;
-    int    num_cr = get_cr_number(src);
+  // should we parse out the _n portion of call here or later? Here would be faster and more
+  // in keepin with the existing style, I suppose...
+  const char *osrc = src;
+  char * literal;
+  int    literalLen;
+  char * dest;
+  char * key;
+  char   current_line[MAX_HEADER_LEN];
+  const char * line_mark = NULL;
+  const char * tsrc;
+  int    num_cr = get_cr_number(src);
 
-    this->msg_scenario = msg_scenario;
-    this->dialog_number = dialog_number;
-    
-    dest = literal = (char *)malloc(strlen(src) + num_cr + 1);
-    literalLen = 0;
- 
-    current_line[0] = '\0';
-    *dest = 0;
+  this->msg_scenario = msg_scenario;
+  this->dialog_number = dialog_number;
 
-    while(*src) {
-			/* If start of new line, copy through next \n into current_line */
-      if (current_line[0] == '\0') {
-        line_mark = strchr(src, '\n');
-        if (line_mark) {
-          int header_len = line_mark - src;
-          if (header_len > MAX_HEADER_LEN-1)
-              header_len = MAX_HEADER_LEN-1;
-          memcpy(current_line, src, header_len);
-          current_line[header_len] = '\0';
-        }
-      }
+  dest = literal = (char *)malloc(strlen(src) + num_cr + 1);
+  literalLen = 0;
 
-      /* This hex encoding could be done in XML parsing, allowing us to skip
-       * these conditionals and branches. */
-      if ((*src == '\\') && (*(src+1) == 'x')) {
-        /* Allows any hex coded char like '\x5B' ([) */
-        src += 2;
-        if (isxdigit(*src)) {
-          int val = get_decimal_from_hex(*src);
-          src++;
-          if (isxdigit(*src)) {
-            val = (val << 4) + get_decimal_from_hex(*src);
-          }
-          *dest++ = val & 0xff;
-        }
-        src++;
-      } else if (*src == '\n') {
-        *dest++ = '\r';
-        *dest++ = *src++;
-        current_line[0] = '\0';
-      } else if (*src != '[') {
-        *dest++ = *src++;
-      } else {
-	/* We have found a keyword, store the literal that we have been generating. */
-        literalLen = dest - literal;
-	if (literalLen) {
-	  *dest = '\0';
-	  literal = (char *)realloc(literal, literalLen + 1);
-	  if (!literal) { ERROR("Out of memory!"); }
+  current_line[0] = '\0';
+  *dest = 0;
 
-	  MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-	  if (!newcomp) { ERROR("Out of memory!"); }
-
-	  newcomp->type = E_Message_Literal;
-	  newcomp->literal = literal;
-	  newcomp->literalLen = literalLen; // length without the terminator 
-  	newcomp->dialog_number = dialog_number;
-	  messageComponents.push_back(newcomp);
-	} else {
-	  free(literal);
-	}
-
-	dest = literal = (char *)malloc(strlen(src) + num_cr + 1);
-	literalLen = 0;
-	*dest = '\0';
-
-	/* Now lets determine which keyword we have. */
-	MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-	if (!newcomp) { ERROR("Out of memory!"); }
-
-	newcomp->dialog_number = dialog_number;
-
-	char keyword [KEYWORD_SIZE+1];
-	src++;
-
-	/* Like strchr, but don't count things in quotes. */
-	for(tsrc = src; *tsrc; tsrc++) {
-		if (*tsrc == '\"') {
-			do {
-				tsrc++;
-			} while(*tsrc && *tsrc != '\"');
-			if (!*tsrc) {
-				break;
-			}
-		}
-		if (*tsrc == '[')
-			break;
-	}
-	if (*tsrc != '[') {
-		tsrc = NULL;
-	}
-
-	/* Like strchr, but don't count things in quotes. */
-  // cast away const of src [*UGLY*]
-	for(key = (char *) src; *key; key++) {
-		if (*key == '\"') {
-			do {
-				key++;
-			} while(*key && *key != '\"');
-		}
-		if (*key == ']')
-			break;
-	}
-	if (*key != ']') {
-		key = NULL;
-	}
-
-        if ((tsrc) && (tsrc<key)){
-          memcpy(keyword, src-1,  tsrc - src + 1);
-          src=tsrc+1;
-          dest += sprintf(dest, "%s", keyword);
-        }
-
-	if((!key) || ((key - src) > KEYWORD_SIZE) || (!(key - src))){
-          ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
-        }
-        memcpy(keyword, src,  key - src);
-        keyword[key - src] = 0;
-        src = key + 1;
-        // allow +/-n for numeric variables
-        newcomp->offset = 0;
-        if ((strncmp(keyword, "authentication", strlen("authentication")) &&
-	    strncmp(keyword, "tdmmap", strlen("tdmmap"))) &&
-	    ((key = strchr(keyword,'+')) || (key = strchr(keyword,'-')))) {
-	    if (isdigit(*(key+1))) {
-	      newcomp->offset = atoi(key);
-		*key = 0;
-	    }
-	}
-
-	char *spc = NULL;
-	char ospc;
-	if ((spc = strchr(keyword, ' '))) {
-		ospc = *spc;
-		*spc = '\0';
-	}
-	kw_map::iterator it = keyword_map.find(keyword);
-	if (spc) {
-	  *spc = ospc;
-	}
-
-	if (it != keyword_map.end()) {
-	  newcomp->type = E_Message_Custom;
-	  newcomp->comp_param.fxn = it->second;
-	  messageComponents.push_back(newcomp);
-	  continue;
-	}
-
-	bool simple_keyword = false;
-	for (unsigned int i = 0; i < sizeof(SimpleKeywords)/sizeof(SimpleKeywords[0]); i++) {
-	  if (!strcmp(keyword, SimpleKeywords[i].keyword)) {
-		newcomp->type = SimpleKeywords[i].type;
-		simple_keyword = true;
-		break;
-	  }
-	}
-
-	bool dialog_keyword = false;
-	for (unsigned int i = 0; i < sizeof(DialogSpecificKeywords)/sizeof(DialogSpecificKeywords[0]); i++) {
-	  if (strstr(keyword, DialogSpecificKeywords[i].keyword) == keyword) {
-		newcomp->type = DialogSpecificKeywords[i].type;
-    parse_dialog_number(keyword, newcomp);
-		dialog_keyword = true;
-		break;
-	  }
-	}
-
-	if (simple_keyword || dialog_keyword) {
-	  messageComponents.push_back(newcomp);
-	  continue;
-	}
-
-
-
-        if(!strncmp(keyword, "field", strlen("field"))) {
-	  newcomp->type = E_Message_Injection;
-
-	  /* Parse out the interesting things like file and number. */
-	  newcomp->comp_param.field_param.field = atoi(keyword + strlen("field"));
-
-	  char fileName[KEYWORD_SIZE];
-	  getKeywordParam(keyword, "file=", fileName);
-	  if (fileName[0] == '\0') {
-	    if (!default_file) {
-	      ERROR("No injection file was specified!\n");
-	    }
-	    newcomp->comp_param.field_param.filename = strdup(default_file);
-	  } else {
-	    newcomp->comp_param.field_param.filename = strdup(fileName);
-	  }
-	  if (inFiles.find(newcomp->comp_param.field_param.filename) == inFiles.end()) {
-	    ERROR("Invalid injection file: %s\n", fileName);
-	  }
-
-	  char line[KEYWORD_SIZE];
-	  getKeywordParam(keyword, "line=", line);
-	  if (line[0]) {
-	    /* Turn this into a new message component. */
-	    newcomp->comp_param.field_param.line = new SendingMessage(msg_scenario, line, true, dialog_number);
-	  }
-        } else if(!strncmp(keyword, "file", strlen("file"))) {
-	  newcomp->type = E_Message_File;
-
-	  /* Parse out the interesting things like file and number. */
-	  char fileName[KEYWORD_SIZE];
-	  getKeywordParam(keyword, "name=", fileName);
-	  if (fileName[0] == '\0') {
-	    ERROR("No name specified for 'file' keyword!\n");
-	  }
-	  /* Turn this into a new message component. */
-	  newcomp->comp_param.filename = new SendingMessage(msg_scenario, fileName, true, dialog_number);
-        } else if(*keyword == '$') {
-	  newcomp->type = E_Message_Variable;
-	  if (!msg_scenario) {
-	    ERROR("SendingMessage with variable usage outside of scenario!");
-	  }
-	  newcomp->varId = msg_scenario->get_var(keyword + 1, "Variable keyword");
-	} else if(!strncmp(keyword, "fill", strlen("fill"))) {
-	  newcomp->type = E_Message_Fill;
-	  char filltext[KEYWORD_SIZE];
-	  char varName[KEYWORD_SIZE];
-
-	  getKeywordParam(keyword, "text=", filltext);
-	  if (filltext[0] == '\0') {
-	    strcpy(filltext, "X");
-	  }
-	  getKeywordParam(keyword, "variable=", varName);
-
-	  newcomp->literal = strdup(filltext);
-	  newcomp->literalLen = strlen(newcomp->literal);
-	  if (!msg_scenario) {
-	    ERROR("SendingMessage with variable usage outside of scenario!");
-	  }
-	  newcomp->varId = msg_scenario->get_var(varName, "Fill Variable");
-
-	} else if(!strncmp(keyword, "last_", strlen("last_"))) {
-     newcomp->type = E_Message_Last_Header;
-
-     // parse optional dialog parameter 
-     if (parse_dialog_number(keyword, newcomp)) {
-       // if dialog= specified, only copy header portion
-       const char *diagptr = strstr(keyword, "dialog=");
-       assert(diagptr);
-       while ((diagptr > keyword) && (*(diagptr-1) == ' ')) diagptr--;
-       newcomp->literal = strndup(keyword + strlen("last_"), diagptr - keyword - strlen("last_"));
-     }
-     else 
-       newcomp->literal = strdup(keyword + strlen("last_"));
-     newcomp->literalLen = strlen(newcomp->literal);
-
-   } else if(!strncmp(keyword, "authentication", strlen("authentication"))) {
-     parseAuthenticationKeyword(msg_scenario, newcomp, keyword);
-   }
-#ifndef PCAPPLAY
-        else if(!strcmp(keyword, "auto_media_port") ||
-		  !strcmp(keyword, "media_port") ||
-		  !strcmp(keyword, "media_ip") ||
-		  !strcmp(keyword, "media_ip_type")) {
-	  ERROR("The %s keyword requires PCAPPLAY.\n", keyword);
-	}
-#endif
-#ifndef _USE_OPENSSL
-        else if(!strcmp(keyword, "authentication")) {
-	  ERROR("The %s keyword requires OpenSSL.\n", keyword);
-	}
-#endif
-	else {
-	  // scan for the generic parameters - must be last test
-
-          int i = 0;
-          while (generic[i]) {
-            char *msg1 = *generic[i];
-            char *msg2 = *(generic[i] + 1);
-            if(!strcmp(keyword, msg1)) {
-	      newcomp->type = E_Message_Literal;
-	      newcomp->literal = strdup(msg2);
-	      newcomp->literalLen = strlen(newcomp->literal);
-              break;
-            }
-            ++i;
-          }
-          if (!generic[i]) {
-            ERROR("Unsupported keyword '%s' in xml scenario file",
-                   keyword);
-          }
-	}
-
-	messageComponents.push_back(newcomp);
+  while(*src) {
+    /* If start of new line, copy through next \n into current_line */
+    if (current_line[0] == '\0') {
+      line_mark = strchr(src, '\n');
+      if (line_mark) {
+        int header_len = line_mark - src;
+        if (header_len > MAX_HEADER_LEN-1)
+          header_len = MAX_HEADER_LEN-1;
+        memcpy(current_line, src, header_len);
+        current_line[header_len] = '\0';
       }
     }
-    if (literal[0]) {
-      *dest++ = '\0';
-      literalLen = dest - literal;
-      literal = (char *)realloc(literal, literalLen);
-      if (!literal) { ERROR("Out of memory!"); } 
 
+    /* This hex encoding could be done in XML parsing, allowing us to skip
+    * these conditionals and branches. */
+    if ((*src == '\\') && (*(src+1) == 'x')) {
+      /* Allows any hex coded char like '\x5B' ([) */
+      src += 2;
+      if (isxdigit(*src)) {
+        int val = get_decimal_from_hex(*src);
+        src++;
+        if (isxdigit(*src)) {
+          val = (val << 4) + get_decimal_from_hex(*src);
+        }
+        *dest++ = val & 0xff;
+      }
+      src++;
+    } else if (*src == '\n') {
+      *dest++ = '\r';
+      *dest++ = *src++;
+      current_line[0] = '\0';
+    } else if (*src != '[') {
+      *dest++ = *src++;
+    } else {
+      /* We have found a keyword, store the literal that we have been generating. */
+      literalLen = dest - literal;
+      if (literalLen) {
+        *dest = '\0';
+        literal = (char *)realloc(literal, literalLen + 1);
+        if (!literal) { ERROR("Out of memory!"); }
+
+        MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
+        if (!newcomp) { ERROR("Out of memory!"); }
+
+        newcomp->type = E_Message_Literal;
+        newcomp->literal = literal;
+        newcomp->literalLen = literalLen; // length without the terminator 
+        newcomp->dialog_number = dialog_number;
+        messageComponents.push_back(newcomp);
+      } else {
+        free(literal);
+      }
+
+      dest = literal = (char *)malloc(strlen(src) + num_cr + 1);
+      literalLen = 0;
+      *dest = '\0';
+
+      /* Now lets determine which keyword we have. */
       MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
       if (!newcomp) { ERROR("Out of memory!"); }
 
-      newcomp->type = E_Message_Literal;
-      newcomp->literal = literal;
-      newcomp->literalLen = literalLen-1;
-      messageComponents.push_back(newcomp);
-    } else {
-      free(literal);
-    }
+      newcomp->dialog_number = dialog_number;
 
-    if (skip_sanity) {
-      cancel = response = ack = false;
-      method = NULL;
-      return;
-    }
+      char keyword [KEYWORD_SIZE+1];
+      src++;
 
-    if (numComponents() < 1) {
-	ERROR("Can not create a message that is empty!");
-    }
-    if (getComponent(0)->type != E_Message_Literal) {
-	ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!\n%s\n", osrc);
-    }
-
-    char *p = method = strdup(getComponent(0)->literal);
-    char *q;
-    while (isspace(*p)) {
-	p++;
-    }
-    if (!(q = strchr(method, ' '))) {
-	ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!%s\n", osrc);
-    }
-    *q++ = '\0';
-    while (isspace(*q)) { q++; }
-    if (!strcmp(method, "SIP/2.0")) {
-	char *endptr;
-	code = strtol(q, &endptr, 10);
-	if (*endptr && !isspace(*endptr)) {
-	  ERROR("Invalid reply code: %s\n", q);
-	}
-	if (code < 100 || code >= 700) {
-	  ERROR("Response codes must be in the range of 100-700");
-	}
-	response = true;
-	ack = false;
-	cancel = false;
-	free(method);
-	method = NULL;
-    } else {
-      if (p != method) {
-	memmove(method, p, strlen(p) + 1);
+      /* Like strchr, but don't count things in quotes. */
+      for(tsrc = src; *tsrc; tsrc++) {
+        if (*tsrc == '\"') {
+          do {
+            tsrc++;
+          } while(*tsrc && *tsrc != '\"');
+          if (!*tsrc) {
+            break;
+          }
+        }
+        if (*tsrc == '[')
+          break;
       }
-      method = (char *)realloc(method, strlen(method) + 1);
-      if (!method) { ERROR("Out of memory"); }
-      ack = (!strcmp(method, "ACK"));
-      cancel = (!strcmp(method, "CANCEL"));
-      response = false;
+      if (*tsrc != '[') {
+        tsrc = NULL;
+      }
+
+      /* Like strchr, but don't count things in quotes. */
+      // cast away const of src [*UGLY*]
+      for(key = (char *) src; *key; key++) {
+        if (*key == '\"') {
+          do {
+            key++;
+          } while(*key && *key != '\"');
+        }
+        if (*key == ']')
+          break;
+      }
+      if (*key != ']') {
+        key = NULL;
+      }
+
+      if ((tsrc) && (tsrc<key)){
+        memcpy(keyword, src-1,  tsrc - src + 1);
+        src=tsrc+1;
+        dest += sprintf(dest, "%s", keyword);
+      }
+
+      if((!key) || ((key - src) > KEYWORD_SIZE) || (!(key - src))){
+        ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
+      }
+      memcpy(keyword, src,  key - src);
+      keyword[key - src] = 0;
+      src = key + 1;
+      // allow +/-n for numeric variables
+      newcomp->offset = 0;
+      if ((strncmp(keyword, "authentication", strlen("authentication")) &&
+        strncmp(keyword, "tdmmap", strlen("tdmmap"))) &&
+        ((key = strchr(keyword,'+')) || (key = strchr(keyword,'-')))) {
+          if (isdigit(*(key+1))) {
+            newcomp->offset = atoi(key);
+            *key = 0;
+          }
+      }
+
+      char *spc = NULL;
+      char ospc;
+      if ((spc = strchr(keyword, ' '))) {
+        ospc = *spc;
+        *spc = '\0';
+      }
+      kw_map::iterator it = keyword_map.find(keyword);
+      if (spc) {
+        *spc = ospc;
+      }
+
+      if (it != keyword_map.end()) {
+        newcomp->type = E_Message_Custom;
+        newcomp->comp_param.fxn = it->second;
+        messageComponents.push_back(newcomp);
+        continue;
+      }
+
+      bool simple_keyword = false;
+      for (unsigned int i = 0; i < sizeof(SimpleKeywords)/sizeof(SimpleKeywords[0]); i++) {
+        if (!strcmp(keyword, SimpleKeywords[i].keyword)) {
+          newcomp->type = SimpleKeywords[i].type;
+          simple_keyword = true;
+          break;
+        }
+      }
+
+      bool dialog_keyword = false;
+      for (unsigned int i = 0; i < sizeof(DialogSpecificKeywords)/sizeof(DialogSpecificKeywords[0]); i++) {
+        if (strstr(keyword, DialogSpecificKeywords[i].keyword) == keyword) {
+          newcomp->type = DialogSpecificKeywords[i].type;
+          parse_dialog_number(keyword, newcomp);
+          dialog_keyword = true;
+          break;
+        }
+      }
+
+      if (simple_keyword || dialog_keyword) {
+        messageComponents.push_back(newcomp);
+        continue;
+      }
+
+
+
+      if(!strncmp(keyword, "field", strlen("field"))) {
+        newcomp->type = E_Message_Injection;
+
+        /* Parse out the interesting things like file and number. */
+        newcomp->comp_param.field_param.field = atoi(keyword + strlen("field"));
+
+        char fileName[KEYWORD_SIZE];
+        getKeywordParam(keyword, "file=", fileName);
+        if (fileName[0] == '\0') {
+          if (!default_file) {
+            ERROR("No injection file was specified!\n");
+          }
+          newcomp->comp_param.field_param.filename = strdup(default_file);
+        } else {
+          newcomp->comp_param.field_param.filename = strdup(fileName);
+        }
+        if (inFiles.find(newcomp->comp_param.field_param.filename) == inFiles.end()) {
+          ERROR("Invalid injection file: %s\n", fileName);
+        }
+
+        char line[KEYWORD_SIZE];
+        getKeywordParam(keyword, "line=", line);
+        if (line[0]) {
+          /* Turn this into a new message component. */
+          newcomp->comp_param.field_param.line = new SendingMessage(msg_scenario, line, true, dialog_number);
+        }
+      } else if(!strncmp(keyword, "file", strlen("file"))) {
+        newcomp->type = E_Message_File;
+
+        /* Parse out the interesting things like file and number. */
+        char fileName[KEYWORD_SIZE];
+        getKeywordParam(keyword, "name=", fileName);
+        if (fileName[0] == '\0') {
+          ERROR("No name specified for 'file' keyword!\n");
+        }
+        /* Turn this into a new message component. */
+        newcomp->comp_param.filename = new SendingMessage(msg_scenario, fileName, true, dialog_number);
+      } else if(*keyword == '$') {
+        newcomp->type = E_Message_Variable;
+        if (!msg_scenario) {
+          ERROR("SendingMessage with variable usage outside of scenario!");
+        }
+        newcomp->varId = msg_scenario->get_var(keyword + 1, "Variable keyword");
+      } else if(!strncmp(keyword, "fill", strlen("fill"))) {
+        newcomp->type = E_Message_Fill;
+        char filltext[KEYWORD_SIZE];
+        char varName[KEYWORD_SIZE];
+
+        getKeywordParam(keyword, "text=", filltext);
+        if (filltext[0] == '\0') {
+          strcpy(filltext, "X");
+        }
+        getKeywordParam(keyword, "variable=", varName);
+
+        newcomp->literal = strdup(filltext);
+        newcomp->literalLen = strlen(newcomp->literal);
+        if (!msg_scenario) {
+          ERROR("SendingMessage with variable usage outside of scenario!");
+        }
+        newcomp->varId = msg_scenario->get_var(varName, "Fill Variable");
+
+      } else if(!strncmp(keyword, "last_", strlen("last_"))) {
+        newcomp->type = E_Message_Last_Header;
+
+        // parse optional dialog parameter 
+        if (parse_dialog_number(keyword, newcomp)) {
+          // if dialog= specified, only copy header portion
+          const char *diagptr = strstr(keyword, "dialog=");
+          assert(diagptr);
+          while ((diagptr > keyword) && (*(diagptr-1) == ' ')) diagptr--;
+          newcomp->literal = strndup(keyword + strlen("last_"), diagptr - keyword - strlen("last_"));
+        }
+        else 
+          newcomp->literal = strdup(keyword + strlen("last_"));
+        newcomp->literalLen = strlen(newcomp->literal);
+
+      } else if(!strncmp(keyword, "authentication", strlen("authentication"))) {
+        parseAuthenticationKeyword(msg_scenario, newcomp, keyword);
+      }
+#ifndef PCAPPLAY
+      else if(!strcmp(keyword, "auto_media_port") ||
+        !strcmp(keyword, "media_port") ||
+        !strcmp(keyword, "media_ip") ||
+        !strcmp(keyword, "media_ip_type")) {
+          ERROR("The %s keyword requires PCAPPLAY.\n", keyword);
+      }
+#endif
+#ifndef _USE_OPENSSL
+      else if(!strcmp(keyword, "authentication")) {
+        ERROR("The %s keyword requires OpenSSL.\n", keyword);
+      }
+#endif
+      else {
+        // scan for the generic parameters - must be last test
+
+        int i = 0;
+        while (generic[i]) {
+          char *msg1 = *generic[i];
+          char *msg2 = *(generic[i] + 1);
+          if(!strcmp(keyword, msg1)) {
+            newcomp->type = E_Message_Literal;
+            newcomp->literal = strdup(msg2);
+            newcomp->literalLen = strlen(newcomp->literal);
+            break;
+          }
+          ++i;
+        }
+        if (!generic[i]) {
+          ERROR("Unsupported keyword '%s' in xml scenario file",
+            keyword);
+        }
+      }
+
+      messageComponents.push_back(newcomp);
     }
+  }
+  if (literal[0]) {
+    *dest++ = '\0';
+    literalLen = dest - literal;
+    literal = (char *)realloc(literal, literalLen);
+    if (!literal) { ERROR("Out of memory!"); } 
+
+    MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
+    if (!newcomp) { ERROR("Out of memory!"); }
+
+    newcomp->type = E_Message_Literal;
+    newcomp->literal = literal;
+    newcomp->literalLen = literalLen-1;
+    messageComponents.push_back(newcomp);
+  } else {
+    free(literal);
+  }
+
+  if (skip_sanity) {
+    cancel = response = ack = false;
+    method = NULL;
+    return;
+  }
+
+  if (numComponents() < 1) {
+    ERROR("Can not create a message that is empty!");
+  }
+  if (getComponent(0)->type != E_Message_Literal) {
+    ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!\n%s\n", osrc);
+  }
+
+  char *p = method = strdup(getComponent(0)->literal);
+  char *q;
+  while (isspace(*p)) {
+    p++;
+  }
+  if (!(q = strchr(method, ' '))) {
+    ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!%s\n", osrc);
+  }
+  *q++ = '\0';
+  while (isspace(*q)) { q++; }
+  if (!strcmp(method, "SIP/2.0")) {
+    char *endptr;
+    code = strtol(q, &endptr, 10);
+    if (*endptr && !isspace(*endptr)) {
+      ERROR("Invalid reply code: %s\n", q);
+    }
+    if (code < 100 || code >= 700) {
+      ERROR("Response codes must be in the range of 100-700");
+    }
+    response = true;
+    ack = false;
+    cancel = false;
+    free(method);
+    method = NULL;
+  } else {
+    if (p != method) {
+      memmove(method, p, strlen(p) + 1);
+    }
+    method = (char *)realloc(method, strlen(method) + 1);
+    if (!method) { ERROR("Out of memory"); }
+    ack = (!strcmp(method, "ACK"));
+    cancel = (!strcmp(method, "CANCEL"));
+    response = false;
+  }
 }
 
 SendingMessage::~SendingMessage() {

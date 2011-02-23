@@ -92,7 +92,7 @@ public:
   char         * peer_src;
 
   /* If this is a recv */
-  int   	 recv_response;
+  int   	       recv_response;
   char         * recv_request;
   int            optional;
   bool           advance_state;
@@ -103,19 +103,19 @@ public:
   int            start_rtd;
   int            stop_rtd;
   bool           repeat_rtd;
-  int		 counter;
+  int            counter;
   double         lost;
   int            crlf;
   bool           hide;
-  char *	 display_str;
-  int		 next;
-  char *         nextLabel;
+  char         * display_str;
+  int            next;
+  char         * nextLabel;
   int            test;
   int            condexec;
   bool           condexec_inverse;
   int            chance;/* 0=always, RAND_MAX+1=never (test rand() >= chance) */
-  int		 on_timeout;
-  char *         onTimeoutLabel;
+  int            on_timeout;
+  char         * onTimeoutLabel;
 
   /* user can specify messages as belonging to a particular dialog via the dialog="n" attribute */
   /* default to -1, if set, state (cseq, call-id, to, from, etc) will be based only on messages with same id set */
@@ -146,10 +146,15 @@ public:
   
   ContentLengthFlag   content_length_flag ;
 
-  char           *recv_response_for_cseq_method_list;
-  int            start_txn;
+  // *ALL* possible methods are appended to this string for matching when a response is received.
+  char           *recv_response_for_cseq_method_list; 
+
+  // A non-zero value in *_txn indicates that the corresponding *_txn attribute was specified for this message. 
+  // The value is the index into call::transactions and scenario::transactions, as returned via get_txn_index(name)
+  int            start_txn;     // non-zero means store state associated with message as it is sent or received
+  int            use_txn;       // non-zero means verify state on recv and use saved state for keywords on send
+  int            response_txn;  // non-zero means received response packet
   int            ack_txn;
-  int            response_txn;
   int            index;
   const char *         desc;
 
@@ -160,11 +165,14 @@ public:
 typedef std::vector<message *> msgvec;
 
 struct txnControlInfo {
-  char *name;
+  char *name;        // name as passed to the start_txn, ack_txn or response_txn parameter
   bool isInvite;
-  int acks;
-  int started;
-  int responses;
+
+  // counters for how many times get_txn_index() is called for with corresponding flag set.
+  // used by validate_txn_usage() to ensure transactions start and finish as required.
+  int acks;      // counts number of acked transactions (sent only)
+  int started;   // counts number of started transactions (sent or received)
+  int responses; // count number of received responses in this transaction (received only)
 };
 typedef std::vector<txnControlInfo> txnvec;
 
@@ -181,6 +189,8 @@ public:
   msgvec initmessages;
   char *name;
   int duration;
+
+  // stores transaction name and tracks number of times get_txn_index() is called on it.
   txnvec transactions;
   int unexpected_jump;
   int retaddr;
@@ -202,6 +212,7 @@ private:
   str_int_map labelMap;
   str_int_map initLabelMap;
 
+  /* map transaction names to index in call::transactions & scenario::transactions vector/array */
   str_int_map txnMap;
 
   bool found_timewait;
@@ -218,7 +229,9 @@ private:
   void validate_variable_usage();
   void validate_txn_usage();
 
-  int get_txn(const char *txnName, const char *what, bool start, bool isInvite, bool isAck);
+  // Return the index to txnName, creating it if it does not already exist.
+  int get_txn_index(const char *txnName, const char *what, bool start, bool isInvite, bool isAck);
+
   int xp_get_var(const char *name, const char *what);
   int xp_get_var(const char *name, const char *what, int defval);
 

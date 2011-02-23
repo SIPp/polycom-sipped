@@ -60,18 +60,27 @@
 #endif
 
 struct txnInstanceInfo {
-  char *txnID;
-  unsigned long txnResp;
-  int ackIndex;
+  char *branch;
+  int  cseq;
+  char *cseq_method;
+  unsigned long txnResp; // hash of msg as computed in process_incoming() and used for certain retransmissions when not in mc mode.
+  int ackIndex;          // index of the message that specified this transaction with ack_txn ?where is it used?
 };
 
 
-// Ed: Maybe this is per-call
+// Used by call to store state which must be tracekd on a per-callid basis
 class DialogState {
 public:
   string         call_id;
-  /* cseq value for [cseq] keyword */
+  // cseq value for [cseq] keyword, useful for generating requests; auto-incremented
   unsigned int   cseq;
+
+  // cseq_method is the cseq method in the last request this dialog sent
+  char           cseq_method[MAX_HEADER_LEN];
+
+  // received_* - updated on recv of request and used for generating responses in cases where [last_cseq] won't do.
+  unsigned int   received_cseq;
+  char           received_cseq_method[MAX_HEADER_LEN];
 
   // Last received message (expected, not optional, and not retransmitted)
   char           * last_recv_msg;
@@ -99,9 +108,11 @@ public:
   char           * next_req_url; // (contact header)
 
 public:
-  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), peer_tag(0), local_tag(0), 
+  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), received_cseq(0), peer_tag(0), local_tag(0), 
     dialog_route_set(0), next_req_url(0), last_recv_msg(0) 
   {
+    cseq_method[0] = '\0';
+    received_cseq_method[0] = '\0';
     contact_name_and_uri[0] = 0;
     contact_uri[0] = 0;
     to_name_and_uri[0] = 0;
@@ -196,19 +207,19 @@ private:
 
   /* store state associated with most recent messages */
   DialogState          *last_dialog_state;
-  /* store state store by dialog (call="n" parameter) */
+  /* store state by dialog (call="n" parameter) */
   /* call-id verification is performed */
   perDialogStateMap    per_dialog_state;
 
   /* Last message sent from scenario step (retransmitions do not
    * change this index. Only message sent from the scenario
    * are kept in this index.) */
-  int		 last_send_index;
-  char         * last_send_msg;
-  int        last_send_len;
+  int		          last_send_index;
+  char          * last_send_msg;
+  int             last_send_len;
 
   /* How long until sending this message times out. */
-  unsigned int   send_timeout;
+  unsigned int    send_timeout;
 
   /* Last received message (expected,  not optional, and not 
    * retransmitted) and the associated hash. Stills setted until a new
@@ -270,7 +281,7 @@ private:
   /* Call Variable Table */
   VariableTable *M_callVariableTable;
 
-  /* Our transaction IDs. */
+  /* Our transaction IDs (allocated to have same number of entries as call_scenario::transactions. */
   struct txnInstanceInfo *transactions;
 
   /* result of execute action */
@@ -291,7 +302,7 @@ private:
   /* rc == true means call not deleted by processing */
   void formatNextReqUrl (char* next_req_url);
   void computeRouteSetAndRemoteTargetUri (char* rrList, char* contact, bool bRequestIncoming, DialogState *ds);
-  bool matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *txn, string &call_id);
+  bool matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *branch, string &call_id);
 
   bool executeMessage(message *curmsg);
   T_ActionResult executeAction(char * msg, message *message);
@@ -299,6 +310,12 @@ private:
 							     int occurrence, bool headers); 
   bool  rejectCall();
   double get_rhs(CAction *currentAction);
+
+
+  // returns txnInstanceInfo referenced by use_txn variable associated with msg_index or 0 if use_txn is 0.
+  // Also checks that transaction has been used and aborts with an error if it has not been.
+  struct txnInstanceInfo *get_txn();
+
 
   // P_index use for message index in scenario and ctrl of CRLF
   // P_index = -2 No ctrl of CRLF
@@ -343,7 +360,7 @@ private:
   void do_bookkeeping(message *curmsg);
 
   void  extract_cseq_method (char* responseCseq, char* msg);
-  void  extract_transaction (char* txn, char* msg);
+  void  extract_branch (char* branch, char* msg);  // copy Via's branch attribute from msg into branch
 
   int   extract_name_and_uri (char* uri, char* name_and_uri, char* msg, const char *name);
 
@@ -351,7 +368,6 @@ private:
   char * send_scene(int index, int *send_status, int *msgLen);
   bool   connect_socket_if_needed();
 
-  char * compute_cseq(char * src, DialogState *ds);
   char * get_header_field_code(char * msg, char * code);
   char * get_last_header(const char * name, DialogState *ds);
 
