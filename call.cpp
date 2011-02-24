@@ -604,7 +604,8 @@ call::~call()
 
   if (transactions) {
     for (unsigned int i = 0; i < call_scenario->transactions.size(); i++) {
-      free(transactions[i].txnID);
+      free(transactions[i].branch);
+      free(transactions[i].cseq_method);
     }
     free(transactions);
   }
@@ -933,27 +934,6 @@ void call::sendBuffer(char * msg, int len)
   DEBUG_OUT();
 }
 
-
-char * call::compute_cseq(char * src, DialogState *ds)
-{
-  static char cseq[MAX_HEADER_LEN];
-
-    /* If we find a CSeq in incoming msg */
-  char * last_header = get_last_header("CSeq:", ds);
-    if(last_header) {
-      int i;
-      /* Extract the integer value of the last CSeq */
-      last_header = strstr(last_header, ":");
-      last_header++;
-      while(isspace(*last_header)) last_header++;
-      sscanf(last_header,"%d", &i);
-      /* Add 1 to the last CSeq value */
-      sprintf(cseq, "%s%d",  "CSeq: ", (i+1));
-    } else {
-      sprintf(cseq, "%s",  "CSeq: 2");
-    }
-    return cseq;
-}
 
 char * call::get_header_field_code(char *msg, char * name)
 {
@@ -1481,7 +1461,8 @@ bool call::executeMessage(message *curmsg) {
     int incr_cseq = 0;
     if (!curmsg->send_scheme->isAck() &&
       !curmsg->send_scheme->isCancel() &&
-      !curmsg->send_scheme->isResponse()) {
+      !curmsg->send_scheme->isResponse() &&
+      !curmsg->use_txn) {
         ++ds->cseq;
         incr_cseq = 1;
     }
@@ -1527,11 +1508,23 @@ bool call::executeMessage(message *curmsg) {
     last_send_msg[msgLen] = '\0';
 
     if (curmsg->start_txn) {
-      transactions[curmsg->start_txn - 1].txnID = (char *)realloc(transactions[curmsg->start_txn - 1].txnID, MAX_HEADER_LEN);
-      extract_transaction(transactions[curmsg->start_txn - 1].txnID, last_send_msg);
+      // extract branch and cseq from sent message rather than internal variables in case they were specified manually
+      transactions[curmsg->start_txn - 1].branch = (char *)realloc(transactions[curmsg->start_txn - 1].branch, MAX_HEADER_LEN);
+      extract_branch(transactions[curmsg->start_txn - 1].branch, last_send_msg);
+
+      transactions[curmsg->start_txn - 1].cseq_method = (char *)realloc(transactions[curmsg->start_txn - 1].cseq_method, MAX_HEADER_LEN);
+      extract_cseq_method(transactions[curmsg->start_txn - 1].cseq_method, last_send_msg);
+
+      transactions[curmsg->start_txn - 1].cseq = get_cseq_value(last_send_msg);
     }
-    if (curmsg->ack_txn) {
+
+    // store the message index of this message in the transaction (for error checking)
+    if (curmsg->ack_txn) { 
       transactions[curmsg->ack_txn - 1].ackIndex = curmsg->index;
+    }
+
+    if (!curmsg->send_scheme->isResponse()) {
+      extract_cseq_method(ds->cseq_method, last_send_msg);
     }
 
     if(last_recv_index >= 0) {
@@ -1765,7 +1758,7 @@ const char *default_message_names[] = {
 const char *default_message_strings[] = {
 	/* 3pcc_abort */
 	"call-id: [call_id]\ninternal-cmd: abort_call\n\n",
-	/* ack */
+	/* ack (same transaction => non 2xx responses*/
         "ACK [last_Request_URI] SIP/2.0\n"
         "[last_Via]\n"
         "[last_From]\n"
@@ -1776,7 +1769,7 @@ const char *default_message_strings[] = {
         "Max-Forwards: 70\n"
         "Subject: Performance Test\n"
         "Content-Length: 0\n\n",
-	/* ack2, the only difference is Via, I don't quite know why. */
+	/* ack2 (new transaction => 2xx response) */
         "ACK [last_Request_URI] SIP/2.0\n"
         "Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
         "[last_From]\n"
@@ -2107,6 +2100,21 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, int *msgLen) 
   return createSendingMessage(src, P_index, msg_buffer, sizeof(msg_buffer), msgLen);
 }
 
+// returns txnInstanceInfo referenced by use_txn variable associated with msg_index or
+// 0 if use_txn is 0.
+// Also checks that transaction has been used and aborts with an error if it has not been.
+struct txnInstanceInfo *call::get_txn() {
+  if (int idx = call_scenario->messages[msg_index]->use_txn) {
+    if (!transactions[idx].branch) {
+      ERROR("Message %d is attempting to use transaction %s prior to it being started with start_txn.", msg_index, call_scenario->transactions[idx].name); 
+    }
+    return &(transactions[idx]);
+  }
+  else {
+    return 0;
+  }
+}
+
 char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buffer, int buf_len, int *msgLen)
 {
   char * length_marker = NULL;
@@ -2116,6 +2124,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   int    len_offset = 0;
   char *dest = msg_buffer;
   bool supresscrlf = false;
+  struct txnInstanceInfo *txn = 0;
   // cache default dialog state to prevent repeated lookups (fastpath)
   DialogState *src_dialog_state = get_dialogState(src->getDialogNumber());
 
@@ -2246,16 +2255,32 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Call_ID:
         if (src_dialog_state->call_id.empty()) {
           // create new call-id and store with dialog state
+          // Note this creates dialog state for src_dialog_state even though ds will in fact be used...
           static char new_id[MAX_HEADER_LEN];
           static char new_call_id[MAX_HEADER_LEN];
           compute_id(new_id, MAX_HEADER_LEN);
           snprintf(new_call_id, MAX_HEADER_LEN, "%d-%s", src->getDialogNumber(), new_id);
           src_dialog_state->call_id = string(new_call_id);
         }
-        dest += snprintf(dest, left, "%s", src_dialog_state->call_id.c_str());
+        dest += snprintf(dest, left, "%s", ds->call_id.c_str());
         break;
       case E_Message_CSEQ:
-        dest += snprintf(dest, left, "%u", src_dialog_state->cseq + comp->offset);
+        if (txn = get_txn())
+          dest += snprintf(dest, left, "%u", txn->cseq + comp->offset);
+        else
+          dest += snprintf(dest, left, "%u", ds->cseq + comp->offset);
+        break;
+      case E_Message_CSEQ_Method:
+        if (txn = get_txn())
+          dest += snprintf(dest, left, "%s", txn->cseq_method);
+        else
+          dest += snprintf(dest, left, "%s", ds->cseq_method);
+        break;
+      case E_Message_Received_CSEQ:
+        dest += snprintf(dest, left, "%u", ds->received_cseq + comp->offset);
+        break;
+      case E_Message_Received_CSEQ_Method:
+        dest += snprintf(dest, left, "%s", ds->received_cseq_method);
         break;
       case E_Message_PID:
         dest += snprintf(dest, left, "%d", pid);
@@ -2264,14 +2289,20 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         dest += snprintf(dest, left, "%s", service);
         break;
       case E_Message_Branch:
-        /* Branch is magic cookie + call number + message index in scenario */
-        if(P_index == -2){
-          dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, msg_index-1 + comp->offset);
-        } else {
-          dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, P_index + comp->offset);
+        // otherwise generate a value (this includes start_txn case)
+        if (txn = get_txn()) {
+          dest += snprintf(dest, left, "%s", txn->branch);
+        }
+        else {
+          /* Branch is magic cookie + call number + message index in scenario */
+          if(P_index == -2){
+            dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, msg_index-1 + comp->offset);
+          } else {
+            dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, P_index + comp->offset);
+          }
         }
         break;
-      case E_Message_Index:
+     case E_Message_Index:
         dest += snprintf(dest, left, "%d", P_index);
         break;
       case E_Message_Next_Url:
@@ -2472,7 +2503,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         free(last_request_uri);
         break;
                                        }
-      case E_Message_Last_CSeq_Number: {
+       case E_Message_Last_CSeq_Number: {
         int last_cseq = 0;
 
         char *last_header = get_last_header("CSeq:", ds);
@@ -2485,7 +2516,15 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         dest += sprintf(dest, "%d", last_cseq + comp->offset);
         break;
                                        }
-      case E_Message_TDM_Map:
+      case E_Message_Last_Branch: {
+        char last_branch[MAX_HEADER_LEN];
+        last_branch[0] = '\0';
+        extract_branch(last_branch, ds->last_recv_msg);
+
+        dest += sprintf(dest, "%s", last_branch);
+        break;
+                                       }
+     case E_Message_TDM_Map:
         if (!use_tdmmap)
           ERROR("[tdmmap] keyword without -tdmmap parameter on command line");
         dest += snprintf(dest, left, "%d.%d.%d/%d",
@@ -2772,25 +2811,26 @@ void call::extract_cseq_method (char* method, char* msg)
   }
 }
 
-void call::extract_transaction (char* txn, char* msg)
+// copy Via's branch attribute from msg into branch
+void call::extract_branch (char* branch, char* msg)
 {
   char *via = get_header_content(msg, "via:");
   if (!via) {
-    txn[0] = '\0';
+    branch[0] = '\0';
     return;
   }
 
-  char *branch = strstr(via, ";branch=");
-  if (!branch) {
-    txn[0] = '\0';
+  char *msg_branch = strstr(via, ";branch=");
+  if (!msg_branch) {
+    branch[0] = '\0';
     return;
   }
 
-  branch += strlen(";branch=");
-  while (*branch && *branch != ';' && *branch != ',' && !isspace(*branch)) {
-    *txn++ = *branch++;
+  msg_branch += strlen(";branch=");
+  while (*msg_branch && *msg_branch != ';' && *msg_branch != ',' && !isspace(*msg_branch)) {
+    *branch++ = *msg_branch++;
   }
-  *txn = '\0';
+  *branch = '\0';
 }
 
 void call::formatNextReqUrl (char* next_req_url)
@@ -2975,7 +3015,7 @@ int call::extract_name_and_uri (char* uri, char* name_and_uri, char* msg, const 
 
 
 
-bool call::matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *txn, string &call_id)
+bool call::matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *branch, string &call_id)
 {
   bool result = false;
   message *curmsg = call_scenario->messages[index];
@@ -2993,10 +3033,20 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
     } else {
       result = !strcmp(curmsg -> recv_request, request);
     }
+    if ((result) && (curmsg->use_txn)) {
+      // use_txn on received request => result false if branches don't match
+      if (!transactions[curmsg->use_txn - 1].branch)
+        ERROR("Attempting to use transaction (branch = %s) before message received with start_txn", branch);
+      if (strcmp(transactions[curmsg->use_txn - 1].branch, branch)) {
+	      result = false;
+      } 
+    }
   } else if (curmsg->recv_response && (curmsg->recv_response == reply_code)) {
     /* This is a potential candidate, we need to match transactions. */
-    if (curmsg->response_txn) {
-      if (transactions[curmsg->response_txn - 1].txnID && !strcmp(transactions[curmsg->response_txn - 1].txnID, txn)) {
+    if (curmsg->use_txn) {
+      if (!transactions[curmsg->use_txn - 1].branch)
+        ERROR("Attempting to use transaction (branch = %s) before message received with start_txn", branch);
+      if (!strcmp(transactions[curmsg->use_txn - 1].branch, branch)) {
 	      result = true;
       } 
     } else if (index == 0) {
@@ -3030,7 +3080,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   int             reply_code;
   static char     request[65];
   char            responsecseqmethod[65];
-  char            txn[MAX_HEADER_LEN];
+  char            branch[MAX_HEADER_LEN];
   unsigned long   cookie;
   char          * ptr;
   int             search_index;
@@ -3059,7 +3109,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     return run();
   }
   responsecseqmethod[0] = '\0';
-  txn[0] = '\0';
+  branch[0] = '\0';
 
   if((transport == T_UDP) && (retrans_enabled)) {
     /* Detects retransmissions from peer and retransmit the
@@ -3124,7 +3174,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     (msg[3] == '/') &&
     (msg[4] == '2') &&
     (msg[5] == '.') &&
-    (msg[6] == '0')    ) {    
+    (msg[6] == '0')    ) { 
 
       reply_code = get_reply_code(msg);
       if(!reply_code) {
@@ -3140,9 +3190,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       }
 
       request[0]=0;
-      // extract the cseq method from the response
+      // extract the cseq method and branch from the response for verification
       extract_cseq_method (responsecseqmethod, msg);
-      extract_transaction (txn, msg);
+      extract_branch (branch, msg);
   } else if((ptr = strchr(msg, ' '))) {
     if((ptr - msg) < 64) {
       memcpy(request, msg, ptr - msg);
@@ -3173,12 +3223,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   }
 
   /* Try to find it in the expected non mandatory responses
-  * until the first mandatory response  in the scenario */
+  * until the first mandatory response in the scenario */
   for(search_index = msg_index;
     search_index < (int)call_scenario->messages.size();
     search_index++) {
 
-      if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
+      if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id)) { 
         if(call_scenario->messages[search_index] -> optional) {
           continue;
         }
@@ -3194,21 +3244,21 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       break;
   }
 
-  /* Try to find it in the old non-mandatory receptions */
-  if(!found) {
+  /* Try to find it in the old non-mandatory receptions if not in functional mode */
+  if ((!found) && (!no_call_id_check)) {
     bool contig = true;
     for(search_index = msg_index - 1;
       search_index >= 0;
       search_index--) {
         if (call_scenario->messages[search_index]->optional == OPTIONAL_FALSE) contig = false;
-        if(matches_scenario(search_index, reply_code, request, responsecseqmethod, txn, call_id)) {
+        if(matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id)) {
           if (contig || call_scenario->messages[search_index]->optional == OPTIONAL_GLOBAL) {
             found = true;
-            break;  
+            break;
           } else {
             if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
               /* This is a reply to an old transaction. */
-              if (!strcmp(transactions[checkTxn - 1].txnID, txn)) {
+              if (!strcmp(transactions[checkTxn - 1].branch, branch)) {
                 /* This reply is provisional, so it should have no effect if we recieve it out-of-order. */
                 if (reply_code >= 100 && reply_code <= 199) {
                   TRACE_MSG("-----------------------------------------------\n"
@@ -3327,7 +3377,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     return true;
   }
 
-  /* Update peer_tag (remote) */
+  /* Update peer_tag (remote_tag) */
   if (reply_code)
     ptr = get_tag_from_to(msg);
   else
@@ -3366,16 +3416,29 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     LOG_MSG("Message received without local tag, though local tag '%s' has been specified. Local tag will not be removed.", ds->local_tag);
   }
   
-  /* Update contact_, to_ & from_  _name_and_uri & _uri variables */
+  /* Update (contact_, to_ & from_)  (_name_and_uri & _uri variables) */
   extract_name_and_uri(ds->contact_uri, ds->contact_name_and_uri, msg, "Contact:");
   extract_name_and_uri(ds->to_uri, ds->to_name_and_uri, msg, "To:");
   extract_name_and_uri(ds->from_uri, ds->from_name_and_uri, msg, "From:");
 
+  // If start_txn then we need to store all the interesting per-transactions values
+  if (int txn = call_scenario->messages[search_index]->start_txn) {
+    // (maybe these can come from variables already extracted sooner rather than re-calling extrace_*?
+    transactions[txn - 1].branch = (char *)realloc(transactions[txn - 1].branch, MAX_HEADER_LEN);
+    extract_branch(transactions[txn - 1].branch, msg);
+
+    transactions[txn - 1].cseq_method = (char *)realloc(transactions[txn - 1].cseq_method, MAX_HEADER_LEN);
+    extract_cseq_method(transactions[txn - 1].cseq_method, msg);
+
+    transactions[txn - 1].cseq = get_cseq_value(msg);
+  }
+  
   /* If we are part of a transaction, mark this as the final response. */
+  // A non-zero response_txn ensures it is a transaction, but it may not be final
+  // This facilitates certain retransmissions when not in functional mode
   if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
     transactions[checkTxn - 1].txnResp = hash(msg);
   }
-
 
   /* Handle counters and RTDs for this message. */
   do_bookkeeping(call_scenario->messages[search_index]);
@@ -3402,9 +3465,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     }
   }
 
-  if (request) { // update [cseq] with received CSeq
-    unsigned long int rcseq = get_cseq_value(msg);
-    if (rcseq > ds->cseq) ds->cseq = rcseq;
+  if (reply_code == 0) { 
+    // update received_* only for requests
+    ds->received_cseq = get_cseq_value(msg);
+    extract_cseq_method (ds->received_cseq_method, msg);
   }
 
   /* This is an ACK/PRACK or a response, and its index is greater than the 
@@ -3965,12 +4029,10 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
       // Add redirct to command and point x at modified string.
 
-#ifndef __CYGWIN
       if (useExecf) {
-        DEBUG("Appending logging information to exec command\n");
+        DEBUG("Appending logging information to exec command"); // NOTE: This TRACE_EXEC also servers to ensure exec_lfi.file_name is defined.
         snprintf(redirect_command, MAX_HEADER_LEN, "%s >> %s 2>&1", x, exec_lfi.file_name);
         x = redirect_command;
-        log_off(&exec_lfi);
       }
       if (verify_result) {
         TRACE_EXEC("<exec> verify \"%s\"\n", x);
@@ -3978,14 +4040,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       else {
         TRACE_EXEC("<exec> command \"%s\"\n", x);
       }
-#else
-      if (verify_result) {
-        DEBUG("<exec> verify \"%s\"\n", x);
+
+      if (useExecf) {
+        // Close exec_lfi so it doesn't interfere with piped redirect.
+        // This must occur after final TRACE_EXEC prior to exec/system
+        log_off(&exec_lfi);
       }
-      else {
-        DEBUG("<exec> command \"%s\"\n", x);
-      }
-#endif
 
       pid_t l_pid;
       switch(l_pid = fork())

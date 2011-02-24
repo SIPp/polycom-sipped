@@ -318,6 +318,8 @@ struct sipp_option options_table[] = {
 
 	{"T2", "Global T2-timer in milli seconds", SIPP_OPTION_TIME_MS, &global_t2, 1},
 
+
+
   {"sendbuffer_warn", "Produce warnings instead of errors on SendBuffer failures.", SIPP_OPTION_BOOL, &sendbuffer_warn, 1},
 
 	{"trace_msg", "Displays sent and received SIP messages in <scenario file name>_<pid>_messages.log", SIPP_OPTION_SETFLAG, &useMessagef, 1},
@@ -4316,7 +4318,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.8"
+	  printf("\n SIPped v3.2.10"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4886,7 +4888,11 @@ int main(int argc, char *argv[])
     rotate_calldebugf();
   }
   
-  // don't need to call rotate for Execf as it's handled each time in TRACE_EXEC
+  // Handled each time in TRACE_EXEC, but important as this establishes the file name
+  if (useExecf) {
+    rotate_execf();
+  }
+  
   
  if (useScreenf == 1) {
     char L_file_name [MAX_PATH];
@@ -5277,7 +5283,7 @@ void close_calls(struct sipp_socket *socket) {
 int determine_remote_ip() {
   if(!strlen(remote_host)) {
     if((sendMode != MODE_SERVER)) {
-      ERROR("Missing remote host parameter. This scenario requires it");
+      ERROR("Missing remote host parameter. This scenario requires it.  \nCommon reasons are that the first message is a sent by SIPp or that a NOP statement precedes the <recv> and you specified the -mc option");
     }
   } else {
     int temp_remote_port;
@@ -5852,7 +5858,8 @@ void free_peer_addr_map() {
   }
 }
 
-void rotatef(struct logfile_info *lfi) {
+// return true if log file opened, false if not.
+int rotatef(struct logfile_info *lfi) {
   char L_rotate_file_name [MAX_PATH];
 
   if (!lfi->fixedname) {
@@ -5899,12 +5906,14 @@ void rotatef(struct logfile_info *lfi) {
     lfi->fptr = fopen(lfi->file_name, "w");
   } else {
     lfi->fptr = fopen(lfi->file_name, "a");
-    lfi->overwrite = true;
+    if (lfi->fptr) 
+      lfi->overwrite = true; // only set 'overwrite' if open was successful.
   }
   if(lfi->check && !lfi->fptr) {
     /* We can not use the error functions from this function, as we may be rotating the error log itself! */
     ERROR("Unable to open/create '%s'", lfi->file_name);
   }
+  return (lfi->fptr != 0);
 }
 
 void rotate_calldebugf() {
@@ -6013,8 +6022,18 @@ int _TRACE_EXEC(const char *fmt, ...) {
   va_list ap;
 
   // re-open exec log file if not open from previous exec command
-  if (useExecf && !exec_lfi.fptr)
-    rotatef(&exec_lfi);
+  if (useExecf && !exec_lfi.fptr) {
+    DEBUG("rotating exec_lfi; exec_lfi.overwrite = %d", exec_lfi.overwrite);
+    int retry_count = 0;
+    while (!rotatef(&exec_lfi) && (retry_count++ < 9)) {
+      DEBUG("Unable to open exec_lfi ; waiting 1/10 second %d of maximum 10 times before retrying to allow conflicting process to terminate.", retry_count);
+      usleep(100000);
+    }
+    if (!exec_lfi.fptr) {
+      DEBUG("Unable to open exec log file; exiting.");
+      return -1;
+    }
+  }
 
   va_start(ap, fmt);
   ret = _trace(&exec_lfi, fmt, ap);
