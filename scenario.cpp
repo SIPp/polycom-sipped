@@ -1646,10 +1646,12 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
     } else if(!strcmp(actionElem, "exec")) {
       if((ptr = xp_get_value((char *)"command"))) {
         tmpAction->setActionType(CAction::E_AT_EXECUTE_CMD);
+        xp_convert_special_characters(ptr);
         tmpAction->setMessage(ptr);
       } /* end (ptr = xp_get_value("command")  */ 
       else if((ptr = xp_get_value((char *)"verify"))) {
         tmpAction->setActionType(CAction::E_AT_VERIFY_CMD);
+        xp_convert_special_characters(ptr);
         tmpAction->setMessage(ptr);
       } /* end (ptr = xp_get_value("verify")  */ 
       else if((ptr = xp_get_value((char *)"int_cmd"))) {

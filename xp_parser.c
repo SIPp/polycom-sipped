@@ -704,3 +704,51 @@ int xp_get_content_length(char * P_buffer)
   return (L_content_length); 
 }
 
+/* convert &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') */
+void xp_convert_special_characters(char * buffer)
+{
+  char * src = strchr(buffer, '&');
+  char * dst = src;
+  if (!src) 
+    return ;
+
+
+  printf("xp_convert_special_characters: IN '%s'\n", buffer);
+  /* start at first & and then copy inline from src to dest with correct characters */
+  while (*src) {
+    if (*src == '&') {
+      if ((src[1] == 'l') && (src[2] == 't') && (src[3] == ';')) {
+        *dst = '<';
+        src += 3;
+      }
+      else if ((src[1] == 'a') && (src[2] == 'm') && (src[3] == 'p') && (src[4] == ';')) {
+        *dst = '&';
+        src += 4;
+      }
+      else if ((src[1] == 'g') && (src[2] == 't') && (src[3] == ';')) {
+        *dst = '>';
+        src += 3;
+      }
+      else if ((src[1] == 'q') && (src[2] == 'u') && (src[3] == 'o') && (src[4] == 't') && (src[5] == ';')) {
+        *dst = '"';
+        src += 5;
+      }
+      else if ((src[1] == 'a') && (src[2] == 'p') && (src[3] == 'o') && (src[4] == 's') && (src[5] == ';')) {
+        *dst = '\'';
+        src += 5;
+      }
+      else {
+        /* Illegal use of &, but we'll be lenient (in violation of XML rules) and allow it through */
+        printf("WARNING: Illegal use of '&' in XML attribute: you should be using '&amp;' instead\n");
+        *dst = *src;
+      }
+    }
+    else 
+      *dst = *src;
+    dst++;
+    src++;
+  }
+  *dst = 0;
+  printf("xp_convert_special_characters: OUT '%s'\n", buffer);
+
+}

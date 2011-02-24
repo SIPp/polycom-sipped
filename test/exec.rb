@@ -43,4 +43,14 @@ class Exec < Test::Unit::TestCase
 	assert(test.remove_space_and_crlf(data) == expected, "data == expected")
   end
 
+  def test_exec_special_xml_character_conversion
+	# verify special xml character conversion in exec
+    test = SippTest.new("test_exec_special_xml_character_conversion", "-sf exec_xml_character_conversion.sipp -mc -trace_exec -exec_file exec_output.log", "-sn uas -aa ")
+    assert(test.run())
+	# verify that exec_output.log  contains #{atime.to_s}
+	data = File.read("exec_output.log")
+	expected = test.remove_space_and_crlf("<exec> verify \"echo \"< > & '\" >> exec_output.log 2>&1\"\n\"< > & '\" \n")
+	assert(test.remove_space_and_crlf(data) == expected, "data == expected")
+  end
+
 end

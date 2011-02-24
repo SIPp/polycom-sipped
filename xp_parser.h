@@ -34,6 +34,7 @@ int    xp_search_element_from_name(char * element, int occurence);
 char * xp_get_value(const char * name);
 char * xp_get_cdata();
 int    xp_get_content_length(char * P_buffer);
+void   xp_convert_special_characters(char * buffer); /* convert &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') */
 
 #ifdef __cplusplus
 }

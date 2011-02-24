@@ -1,5 +1,6 @@
 This file tracks changes responsible for version number updates.
-3.2.10 02-23-2011
+3.2.10 02-24-2011
+- Perform conversion of &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') in exec command and verify.
 - Correct [cseq] keyword behavior to only reflect outgoing transactions (no longer updated on recv)
 - Add last_cseq_number (extracted from last_cseq), received_cseq and received_cseq_method (based on last received request), cseq_method (based on last sent request), last_branch 
 - Update parser to ignore embedded <scenario> <?xml> and <!DOCTYPE tags to facilitate xml-compliant include files
