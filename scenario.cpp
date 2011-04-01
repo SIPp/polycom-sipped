@@ -638,18 +638,28 @@ char *clean_cdata(char *ptr, int *removed_crlf = NULL) {
   if(ptr == msg) {
     ERROR("Empty cdata in xml scenario file");
   }
-  while ((ptr = strstr(msg, "\n "))) {
-    memmove(ptr + 1, ptr + 2, strlen(ptr) - 1);
-  }
-  while ((ptr = strstr(msg, " \n"))) {
-    memmove(ptr, ptr + 1, strlen(ptr));
-  }
-  while ((ptr = strstr(msg, "\n\t"))) {
-    memmove(ptr + 1, ptr + 2, strlen(ptr) - 1);
-  }
-  while ((ptr = strstr(msg, "\t\n"))) {
-    memmove(ptr, ptr + 1, strlen(ptr));
-  }
+
+  // remove whitespace on either side of \n
+  bool cleanup_whitespace = true;
+  while (cleanup_whitespace) {
+    cleanup_whitespace = false;
+    while ((ptr = strstr(msg, "\n "))) {
+      memmove(ptr + 1, ptr + 2, strlen(ptr) - 1);
+      cleanup_whitespace = true;
+    }
+    while ((ptr = strstr(msg, " \n"))) {
+      memmove(ptr, ptr + 1, strlen(ptr));
+      cleanup_whitespace = true;
+    }
+    while ((ptr = strstr(msg, "\n\t"))) {
+      memmove(ptr + 1, ptr + 2, strlen(ptr) - 1);
+      cleanup_whitespace = true;
+    }
+    while ((ptr = strstr(msg, "\t\n"))) {
+      memmove(ptr, ptr + 1, strlen(ptr));
+      cleanup_whitespace = true;
+    }
+  } // while (cleanup_whitespace = true)
 
   return msg;
 }

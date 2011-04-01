@@ -149,7 +149,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 #endif
     }
     if (pktlen > PCAP_MAXPACKET) {
-      ERROR("Packet size is too big! Recompile with bigger PCAP_MAXPACKET in prepare_pcap.h");
+      ERROR("Packet size is too big or corrupt capture file (%d > %d)! Recompile with bigger PCAP_MAXPACKET in prepare_pcap.h", pktlen, PCAP_MAXPACKET);
     }
     pkts->pkts = (pcap_pkt *) realloc(pkts->pkts, sizeof(*(pkts->pkts)) * (n_pkts + 1));
     if (!pkts->pkts)

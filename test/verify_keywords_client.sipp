@@ -86,6 +86,35 @@
       </action>
   </recv>
   
+  <send dialog="3" >
+    <![CDATA[
+
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      To: sipp <sip:sipp@[local_ip]:[local_port]>
+      Call-ID: [call_id]
+      CSeq: 1 REGISTER
+      Contact: Somebody <sip:sipp@contact.org;nota=tag>;+sip.instance="<urn:uuid:f74fb035-4fca-5dcc-9eb5-5b18425ae720>"
+      Max-Forwards: 70
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+
+  <recv response="200" dialog="3" rrs="true">
+      <action>	   
+           <ereg regexp="''Somebody <sip:sipp@contact.org;nota=tag>''" search_in="hdr" header="ContactNameAndUri:" check_it="true" assign_to="keyword331" />
+           <ereg regexp="''sip:sipp@contact.org;nota=tag''" search_in="hdr" header="ContactUri:" check_it="true" assign_to="keyword332" />
+           <ereg regexp="''sip:sipp@contact.org;nota=tag''" search_in="hdr" header="NextUrl:" check_it="true" assign_to="keyword333" />
+		   
+           <log message="Contact header's uri and name_and_uri keywords are '[contact_uri]' and '[contact_name_and_uri]'." />           
+           <log message="next_url header is '[next_url]'." />
+           <trim assign_to="keyword331"/> <trim assign_to="keyword332"/> <trim assign_to="keyword333"/>		   
+      </action>
+  </recv>
+  
 </scenario>
 
 

@@ -1,4 +1,10 @@
 This file tracks changes responsible for version number updates.
+3.2.11 03-31-2011
+- Improve parsing out of leading tabs and whitespace within CDATA sections
+- Improve parsing of next_url, contact_, to_, from_ uri & name_and_uri parameters to exclude parameters after 1st >
+- Tentative support for exec pcap_play on Windows
+- Adjust exec_xml_character_conversion testcase for Linux & Windows support (echo "something" produces different results depending on platform)
+
 3.2.10 02-24-2011
 - Perform conversion of &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') in exec command and verify.
 - Correct [cseq] keyword behavior to only reflect outgoing transactions (no longer updated on recv)

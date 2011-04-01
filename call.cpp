@@ -67,9 +67,9 @@ extern  map<string, struct sipp_socket *>     map_perip_fd;
 void *send_wrapper(void *);
 #endif
 int call::dynamicId       = 0;
-int call::maxDynamicId    = 10000+2000*4;      // FIXME both param to be in command line !!!!
-int call::startDynamicId  = 10000;             // FIXME both param to be in command line !!!!
-int call::stepDynamicId   = 4;                // FIXME both param to be in command line !!!!
+int call::maxDynamicId    = 10000+2000*4;
+int call::startDynamicId  = 10000;
+int call::stepDynamicId   = 4;
 
 /************** Call map and management routines **************/
 static unsigned int next_number = 1;
@@ -1093,7 +1093,7 @@ char * call::get_header(char* message, const char * name, bool content)
   }
  
   /* Remove leading whitespaces */
-  for (start = last_header; *start == ' '; start++);
+  for (start = last_header; ((*start == ' ') || (*start == '\t')); start++);
 
   /* remove enclosed CRs in multilines */
   /* don't remove enclosed CRs for multiple headers (e.g. Via) (Rhys) */
@@ -2845,7 +2845,7 @@ void call::formatNextReqUrl (char* next_req_url)
     /* using a temporary buffer */
     char tempBuffer[MAX_HEADER_LEN];
     strcpy(tempBuffer, actual_req_url + 1);
-    actual_req_url = strrchr(tempBuffer, '>');
+    actual_req_url = strchr(tempBuffer, '>'); // start at beginning to avoid finding > associated with parameters
     *actual_req_url = '\0';
     strcpy(next_req_url, tempBuffer);
   }
@@ -2994,14 +2994,14 @@ int call::extract_name_and_uri (char* uri, char* name_and_uri, char* msg, const 
   if (start_uri) 
   {
     /* Existence of < indicates stuff preceeding is display name, put both in name_and_uri */
-    char *end_uri = strrchr(header, '>');
+    char *end_uri = strchr(header, '>'); // Search from start here to avoid <...> in optional parameters
     strncpy(name_and_uri, header, end_uri - header + 1);
     name_and_uri[end_uri-header+1] = 0;
 
     /* And put stuff inside <...> in uri */
+    start_uri = strchr(name_and_uri, '<');
     strncpy(uri, start_uri + 1, MAX_HEADER_LEN);
-    start_uri = strrchr(uri, '>');
-    *start_uri = '\0';
+    uri[strlen(uri)-1] = '\0'; // remove trailing > that was at end of end_uri
   }
   else {
     /* No < specified, entire message copied to both */

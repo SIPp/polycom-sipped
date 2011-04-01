@@ -59,6 +59,26 @@
     ]]>
   </send>
   
+  <recv request="REGISTER" dialog="3" rrs="true"/>
+
+  <send dialog="3">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      ContactNameAndUri: ''[contact_name_and_uri]''
+      ContactUri: ''[contact_uri]''	  
+	  NextUrl: ''[next_url]''
+      Content-Length: 0
+
+    ]]>
+  </send>
+  
 </scenario>
 
 

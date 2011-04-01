@@ -49,8 +49,10 @@ class Exec < Test::Unit::TestCase
     assert(test.run())
 	# verify that exec_output.log  contains #{atime.to_s}
 	data = File.read("exec_output.log")
-	expected = test.remove_space_and_crlf("<exec> verify \"echo \"< > & '\" >> exec_output.log 2>&1\"\n\"< > & '\" \n")
-	assert(test.remove_space_and_crlf(data) == expected, "data == expected")
+	expected_windows = test.remove_space_and_crlf("<exec> verify \"echo \"< > & '\" >> exec_output.log 2>&1\"\n\"< > & '\" \n")
+	expected_linux = test.remove_space_and_crlf("<exec> verify \"echo \"< > & '\" >> exec_output.log 2>&1\"\n< > & ' \n")
+	result = test.remove_space_and_crlf(data)
+	assert((result == expected_linux) || (result == expected_windows), "data == expected")
   end
 
 end
