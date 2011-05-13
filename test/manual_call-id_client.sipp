@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Manually Generated Call-ID" parameters="" id="" config="">
+  <send dialog="1" >
+    <![CDATA[
+
+      INVITE sip:123@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: "1556" <sip:1556@[local_ip]:[local_port]>[local_tag_param]
+      To: <sip:123@[remote_ip]:[remote_port];user=phone>
+      CSeq: [cseq] INVITE
+      Call-ID: manually_generated_test
+      Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <recv response="200" dialog="1">
+      <action>
+          <ereg regexp="manually_generated_test" search_in="hdr" header="Call-ID:" check_it="true" assign_to="br1"/>
+      </action>
+  </recv>
+
+  <send dialog="1" >
+    <![CDATA[
+
+      INVITE sip:123@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: "1556" <sip:1556@[local_ip]:[local_port]>[local_tag_param]
+      To: <sip:123@[remote_ip]:[remote_port];user=phone>
+      CSeq: [cseq] INVITE
+      Call-ID: [call_id]
+      Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <recv response="200" dialog="1">
+      <action>
+          <ereg regexp="manually_generated_test" search_in="hdr" header="Call-ID:" check_it="true" assign_to="br1"/>
+      </action>
+  </recv>
+
+</scenario>
