@@ -1942,7 +1942,6 @@ bool call::process_unexpected(char * msg, const char *reason)
     }
 
     // usage of last_ keywords => for call aborting
-//    DialogState *ds = get_dialogState(curmsg->dialog_number);
     setLastMsg(msg, curmsg->dialog_number);
 
     computeStat(CStat::E_CALL_FAILED);
@@ -1981,7 +1980,7 @@ bool call::abortCall(bool writeLog)
   }  
   if ((creationMode != MODE_SERVER) && (msg_index > 0)) {
     if ((call_established == false) && (is_inv)) {
-      src_recv = getDefaultLastReceivedMessage().c_str(); //last_recv_msg ;
+      src_recv = getDefaultLastReceivedMessage().c_str(); 
       char   L_msg_buffer[SIPP_MAX_MSG_SIZE];
       L_msg_buffer[0] = '\0';
 
@@ -2192,22 +2191,6 @@ void call::verifyIsClientTransaction(TransactionState &txn, const string &wrongK
           txn.getName().c_str(), msg_index, wrongKeyword.c_str(), correctKeyword.c_str());
   }
 }
-/*
-// returns TransactionState referenced by use_txn variable associated with msg_index or
-// 0 if use_txn is 0.
-// Also checks that transaction has been used and aborts with an error if it has not been.
-struct TransactionState *call::get_txn() {
-  if (int idx = call_scenario->messages[msg_index]->use_txn) {
-    if (!transactions[idx].branch) {
-      ERROR("Message %d is attempting to use transaction %s prior to it being started with start_txn.", msg_index, call_scenario->transactions[idx].name); 
-    }
-    return &(transactions[idx]);
-  }
-  else {
-    return 0;
-  }
-}
-*/
 
 char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buffer, int buf_len, int *msgLen)
 {
@@ -2218,7 +2201,6 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   int  len_offset = 0;
   char * dest = msg_buffer;
   bool supresscrlf = false;
-//  struct TransactionState *txn = 0;
   // cache default dialog state to prevent repeated lookups (fastpath)
   DialogState *src_dialog_state = get_dialogState(src->getDialogNumber());
 
@@ -2662,7 +2644,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
                                 }
       case E_Message_Last_Header: {
-        char * last_header = get_last_header(comp->literal, txn.getLastReceivedMessage().c_str()); // ds->last_recv_msg
+        char * last_header = get_last_header(comp->literal, txn.getLastReceivedMessage().c_str());
         if(last_header) {
           dest += sprintf(dest, "%s", last_header);
         }
@@ -2693,19 +2675,6 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
                                        }
       case E_Message_Last_Branch: {
         dest += sprintf(dest, "%s", extract_branch(txn.getLastReceivedMessage().c_str()).c_str());
-
-/*
-        char last_branch[MAX_HEADER_LEN];
-        last_branch[0] = '\0';
-        if (useTxn) {
-          TransactionState &txn = get_txn();
-          extract_branch(last_branch, txn.getLastMessage().c_str());
-        }
-        else 
-          extract_branch(last_branch, ds->last_recv_msg);
-
-        dest += sprintf(dest, "%s", last_branch);
-*/
         break;
       }
       case E_Message_TDM_Map:
@@ -2773,7 +2742,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     /* Need the Method name from the CSeq of the Challenge */
     char method[MAX_HEADER_LEN];
-    tmp = get_last_header("CSeq:", txn.getLastReceivedMessage().c_str()); // src_dialog_state->last_recv_msg
+    tmp = get_last_header("CSeq:", txn.getLastReceivedMessage().c_str()); 
     if(!tmp) {
       ERROR("Could not extract method from cseq of challenge");
     }
@@ -3664,17 +3633,6 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   if (call_scenario->messages[search_index]->isStartTxn()) {
     TransactionState &txn = ds->create_transaction(call_scenario->messages[search_index]->getTransactionName());
     txn.startServer(extract_branch(msg), get_cseq_value(msg), extract_cseq_method(msg));
-
-/*
-    // (maybe these can come from variables already extracted sooner rather than re-calling extract_*?
-    transactions[txn - 1].branch = (char *)realloc(transactions[txn - 1].branch, MAX_HEADER_LEN);
-    extract_branch(transactions[txn - 1].branch, msg);
-
-    transactions[txn - 1].cseq_method = (char *)realloc(transactions[txn - 1].cseq_method, MAX_HEADER_LEN);
-    extract_cseq_method(transactions[txn - 1].cseq_method, msg);
-
-    transactions[txn - 1].cseq = get_cseq_value(msg);
-*/
   }
   
   // If we are part of a transaction, mark this as the final response. 
@@ -4535,13 +4493,6 @@ void call::setLastMsg(const string &msg, int dialog_number, int message_index) {
     ds = get_dialogState(dialog_number);
     ds->setLastReceivedMessage(msg, name, message_index);
   }
-
-// set call's own reference
-//  last_recv_msg = ds->getLastReceivedMessage().c_str();
-
-//  ds->last_recv_msg = (char *) realloc(ds->last_recv_msg, strlen(msg) + 1);
-//  strcpy(ds->last_recv_msg, msg);
-//  last_recv_msg = ds->last_recv_msg; 
 }
 
 
@@ -4630,7 +4581,6 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     string old_last_recv_msg = getDefaultLastReceivedMessage();
     // usage of last_ keywords (note get_last_header) inserts 0's into header.
     setLastMsg(P_recv);
-//    ds->setLastlast_recv_msg = P_recv;
 
     WARNING("Automatic response mode for an unexpected REGISTER, INFO, UPDATE or NOTIFY for call: %s", (id==NULL)?"none":id);
     if (P_case == E_AM_AA)
@@ -4641,7 +4591,6 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
 
     // restore previous last msg
     setLastMsg(old_last_recv_msg);
-//    ds->last_recv_msg = old_last_recv_msg;
 
     CStat::globalStat(CStat::E_AUTO_ANSWERED);
     return true;
@@ -4691,21 +4640,9 @@ DialogState *call::get_dialogState(int dialog_number) {
 } // get_dialogState
 
 void call::free_dialogState() {
- for(perDialogStateMap::const_iterator it = per_dialog_state.begin(); it != per_dialog_state.end(); ++it)
-    {
-        // this belongs in destructor: if (it->second->last_recv_msg) free(it->second->last_recv_msg);
-/*
-work this in: need to free per-transaction state too!
-  if (transactions) {
-    for (unsigned int i = 0; i < call_scenario->transactions.size(); i++) {
-      free(transactions[i].branch);
-      free(transactions[i].cseq_method);
-    }
-    free(transactions);
+ for(perDialogStateMap::const_iterator it = per_dialog_state.begin(); it != per_dialog_state.end(); ++it) {
+    delete it->second;
   }
-*/
-        delete it->second;
-    }
   per_dialog_state.clear();
 
   last_dialog_state = 0;

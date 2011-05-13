@@ -29,7 +29,7 @@
 
 DialogState::DialogState(unsigned int base_cseq, const string &call_id) : call_id(call_id), 
                          client_cseq(base_cseq), server_cseq(0), peer_tag(0), local_tag(0), 
-                         dialog_route_set(0), next_req_url(0), default_txn("") //, last_recv_msg(0) 
+                         dialog_route_set(0), next_req_url(0), default_txn("") 
 {
   client_cseq_method[0] = '\0';
   server_cseq_method[0] = '\0';
@@ -43,7 +43,6 @@ DialogState::DialogState(unsigned int base_cseq, const string &call_id) : call_i
 
 DialogState::~DialogState() 
 { 
-//  if (last_recv_msg) free (last_recv_msg); 
   if(peer_tag) free(peer_tag);
   if(local_tag) free(local_tag);
 

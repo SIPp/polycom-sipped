@@ -505,29 +505,6 @@ void scenario::validate_variable_usage() {
   allocVars->validate();
 }
 
-/*
-void scenario::validate_txn_usage() {
-  for (unsigned int i = 0; i < transactions.size(); i++) {
-    if(transactions[i].started == 0) {
-      ERROR("Transaction %s is never started!\n", transactions[i].name);
-    } 
-    
-    if (!no_call_id_check) {
-      // -mc disables 'proper-transaction' verification to facilitate manual retransmissions and negative testing
-      if(transactions[i].responses == 0) {
-        ERROR("Transaction %s has no responses defined!\n", transactions[i].name);
-      }
-      if (transactions[i].isInvite && transactions[i].acks == 0) {
-        ERROR("Transaction %s is an INVITE transaction without an ACK!\n", transactions[i].name);
-      }
-      if (!transactions[i].isInvite && (transactions[i].acks > 0)) {
-        ERROR("Transaction %s is a non-INVITE transaction with an ACK!\n", transactions[i].name);
-      }
-    } 
-  }
-}
-*/
-
 /* Apply the next and ontimeout labels according to our map. */
 void scenario::apply_labels(msgvec v, str_int_map labels) {
   for (unsigned int i = 0; i < v.size(); i++) {

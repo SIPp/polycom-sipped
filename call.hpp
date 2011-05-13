@@ -68,7 +68,6 @@ typedef std::map<int, DialogState*> perDialogStateMap;
 class call : virtual public task, virtual public listener, public virtual socketowner {
 public:
   // These are wrappers for various circumstances, (private) init does the real work. 
-  //call(char * p_id, int userId, bool ipv6, bool isAutomatic);
   call(char *p_id, bool use_ipv6, int userId, struct sockaddr_storage *dest);
   call(char *p_id, struct sipp_socket *socket, struct sockaddr_storage *dest);
   static call *add_call(int userId, bool ipv6, struct sockaddr_storage *dest);
@@ -108,7 +107,6 @@ public:
   void setLastMsg(const string &msg, int dialog_number=-1, int message_index=-1);
 
   bool  automaticResponseMode(T_AutoMode P_case, char* P_recv);
-//  const char *getLastReceived() { return last_recv_msg; };
 
 private:
   /* This is the core constructor function. */
@@ -158,8 +156,6 @@ private:
    * scenario steps sends a message */
   unsigned long    last_recv_hash;
   int              last_recv_index;
-// now use per-dialog structure  const char     * last_recv_msg;
-
 
   /* Recv message characteristics when we sent a valid message
    *  (scneario, no retrans) just after a valid reception. This was
