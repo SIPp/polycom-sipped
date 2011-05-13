@@ -118,7 +118,9 @@ struct KeywordMap DialogSpecificKeywords[] = {
 
 #define KEYWORD_SIZE 256
 
-SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number, bool use_txn) {
+SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number, bool use_txn) : 
+  response(false), ack(false), cancel(false)
+{
   // should we parse out the _n portion of call here or later? Here would be faster and more
   // in keepin with the existing style, I suppose...
   const char *osrc = src;

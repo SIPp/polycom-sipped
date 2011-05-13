@@ -37,7 +37,7 @@
 
 /************************ Class Constructor *************************/
 
-message::message(int index, const char *desc)
+message::message(int index, const char *desc) : start_txn(false), txn_name("")
 {
   this->index = index;
   this->desc = desc;
