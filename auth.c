@@ -30,10 +30,10 @@
 #include <string.h>
 #include <ctype.h>
 #include <openssl/md5.h>
+#include "common.hpp"
 #include "milenage.h"
 #include "screen.hpp"
 
-#define MAX_HEADER_LEN  2049
 #define MD5_HASH_SIZE 16
 #define HASH_HEX_SIZE 2*MD5_HASH_SIZE
 

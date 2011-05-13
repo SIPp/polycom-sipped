@@ -29,6 +29,9 @@
 #include <string.h>
 #include "scenario.hpp"
 #include "stat.hpp"
+#include "common.hpp"
+#include "transactionstate.hpp"
+#include "dialogstate.hpp"
 #ifdef _USE_OPENSSL
 #include "sslcommon.h"
 #endif
@@ -39,7 +42,6 @@
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
-#define MAX_HEADER_LEN 2049
 #define UDP_MAX_RETRANS_INVITE_TRANSACTION 5
 #define UDP_MAX_RETRANS_NON_INVITE_TRANSACTION 9
 #define UDP_MAX_RETRANS MAX(UDP_MAX_RETRANS_INVITE_TRANSACTION, UDP_MAX_RETRANS_NON_INVITE_TRANSACTION)
@@ -59,85 +61,13 @@
   extern "C" { int verifyAuthHeader(char * user, char * password, char * method, char * auth); }
 #endif
 
-struct txnInstanceInfo {
-  char *branch;
-  int  cseq;
-  char *cseq_method;
-  unsigned long txnResp; // hash of msg as computed in process_incoming() and used for certain retransmissions when not in mc mode.
-  int ackIndex;          // index of the message that specified this transaction with ack_txn ?where is it used?
-};
-
-
-// Used by call to store state which must be tracekd on a per-callid basis
-class DialogState {
-public:
-  string         call_id;
-  // cseq value for [cseq] keyword, useful for generating requests; auto-incremented
-  unsigned int   cseq;
-
-  // cseq_method is the cseq method in the last request this dialog sent
-  char           cseq_method[MAX_HEADER_LEN];
-
-  // received_* - updated on recv of request and used for generating responses in cases where [last_cseq] won't do.
-  unsigned int   received_cseq;
-  char           received_cseq_method[MAX_HEADER_LEN];
-
-  // Last received message (expected, not optional, and not retransmitted)
-  char           * last_recv_msg;
-
-  // remote tag, populated by incoming responses. Referenced by [peer_tag], [remote_tag], [remote_tag_param]
-  char           * peer_tag;
-
-  // local tag, populated by incoming responses. Referenced by [local_tag], [local_tag_param]
-  char           * local_tag;
-
-  // contact header, populated by incoming responses. Referenced by [contact_uri], [contact_name_and_uri]
-  char           contact_name_and_uri[MAX_HEADER_LEN];
-  char           contact_uri[MAX_HEADER_LEN];
-
-  // to header, populated by incoming responses. Referenced by [to_uri], [to_name_and_uri]
-  char           to_name_and_uri[MAX_HEADER_LEN];
-  char           to_uri[MAX_HEADER_LEN];
-
-  // from header, populated by incoming responses. Referenced by [from_uri], [from_name_and_uri]
-  char           from_name_and_uri[MAX_HEADER_LEN];
-  char           from_uri[MAX_HEADER_LEN];
-
-  /* holds the route set */
-  char           * dialog_route_set;
-  char           * next_req_url; // (contact header)
-
-public:
-  DialogState(unsigned int base_cseq, string call_id="") : call_id(call_id), cseq(base_cseq), received_cseq(0), peer_tag(0), local_tag(0), 
-    dialog_route_set(0), next_req_url(0), last_recv_msg(0) 
-  {
-    cseq_method[0] = '\0';
-    received_cseq_method[0] = '\0';
-    contact_name_and_uri[0] = 0;
-    contact_uri[0] = 0;
-    to_name_and_uri[0] = 0;
-    to_uri[0] = 0;
-    from_name_and_uri[0] = 0;
-    from_uri[0] = 0;
-  };
-
-  ~DialogState() 
-  { 
-    if (last_recv_msg) free (last_recv_msg); 
-    if(peer_tag) free(peer_tag);
-    if(local_tag) free(local_tag);
-
-    if(dialog_route_set) free(dialog_route_set);
-    if(next_req_url) free(next_req_url);
-  }
-};
 
 
 typedef std::map<int, DialogState*> perDialogStateMap;
 
 class call : virtual public task, virtual public listener, public virtual socketowner {
 public:
-  /* These are wrappers for various circumstances, (private) init does the real work. */
+  // These are wrappers for various circumstances, (private) init does the real work. 
   //call(char * p_id, int userId, bool ipv6, bool isAutomatic);
   call(char *p_id, bool use_ipv6, int userId, struct sockaddr_storage *dest);
   call(char *p_id, struct sipp_socket *socket, struct sockaddr_storage *dest);
@@ -174,7 +104,9 @@ public:
       E_AM_OOCALL,
     };
 
-  void setLastMsg(const char *msg, DialogState *ds);
+  // set last message for default, per-dialog(if dialog_number) and (if msg_index specified) per-transaction structures.
+  void setLastMsg(const string &msg, int dialog_number=-1, int message_index=-1);
+
   bool  automaticResponseMode(T_AutoMode P_case, char* P_recv);
 //  const char *getLastReceived() { return last_recv_msg; };
 
@@ -226,7 +158,7 @@ private:
    * scenario steps sends a message */
   unsigned long    last_recv_hash;
   int              last_recv_index;
-  char           * last_recv_msg;
+// now use per-dialog structure  const char     * last_recv_msg;
 
 
   /* Recv message characteristics when we sent a valid message
@@ -281,8 +213,9 @@ private:
   /* Call Variable Table */
   VariableTable *M_callVariableTable;
 
-  /* Our transaction IDs (allocated to have same number of entries as call_scenario::transactions. */
-  struct txnInstanceInfo *transactions;
+  /* Our transaction IDs (allocated to have same number of entries as call_scenario::transactions. * /
+move to dialogState
+  struct TransactionState *transactions; */
 
   /* result of execute action */
   enum T_ActionResult
@@ -302,7 +235,7 @@ private:
   /* rc == true means call not deleted by processing */
   void formatNextReqUrl (char* next_req_url);
   void computeRouteSetAndRemoteTargetUri (char* rrList, char* contact, bool bRequestIncoming, DialogState *ds);
-  bool matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *branch, string &call_id);
+  bool matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *branch, string &call_id, char *reason);
 
   bool executeMessage(message *curmsg);
   T_ActionResult executeAction(char * msg, message *message);
@@ -312,10 +245,25 @@ private:
   double get_rhs(CAction *currentAction);
 
 
-  // returns txnInstanceInfo referenced by use_txn variable associated with msg_index or 0 if use_txn is 0.
-  // Also checks that transaction has been used and aborts with an error if it has not been.
-  struct txnInstanceInfo *get_txn();
+// *** meothods that operate on default or specfied msg_index ***
 
+  // Return true if use_txn specified for currently indexed message
+  bool use_txn(int index=-1);
+
+  string txn_name(int index=-1);
+
+  // returns TransactionState appropriate for the indexed message (defaulting to msg_index if none specified).
+  // Also checks that transaction has been used and aborts with an error if it has not been.
+//  TransactionState &get_txn(int index=-1);
+
+//  void setLastReceivedMessage(const string &msg, int index=-1); is named setLastMsg ; maybe need to move it!
+//  const string &getLastReceivedMessage(int index=-1) const;
+
+  // return last message regardless of dialog or transaction
+  const string &getDefaultLastReceivedMessage();
+
+  void verifyIsServerTransaction(TransactionState &txn, const string &wrongKeyword, const string &correctKeyword);
+  void verifyIsClientTransaction(TransactionState &txn, const string &wrongKeyword, const string &correctKeyword);
 
   // P_index use for message index in scenario and ctrl of CRLF
   // P_index = -2 No ctrl of CRLF
@@ -356,11 +304,14 @@ private:
 
   /* rc == true means call not deleted by processing */
   bool next();
-  bool process_unexpected(char * msg);
+  bool process_unexpected(char * msg, const char *reason);
   void do_bookkeeping(message *curmsg);
 
   void  extract_cseq_method (char* responseCseq, char* msg);
-  void  extract_branch (char* branch, char* msg);  // copy Via's branch attribute from msg into branch
+  string extract_cseq_method (char* msg);
+
+  void  extract_branch (char* branch, const char* msg);  // copy Via's branch attribute from msg into branch
+  string extract_branch (const char* msg);
 
   int   extract_name_and_uri (char* uri, char* name_and_uri, char* msg, const char *name);
 
@@ -369,15 +320,17 @@ private:
   bool   connect_socket_if_needed();
 
   char * get_header_field_code(char * msg, char * code);
-  char * get_last_header(const char * name, DialogState *ds);
+  char * get_last_header(const char * name, const char *msg);
 
   // only return payload of the header (not the 'header:' bit.
+  char * get_header_content(const char *message, const char * name);
   char * get_header_content(char* message, const char * name);
 
   /* If content is true, we only return the header's contents. */
+  char * get_header(const char* message, const char * name, bool content);
   char * get_header(char* message, const char * name, bool content);
   char * get_first_line(char* message);
-  char * get_last_request_uri(DialogState *ds);
+  string get_last_request_uri(const char *last_recv_msg);
   unsigned long hash(char * msg);
 
   typedef std::map <std::string, int> file_line_map;
@@ -425,5 +378,7 @@ void init_default_messages();
 void free_default_messages();
 SendingMessage *get_default_message(const char *which);
 void set_default_message(const char *which, char *message);
+
+char * get_call_id(char *msg);
 
 #endif

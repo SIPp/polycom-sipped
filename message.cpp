@@ -78,18 +78,28 @@ struct KeywordMap SimpleKeywords[] = {
   {"sipp_version", E_Message_SippVersion },
 };
 
+// Index of the last keyword in DialogSpecificKeywords that is also transaction-specific
+// Used to enforce rule that dialog= attribute may not be specified when use_txn is specified.
+const int HighestTransactionSpecificKeywordsIndex = 11;
+
 /* These keywords take an optional dialog= parameter and no other processing. */
+// First keywords are also transaction-specific. See HighestTransactionSpecificKeywordsIndex
 /* Note: must place longer keyword names before shorter ones with same base (ie [cseq_method] before [cseq]) */
 struct KeywordMap DialogSpecificKeywords[] = {
   {"cseq_method", E_Message_CSEQ_Method },
   {"cseq", E_Message_CSEQ },
+  {"client_cseq_method", E_Message_Client_CSEQ_Method },
+  {"client_cseq", E_Message_Client_CSEQ },
+  {"server_cseq_method", E_Message_Server_CSEQ_Method },
+  {"server_cseq", E_Message_Server_CSEQ },
   {"received_cseq_method", E_Message_Received_CSEQ_Method },
   {"received_cseq", E_Message_Received_CSEQ },
   {"last_cseq_number", E_Message_Last_CSeq_Number },
   {"last_branch", E_Message_Last_Branch },
   {"last_Request_URI", E_Message_Last_Request_URI },
-  {"call_id", E_Message_Call_ID },
   {"last_message", E_Message_Last_Message },
+// end of transaction-specific keywords
+  {"call_id", E_Message_Call_ID },
   {"next_url", E_Message_Next_Url },
   {"routes", E_Message_Routes },
   {"peer_tag_param", E_Message_Peer_Tag_Param },
@@ -103,12 +113,12 @@ struct KeywordMap DialogSpecificKeywords[] = {
   {"to_name_and_uri", E_Message_To_Name_And_Uri },
   {"from_uri", E_Message_From_Uri },
   {"from_name_and_uri", E_Message_From_Name_And_Uri },
-// contact_number
+// contact_number?
 };
 
 #define KEYWORD_SIZE 256
 
-SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number) {
+SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number, bool use_txn) {
   // should we parse out the _n portion of call here or later? Here would be faster and more
   // in keepin with the existing style, I suppose...
   const char *osrc = src;
@@ -283,6 +293,9 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         if (strstr(keyword, DialogSpecificKeywords[i].keyword) == keyword) {
           newcomp->type = DialogSpecificKeywords[i].type;
           parse_dialog_number(keyword, newcomp);
+          if ((use_txn) && (i <= HighestTransactionSpecificKeywordsIndex) && (newcomp->dialog_number != dialog_number)) {
+            ERROR("Cannot use 'dialog=' attribute in [%s] keyword when also specifying 'use_txn' for the message.\n", keyword);
+          }
           dialog_keyword = true;
           break;
         }
@@ -292,8 +305,6 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         messageComponents.push_back(newcomp);
         continue;
       }
-
-
 
       if(!strncmp(keyword, "field", strlen("field"))) {
         newcomp->type = E_Message_Injection;
@@ -362,6 +373,9 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         // parse optional dialog parameter 
         if (parse_dialog_number(keyword, newcomp)) {
           // if dialog= specified, only copy header portion
+          if (use_txn) {
+            ERROR("Cannot use 'dialog=' attribute in [last_] keyword when also specifying 'use_txn' for the message.\n");
+          }
           const char *diagptr = strstr(keyword, "dialog=");
           assert(diagptr);
           while ((diagptr > keyword) && (*(diagptr-1) == ' ')) diagptr--;

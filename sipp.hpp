@@ -524,8 +524,8 @@ void print_count_file(FILE *f, int header);
 int get_method(char *msg);
 char * get_tag_from_to(char *msg);
 char * get_tag_from_from(char *msg);
-unsigned long int get_cseq_value(char *msg);
-unsigned long get_reply_code(char *msg);
+unsigned long int get_cseq_value(const char *msg);
+unsigned long get_reply_code(const char *msg);
 
 /********************** Network Interfaces ********************/
 
@@ -610,7 +610,7 @@ void sipp_close_socket(struct sipp_socket *socket);
 
 /********************* Utilities functions  *******************/
 
-char *strcasestr2 ( char *__haystack, char *__needle);
+char *strcasestr2 ( const char *__haystack, const char *__needle);
 char *get_peer_addr(char *);
 int get_decimal_from_hex(char hex);
 

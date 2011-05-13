@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Generated Scenario for 172.23.70.42:5060 using Snipp v1.2" parameters="-mc" source="snipp.pl -f ConferenceCall4Bk2Bk.pcap -i 172.23.70.42" id="" config="">
+  <recv request="INVITE" dialog="1" start_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Allow:ACK,BYE,CANCEL,INFO,INVITE,OPTIONS,PRACK,REFER,NOTIFY
+      Supported:
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      RSeq:744840161
+      P-Asserted-Identity:"Smoke Tester 36"<sip:7136@as-dev.vancouver.polycom.com;user=phone>
+      Privacy:none
+      Call-Info:<sip:172.24.31.180>;appearance-index=1
+      Require:100rel
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+<!-- <pause milliseconds = "11"/> -->
+  <recv request="PRACK" dialog="1" start_txn="S2">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="1" use_txn="S2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] PRACK
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Supported:
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      P-Asserted-Identity:"Smoke Tester 36"<sip:7136@as-dev.vancouver.polycom.com;user=phone>
+      Privacy:none
+      Call-Info:<sip:172.24.31.180>;appearance-index=1
+      Allow:ACK,BYE,CANCEL,INFO,INVITE,OPTIONS,PRACK,REFER,NOTIFY,UPDATE
+      Accept:multipart/mixed,application/media_control+xml,application/sdp
+      Content-Type:application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 5665651 1 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 9 127
+      a=rtpmap:9 G722/8000
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+<!-- <pause milliseconds = "8"/> -->
+  <recv request="ACK" dialog="1" use_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1161"/> -->
+  <recv request="INVITE" dialog="1" start_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Allow:ACK,BYE,CANCEL,INFO,INVITE,OPTIONS,PRACK,REFER,NOTIFY,UPDATE
+      Supported:
+      Accept:multipart/mixed,application/media_control+xml,application/sdp
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Type:application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 5665651 2 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=inactive
+      m=audio [media_port] RTP/AVP 9 127
+      a=rtpmap:9 G722/8000
+      a=rtpmap:127 telephone-event/8000
+      a=inactive
+
+    ]]>
+  </send>
+
+<!-- <pause milliseconds = "30"/> -->
+  <recv request="ACK" dialog="1" use_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "2528"/> -->
+  <recv request="INVITE" dialog="2" start_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="2" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="2" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Allow:ACK,BYE,CANCEL,INFO,INVITE,OPTIONS,PRACK,REFER,NOTIFY
+      Supported:
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      RSeq:744848993
+      P-Asserted-Identity:"Smoke Tester 08"<sip:7108@as-dev.vancouver.polycom.com;user=phone>
+      Privacy:none
+      Call-Info:<sip:172.24.31.180>;appearance-index=2
+      Require:100rel
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+<!-- <pause milliseconds = "12"/> -->
+  <recv request="PRACK" dialog="2" start_txn="S2">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="2" use_txn="S2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] PRACK
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="2" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Supported:
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      P-Asserted-Identity:"Smoke Tester 08"<sip:7108@as-dev.vancouver.polycom.com;user=phone>
+      Privacy:none
+      Call-Info:<sip:172.24.31.180>;appearance-index=2
+      Allow:ACK,BYE,CANCEL,INFO,INVITE,OPTIONS,PRACK,REFER,NOTIFY,UPDATE
+      Accept:multipart/mixed,application/media_control+xml,application/sdp
+      Content-Type:application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 5665790 1 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 9 127
+      a=rtpmap:9 G722/8000
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+<!-- <pause milliseconds = "9"/> -->
+  <recv request="ACK" dialog="2" use_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1973"/> -->
+  <recv request="INVITE" dialog="1" start_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Allow:ACK,BYE,CANCEL,INFO,INVITE,OPTIONS,PRACK,REFER,NOTIFY,UPDATE
+      Supported:
+      Accept:multipart/mixed,application/media_control+xml,application/sdp
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Type:application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 5665651 3 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 9 127
+      a=rtpmap:9 G722/8000
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+<!-- <pause milliseconds = "18"/> -->
+  <recv request="ACK" dialog="1" use_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "2574"/> -->
+  <recv request="REFER" dialog="1" start_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 202 Accepted
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] REFER
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="1" start_txn="C1">
+    <![CDATA[
+
+      BYE sip:3339957129@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: <sip:7136@[local_ip]:[local_port]>[local_tag_param]
+      To: "7129"<sip:3339957129@[remote_ip]:[remote_port]>[remote_tag_param]
+      Call-ID: [call_id]
+      CSeq: [cseq] BYE
+      Max-Forwards:10
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="2" start_txn="C1">
+    <![CDATA[
+
+      BYE sip:3339957129@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: <sip:7108@[local_ip]:[local_port]>[local_tag_param]
+      To: "7129"<sip:3339957129@[remote_ip]:[remote_port]>[remote_tag_param]
+      Call-ID: [call_id]
+      CSeq: [cseq] BYE
+      Max-Forwards:10
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+<!-- <pause milliseconds = "7"/> -->
+  <recv response="200" dialog="1" use_txn="C1">
+  </recv>
+
+<!-- <pause milliseconds = "61"/> -->
+  <recv response="200" dialog="2" use_txn="C1">
+  </recv>
+
+</scenario>

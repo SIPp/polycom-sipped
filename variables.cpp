@@ -77,6 +77,11 @@ void CCallVariable::setMatchingValue(char* P_matchingVal)
   M_nbOfMatchingValue++;
 }
 
+void CCallVariable::resetNbOfMatches()
+{
+  M_nbOfMatchingValue = 0;
+}
+
 char* CCallVariable::getMatchingValue()
 {
   if (M_type != E_VT_REGEXP) {

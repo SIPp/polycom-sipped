@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="verify_transaction_keywords" parameters="-mc">
+  <recv request="REGISTER" dialog="1" start_txn="S1"/>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+	  cseq_keywords: [cseq] [cseq_method]
+	  server_cseq_keywords: [server_cseq] [server_cseq_method]
+          [last_client_cseq_keywords] 
+	  received_cseq_keywords: [received_cseq] [received_cseq_method]
+	  last_cseq_number: [last_cseq_number]
+	  branch: [branch]
+	  last_branch: [last_branch]
+	  last_Request_URI: [last_Request_URI]	  
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <recv request="SOMETHING" dialog="1" start_txn="S2"/>
+
+  <send dialog="1" use_txn="S2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+	  cseq_keywords: [cseq] [cseq_method]
+	  server_cseq_keywords: [server_cseq] [server_cseq_method]
+	  received_cseq_keywords: [received_cseq] [received_cseq_method]
+          [last_client_cseq_keywords] 
+	  last_cseq_number: [last_cseq_number]
+	  branch: [branch]
+	  last_branch: [last_branch]
+	  last_Request_URI: [last_Request_URI]  
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <!-- Unprompted retransmission -->
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+	  cseq_keywords: [cseq] [cseq_method]
+	  server_cseq_keywords: [server_cseq] [server_cseq_method]
+	  received_cseq_keywords: [received_cseq] [received_cseq_method]
+          [last_client_cseq_keywords] 
+	  last_cseq_number: [last_cseq_number]
+	  branch: [branch]
+	  last_branch: [last_branch]
+	  last_Request_URI: [last_Request_URI]	  
+      Content-Length: 0
+
+    ]]>
+  </send>
+  
+  <!-- Receive retransmission & re-responsd -->
+  <recv request="REGISTER" dialog="1" use_txn="S1"/>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+	  cseq_keywords: [cseq] [cseq_method]
+	  server_cseq_keywords: [server_cseq] [server_cseq_method]
+	  received_cseq_keywords: [received_cseq] [received_cseq_method]
+          [last_client_cseq_keywords] 
+	  last_cseq_number: [last_cseq_number]
+	  branch: [branch]
+	  last_branch: [last_branch]
+	  last_Request_URI: [last_Request_URI]
+      Content-Length: 0
+
+    ]]>
+  </send>
+

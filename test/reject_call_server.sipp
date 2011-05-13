@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Generated Scenario for 172.23.70.42:5060 using Snipp v1.2" parameters="-mc" source="snipp.pl -f Rejected4Bk2Bk.pcap -i 172.23.70.42" id="" config="">
+  <recv request="INVITE" dialog="1" start_txn="S1">
+  </recv>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 402 Payment Required
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [last_cseq_number] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <recv request="ACK" dialog="1" use_txn="S1">
+  </recv>
+
+</scenario>

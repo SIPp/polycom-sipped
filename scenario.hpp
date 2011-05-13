@@ -26,6 +26,7 @@
 
 #include <map>
 #include <sys/socket.h>
+#include <string.h>
 #include "actions.hpp"
 #include "variables.hpp"
 #include "message.hpp"
@@ -149,20 +150,48 @@ public:
   // *ALL* possible methods are appended to this string for matching when a response is received.
   char           *recv_response_for_cseq_method_list; 
 
+
+/*
   // A non-zero value in *_txn indicates that the corresponding *_txn attribute was specified for this message. 
   // The value is the index into call::transactions and scenario::transactions, as returned via get_txn_index(name)
   int            start_txn;     // non-zero means store state associated with message as it is sent or received
   int            use_txn;       // non-zero means verify state on recv and use saved state for keywords on send
   int            response_txn;  // non-zero means received response packet
   int            ack_txn;
+*/
   int            index;
   const char *         desc;
-
   message(int index, const char *desc);
   ~message();
+
+  bool isSend() { return M_type == MSG_TYPE_SEND; }
+  bool isRecv() { return M_type == MSG_TYPE_RECV; }
+  bool isResponse() { return isSend() ? send_scheme->isResponse() : (recv_response != 0); }
+  bool isRequest() { return !isResponse(); }
+  bool isCancel() { return isRequest() && (isSend() ? send_scheme->isCancel() : !strcmp(recv_request, "CANCEL")); }
+  bool isAck() { return isRequest() && (isSend() ? send_scheme->isAck() : !strcmp(recv_request, "ACK")); }
+
+  void startTransaction(const string &name) { start_txn = true; txn_name = checkTransactionName(name); }
+  void useTransaction(const string &name) { start_txn = false; txn_name = checkTransactionName(name); };
+
+  string getTransactionName() { return txn_name; }
+  bool isStartTxn()  { return start_txn; }
+  bool isUseTxn()    { return !start_txn && !txn_name.empty(); }
+
+
+private:
+  bool           start_txn;          // true means store state associated with message as it is sent or received
+  string         txn_name;           // transaction name (empty if none defined). Note that non-empty txn_name does not imply use_txn as it may also by start_txn.
+
+  // return txnName if valid name, abort with error if not
+  const string &checkTransactionName(const string &txnName);
+
 };
 
 typedef std::vector<message *> msgvec;
+
+/*
+Gone: transactions are now only tracked on a per-dialog basis within call
 
 struct txnControlInfo {
   char *name;        // name as passed to the start_txn, ack_txn or response_txn parameter
@@ -175,7 +204,7 @@ struct txnControlInfo {
   int responses; // count number of received responses in this transaction (received only)
 };
 typedef std::vector<txnControlInfo> txnvec;
-
+*/
 
 class scenario {
 public:
@@ -190,8 +219,10 @@ public:
   char *name;
   int duration;
 
+/* Gone: transactions are now only tracked on a per-dialog basis within call
   // stores transaction name and tracks number of times get_txn_index() is called on it.
   txnvec transactions;
+*/
   int unexpected_jump;
   int retaddr;
   int pausedaddr;
@@ -212,8 +243,10 @@ private:
   str_int_map labelMap;
   str_int_map initLabelMap;
 
-  /* map transaction names to index in call::transactions & scenario::transactions vector/array */
+/* Gone: transactions are now only tracked on a per-dialog basis within call
+  /* map transaction names to index in call::transactions & scenario::transactions vector/array * /
   str_int_map txnMap;
+*/
 
   bool found_timewait;
 
@@ -227,10 +260,14 @@ private:
 
   void apply_labels(msgvec v, str_int_map labels);
   void validate_variable_usage();
-  void validate_txn_usage();
+//  void validate_txn_usage(); Gone: transactions are now only tracked on a per-dialog basis within call
 
+
+
+/* Gone: transactions are now only tracked on a per-dialog basis within call
   // Return the index to txnName, creating it if it does not already exist.
   int get_txn_index(const char *txnName, const char *what, bool start, bool isInvite, bool isAck);
+*/
 
   int xp_get_var(const char *name, const char *what);
   int xp_get_var(const char *name, const char *what, int defval);

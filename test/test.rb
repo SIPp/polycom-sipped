@@ -19,7 +19,9 @@ require "include_directory.rb"
 require "include_substitution.rb"
 require "init_keywords.rb"
 require "verify_keywords.rb"
-
+require "verify_transaction_keywords.rb"
+require "verify_keywords_scenarios.rb"
+require "verify_fail"
 
 def show_help_message
   puts "Usage: test \n\n";

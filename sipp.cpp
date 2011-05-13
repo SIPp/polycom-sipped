@@ -40,6 +40,7 @@
 #include <dlfcn.h>
 #include "sipp.hpp"
 #include "assert.h"
+#include <string.h>
 
 void sipp_usleep(unsigned long usec);
 
@@ -233,7 +234,8 @@ struct sipp_option options_table[] = {
        {"mc", "Enable multiple-dialog support by directing all messages to one scenario regardless of call-id.\n"
        "Only 1 concurrent call is possible and stop calls (-m) defaults to 1", 
        SIPP_OPTION_NO_CALL_ID_CHECK, NULL, 1}, 
-	{"nr", "Disable retransmission in UDP mode.", SIPP_OPTION_UNSETFLAG, &retrans_enabled, 1},
+	{"nr", "Disable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_UNSETFLAG, &retrans_enabled, 1},
+	{"yr", "Enable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_SETFLAG, &retrans_enabled, 1},
 
 	{"nostdin", "Disable stdin.\n", SIPP_OPTION_SETFLAG, &nostdin, 1},
 
@@ -694,7 +696,7 @@ unsigned char inline mytolower(unsigned char c) {
   return tolower_table[c];
 }
 
-char * strcasestr2(char *s, char *find) {
+char * strcasestr2(const char *s, const char *find) {
   char c, sc;
   size_t len;
 
@@ -2044,22 +2046,12 @@ char * get_to_or_from_tag(char *msg, bool toHeader)
   
   if (toHeader) {
     hdr = strcasestr(msg, "\r\nTo:");
-/*
-    hdr = strstr(msg, "\r\nTo:");
-    if(!hdr) hdr = strstr(msg, "\r\nto:");
-    if(!hdr) hdr = strstr(msg, "\r\nTO:");
-*/
     if(!hdr) hdr = strstr(msg, "\r\nt:");
     if(!hdr) {
       ERROR("No valid To: header in reply");
     }
   } else {
     hdr = strcasestr(msg, "\r\nFrom:");
-/*
-    hdr = strstr(msg, "\r\nFrom:");
-    if(!hdr) hdr = strstr(msg, "\r\nfrom:");
-    if(!hdr) hdr = strstr(msg, "\r\nFROM:");
-*/
     if(!hdr) hdr = strstr(msg, "\r\nf:");
     if(!hdr) {
       ERROR("No valid From: header in message");
@@ -2086,11 +2078,6 @@ char * get_to_or_from_tag(char *msg, bool toHeader)
   hdr = ptr;
 
   ptr = strcasestr(hdr, "tag");
-/*
-  ptr = strstr(hdr, "tag");
-  if(!ptr) { ptr = strstr(hdr, "TAG"); }
-  if(!ptr) { ptr = strstr(hdr, "Tag"); }
-*/
 
   if(!ptr) {
     return NULL;
@@ -2244,17 +2231,12 @@ char * get_call_id(char *msg)
 
   short_form = false;
 
-  ptr1 = strstr(msg, "Call-ID:");
-  if(!ptr1) { ptr1 = strstr(msg, "Call-Id:"); }
-  if(!ptr1) { ptr1 = strstr(msg, "Call-id:"); }
-  if(!ptr1) { ptr1 = strstr(msg, "call-Id:"); }
-  if(!ptr1) { ptr1 = strstr(msg, "call-id:"); }
-  if(!ptr1) { ptr1 = strstr(msg, "CALL-ID:"); }
+  ptr1 = strcasestr(msg, "Call-ID:");
   // For short form, we need to make sure we start from beginning of line
   // For others, no need to
   if(!ptr1) { ptr1 = strstr(msg, "\r\ni:"); short_form = true;}
   if(!ptr1) {
-    WARNING("(1) No valid Call-ID: header in reply '%s'", msg);
+    WARNING("(1) No valid Call-ID: header in message '%s'", msg);
     return call_id;
   }
   
@@ -2267,7 +2249,7 @@ char * get_call_id(char *msg)
   while((*ptr1 == ' ') || (*ptr1 == '\t')) { ptr1++; }
   
   if(!(*ptr1)) {
-    WARNING("(2) No valid Call-ID: header in reply");
+    WARNING("(2) No valid Call-ID: header in message");
     return call_id;
   }
   
@@ -2282,7 +2264,7 @@ char * get_call_id(char *msg)
   } 
 
   if(!*ptr2) {
-    WARNING("(3) No valid Call-ID: header in reply");
+    WARNING("(3) No valid Call-ID: header in message");
     return call_id;
   }
 
@@ -2294,15 +2276,11 @@ char * get_call_id(char *msg)
   return (char *) call_id;
 }
 
-unsigned long int get_cseq_value(char *msg) {
+unsigned long int get_cseq_value(const char *msg) {
   char *ptr1;
- 
 
-  // no short form for CSeq:
-  ptr1 = strstr(msg, "\r\nCSeq:");
-  if(!ptr1) { ptr1 = strstr(msg, "\r\nCSEQ:"); }
-  if(!ptr1) { ptr1 = strstr(msg, "\r\ncseq:"); }
-  if(!ptr1) { ptr1 = strstr(msg, "\r\nCseq:"); }
+  // there is no short form for CSeq:
+  ptr1 = strcasestr2(msg, "\r\nCSeq:");
   if(!ptr1) { WARNING("No valid Cseq header in request %s", msg); return 0;}
  
   ptr1 += 7;
@@ -2314,7 +2292,7 @@ unsigned long int get_cseq_value(char *msg) {
   return strtoul(ptr1, NULL, 10);
 }
 
-unsigned long get_reply_code(char *msg)
+unsigned long get_reply_code(const char *msg)
 {
   while((msg) && (*msg != ' ') && (*msg != '\t')) msg ++;
   while((msg) && ((*msg == ' ') || (*msg == '\t'))) msg ++;
@@ -4318,7 +4296,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.11"
+	  printf("\n SIPped v3.2.12"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4545,6 +4523,7 @@ int main(int argc, char *argv[])
     no_call_id_check = true;
 	  open_calls_allowed = 1;
 	  open_calls_user_setting = 1;
+    retrans_enabled = 0;
     // default is to stop after 1 call if value not changed on command line.
     if (stop_after == 0xffffffff)
       stop_after = 1;
@@ -4906,7 +4885,7 @@ int main(int argc, char *argv[])
   //check if no_call_id_check is enabled with call limit 1
   //this feature can run just with 1 active call
   if (no_call_id_check == true && open_calls_allowed > 1) {
-      ERROR("-mc is only allowed with -l 1, meaning just 1 call can be active.");
+      ERROR("-mc is only allowed with -l 1, meaning just one call can be active.");
   }
 
    // TODO: finish the -trace_timeout option implementation    

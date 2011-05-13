@@ -63,8 +63,12 @@ typedef enum {
   E_Message_Call_ID,
   E_Message_CSEQ,
   E_Message_CSEQ_Method,
+  E_Message_Client_CSEQ,
+  E_Message_Client_CSEQ_Method,
   E_Message_Received_CSEQ,
   E_Message_Received_CSEQ_Method,
+  E_Message_Server_CSEQ,        // synonym with Received_CSEQ
+  E_Message_Server_CSEQ_Method, // synonym with Received_CSEQ_Method
   E_Message_PID,
   E_Message_Service,
   E_Message_Branch,
@@ -104,7 +108,7 @@ typedef enum {
 
 class SendingMessage {
   public:
-    SendingMessage(scenario *msg_scenario, const char *msg, bool skip_sanity = false, int dialog_number = -1);
+    SendingMessage(scenario *msg_scenario, const char *msg, bool skip_sanity = false, int dialog_number = -1, bool use_txn = false);
     ~SendingMessage();
 
     struct MessageComponent *getComponent(int);

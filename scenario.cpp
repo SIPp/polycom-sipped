@@ -103,11 +103,6 @@ message::message(int index, const char *desc)
 
   content_length_flag = ContentLengthNoPresent;
 
-  /* How to match responses to this message. */
-  start_txn = 0;
-  use_txn = 0;
-  response_txn = 0;
-  ack_txn = 0;
   recv_response_for_cseq_method_list = NULL;
 }
 
@@ -139,6 +134,17 @@ message::~message()
   free(peer_src);
   free(pause_desc);
   free(recv_response_for_cseq_method_list);
+}
+
+const string &message::checkTransactionName(const string &txnName) {
+  /* Check the name's validity. */
+  if (txnName.empty()) {
+    ERROR("Transaction names may not be empty.\n");
+  }
+  if (strcspn(txnName.c_str(), "$,") != strlen(txnName.c_str())) {
+    ERROR("Transaction names may not contain $ or , ('%s'\n", txnName.c_str());
+  }
+  return txnName;
 }
 
 /******** Global variables which compose the scenario file **********/
@@ -329,64 +335,6 @@ double xp_get_bool(const char *name, const char *what, bool defval) {
   return xp_get_bool(name, what);
 }
 
-// Return the index to txnName, creating it if it does not already exist.
-// Counters (started, acks, responses) are updated / initialized for script error checking.
-// start, isAck are supposed to be mutually exclusive and if false assumes  
-// txnName is name as passed into start_txn, ack_txn or resposne_txn attribute
-// what is used in error messages to describe the attribute
-// isInvite and isAck are booleans to indicate if the request is an INVITE or an ACK (NOT based on ack_txn, surprisingly!)
-int scenario::get_txn_index(const char *txnName, const char *what, bool start, bool isInvite, bool isAck) {
-  /* Check the name's validity. */
-  if (txnName[0] == '\0') {
-    ERROR("Variable names may not be empty for %s\n", what);
-  }
-  if (strcspn(txnName, "$,") != strlen(txnName)) {
-    ERROR("Variable names may not contain $ or , for %s\n", what);
-  }
-
-  /* If this transaction has already been used, then update counters and return it */
-  str_int_map::iterator txn_it = txnMap.find(txnName);
-  if (txn_it != txnMap.end()) {
-    if (start) {
-      /* We need to fill in the invite field. */
-      transactions[txn_it->second - 1].started++;
-    } else if (isAck) {
-      transactions[txn_it->second - 1].acks++;
-    } else {
-      transactions[txn_it->second - 1].responses++;
-    }
-    return txn_it->second;
-  }
-
-   /* Transaction has not already been used: Assign this variable the next slot. */
-  struct txnControlInfo transaction;
-
-  transaction.name = strdup(txnName);
-  if (start) {
-    transaction.started = 1;
-    transaction.responses = 0;
-    transaction.acks = 0;
-    transaction.isInvite = isInvite;
-  } else if (isAck) {
-    /* Does not start or respond to this branch. */
-    transaction.started = 0;
-    transaction.responses = 0;
-    transaction.acks = 1;
-    transaction.isInvite = false;
-  } else {
-    transaction.started = 0;
-    transaction.responses = 1;
-    transaction.acks = 0;
-    transaction.isInvite = false;
-  }
-
-  transactions.push_back(transaction);
-  int txnNum = transactions.size();
-  txnMap[txnName] = txnNum;
-
-  return txnNum;
-}
-
 int scenario::find_var(const char *varName, const char *what) {
   return allocVars->find(varName, false);
 }
@@ -557,6 +505,7 @@ void scenario::validate_variable_usage() {
   allocVars->validate();
 }
 
+/*
 void scenario::validate_txn_usage() {
   for (unsigned int i = 0; i < transactions.size(); i++) {
     if(transactions[i].started == 0) {
@@ -577,6 +526,7 @@ void scenario::validate_txn_usage() {
     } 
   }
 }
+*/
 
 /* Apply the next and ontimeout labels according to our map. */
 void scenario::apply_labels(msgvec v, str_int_map labels) {
@@ -854,34 +804,34 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
 
         curmsg -> dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
-        curmsg -> send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number);
+        bool use_txn = (bool) xp_get_value("use_txn");
+        curmsg -> send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number, use_txn);
         free(msg);
 
-        if ((xp_get_value("ack_txn")) || (xp_get_value("response_txn"))) {
-          ERROR("The ack_txn and response_txn attributes have been replaced with use_txn.");
+        // While you can simply use use_txn rather than ack_txn and response_txn, you may still use the more
+        // specific forms, but only with their respective message types.
+        if ((xp_get_value("ack_txn")) && (!curmsg->send_scheme->isAck())) {
+          ERROR("Cannot use ack_txn for non-ACK packet.");
+        }
+
+         if ((xp_get_value("response_txn")) && (!curmsg->send_scheme->isResponse())) {
+          ERROR("response_txn can only be used with response packets.");
         }
 
         // If this is a request we are sending, then store our transaction/method matching information.
         if (!curmsg->send_scheme->isResponse()) {
-          char *method = curmsg->send_scheme->getMethod(); 
-          bool isInvite = !strcmp(method, "INVITE");
-          bool isAck = !strcmp(method, "ACK");
-          bool isCancel = !strcmp(method, "CANCEL");
-
           if ((ptr = xp_get_value("start_txn"))) {
-            if (isAck) 
-              ERROR("An ACK message can not start a transaction");
-            if (isCancel) 
-              ERROR("Cannot use start_txn with CANCEL.  Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction).");            
-            curmsg->start_txn = get_txn_index(ptr, "start transaction", true, isInvite, false);
-          } else if ((ptr = xp_get_value("use_txn"))) {
-            if (isAck)
-              curmsg->use_txn = curmsg->ack_txn = get_txn_index(ptr, "ack transaction", false, false, true);
-            else
-              curmsg->use_txn = get_txn_index(ptr, "use transaction", false, false, false);
+            if (curmsg->send_scheme->isAck()) 
+              ERROR("An ACK message can not start a transaction. Use use_txn or ack_txn instead to re-use branch and cseq values (even though 2xx-ACK is technically a new SIP transaction).");
+            if (curmsg->send_scheme->isCancel()) 
+              ERROR("Cannot use start_txn with CANCEL. Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction).");            
+            curmsg->startTransaction(ptr);
+          } else if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("ack_txn"))) {
+            curmsg->useTransaction(ptr);
           } else {
             // no transaction-related attribute so fall back on cseq method
             int len = method_list ? strlen(method_list) : 0;
+            char *method = curmsg->send_scheme->getMethod(); 
             method_list = (char *)realloc(method_list, len + strlen(method) + 1);
             if (!method_list) {
               ERROR_NO("Out of memory allocating method_list!");
@@ -890,8 +840,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
           }
         } else {
           // Message is a response
-          if ((ptr = xp_get_value("use_txn"))) {
-            curmsg->use_txn = get_txn_index(ptr, "use transaction", false, false, false);
+          if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("response_txn"))) {
+            curmsg->useTransaction(ptr);
           } else if ((ptr = xp_get_value("start_txn"))) {
             ERROR("Responses can not start a transaction");
           } 
@@ -904,9 +854,6 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
       else if(!strcmp(elem, (char *)"recv")) {
         curmsg->M_type = MSG_TYPE_RECV;
 
-        if ((ptr = xp_get_value("response_txn"))) {
-          ERROR("response_txn attribute has been replaced with use_txn.");
-        }
         /* Received messages descriptions */
         if((ptr = xp_get_value((char *)"response"))) {
           curmsg ->recv_response = get_long(ptr, "response code");
@@ -914,8 +861,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
             curmsg->recv_response_for_cseq_method_list = strdup(method_list);
           }          
 
-          if ((ptr = xp_get_value("use_txn"))) {
-            curmsg->use_txn = curmsg->response_txn = get_txn_index(ptr, "use received transaction response", false, false, false);
+          if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("response_txn"))) {
+            curmsg->useTransaction(ptr);
           } else if ((xp_get_value("start_txn"))) {
             ERROR("Responses can not start a transaction");
           } 
@@ -923,12 +870,19 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
 
         if((ptr = xp_get_value((char *)"request"))) {
           curmsg -> recv_request = strdup(ptr);
-          if ((xp_get_value("start_txn"))) {
+
+          if ((xp_get_value("ack_txn")) && (strcmp(curmsg->recv_request, "ACK"))) {
+            ERROR("Cannot use ack_txn for non-ACK packet. Use use_txn or start_txn instead.");
+          }
+          if ((ptr = xp_get_value("response_txn"))) {
+            ERROR("response_txn can not be used to receive a request.  Use use_txn or start_txn instead.");
+          }
+          if ((ptr = xp_get_value("start_txn"))) {
             // mark as start so values are stored when message is received
-            curmsg->start_txn = get_txn_index(ptr, "start received transaction request", true, false, false);
-          } else if ((ptr = xp_get_value("use_txn"))) {
-            // mark use_txn for message validation
-            curmsg->use_txn = get_txn_index(ptr, "use received transaction request", false, false, false);
+            curmsg->startTransaction(ptr);
+          } else if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("ack_txn"))) {
+            // use transaction for message validation
+            curmsg->useTransaction(ptr);
           }          
         } // request
 
@@ -1087,7 +1041,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
   validate_variable_usage();
 
   /* Make sure that all started transactions have responses, and vice versa. */
-  validate_txn_usage();
+//  validate_txn_usage();
 
   if (messages.size() == 0) {
     ERROR("Did not find any messages inside of scenario!");
@@ -1132,14 +1086,16 @@ scenario::~scenario() {
   allocVars->putTable();
   delete stats;
 
+/* transactions moved to dialogState
   for (unsigned int i = 0; i < transactions.size(); i++) {
     free(transactions[i].name);
   }
   transactions.clear();
+*/
 
   clear_str_int(labelMap);
   clear_str_int(initLabelMap);
-  clear_str_int(txnMap);
+//  clear_str_int(txnMap);
 }
 
 CSample *parse_distribution(bool oldstyle = false) {
@@ -1419,6 +1375,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
   char * ptr;
   int           sub_currentNbVarId;
 
+  DEBUG_IN();
   while((actionElem = xp_open_element(recvScenarioLen))) {
     CAction *tmpAction = new CAction(this, dialog_number);
 
@@ -1475,15 +1432,6 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
         tmpAction->setLookingChar(NULL);
       } // end if-else search_in
 
-      if (xp_get_value("check_it")) {
-        tmpAction->setCheckIt(xp_get_bool("check_it", "ereg", false));
-        if (xp_get_value("check_it_inverse")) {
-          ERROR("Can not have both check_it and check_it_inverse for ereg!");
-        }
-      } else {
-        tmpAction->setCheckItInverse(xp_get_bool("check_it_inverse", "ereg", false));
-      }
-
       if (!(ptr = xp_get_value((char *) "assign_to"))) {
         ERROR("assign_to value is missing");
       }
@@ -1492,8 +1440,8 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
 
       int varId = get_var(currentTabVarName[0], "assign_to");
       tmpAction->setVarId(varId);
-
-      tmpAction->setRegExp(currentRegExp);
+      
+	  tmpAction->setRegExp(currentRegExp);
       if (currentNbVarNames > 1 ) {
         sub_currentNbVarId = currentNbVarNames - 1 ;
         tmpAction->setNbSubVarId(sub_currentNbVarId);
@@ -1502,6 +1450,16 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
           int varId = get_var(currentTabVarName[i], "sub expression assign_to");
           tmpAction->setSubVarId(varId);
         }
+      }
+
+	  if (xp_get_value("check_it")) {
+        tmpAction->setCheckIt(xp_get_bool("check_it", "ereg", false));
+		get_var(currentTabVarName[0], "assign_to");
+        if (xp_get_value("check_it_inverse")) {
+          ERROR("Can not have both check_it and check_it_inverse for ereg!");
+        }
+      } else {
+        tmpAction->setCheckItInverse(xp_get_bool("check_it_inverse", "ereg", false));
       }
 
       freeStringTable(currentTabVarName, currentNbVarNames);
@@ -2002,7 +1960,8 @@ char * default_scenario [] = {
 "\n"
 "<scenario name=\"Basic Sipstone UAC\">\n"
 "  <!-- In client mode (sipp placing calls), the Call-ID MUST be         -->\n"
-"  <!-- generated by sipp. To do so, use [call_id] keyword.                -->\n"
+"  <!-- generated by sipp unless using functional (-mc) mode.            -->\n"
+"  <!-- To do so, use [call_id] keyword.                                 -->\n"
 "  <send retrans=\"500\">\n"
 "    <![CDATA[\n"
 "\n"

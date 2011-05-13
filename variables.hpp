@@ -58,6 +58,7 @@ public:
   // WARNING : setMatchingValue does't allocate the memory for the matching value
   // but the destructor free the memory
   void setMatchingValue(char* P_matchingValue);
+  void resetNbOfMatches();
   char* getMatchingValue();
 
   /* When the variable is used for a string, these functions should be called. */

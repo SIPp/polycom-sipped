@@ -29,9 +29,9 @@ prefix = /usr/local
 OUTPUT=sipp
 
 # C & C++ object files to be built
-OBJ= xp_parser.o message.o scenario.o screen.o call.o comp.o sipp.o stat.o \
-     actions.o variables.o infile.o deadcall.o task.o socketowner.o listener.o \
-     opentask.o reporttask.o watchdog.o
+OBJ= xp_parser.o message.o scenario.o screen.o call.o transactionstate.o dialogstate.o \
+     comp.o sipp.o stat.o actions.o variables.o infile.o deadcall.o task.o socketowner.o \
+     listener.o opentask.o reporttask.o watchdog.o 
 
 # Libraries directories
 LIBDIR_linux=
@@ -106,7 +106,7 @@ CFLAGS_linux=-D__LINUX -pthread
 CFLAGS_freebsd=-D__LINUX -pthread
 CFLAGS_tru64=-D__OSF1 -pthread
 CFLAGS_SunOS=${DEBUG_FLAGS} -D__SUNOS
-CFLAGS_Cygwin=-D__CYGWIN -Dsocklen_t=int
+CFLAGS_Cygwin=-D__CYGWIN -Dsocklen_t=int 
 CFLAGS_Darwin=-D__DARWIN
 CFLAGS=$(CFLAGS_$(SYSTEM)) $(VERINFO) $(TLS) $(PCAPPLAY) $(EXTRACFLAGS)
 
@@ -146,7 +146,7 @@ LIBS_hpux= -lcurses -lpthread -L /opt/openssl/lib -L /usr/local/lib
 LIBS_tru64= -lcurses -lpthread
 LIBS_freebsd= -lcurses -pthread -L /usr/local/lib
 LIBS_SunOS= -lcurses -lpthread -lnsl -lsocket -Wl,-Bstatic -lstdc++ -Wl,-Bdynamic -lm -ldl -L /usr/local/ssl/lib/
-LIBS_Cygwin= -lcurses -lpthread -lstdc++ -L /usr/lib/WpdPack/Lib
+LIBS_Cygwin= -lcurses -lpthread -lstdc++ -L /usr/lib/WpdPack/Lib 
 LIBS_Darwin= -lcurses
 LIBS=$(LIBS_$(SYSTEM)) $(EXTRALIBS)
 
@@ -231,6 +231,9 @@ test:
 install: all
 	install -m 0755 sipp $(prefix)/bin
 	install -m 0755 tapress.pl $(prefix)/bin
+	chown root $(prefix)/bin/sipp
+	chmod 6755 $(prefix)/bin/sipp
+	
 
 # Files types rules
 .SUFFIXES: .o .cpp .c .h .hpp

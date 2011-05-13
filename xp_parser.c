@@ -684,11 +684,7 @@ int xp_get_content_length(char * P_buffer)
 
   short_form = 0;
 
-  L_ctl_hdr = strstr(P_buffer, "\nContent-Length:");
-  if(!L_ctl_hdr) {L_ctl_hdr = strstr(P_buffer, "\nContent-length:"); }
-  if(!L_ctl_hdr) {L_ctl_hdr = strstr(P_buffer, "\ncontent-Length:"); }
-  if(!L_ctl_hdr) {L_ctl_hdr = strstr(P_buffer, "\ncontent-length:"); }
-  if(!L_ctl_hdr) {L_ctl_hdr = strstr(P_buffer, "\nCONTENT-LENGTH:"); }
+  L_ctl_hdr = strcasestr(P_buffer, "\nContent-Length:");
   if(!L_ctl_hdr) {L_ctl_hdr = strstr(P_buffer, "\nl:"); short_form = 1;}
 
   if( L_ctl_hdr ){

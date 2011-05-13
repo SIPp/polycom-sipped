@@ -393,6 +393,8 @@ void CAction::setPcapArgs (char*        P_value)
 #endif
 
 /*
+Removed these routines as they are never used
+
 void CAction::setScenario(scenario *     P_scenario) {
   M_scenario = P_scenario;
 }

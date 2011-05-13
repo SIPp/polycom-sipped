@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="" parameters="-mc" source="" id="" config="">
+  <send dialog="1" start_txn="C1">
+    <![CDATA[
+
+      REGISTER sip:[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: "1556" <sip:1556@[local_ip]:[local_port]>[local_tag_param]
+      To: <sip:1556@[remote_ip]:[remote_port]>
+      CSeq: [cseq] REGISTER
+      Call-ID: [call_id]
+      Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>;methods="INVITE, ACK, BYE, CANCEL, OPTIONS, INFO, MESSAGE, SUBSCRIBE, NOTIFY, PRACK, UPDATE, REFER"
+      User-Agent: PolycomSoundPointIP-SPIP_650-UA/3.3.1.0933
+      Accept-Language: en
+      Max-Forwards: 70
+      Expires: 3600
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <recv request="REGISTER" dialog="2" start_txn="S1"/>
+
+  <send dialog="2" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      CSeq: [last_cseq_number] REGISTER
+      client_cseq_keywords: [client_cseq] [client_cseq_method]
+      [last_Call-ID:]
+      Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>
+      User-Agent: PolycomSoundPointIP-SPIP_650-UA/3.3.1.0933
+      Accept-Language: en
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+</scenario>

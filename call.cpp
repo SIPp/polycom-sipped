@@ -49,6 +49,7 @@
 #include "send_packets.h"
 #endif
 #include "sipp.hpp"
+#include "call.hpp"
 #include "deadcall.hpp"
 #include "assert.h"
 
@@ -380,7 +381,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
 
   last_recv_hash = 0;
   last_recv_index = -1;
-  last_recv_msg = NULL;
+// use per-dialog one!  last_recv_msg = NULL;
 
   recv_retrans_hash = 0;
   recv_retrans_recv_index = -1;
@@ -467,12 +468,8 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
     userVars->putTable();
   }
 
-  if (call_scenario->transactions.size() > 0) {
-    transactions = (struct txnInstanceInfo *)malloc(sizeof(txnInstanceInfo) * call_scenario->transactions.size());
-    memset(transactions, 0, sizeof(struct txnInstanceInfo) * call_scenario->transactions.size());
-  } else {
-    transactions = NULL;
-  }
+  // transactions starts empty and is built dynamically as messages that use them are encountered
+// moved to per-dialog state  transactions.clear();
 
   // If not updated by a message we use the start time 
   // information to compute rtd information
@@ -600,14 +597,6 @@ call::~call()
   }
   if (userId) {
     opentask::freeUser(userId);
-  }
-
-  if (transactions) {
-    for (unsigned int i = 0; i < call_scenario->transactions.size(); i++) {
-      free(transactions[i].branch);
-      free(transactions[i].cseq_method);
-    }
-    free(transactions);
   }
 
   free_dialogState();
@@ -955,11 +944,11 @@ char * call::get_header_field_code(char *msg, char * name)
 }
 
 // you gotta pass in the dialog state this is based on.
-char * call::get_last_header(const char * name, DialogState *ds)
+char * call::get_last_header(const char * name, const char *msg)
 {
   int len;
 
-  if((!ds->last_recv_msg) || (!strlen(ds->last_recv_msg))) {
+  if((!msg) || (!strlen(msg))) {
     return NULL;
   }
 
@@ -972,18 +961,36 @@ char * call::get_last_header(const char * name, DialogState *ds)
   }
 
   if (name[len - 1] == ':') {
-    return get_header(ds->last_recv_msg, name, false);
+    return get_header(msg, name, false);
   } else {
     char with_colon[MAX_HEADER_LEN];
     sprintf(with_colon, "%s:", name);
-    return get_header(ds->last_recv_msg, with_colon, false);
+    return get_header(msg, with_colon, false);
   }
 }
 
-// only return payload of the header (not the 'header:' bit.
+// only return payload of the header (not the 'header:' bit).
+char * call::get_header_content(const char *message, const char * name)
+{
+  return get_header(message, name, true);
+}
+
+
+// only return payload of the header (not the 'header:' bit).
 char * call::get_header_content(char* message, const char * name)
 {
   return get_header(message, name, true);
+}
+
+/* If content is true, we only return the header's contents. */
+/* Make local copy to work around (ugly!) fact that get_header changes message */
+char * call::get_header(const char *message, const char * name, bool content)
+{
+  char *msg = strdup(message);
+  char *result = get_header(msg, name, content);
+  if (msg)
+    free(msg);
+  return result;
 }
 
 /* If content is true, we only return the header's contents. */
@@ -991,7 +998,7 @@ char * call::get_header(char* message, const char * name, bool content)
 {
   /* non reentrant. consider accepting char buffer as param */
   static char last_header[MAX_HEADER_LEN * 10];
-  char * src, *dest, *start, *ptr;
+  char *src, *dest, *start, *ptr;
   /* Are we searching for a short form header? */
   bool short_form = false;
   bool first_time = true;
@@ -1021,29 +1028,29 @@ char * call::get_header(char* message, const char * name, bool content)
         /* just want the header's content */
         src += strlen(name) + 1;
       } else {
-	     src++;
+        src++;
       }
       first_time = false;
       ptr = strchr(src, '\n');
 
       /* Multiline headers always begin with a tab or a space
-       * on the subsequent lines */
+      * on the subsequent lines */
       while((ptr) &&
-	  ((*(ptr+1) == ' ' ) ||
-	   (*(ptr+1) == '\t')    )) {
-	ptr = strchr(ptr + 1, '\n'); 
+        ((*(ptr+1) == ' ' ) ||
+        (*(ptr+1) == '\t')    )) {
+          ptr = strchr(ptr + 1, '\n'); 
       }
 
       if(ptr) { *ptr = 0; }
       // Add "," when several headers are present
       if (dest != last_header) {
-	/* Remove trailing whitespaces, tabs, and CRs */
-	while ((dest > last_header) &&
-	    ((*(dest-1) == ' ') || (*(dest-1) == '\r') || (*(dest-1) == '\n') || (*(dest-1) == '\t'))) {
-	  *(--dest) = 0;
-	}
+        /* Remove trailing whitespaces, tabs, and CRs */
+        while ((dest > last_header) &&
+          ((*(dest-1) == ' ') || (*(dest-1) == '\r') || (*(dest-1) == '\n') || (*(dest-1) == '\t'))) {
+            *(--dest) = 0;
+        }
 
-	dest += sprintf(dest, ",");
+        dest += sprintf(dest, ",");
       }
       dest += sprintf(dest, "%s", src);
       if(ptr) { *ptr = '\n'; }
@@ -1052,7 +1059,7 @@ char * call::get_header(char* message, const char * name, bool content)
     }
     /* We found the header. */
     if(dest != last_header) {
-	break;
+      break;
     }
     /* We didn't find the header, even in its short form. */
     if (short_form) {
@@ -1088,21 +1095,21 @@ char * call::get_header(char* message, const char * name, bool content)
 
   /* Remove trailing whitespaces, tabs, and CRs */
   while ((dest > last_header) && 
-         ((*dest == ' ') || (*dest == '\r')|| (*dest == '\t'))) {
-    *(dest--) = 0;
+    ((*dest == ' ') || (*dest == '\r')|| (*dest == '\t'))) {
+      *(dest--) = 0;
   }
- 
+
   /* Remove leading whitespaces */
   for (start = last_header; ((*start == ' ') || (*start == '\t')); start++);
 
   /* remove enclosed CRs in multilines */
   /* don't remove enclosed CRs for multiple headers (e.g. Via) (Rhys) */
   while((ptr = strstr(last_header, "\r\n")) != NULL
-        && (   *(ptr + 2) == ' ' 
-            || *(ptr + 2) == '\r' 
-            || *(ptr + 2) == '\t') ) {
-    /* Use strlen(ptr) to include trailing zero */
-    memmove(ptr, ptr+1, strlen(ptr));
+    && (   *(ptr + 2) == ' ' 
+    || *(ptr + 2) == '\r' 
+    || *(ptr + 2) == '\t') ) {
+      /* Use strlen(ptr) to include trailing zero */
+      memmove(ptr, ptr+1, strlen(ptr));
   }
 
   /* Remove illegal double CR characters */
@@ -1150,43 +1157,44 @@ char * call::get_first_line(char * message)
 }
 
 /* Return the last request URI from the To header. On any error returns the
- * empty string.  The caller must free the result. */
-char * call::get_last_request_uri (DialogState *ds)
+* empty string.  NOTE: RFC 3261 Section 8.1.1.1 states 
+* " The initial Request-URI of the message SHOULD be set to the value of the URI in the To field. 
+*   One notable exception is the REGISTER method; behavior for setting the Request-URI of REGISTER is given in Section 10."
+* So this routine is basically correct for non-REGISTER requests
+*/
+
+string call::get_last_request_uri (const char *last_recv_msg)
 {
-     char * tmp;
-     char * tmp2;
-     char * last_request_uri;
-     int tmp_len;
+  char * tmp;
+  char * tmp2;
+  char last_request_uri[MAX_HEADER_LEN];
+  int tmp_len;
 
-     char * last_To = get_last_header("To:", ds);
-     if (!last_To) {
-	return strdup("");
-     }
+  char * last_To = get_last_header("To:", last_recv_msg);
+  if (!last_To) {
+    return "";
+  }
 
-     tmp = strchr(last_To, '<');
-     if (!tmp) {
-	return strdup("");
-     }
-     tmp++;
+  tmp = strchr(last_To, '<');
+  if (!tmp) {
+    return "";
+  }
+  tmp++;
 
-     tmp2 = strchr(last_To, '>');
-     if (!tmp2) {
-	return strdup("");
-     }
+  tmp2 = strchr(last_To, '>');
+  if (!tmp2) {
+    return "";
+  }
 
-     tmp_len = strlen(tmp) - strlen(tmp2);
-     if (tmp_len < 0) {
-	return strdup("");
-     }
+  tmp_len = strlen(tmp) - strlen(tmp2);
+  if (tmp_len <= 0) {
+    return "";
+  }
 
-     if(!(last_request_uri = (char *) malloc(tmp_len+1))) ERROR("Cannot allocate !\n");
-     memset(last_request_uri, 0, sizeof(last_request_uri));
-     if(tmp && (tmp_len > 0)){
-       strncpy(last_request_uri, tmp, tmp_len);
-     }
-     last_request_uri[tmp_len] = '\0';
-     return last_request_uri;
-  
+  strncpy(last_request_uri, tmp, tmp_len);
+  last_request_uri[tmp_len] = '\0';
+  return last_request_uri;
+
 }
 
 char * call::send_scene(int index, int *send_status, int *len)
@@ -1445,6 +1453,7 @@ bool call::executeMessage(message *curmsg) {
     * retransmission enabled is acknowledged */
 
     if(next_retrans) {
+      DEBUG("next_retrans is true: not sending new messages until previous one is ACKed\n");
       setPaused();
       return true;
     }
@@ -1462,14 +1471,14 @@ bool call::executeMessage(message *curmsg) {
     if (!curmsg->send_scheme->isAck() &&
       !curmsg->send_scheme->isCancel() &&
       !curmsg->send_scheme->isResponse() &&
-      !curmsg->use_txn) {
-        ++ds->cseq;
+      !curmsg->isUseTxn()) {
+        ++ds->client_cseq;
         incr_cseq = 1;
     }
 
     msg_snd = send_scene(msg_index, &send_status, &msgLen);
     if(send_status == -1 && errno == EWOULDBLOCK) {
-      if (incr_cseq) --ds->cseq;
+      if (incr_cseq) --ds->client_cseq;
       /* Have we set the timeout yet? */
       if (send_timeout) {
         /* If we have actually timed out. */
@@ -1507,25 +1516,37 @@ bool call::executeMessage(message *curmsg) {
     memcpy(last_send_msg, msg_snd, msgLen);
     last_send_msg[msgLen] = '\0';
 
-    if (curmsg->start_txn) {
+    if (curmsg->isStartTxn()) {
+      assert(!curmsg->send_scheme->isResponse()); // not allowed to use start_txn with responses
+      TransactionState &txn = ds->create_transaction(curmsg->getTransactionName());
       // extract branch and cseq from sent message rather than internal variables in case they were specified manually
-      transactions[curmsg->start_txn - 1].branch = (char *)realloc(transactions[curmsg->start_txn - 1].branch, MAX_HEADER_LEN);
-      extract_branch(transactions[curmsg->start_txn - 1].branch, last_send_msg);
-
-      transactions[curmsg->start_txn - 1].cseq_method = (char *)realloc(transactions[curmsg->start_txn - 1].cseq_method, MAX_HEADER_LEN);
-      extract_cseq_method(transactions[curmsg->start_txn - 1].cseq_method, last_send_msg);
-
-      transactions[curmsg->start_txn - 1].cseq = get_cseq_value(last_send_msg);
+      txn.startClient(extract_branch(last_send_msg), get_cseq_value(last_send_msg), extract_cseq_method(last_send_msg));
     }
 
     // store the message index of this message in the transaction (for error checking)
-    if (curmsg->ack_txn) { 
-      transactions[curmsg->ack_txn - 1].ackIndex = curmsg->index;
+    if (curmsg->isUseTxn()) {
+      TransactionState &txn = ds->get_transaction(curmsg->getTransactionName(), msg_index);
+      if (curmsg->send_scheme->isResponse()) {
+        DEBUG("Sending response so updating lastResponseCode to %d.", curmsg->send_scheme->getCode());
+        txn.setLastResponseCode(curmsg->send_scheme->getCode()); 
+      }
+      if (curmsg->send_scheme->isAck()) {
+        DEBUG("Sending ACK so updating ackIndex.");
+        txn.setAckIndex(curmsg->index);
+      }
     }
 
-    if (!curmsg->send_scheme->isResponse()) {
-      extract_cseq_method(ds->cseq_method, last_send_msg);
+    // If call-id has not yet been stored (via use of [call_id] field or RX of packet in this dialog,
+    // store it based on what was sent here.
+    if (ds->call_id.empty()) {
+      ds->call_id = get_call_id(last_send_msg); 
+      DEBUG("Storing manually specified call_id '%s' with dialog %d as extracted from sent message", ds->call_id.c_str(), curmsg->dialog_number);
     }
+    // update client cseq method for sent requests (ie client transactions) for non-transaction case
+    if (!curmsg->send_scheme->isResponse()) {
+      extract_cseq_method(ds->client_cseq_method, last_send_msg);
+    }
+    // Note: sent responses could update cseq_received, but typically would just have specified cseq_response
 
     if(last_recv_index >= 0) {
       /* We are sending just after msg reception. There is a great
@@ -1867,7 +1888,7 @@ void set_default_message(const char *which, char *msg) {
   ERROR("Internal Error: Unknown default message: %s!", which);
 }
 
-bool call::process_unexpected(char * msg)
+bool call::process_unexpected(char * msg, const char *reason)
 {
   char buffer[MAX_HEADER_LEN];
   char *desc = buffer;
@@ -1901,9 +1922,10 @@ bool call::process_unexpected(char * msg)
   } else {
       desc += snprintf(desc, MAX_HEADER_LEN - (desc - buffer), "while in message type %d ", curmsg->M_type);
   }
-  desc += snprintf(desc, MAX_HEADER_LEN - (desc - buffer), "(index %d)", msg_index);
+  desc += snprintf(desc, MAX_HEADER_LEN - (desc - buffer), "(index %d). ", msg_index);
+  if (reason) desc += snprintf(desc, MAX_HEADER_LEN - (desc - buffer), "%s. ", reason);
 
-  WARNING("%s, received '%s'", buffer, msg);
+  WARNING("%s\n Received '%s'", buffer, msg);
 
   TRACE_MSG("-----------------------------------------------\n"
              "Unexpected %s message received:\n\n%s\n",
@@ -1920,8 +1942,8 @@ bool call::process_unexpected(char * msg)
     }
 
     // usage of last_ keywords => for call aborting
-    DialogState *ds = get_dialogState(curmsg->dialog_number);
-    setLastMsg(msg, ds);
+//    DialogState *ds = get_dialogState(curmsg->dialog_number);
+    setLastMsg(msg, curmsg->dialog_number);
 
     computeStat(CStat::E_CALL_FAILED);
     computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
@@ -1947,7 +1969,7 @@ bool call::abortCall(bool writeLog)
 {
   int is_inv;
 
-  char * src_recv = NULL ;
+  const char * src_recv = NULL ;
   DEBUG_IN();
 
   callDebug("Aborting call %s (index %d).\n", id, msg_index);
@@ -1959,7 +1981,7 @@ bool call::abortCall(bool writeLog)
   }  
   if ((creationMode != MODE_SERVER) && (msg_index > 0)) {
     if ((call_established == false) && (is_inv)) {
-      src_recv = last_recv_msg ;
+      src_recv = getDefaultLastReceivedMessage().c_str(); //last_recv_msg ;
       char   L_msg_buffer[SIPP_MAX_MSG_SIZE];
       L_msg_buffer[0] = '\0';
 
@@ -1990,7 +2012,7 @@ bool call::abortCall(bool writeLog)
         /* any answer. */
         /* Do nothing ! */
       }
-    } else if (last_recv_msg) { 
+    } else if (!getDefaultLastReceivedMessage().empty()) { 
       /* The call may not be established, if we haven't yet received a message,
        * because the earlier check depends on the first message being an INVITE
        * (although it could be something like a message message, therefore we
@@ -2100,10 +2122,81 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, int *msgLen) 
   return createSendingMessage(src, P_index, msg_buffer, sizeof(msg_buffer), msgLen);
 }
 
-// returns txnInstanceInfo referenced by use_txn variable associated with msg_index or
+/*
+// Return true if use_txn specified for currently indexed message
+bool call::use_txn(int index) {
+  if (index < 0)
+    index = msg_index;
+  return call_scenario->messages[index]->isUseTxn();
+}
+
+// Return name of transaction specified for currently indexed message
+string call::txn_name(int index) {
+  if (index < 0)
+    index = msg_index;
+  return call_scenario->messages[index]->getTransactionName();
+}
+
+// Get transaction assocaited with use_txn for currently indexed message
+// Error if not defined (so use isUseTxn() to be sure it's defined, first).
+TransactionState &call::get_txn(int index)
+{
+  if (index < 0)
+    index = msg_index;
+  DEBUG_IN("msg_index %d has dialog_number = %d", index, call_scenario->messages[index]->dialog_number);
+  DialogState *ds = get_dialogState(call_scenario->messages[index]->dialog_number);
+  return ds->get_transaction(call_scenario->messages[index]->getTransactionName(), index);
+/ *
+  Name_Transaction_Map::iterator txn = ds->get_transaction(call_scenario->messages[msg_index]->getTransactionName().c_str());
+  if (txn == ds->transactions.end() || txn->second.getBranch().empty()) {
+    ERROR("Message %d is attempting to use transaction '%s' prior to it being started with start_txn (not found or empty branch).", msg_index, call_scenario->messages[msg_index]->getTransactionName().c_str()); 
+  }
+  return txn;
+* /
+}
+*/
+
+/*
+// Get last message associated with indexed message
+const string &call::getLastReceivedMessage(int index) {
+  TransactionState &txn = get_txn(index);
+  return txn.getLastReceivedMessage();
+}
+*/
+
+// Get last message globally regardless of dialog or transaction
+const string &call::getDefaultLastReceivedMessage() {
+  DialogState *ds = get_dialogState(-1);
+  return ds->getLastReceivedMessage("");
+}
+
+
+void call::verifyIsServerTransaction(TransactionState &txn, const string &wrongKeyword, const string &correctKeyword) 
+{
+  DEBUG_IN("%s: %s", correctKeyword.c_str(), txn.trace().c_str());
+  if (!txn.isServerTransaction()) { // cseq_* implies server transaction => make sure.
+    ERROR("Transaction '%s' in message %d was initiated by SIPp and is therefore a client transaction. \n"
+          "You can not use [%s] with client transactions, use [%s] instead.  ]n"
+          "For most transactions you can use [cseq] and [cseq_method] and the correct value will be used.", 
+          txn.getName().c_str(), msg_index, wrongKeyword.c_str(), correctKeyword.c_str());
+  }
+}
+
+void call::verifyIsClientTransaction(TransactionState &txn, const string &wrongKeyword, const string &correctKeyword) 
+{
+  DEBUG_IN("%s: %s", correctKeyword.c_str(), txn.trace().c_str());
+  if (!txn.isClientTransaction()) { // server_* implies server transaction => make sure.
+    ERROR("Transaction '%s' in message %d was initiated remotely and is therefore a server transaction. "
+          "You can not use %s with server transactions, use %s instead."
+          "For most transactions you can use [cseq] and [cseq_method] and the correct value will be used.", 
+          txn.getName().c_str(), msg_index, wrongKeyword.c_str(), correctKeyword.c_str());
+  }
+}
+/*
+// returns TransactionState referenced by use_txn variable associated with msg_index or
 // 0 if use_txn is 0.
 // Also checks that transaction has been used and aborts with an error if it has not been.
-struct txnInstanceInfo *call::get_txn() {
+struct TransactionState *call::get_txn() {
   if (int idx = call_scenario->messages[msg_index]->use_txn) {
     if (!transactions[idx].branch) {
       ERROR("Message %d is attempting to use transaction %s prior to it being started with start_txn.", msg_index, call_scenario->transactions[idx].name); 
@@ -2114,6 +2207,7 @@ struct txnInstanceInfo *call::get_txn() {
     return 0;
   }
 }
+*/
 
 char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buffer, int buf_len, int *msgLen)
 {
@@ -2121,12 +2215,42 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   char * auth_marker = NULL;
   MessageComponent *auth_comp = NULL;
   bool auth_comp_allocated = false;
-  int    len_offset = 0;
-  char *dest = msg_buffer;
+  int  len_offset = 0;
+  char * dest = msg_buffer;
   bool supresscrlf = false;
-  struct txnInstanceInfo *txn = 0;
+//  struct TransactionState *txn = 0;
   // cache default dialog state to prevent repeated lookups (fastpath)
   DialogState *src_dialog_state = get_dialogState(src->getDialogNumber());
+
+  // txn set to default transaction unless useTxn is specified
+  // Note, this includes for start_txn as there is no state to re-use in this case)
+  bool useTxn = false;
+  if (P_index >= 0) {
+    useTxn = call_scenario->messages[P_index]->isUseTxn();
+    if (useTxn) {
+        DEBUG("useTxn TRUE => call get_transaction");
+    }
+  }
+  TransactionState &txn = src_dialog_state->get_transaction(useTxn ? call_scenario->messages[P_index]->getTransactionName() : "", P_index);
+
+  if (useTxn) {
+    // verify that transaction client/server state matches message type
+    if (src->isResponse()) {
+      if (!txn.isServerTransaction()) {
+        // trying to send response but is client transaction
+        ERROR("Transaction '%s' as used in message %d is a client transaction meaning it was initiated by a SIPp-sent request. \n"
+              "SIPp therefore cannot send a response in this transaction.", 
+              txn.getName().c_str(), P_index);
+      }
+    } else {
+      if (!txn.isClientTransaction()) { 
+        // trying to send request but is server transaction
+        ERROR("Transaction '%s' as used in message %d is a server transaction meaning it was initiated by a received request.\n"
+              "SIPp therefore cannot send a request in this transaction. If you wish to start a new transaction, use start_txn.", 
+              txn.getName().c_str(), P_index);
+        }
+    }
+  }
 
   *dest = '\0';
 
@@ -2265,22 +2389,65 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         dest += snprintf(dest, left, "%s", ds->call_id.c_str());
         break;
       case E_Message_CSEQ:
-        if (txn = get_txn())
-          dest += snprintf(dest, left, "%u", txn->cseq + comp->offset);
-        else
-          dest += snprintf(dest, left, "%u", ds->cseq + comp->offset);
+        if (useTxn) {
+          // using a transaction: use stored value.
+          dest += snprintf(dest, left, "%u", txn.getCseq() + comp->offset);
+        } else {
+          // no transaction: value to use depends on if request or response:
+          if (!src->isResponse()) {
+            dest += snprintf(dest, left, "%u", ds->client_cseq + comp->offset);
+          } else {
+            dest += snprintf(dest, left, "%u", ds->server_cseq + comp->offset);
+          }
+        }
         break;
       case E_Message_CSEQ_Method:
-        if (txn = get_txn())
-          dest += snprintf(dest, left, "%s", txn->cseq_method);
+        if (useTxn) {
+          // using a transaction: use stored value.
+          dest += snprintf(dest, left, "%s", txn.getCseqMethod().c_str());
+        } else {
+          // no transaction: value to use depends on if request or response:
+          if (!src->isResponse()) {
+            dest += snprintf(dest, left, "%s", ds->client_cseq_method);
+          } else {
+            dest += snprintf(dest, left, "%s", ds->server_cseq_method);
+          }
+        }
+        break;
+      case E_Message_Client_CSEQ:
+        if (useTxn) {
+          verifyIsClientTransaction(txn, "[client_cseq]", "[server_cseq]"); 
+          dest += snprintf(dest, left, "%u", txn.getCseq() + comp->offset);
+        }
         else
-          dest += snprintf(dest, left, "%s", ds->cseq_method);
+          dest += snprintf(dest, left, "%u", ds->client_cseq + comp->offset);
         break;
+      case E_Message_Client_CSEQ_Method:
+        if (useTxn) {
+          verifyIsClientTransaction(txn, "[client_cseq_method]", "[server_cseq_method]"); 
+          dest += snprintf(dest, left, "%s", txn.getCseqMethod().c_str());
+        }
+        else
+          dest += snprintf(dest, left, "%s", ds->client_cseq_method);
+        break;
+
+      case E_Message_Server_CSEQ:
       case E_Message_Received_CSEQ:
-        dest += snprintf(dest, left, "%u", ds->received_cseq + comp->offset);
+        if (useTxn) {
+          verifyIsServerTransaction(txn, "[server_cseq]", "[client_cseq]"); 
+          dest += snprintf(dest, left, "%u", txn.getCseq() + comp->offset);
+        }
+        else
+          dest += snprintf(dest, left, "%u", ds->server_cseq + comp->offset);
         break;
+      case E_Message_Server_CSEQ_Method:
       case E_Message_Received_CSEQ_Method:
-        dest += snprintf(dest, left, "%s", ds->received_cseq_method);
+        if (useTxn) {
+          verifyIsServerTransaction(txn, "[server_cseq_method]", "[client_cseq_method]"); 
+          dest += snprintf(dest, left, "%s", txn.getCseqMethod().c_str());
+        }
+        else
+          dest += snprintf(dest, left, "%s", ds->server_cseq_method);
         break;
       case E_Message_PID:
         dest += snprintf(dest, left, "%d", pid);
@@ -2288,12 +2455,28 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Service:
         dest += snprintf(dest, left, "%s", service);
         break;
-      case E_Message_Branch:
-        // otherwise generate a value (this includes start_txn case)
-        if (txn = get_txn()) {
-          dest += snprintf(dest, left, "%s", txn->branch);
+      case E_Message_Branch:       
+        if (useTxn) {        
+          if (src->isAck() && txn.isLastResponseCode2xx()) {
+            // A 2xx-induced ACK starts a new transaction
+            if (txn.getAckBranch().empty()) {
+              // store ACK branch so manually-specified retransmission of this ACK reuse the same value
+              char newBranch[100];
+              if(P_index == -2){
+                snprintf(newBranch, 100, "z9hG4bK-ack-%u-%u-%d", pid, number, msg_index-1 + comp->offset);
+              } else {
+                snprintf(newBranch, 100, "z9hG4bK-ack-%u-%u-%d", pid, number, P_index + comp->offset);
+              }
+              txn.setAckBranch(newBranch);
+            }
+            dest += snprintf(dest, left, "%s", txn.getAckBranch().c_str());
+          }
+          else {
+            dest += snprintf(dest, left, "%s", txn.getBranch().c_str());
+          }
         }
         else {
+          // Generate a value (this includes start_txn case)
           /* Branch is magic cookie + call number + message index in scenario */
           if(P_index == -2){
             dest += snprintf(dest, left, "z9hG4bK-%u-%u-%d", pid, number, msg_index-1 + comp->offset);
@@ -2479,7 +2662,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
                                 }
       case E_Message_Last_Header: {
-        char * last_header = get_last_header(comp->literal, ds);
+        char * last_header = get_last_header(comp->literal, txn.getLastReceivedMessage().c_str()); // ds->last_recv_msg
         if(last_header) {
           dest += sprintf(dest, "%s", last_header);
         }
@@ -2493,38 +2676,39 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
                              }
       case E_Message_Last_Message:
-        if(ds->last_recv_msg && strlen(ds->last_recv_msg)) {
-          dest += sprintf(dest, "%s", ds->last_recv_msg);
+        DEBUG("[last_message] %s", txn.trace().c_str());
+        if (!txn.getLastReceivedMessage().empty()) {
+          dest += sprintf(dest, "%s", txn.getLastReceivedMessage().c_str());
         }
         break;
       case E_Message_Last_Request_URI: {
-        char * last_request_uri = get_last_request_uri(ds);
-        dest += sprintf(dest, "%s", last_request_uri);
-        free(last_request_uri);
+        DEBUG("[last_Request_URI] %s", txn.trace().c_str());
+        dest += sprintf(dest, "%s", get_last_request_uri(txn.getLastReceivedMessage().c_str()).c_str());
         break;
                                        }
-       case E_Message_Last_CSeq_Number: {
-        int last_cseq = 0;
-
-        char *last_header = get_last_header("CSeq:", ds);
-        if(last_header) {
-          last_header += 5;
-          /* Extract the integer value of the field */
-          while(isspace(*last_header)) last_header++;
-          sscanf(last_header,"%d", &last_cseq);
-        }
-        dest += sprintf(dest, "%d", last_cseq + comp->offset);
+      case E_Message_Last_CSeq_Number: {       
+        DEBUG("[last_CSeq_Number] %s", txn.trace().c_str());
+        dest += sprintf(dest, "%d", get_cseq_value(txn.getLastReceivedMessage().c_str()) + comp->offset);
         break;
                                        }
       case E_Message_Last_Branch: {
+        dest += sprintf(dest, "%s", extract_branch(txn.getLastReceivedMessage().c_str()).c_str());
+
+/*
         char last_branch[MAX_HEADER_LEN];
         last_branch[0] = '\0';
-        extract_branch(last_branch, ds->last_recv_msg);
+        if (useTxn) {
+          TransactionState &txn = get_txn();
+          extract_branch(last_branch, txn.getLastMessage().c_str());
+        }
+        else 
+          extract_branch(last_branch, ds->last_recv_msg);
 
         dest += sprintf(dest, "%s", last_branch);
+*/
         break;
-                                       }
-     case E_Message_TDM_Map:
+      }
+      case E_Message_TDM_Map:
         if (!use_tdmmap)
           ERROR("[tdmmap] keyword without -tdmmap parameter on command line");
         dest += snprintf(dest, left, "%d.%d.%d/%d",
@@ -2544,7 +2728,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   if (length_marker || auth_marker) {
     body = strstr(msg_buffer, "\r\n\r\n");
     if (body) {
-	auth_body += strlen("\r\n\r\n");
+	    auth_body += strlen("\r\n\r\n"); // !!! This line seems suspcted as is equivalent to char *auth_body = 4. What is auth_body for anyway? !!!
     }
   }
 
@@ -2589,7 +2773,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     /* Need the Method name from the CSeq of the Challenge */
     char method[MAX_HEADER_LEN];
-    tmp = get_last_header("CSeq:", src_dialog_state);
+    tmp = get_last_header("CSeq:", txn.getLastReceivedMessage().c_str()); // src_dialog_state->last_recv_msg
     if(!tmp) {
       ERROR("Could not extract method from cseq of challenge");
     }
@@ -2789,10 +2973,19 @@ bool call::check_peer_src(char * msg, int search_index)
 }
 
 
+// copy Via's branch attribute from msg into branch
+string call::extract_cseq_method (char* msg)
+{
+  char method[MAX_HEADER_LEN]; 
+
+  extract_cseq_method(method, msg);
+  return string(method);
+}
+
 void call::extract_cseq_method (char* method, char* msg)
 {
   char* cseq ;
-  if ((cseq = strstr (msg, "CSeq")))
+  if ((cseq = strcasestr (msg, "CSeq")))
   {
     char * value ;
     if (( value = strchr (cseq,  ':')))
@@ -2812,7 +3005,16 @@ void call::extract_cseq_method (char* method, char* msg)
 }
 
 // copy Via's branch attribute from msg into branch
-void call::extract_branch (char* branch, char* msg)
+string call::extract_branch (const char* msg)
+{
+  char branch[MAX_HEADER_LEN]; 
+
+  extract_branch(branch, msg);
+  return string(branch);
+}
+
+// copy Via's branch attribute from msg into branch
+void call::extract_branch (char* branch, const char* msg)
 {
   char *via = get_header_content(msg, "via:");
   if (!via) {
@@ -3015,56 +3217,85 @@ int call::extract_name_and_uri (char* uri, char* name_and_uri, char* msg, const 
 
 
 
-bool call::matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *branch, string &call_id)
+// return string in reason explaining why false.
+bool call::matches_scenario(unsigned int index, int reply_code, char * request, char * responsecseqmethod, char *branch, string &call_id, char *reason)
 {
   bool result = false;
   message *curmsg = call_scenario->messages[index];
+  DialogState *ds = get_dialogState(curmsg->dialog_number);
+  *reason = '\0';
 
   if ((curmsg -> recv_request)) {
     if (curmsg->regexp_match) {
       if (curmsg -> regexp_compile == NULL) {
         regex_t *re = new regex_t;
 	      if (regcomp(re, curmsg -> recv_request, REG_EXTENDED|REG_NOSUB)) {
-	        ERROR("Invalid regular expression for index %d: %s", curmsg->recv_request);
+	        ERROR("Invalid regular expression for index %d: %s", index, curmsg->recv_request);
 	      }
 	      curmsg -> regexp_compile = re;
       }
       result = !regexec(curmsg -> regexp_compile, request, (size_t)0, NULL, 0);
+      if (!result) {
+        sprintf(reason, "Regular expression match failed for index %d: %s", index, curmsg->recv_request);              
+      }
     } else {
       result = !strcmp(curmsg -> recv_request, request);
+      if (!result) {
+        sprintf(reason, "Request '%s' does not match expected request '%s'", request, curmsg->recv_request);              
+      }
     }
-    if ((result) && (curmsg->use_txn)) {
-      // use_txn on received request => result false if branches don't match
-      if (!transactions[curmsg->use_txn - 1].branch)
-        ERROR("Attempting to use transaction (branch = %s) before message received with start_txn", branch);
-      if (strcmp(transactions[curmsg->use_txn - 1].branch, branch)) {
-	      result = false;
-      } 
+    if (result && curmsg->isUseTxn()) {
+      // use_txn on received request => verify branches match
+      DEBUG("Request matches: verify txn.branch");
+      TransactionState &txn = ds->get_transaction(curmsg->getTransactionName(), index); // reports error if not found.
+      if (curmsg->isAck() && txn.isLastResponseCode2xx()) {
+        // 2xx-triggered ACK => new transaction (branch) expected.
+        DEBUG("2xx-triggered ACK => new transaction (branch) expected.");
+        if (!strcmp(txn.getBranch().c_str(), branch)) {
+          WARNING("2xx-triggered ACK => new transaction (branch) expected, yet branches match.  Both branches = '%s'", branch);
+        }
+      } else {
+        // CANCEL, >=300 ACK, response, retransmitted request => branches better match
+        if (!strcmp(txn.getBranch().c_str(), branch)) {
+          result = true;
+        } else {
+          sprintf(reason, "Transaction '%s' requires branch '%s' and current packet has mismatching branch of '%s'", 
+                curmsg->getTransactionName().c_str(), txn.getBranch().c_str(), branch);
+        } 
+      }
     }
   } else if (curmsg->recv_response && (curmsg->recv_response == reply_code)) {
     /* This is a potential candidate, we need to match transactions. */
-    if (curmsg->use_txn) {
-      if (!transactions[curmsg->use_txn - 1].branch)
-        ERROR("Attempting to use transaction (branch = %s) before message received with start_txn", branch);
-      if (!strcmp(transactions[curmsg->use_txn - 1].branch, branch)) {
+    if (curmsg->isUseTxn()) {
+      DEBUG("Response code matches: verify txn.branch");
+      TransactionState &txn = ds->get_transaction(curmsg->getTransactionName(), index); // reports error if not found.
+      if (!strcmp(txn.getBranch().c_str(), branch)) {
 	      result = true;
-      } 
+      } else {
+        sprintf(reason, "Transaction '%s' requires branch '%s' and current packet has mismatching branch of '%s'", 
+              curmsg->getTransactionName().c_str(), txn.getBranch().c_str(), branch);
+      }      
     } else if (index == 0) {
       /* Always true for the first message. */
       result = true;
-    } else if (curmsg->recv_response_for_cseq_method_list &&
+    } else {
+      if (curmsg->recv_response_for_cseq_method_list &&
 	    strstr(curmsg->recv_response_for_cseq_method_list, responsecseqmethod)) {
-      /* If we do not have a transaction defined, we just check the CSEQ method. */
-      result = true;
+        /* If we do not have a transaction defined, we just check the CSEQ method. */
+        result = true;
+      } else {
+        sprintf(reason, "Method '%s' is not one of the methods sent by SIPp to initiate a transaction (%s).",
+          responsecseqmethod, curmsg->recv_response_for_cseq_method_list);
+      }
     } 
+  } else {
+    sprintf(reason, "Not expect a request nor response (processing something like exec or pause).");
   }
 
   // validate call-id, if dialog-number was specified and dialog-number has been used before
-  if ((result) && (curmsg->dialog_number != -1)) {
-    DialogState *ds = get_dialogState(curmsg->dialog_number);
-    if ((!ds->call_id.empty()) && (ds->call_id != call_id)) {
-      result = false;
-    }
+  if ((result) && (curmsg->dialog_number != -1) && (!ds->call_id.empty()) && (ds->call_id != call_id)) {
+    sprintf(reason, "Call-ID does not match: Expected = '%s', Actual = '%s'", ds->call_id.c_str(), call_id.c_str());
+    result = false;
   }
 
   return result;
@@ -3116,7 +3347,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     * message which was sent just after this one was received */
     cookie = hash(msg);
     if((recv_retrans_recv_index >= 0) && (recv_retrans_hash == cookie)) {
-
+      DEBUG("Retransmission detected");
       int status;
 
       if(lost(recv_retrans_recv_index)) {
@@ -3131,6 +3362,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
       call_scenario->messages[recv_retrans_recv_index] -> nb_recv_retrans++;
 
+      DEBUG("Sending message index %d again", recv_retrans_send_index);
       send_scene(recv_retrans_send_index, &status, NULL);
 
       if(status >= 0) {
@@ -3178,7 +3410,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
       reply_code = get_reply_code(msg);
       if(!reply_code) {
-        if (!process_unexpected(msg)) {
+        if (!process_unexpected(msg, "Response is missing reply code")) {
           DEBUG("Response is missing reply code");
           return false; // Call aborted by unexpected message handling
         }
@@ -3224,11 +3456,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
   /* Try to find it in the expected non mandatory responses
   * until the first mandatory response in the scenario */
+  char reason[MAX_HEADER_LEN]; // store match failure reason for logging purposes
   for(search_index = msg_index;
     search_index < (int)call_scenario->messages.size();
     search_index++) {
 
-      if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id)) { 
+      if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id, reason)) { 
         if(call_scenario->messages[search_index] -> optional) {
           continue;
         }
@@ -3244,7 +3477,8 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       break;
   }
 
-  /* Try to find it in the old non-mandatory receptions if not in functional mode */
+/* worry about all this later (or never... )
+  /* Try to find it in the old non-mandatory receptions if not in functional mode * /
   if ((!found) && (!no_call_id_check)) {
     bool contig = true;
     for(search_index = msg_index - 1;
@@ -3256,36 +3490,37 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
             found = true;
             break;
           } else {
-            if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
-              /* This is a reply to an old transaction. */
-              if (!strcmp(transactions[checkTxn - 1].branch, branch)) {
-                /* This reply is provisional, so it should have no effect if we recieve it out-of-order. */
+            if (call_scenario->messages[search_index]->isResponse() && call_scenario->messages[search_index]->isUseTxn()) {
+              /* This is a reply to an old transaction. * /
+              TransactionState &txn =  ds->get_transaction(call_scenario->messages[search_index]->getTransactionName());
+              if (!strcmp(txn.getBranch().c_str, branch)) {
+                /* This reply is provisional, so it should have no effect if we recieve it out-of-order. * /
                 if (reply_code >= 100 && reply_code <= 199) {
                   TRACE_MSG("-----------------------------------------------\n"
                     "Ignoring provisional %s message for transaction %s:\n\n%s\n",
-                    TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, msg);
+                    TRANSPORT_TO_STRING(transport), call_scenario->messages[search_index]->getTransactionName().c_str(), msg);
                   callDebug("Ignoring provisional %s message for transaction %s (hash %u):\n\n%s\n",
-                    TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
+                    TRANSPORT_TO_STRING(transport), call_scenario->messages[search_index]->getTransactionName().c_str(), hash(msg), msg);
                   return true;
-                } else if (int ackIndex = transactions[checkTxn - 1].ackIndex) {
-                  /* This is the message before an ACK, so verify that this is an invite transaction. */
-                  assert (call_scenario->transactions[checkTxn - 1].isInvite);
+                } else if (int ackIndex = txn.getAckIndex()) {
+                  /* This is the message before an ACK, so verify that this is an invite transaction. * /
+                  assert (call_scenario->transactions[checkTxn - 1].isInvite); Do we care?  Should we set isInvite when we transmit an INVITE to the request?
                   sendBuffer(createSendingMessage(call_scenario->messages[ackIndex] -> send_scheme, ackIndex));
                   return true;
                 } else {
                   assert (!call_scenario->transactions[checkTxn - 1].isInvite);
                   /* This is a non-provisional message for the transaction, and
                   * we have already gotten our allowable response.  Just make sure
-                  * that it is not a retransmission of the final response. */
-                  if (transactions[checkTxn - 1].txnResp == hash(msg)) {
-                    /* We have gotten this retransmission out-of-order, let's just ignore it. */
+                  * that it is not a retransmission of the final response. * /
+                  if (txn.getTransactionResponseHash() == hash(msg)) {
+                    /* We have gotten this retransmission out-of-order, let's just ignore it. * /
                     TRACE_MSG("-----------------------------------------------\n"
                       "Ignoring final %s message for transaction %s:\n\n%s\n",
-                      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, msg);
+                      TRANSPORT_TO_STRING(transport), call_scenario->messages[search_index]->getTransactionName().c_str(), msg);
                     callDebug("Ignoring final %s message for transaction %s (hash %u):\n\n%s\n",
-                      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
+                      TRANSPORT_TO_STRING(transport), call_scenario->messages[search_index]->getTransactionName().c_str(), hash(msg), msg);
                     WARNING("Ignoring final %s message for transaction %s (hash %u):\n\n%s\n",
-                      TRANSPORT_TO_STRING(transport), call_scenario->transactions[checkTxn - 1].name, hash(msg), msg);
+                      TRANSPORT_TO_STRING(transport), call_scenario->messages[search_index]->getTransactionName().c_str(), hash(msg), msg);
                     return true;
                   }
                 }
@@ -3294,7 +3529,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
               /*
               * we received a non mandatory msg for an old transaction (this could be due to a retransmit.
               * If this response is for an INVITE transaction, retransmit the ACK to quench retransmits.
-              */
+              * This is unaware of multi-dialog scenarios and won't produce desired results if the index+1's
+              * ACK is for a different call-id.
+              * /
               if ( (reply_code) &&
                 (0 == strncmp (responsecseqmethod, "INVITE", strlen(responsecseqmethod)) ) &&
                 (call_scenario->messages[search_index+1]->M_type == MSG_TYPE_SEND) &&
@@ -3306,11 +3543,13 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
           }
         }
     }
-  }
+  } // if ((!found) && (!no_call_id_check)) {
+*/
 
   /* If it is still not found, process an unexpected message */
   if(!found) {
-    DEBUG("Message not matched: processing an unexpected message");
+    DEBUG("Message not matched: processing an unexpected message. ");
+    DEBUG("Reason: %s", reason);
     if (call_scenario->unexpected_jump >= 0) {
       bool recursive = false;
       if (call_scenario->retaddr >= 0) {
@@ -3330,7 +3569,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
         paused_until = 0;
         return run();
       } else {
-        if (!process_unexpected(msg)) {
+        if (!process_unexpected(msg, reason)) {
           DEBUG("Call aborted by unexpected message handling");
           return false; // Call aborted by unexpected message handling
         }
@@ -3338,7 +3577,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     } else {
       T_AutoMode L_case;
       if ((L_case = checkAutomaticResponseMode(request)) == 0) {
-        if (!process_unexpected(msg)) {
+        if (!process_unexpected(msg, reason)) {
           DEBUG("Call aborted by unexpected message handling");
           return false; // Call aborted by unexpected message handling
         }
@@ -3422,8 +3661,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   extract_name_and_uri(ds->from_uri, ds->from_name_and_uri, msg, "From:");
 
   // If start_txn then we need to store all the interesting per-transactions values
-  if (int txn = call_scenario->messages[search_index]->start_txn) {
-    // (maybe these can come from variables already extracted sooner rather than re-calling extrace_*?
+  if (call_scenario->messages[search_index]->isStartTxn()) {
+    TransactionState &txn = ds->create_transaction(call_scenario->messages[search_index]->getTransactionName());
+    txn.startServer(extract_branch(msg), get_cseq_value(msg), extract_cseq_method(msg));
+
+/*
+    // (maybe these can come from variables already extracted sooner rather than re-calling extract_*?
     transactions[txn - 1].branch = (char *)realloc(transactions[txn - 1].branch, MAX_HEADER_LEN);
     extract_branch(transactions[txn - 1].branch, msg);
 
@@ -3431,13 +3674,17 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     extract_cseq_method(transactions[txn - 1].cseq_method, msg);
 
     transactions[txn - 1].cseq = get_cseq_value(msg);
+*/
   }
   
-  /* If we are part of a transaction, mark this as the final response. */
+  // If we are part of a transaction, mark this as the final response. 
   // A non-zero response_txn ensures it is a transaction, but it may not be final
   // This facilitates certain retransmissions when not in functional mode
-  if (int checkTxn = call_scenario->messages[search_index]->response_txn) {
-    transactions[checkTxn - 1].txnResp = hash(msg);
+  if (call_scenario->messages[search_index]->isUseTxn() && call_scenario->messages[search_index]->isResponse()) {
+    DEBUG("Response that uses transactions received => update reply code and transaction hash");
+    TransactionState &txn = ds->get_transaction(call_scenario->messages[search_index]->getTransactionName(), search_index);
+    txn.setLastResponseCode(reply_code);
+    txn.setTransactionHash(hash(msg));
   }
 
   /* Handle counters and RTDs for this message. */
@@ -3466,9 +3713,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   }
 
   if (reply_code == 0) { 
-    // update received_* only for requests
-    ds->received_cseq = get_cseq_value(msg);
-    extract_cseq_method (ds->received_cseq_method, msg);
+    // update server_* only for requests
+    ds->server_cseq = get_cseq_value(msg);
+    extract_cseq_method (ds->server_cseq_method, msg);
   }
 
   /* This is an ACK/PRACK or a response, and its index is greater than the 
@@ -3504,7 +3751,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   /* This is a response with 200 so set the flag indicating that an
   * ACK is pending (used to prevent from release a call with CANCEL
   * when an ACK+BYE should be sent instead)                         */
-  if (reply_code == 200) {
+  if ((reply_code >= 200) && (reply_code < 299)) {
     ack_is_pending = true;
   }
 
@@ -3576,7 +3823,8 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   last_recv_index = search_index;
   last_recv_hash = cookie;
   callDebug("Set Last Recv Hash: %u (recv index %d)\n", last_recv_hash, last_recv_index);
-  setLastMsg(msg, ds);
+  // Update transaction's lastMessage along with all default locations
+  setLastMsg(msg, call_scenario->messages[search_index]->dialog_number, search_index); 
 
   /* If this was a mandatory message, or if there is an explicit next label set
   * we must update our state machine.  */
@@ -3688,8 +3936,8 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           currentAction->getHeadersOnly());
         if(currentAction->getCheckIt() == true && (strlen(msgPart) < 0)) {
           // the sub message is not found and the checking action say it
-          // MUST match --> Call will be marked as failed but will go on
-          WARNING("Failed regexp match: header %s not found in message %s\n", currentAction->getLookingChar(), msg);
+          // MUST match --> Call will be marked as failed
+          ERROR("Failed regexp match: header %s not found in message %s\n", currentAction->getLookingChar(), msg);
           return(call::E_AR_HDR_NOT_FOUND);
         }
         haystack = msgPart;
@@ -3697,7 +3945,8 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         haystack = strstr(msg, "\r\n\r\n");
         if (!haystack) {
           if (currentAction->getCheckIt() == true) {
-            WARNING("Failed regexp match: body not found in message %s\n", msg);
+            // the body is not found, similar to above
+            ERROR("Failed regexp match: body not found in message %s\n", msg);
             return(call::E_AR_HDR_NOT_FOUND);
           }
           msgPart[0] = '\0';
@@ -3711,26 +3960,28 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         haystack = M_callVariableTable->getVar(currentAction->getVarInId())->getString();
         if (!haystack) {
           if (currentAction->getCheckIt() == true) {
-            WARNING("Failed regexp match: variable $%d not set\n", currentAction->getVarInId());
+            // the variable is not found, similar to above
+            ERROR("Failed regexp match: variable $%d not set\n", currentAction->getVarInId());
             return(call::E_AR_HDR_NOT_FOUND);
           }
         }
       } else {
         ERROR("Invalid looking place: %d\n", currentAction->getLookingPlace());
       }
+     
+      M_callVariableTable->getVar(currentAction->getVarId()) -> resetNbOfMatches(); 
       currentAction->executeRegExp(haystack, M_callVariableTable);
 
       if( (!(M_callVariableTable->getVar(currentAction->getVarId())->isSet())) && (currentAction->getCheckIt() == true) ) {
         // the message doesn't match and the checkit action say it MUST match
-        // Allow easier regexp debugging
-        WARNING("Failed regexp match: looking in '%s', with regexp '%s'",
+        ERROR("Failed regexp match: looking in '%s', with regexp '%s'",
           haystack, currentAction->getRegularExpression());
         return(call::E_AR_REGEXP_DOESNT_MATCH);
       } else if ( ((M_callVariableTable->getVar(currentAction->getVarId())->isSet())) &&
         (currentAction->getCheckItInverse() == true) )
       {
         // The inverse of the above
-        WARNING("Regexp matched but should not: looking in '%s', with regexp '%s'",
+        ERROR("Regexp matched but should not: looking in '%s', with regexp '%s'",
           haystack, currentAction->getRegularExpression());
         return(call::E_AR_REGEXP_SHOULDNT_MATCH);
       }
@@ -4264,36 +4515,56 @@ call::T_AutoMode call::checkAutomaticResponseMode(char * P_recv) {
 
 // update the dialog state's last_recv_msg and
 // store globally for retransmission and auto-responder
-void call::setLastMsg(const char *msg, DialogState *ds) {
-  ds->last_recv_msg = (char *) realloc(ds->last_recv_msg, strlen(msg) + 1);
-  strcpy(ds->last_recv_msg, msg);
-  last_recv_msg = ds->last_recv_msg; 
+// index of -1 does not update per-transaction state
+// so potentially storing 4 copies of msg: default and specified dialog structure 
+// in default & specfied transactions
+// If no transaction and no dialog specified, only stored once (same as original sipp)
+void call::setLastMsg(const string &msg, int dialog_number, int message_index) {
+  DEBUG_IN("dialog_number = %d Message Length = %d", dialog_number, msg.length());
+  string name("");
+  if (message_index >= 0)
+    name = call_scenario->messages[message_index]->getTransactionName();
+
+  // update default state for non-dialog-specified messages
+  DialogState *ds = get_dialogState(-1);
+  ds->setLastReceivedMessage(msg, "", message_index);
+
+  // update per-dialog state too if a dialog or transaction is specified
+  if (dialog_number != -1 || !name.empty()) {
+    DEBUG("Setting per-dialog transaction state for dialog_number %d, transaction '%s'", dialog_number, name.c_str());
+    ds = get_dialogState(dialog_number);
+    ds->setLastReceivedMessage(msg, name, message_index);
+  }
+
+// set call's own reference
+//  last_recv_msg = ds->getLastReceivedMessage().c_str();
+
+//  ds->last_recv_msg = (char *) realloc(ds->last_recv_msg, strlen(msg) + 1);
+//  strcpy(ds->last_recv_msg, msg);
+//  last_recv_msg = ds->last_recv_msg; 
 }
 
 
 bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
 {
-  char * old_last_recv_msg = NULL;
-  int res ;
-
-  DialogState *ds = get_dialogState(-1);
+  int res;
 
   switch (P_case) {
   case E_AM_UNEXP_BYE: // response for an unexpected BYE
     // usage of last_ keywords
-    setLastMsg(P_recv, ds);
+    setLastMsg(P_recv);
 
     // The BYE is unexpected, count it
     call_scenario->messages[msg_index] -> nb_unexp++;
     if (default_behaviors & DEFAULT_BEHAVIOR_ABORTUNEXP) {
       WARNING("Aborting call on an unexpected BYE for call: %s", (id==NULL)?"none":id);
       if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-	sendBuffer(createSendingMessage(get_default_message("200"), -1));
+	      sendBuffer(createSendingMessage(get_default_message("200"), -1));
       }
 
       // if twin socket call => reset the other part here
       if (twinSippSocket && (msg_index > 0)) {
-	res = sendCmdBuffer(createSendingMessage(get_default_message("3pcc_abort"), -1));
+	      res = sendCmdBuffer(createSendingMessage(get_default_message("3pcc_abort"), -1));
       }
       computeStat(CStat::E_CALL_FAILED);
       computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
@@ -4301,18 +4572,18 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     } else {
       WARNING("Continuing call on an unexpected BYE for call: %s", (id==NULL)?"none":id);
     }
-      break ;
+    break ;
       
   case E_AM_UNEXP_CANCEL: // response for an unexpected cancel
     // usage of last_ keywords
-    setLastMsg(P_recv, ds);
+    setLastMsg(P_recv);
 
     // The CANCEL is unexpected, count it
     call_scenario->messages[msg_index] -> nb_unexp++;
     if (default_behaviors & DEFAULT_BEHAVIOR_ABORTUNEXP) {
       WARNING("Aborting call on an unexpected CANCEL for call: %s", (id==NULL)?"none":id);
       if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-	sendBuffer(createSendingMessage(get_default_message("200"), -1));
+	      sendBuffer(createSendingMessage(get_default_message("200"), -1));
       }
     
     // if twin socket call => reset the other part here 
@@ -4331,7 +4602,7 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
       
   case E_AM_PING: // response for a random ping
     // usage of last_ keywords
-    setLastMsg(P_recv, ds);
+    setLastMsg(P_recv);
     
    if (default_behaviors & DEFAULT_BEHAVIOR_PINGREPLY) {
     WARNING("Automatic response mode for an unexpected PING for call: %s", (id==NULL)?"none":id);
@@ -4352,11 +4623,14 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
 
   case E_AM_AA:          // response for a random INFO, UPDATE or NOTIFY
   case E_AM_AA_REGISTER: // response for a random REGISTER
+  {
     // store previous last msg if msg is REGISTER, INFO, UPDATE or NOTIFY
     // so we can restore last_recv_msg to previous one after sending ok
-    old_last_recv_msg = ds->last_recv_msg;
+
+    string old_last_recv_msg = getDefaultLastReceivedMessage();
     // usage of last_ keywords (note get_last_header) inserts 0's into header.
-    ds->last_recv_msg = P_recv;
+    setLastMsg(P_recv);
+//    ds->setLastlast_recv_msg = P_recv;
 
     WARNING("Automatic response mode for an unexpected REGISTER, INFO, UPDATE or NOTIFY for call: %s", (id==NULL)?"none":id);
     if (P_case == E_AM_AA)
@@ -4366,20 +4640,14 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     }
 
     // restore previous last msg
-    ds->last_recv_msg = old_last_recv_msg;
-/*    if (last_recv_msg_saved == true) {
-      setLastMsg(last_recv_msg, ds);
-      if (old_last_recv_msg != NULL) {
-        free(old_last_recv_msg);
-        old_last_recv_msg = NULL;
-      }
-    }
-*/
+    setLastMsg(old_last_recv_msg);
+//    ds->last_recv_msg = old_last_recv_msg;
+
     CStat::globalStat(CStat::E_AUTO_ANSWERED);
     return true;
     break;
-
-    default:
+  }
+  default:
     ERROR("Internal error for automaticResponseMode - mode %d is not implemented!", P_case);
     break ;
   }
@@ -4425,8 +4693,18 @@ DialogState *call::get_dialogState(int dialog_number) {
 void call::free_dialogState() {
  for(perDialogStateMap::const_iterator it = per_dialog_state.begin(); it != per_dialog_state.end(); ++it)
     {
-        if (it->second->last_recv_msg) free(it->second->last_recv_msg);
-        free(it->second);
+        // this belongs in destructor: if (it->second->last_recv_msg) free(it->second->last_recv_msg);
+/*
+work this in: need to free per-transaction state too!
+  if (transactions) {
+    for (unsigned int i = 0; i < call_scenario->transactions.size(); i++) {
+      free(transactions[i].branch);
+      free(transactions[i].cseq_method);
+    }
+    free(transactions);
+  }
+*/
+        delete it->second;
     }
   per_dialog_state.clear();
 

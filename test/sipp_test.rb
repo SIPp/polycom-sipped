@@ -19,10 +19,13 @@ require 'English'
 # - detect non-existence of sipp in path for better error reporting
 # - recursively kill sub-children of sipp in case invoked script performed exec (ie pcap_play)
 #   [see http://t-a-w.blogspot.com/2010/04/how-to-kill-all-your-children.html]
+# - detect failure of server and stop test immediately and indicate failure
+#
+# Note use 'ruby test.rb --name test_name' to execute the test named 'test_name' in test file 'test.rb'
 
 class SippTest
   attr_accessor :client_options, :server_options, :logging, 
-                :expected_client_output, :expected_server_output, 
+                :expected_client_output, :expected_server_output, :expected_error_log,
 				:expected_minimum_run_time, :expected_maximum_run_time, :run_time,
 				:expected_exitstatus
   
@@ -34,10 +37,11 @@ class SippTest
     @sipp_remote_port = 15060
     @sipp_logging_parameters = "" # "-trace_screen -trace_msg"
     @sipp_path = "../sipp"
-    @logging = "normal" # silent, normal, verbose
+    @logging = "verbose" # silent, normal, verbose
     @error_message = "";
     @server_screen_destination = "server_console.out" # "#{@name}_server.out"
     @client_screen_destination = "client_console.out" # "#{@name}_client.out"
+    @error_log_destination  = "error.log"
 
     @server_pid = -1
     @server_aborted = false
@@ -70,11 +74,15 @@ class SippTest
   end
 
   def server_commandline
-    return "#{@sipp_path} #{@server_options} -i 127.0.0.1 -p #{@sipp_remote_port} #{@sipp_logging_parameters} &> #{@server_screen_destination}"
+    return "#{@sipp_path} #{@server_options} -i 127.0.0.1 -p #{@sipp_remote_port} #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_local_port} &> #{@server_screen_destination}"
   end
 
   def client_commandline
-    return "#{@sipp_path} #{@client_options} -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port} &> #{@client_screen_destination}"
+    if(@expected_error_log.nil?)
+      return "#{@sipp_path} #{@client_options} -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port} &> #{@client_screen_destination}"
+    else
+      return "#{@sipp_path} #{@client_options} -trace_err -error_file error.log -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port} &> #{@client_screen_destination}"
+    end
   end
 
   def post_execution_validation
@@ -93,6 +101,14 @@ class SippTest
 		result = false;
 	  end
 	end
+    if(!@expected_error_log.nil?)
+      if !(@expected_error_log.match get_error_log)
+        puts "Expected error log does not match actual.\n" unless @logging == "silent"
+        puts "Expected = '#{@expected_error_log}'\nActual = '#{get_error_log()}'\n" if @logging == "verbose"
+	result = false;
+      end
+    end
+        
 	if (!@expected_minimum_run_time.nil?)
       if (@expected_minimum_run_time > @run_time)
 	    puts "Run time #{@run_time} is less than expected minimum of #{@expected_minimum_run_time}.\n" unless @logging == "silent"
@@ -117,8 +133,8 @@ class SippTest
     result = system(testcase_client)
 	print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" unless @logging != "verbose"
 	
-	if (result && @expected_exitstatus == 0)
-	  success = true
+    if ( (result && @expected_exitstatus == 0) || !expected_error_log.nil? ) 
+      success = true
     elsif ($CHILD_STATUS.exitstatus == -1)
       @error_message = "[ERROR] - Failed to execute"
     elsif ($CHILD_STATUS.signaled?)
@@ -144,7 +160,7 @@ class SippTest
     end
   end
   
-  def get_client_output()
+  def get_server_output()
     return IO.read(@server_screen_destination)
   end
 
@@ -152,6 +168,9 @@ class SippTest
     return IO.read(@client_screen_destination)
   end
   
+  def get_error_log()
+    return IO.read(@error_log_destination)
+  end
   # run server sipp process in background, saving pid
   def start_sipp_server(testcase_server)
     @server_options.empty? and return false

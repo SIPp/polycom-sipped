@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="verify_transaction_keywords" parameters="-mc">
+  <!-- Start client transaction -->
+  <send dialog="1" start_txn="C1">
+    <![CDATA[
+
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      To: sipp <sip:sipp@[local_ip]:[local_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] REGISTER
+      client_cseq_keywords: [client_cseq] [client_cseq_method]
+      Contact: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      Content-Length: [len]
+
+    ]]>
+  </send>
+                                                                                                                                                                                          
+  <recv response="200" dialog="1" use_txn="C1">
+      <action>
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="Via:" check_it="true" assign_to="1b" />
+           <log message="Branch is '[$1b]'" />           
+		   
+           <ereg regexp="1 REGISTER" search_in ="hdr" header="cseq_keywords:" check_it="true" assign_to="keyword11" />
+           <ereg regexp="1 REGISTER" search_in="hdr" header="server_cseq_keywords:" check_it="true" assign_to="keyword12" />
+           <ereg regexp="1" search_in="hdr" header="client_cseq_keywords:" check_it="true" assign_to="keyword12a" />
+           <ereg regexp="1 REGISTER" search_in="hdr" header="received_cseq_keywords:" check_it="true" assign_to="keyword13" />
+           <ereg regexp="1" search_in="hdr" header="last_cseq_number:" check_it="true" assign_to="keyword14" />
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="last_branch:" check_it="true" assign_to="keyword15" />
+           <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="last_Request_URI:" check_it="true" assign_to="keyword16" /> 
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="branch:" check_it="true" assign_to="keyword17" />
+		   
+      </action>
+  </recv>
+
+  <!-- Start client transaction with increment of numbers -->
+  <send dialog="1" start_txn="C2">
+    <![CDATA[
+
+      SOMETHING sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      To: sipp <sip:sipp@[local_ip]:[local_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] SOMETHING
+      client_cseq_keywords: [client_cseq] [client_cseq_method]
+      Contact: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      Content-Length: [len]
+
+
+    ]]>
+  </send>
+
+  <recv response="200" dialog="1" use_txn="C2">
+      <action>
+           <ereg regexp="z9hG4bK-[0-9]+-1-2" search_in="hdr" header="Via:" check_it="true" assign_to="2b" />
+           <log message="Branch is '[$2b]'" />           
+		   
+           <ereg regexp="2 SOMETHING" search_in="hdr" header="cseq_keywords:" check_it="true" assign_to="keyword21" />
+           <ereg regexp="2 SOMETHING" search_in="hdr" header="server_cseq_keywords:" check_it="true" assign_to="keyword22" />
+           <ereg regexp="2 REGISTER" search_in="hdr" header="client_cseq_keywords:" check_it="true" assign_to="keyword22a" />
+           <ereg regexp="2 SOMETHING" search_in="hdr" header="received_cseq_keywords:" check_it="true" assign_to="keyword23" />
+           <ereg regexp="2" search_in="hdr" header="last_cseq_number:" check_it="true" assign_to="keyword24" />
+           <ereg regexp="z9hG4bK-[0-9]+-1-2" search_in="hdr" header="last_branch:" check_it="true" assign_to="keyword25" />
+           <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="last_Request_URI:" check_it="true" assign_to="keyword26" />
+           <ereg regexp="z9hG4bK-[0-9]+-1-2" search_in="hdr" header="branch:" check_it="true" assign_to="keyword27" />
+		   <trim assign_to="2b"/>
+		   
+      </action>
+  </recv>
+
+  <!-- receive response from C1 and re-verify (simulate RX retransmission) -->
+  <recv response="200" dialog="1" use_txn="C1">
+      <action>
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="Via:" check_it="true" assign_to="Ab" />
+           <log message="Branch is '[$Ab]'" />           
+		   
+           <ereg regexp="1 REGISTER" search_in="hdr" header="cseq_keywords:" check_it="true" assign_to="A1" />
+           <ereg regexp="1 REGISTER" search_in="hdr" header="server_cseq_keywords:" check_it="true" assign_to="A2" />
+           <ereg regexp="1" search_in="hdr" header="client_cseq_keywords:" check_it="true" assign_to="A2a" />
+           <ereg regexp="1 REGISTER" search_in="hdr" header="received_cseq_keywords:" check_it="true" assign_to="A3" />
+           <ereg regexp="1" search_in="hdr" header="last_cseq_number:" check_it="true" assign_to="A4" />
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="last_branch:" check_it="true" assign_to="A5" />
+           <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="last_Request_URI:" check_it="true" assign_to="A6" />
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="last_branch:" check_it="true" assign_to="A7" />
+		   
+      </action>
+  </recv>
+  
+  
+  <!-- reuse C1: effectively retransmit original transaction -->
+  <send dialog="1" use_txn="C1">
+    <![CDATA[
+
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      To: sipp <sip:sipp@[local_ip]:[local_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] [cseq_method]
+      client_cseq_keywords: [client_cseq] [client_cseq_method]
+      Contact: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <recv response="200" dialog="1" use_txn="C1">
+      <action>
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="Via:" check_it="true" assign_to="Bb" />
+           <log message="Branch is '[$Bb]'" />           
+		   
+           <ereg regexp="1 REGISTER" search_in="hdr" header="cseq_keywords:" check_it="true" assign_to="B1" />
+           <ereg regexp="1 REGISTER" search_in="hdr" header="server_cseq_keywords:" check_it="true" assign_to="B2" />
+           <ereg regexp="1 REGISTER" search_in="hdr" header="client_cseq_keywords:" check_it="true" assign_to="B2a" />
+           <ereg regexp="1 REGISTER" search_in="hdr" header="received_cseq_keywords:" check_it="true" assign_to="B3" />
+           <ereg regexp="1" search_in="hdr" header="last_cseq_number:" check_it="true" assign_to="B4" />
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="last_branch:" check_it="true" assign_to="B5" />
+           <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="last_Request_URI:" check_it="true" assign_to="B6" />
+           <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="branch:" check_it="true" assign_to="B7" />
+		   <trim assign_to="Bb"/>  
+		   
+      </action>
+  </recv>
+
+</scenario>

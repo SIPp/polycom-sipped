@@ -81,8 +81,6 @@
            <ereg regexp="sip:sipp@blah.com" search_in="hdr" header="ToUri:" check_it="true" assign_to="keyword34" />
            <ereg regexp="sip:sipp@contact.org;nota=tag" search_in="hdr" header="ContactNameAndUri:" check_it="true" assign_to="keyword35" />
            <ereg regexp="sip:sipp@contact.org;nota=tag" search_in="hdr" header="ContactUri:" check_it="true" assign_to="keyword36" />
-	   <trim assign_to="keyword31"/> <trim assign_to="keyword32"/> <trim assign_to="keyword33"/>
-	   <trim assign_to="keyword34"/> <trim assign_to="keyword35"/> <trim assign_to="keyword36"/>  
       </action>
   </recv>
   
@@ -110,8 +108,7 @@
            <ereg regexp="''sip:sipp@contact.org;nota=tag''" search_in="hdr" header="NextUrl:" check_it="true" assign_to="keyword333" />
 		   
            <log message="Contact header's uri and name_and_uri keywords are '[contact_uri]' and '[contact_name_and_uri]'." />           
-           <log message="next_url header is '[next_url]'." />
-           <trim assign_to="keyword331"/> <trim assign_to="keyword332"/> <trim assign_to="keyword333"/>		   
+           <log message="next_url header is '[next_url]'." />   
       </action>
   </recv>
   
