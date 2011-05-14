@@ -1050,9 +1050,9 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
           int len = strlen(desc) < 9 ? 9 : strlen(desc);
 
           if(creationMode == MODE_SERVER) {
-            fprintf(f,"  [%9s] Pause%*s", desc, 23 - len > 0 ? 23 - len : 0, "");
+            fprintf(f,"  [%9s] Pause%*s    ", desc, 23 - len > 0 ? 23 - len : 0, "");
           } else {
-            fprintf(f,"       Pause [%9s]%*s", desc, 18 - len > 0 ? 18 - len : 0, "");
+            fprintf(f,"       Pause     [%9s]%*s", desc, 18 - len > 0 ? 18 - len : 0, "");
           }
 
           if (!diagram_only) {
@@ -1089,8 +1089,10 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
       else if(curmsg -> M_type == MSG_TYPE_NOP) {
         if (curmsg->display_str) {
           fprintf(f," %s", curmsg->display_str);
-        } else {
+        } else if(creationMode == MODE_SERVER) {
           fprintf(f,"              [ NOP ]              ");
+        } else {
+        fprintf(f,"     [ NOP ]                       ");
         }
       }
       else if(curmsg -> M_type == MSG_TYPE_RECVCMD) {
