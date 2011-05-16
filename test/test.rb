@@ -11,6 +11,7 @@ require 'getopt/std'
 require 'English'
 
 # require each test case here
+require "aa_test.rb"
 require "aa_expires_default.rb"
 require "aa_expires_specified.rb"
 require "dump_sequence_diagram.rb"
