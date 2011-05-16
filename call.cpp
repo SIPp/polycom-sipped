@@ -4576,7 +4576,7 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
   {
     // store previous last msg if msg is REGISTER, INFO, UPDATE or NOTIFY
     // so we can restore last_recv_msg to previous one after sending ok
-
+    DEBUG("Automatic response mode for unexpected REGISTER, INFO, UPDATE, or NOTIFY");
     string old_last_recv_msg = getDefaultLastReceivedMessage();
     // usage of last_ keywords (note get_last_header) inserts 0's into header.
     setLastMsg(P_recv);
