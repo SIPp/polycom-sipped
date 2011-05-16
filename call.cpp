@@ -381,7 +381,6 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
 
   last_recv_hash = 0;
   last_recv_index = -1;
-// use per-dialog one!  last_recv_msg = NULL;
 
   recv_retrans_hash = 0;
   recv_retrans_recv_index = -1;
