@@ -4582,7 +4582,6 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     // usage of last_ keywords (note get_last_header) inserts 0's into header.
     setLastMsg(P_recv);
 
-    WARNING("Automatic response mode for an unexpected REGISTER, INFO, UPDATE or NOTIFY for call: %s", (id==NULL)?"none":id);
     if (P_case == E_AM_AA)
       sendBuffer(createSendingMessage(get_default_message("200"), -1));
     else {
