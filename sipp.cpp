@@ -154,7 +154,7 @@ struct sipp_option options_table[] = {
 
 	{"base_cseq", "Start value of [cseq] for each call.", SIPP_OPTION_CSEQ, NULL, 1},
 	{"bg", "Launch SIPp in background mode.", SIPP_OPTION_SETFLAG, &backgroundMode, 1},
-	{"bind_local", "Bind socket to local IP address, i.e. the local IP address is used as the source IP address.  If SIPp runs in server mode it will only listen on the local IP address instead of all IP addresses.", SIPP_OPTION_SETFLAG, &bind_local, 1},
+	{"bind_local", "Bind socket to local IP address, i.e. the local IP address is used as the source IP address.  If SIPp runs in server mode  it will only listen on the local IP address instead of all IP addresses.", SIPP_OPTION_SETFLAG, &bind_local, 1},
 	{"buff_size", "Set the send and receive buffer size.", SIPP_OPTION_INT, &buff_size, 1},
 
 	{"calldebug_file", "Set the name of the call debug file.", SIPP_OPTION_LFNAME, &calldebug_lfi, 1},
@@ -339,7 +339,7 @@ struct sipp_option options_table[] = {
 
 	{"users", "Instead of starting calls at a fixed rate, begin 'users' calls at startup, and keep the number of calls constant.", SIPP_OPTION_USERS, NULL, 1},
 
-	{"watchdog_interval", "Set gap between watchdog timer firings.  Default is 400.", SIPP_OPTION_TIME_MS, &watchdog_interval, 1},
+	{"watchdog_interval", "Set gap between watchdog timer firings.  Default is 400, unless -mc option is used (in which case watchdogs are disabled by default).", SIPP_OPTION_TIME_MS, &watchdog_interval, 1},
 	{"watchdog_reset", "If the watchdog timer has not fired in more than this time period, then reset the max triggers counters.  Default is 10 minutes.", SIPP_OPTION_TIME_MS, &watchdog_reset, 1},
 	{"watchdog_minor_threshold", "If it has been longer than this period between watchdog executions count a minor trip.  Default is 500.", SIPP_OPTION_TIME_MS, &watchdog_minor_threshold, 1},
 	{"watchdog_major_threshold", "If it has been longer than this period between watchdog executions count a major trip.  Default is 3000.", SIPP_OPTION_TIME_MS, &watchdog_major_threshold, 1},
@@ -4522,10 +4522,11 @@ int main(int argc, char *argv[])
 	  break;
 	case SIPP_OPTION_NO_CALL_ID_CHECK:
 	  CHECK_PASS();
-    no_call_id_check = true;
+	  no_call_id_check = true;
 	  open_calls_allowed = 1;
 	  open_calls_user_setting = 1;
-    retrans_enabled = 0;
+	  retrans_enabled = 0;
+	  watchdog_interval = 0;
     // default is to stop after 1 call if value not changed on command line.
     if (stop_after == 0xffffffff)
       stop_after = 1;
@@ -5041,6 +5042,7 @@ int main(int argc, char *argv[])
   screentask::initialize();
   /* Create a watchdog task. */
   if (watchdog_interval) {
+    DEBUG("Watchdog timer intialized.");
     new watchdog(watchdog_interval, watchdog_reset, watchdog_major_threshold, watchdog_major_maxtriggers, watchdog_minor_threshold, watchdog_minor_maxtriggers);
   }
 
