@@ -3297,7 +3297,7 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
       }
     } 
   } else {
-    sprintf(reason, "Not expect a request nor response (processing something like exec or pause).");
+    //sprintf(reason, "Not expecting a request nor response (processing something like exec or pause).");
   }
 
   // validate call-id, if dialog-number was specified and dialog-number has been used before
@@ -4365,8 +4365,10 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO)) {
         play_args_t *play_args;
         if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) {
+          DEBUG("getActionType() is E_AT_PLAY_PCAP_AUDIO");
           play_args = &(this->play_args_a);
         } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
+          DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
           play_args = &(this->play_args_v);
         }
         play_args->pcap = currentAction->getPcapPkts();
@@ -4389,15 +4391,15 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 #endif
         //pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
         if (media_thread != 0) {
+          DEBUG("media_thread already active: kill it before starting a new one");
           // If a media_thread is already active, kill it before starting a new one
           pthread_cancel(media_thread);
           pthread_join(media_thread, NULL);
           media_thread = 0;
         }
-        int ret = pthread_create(&media_thread, &attr, send_wrapper,
-          (void *) play_args);
+        int ret = pthread_create(&media_thread, &attr, send_wrapper, (void *) play_args);
         if(ret)
-          ERROR("Can create thread to send RTP packets");
+          ERROR("Can't create thread to send RTP packets");
         pthread_attr_destroy(&attr);
 #endif
     } else {
@@ -4652,10 +4654,12 @@ void *send_wrapper(void *arg)
   //ret = pthread_setschedparam(pthread_self(), SCHED_RR, &param);
   //if(ret)
   //  ERROR("Can't set RTP play thread realtime parameters");
+  DEBUG_IN();
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
   send_packets(s);
   pthread_exit(NULL);
+  DEBUG_OUT();
   return NULL;
 }
 #endif
