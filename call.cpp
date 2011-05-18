@@ -998,8 +998,7 @@ char * call::get_header(char* message, const char * name, bool content)
   /* non reentrant. consider accepting char buffer as param */
   static char last_header[MAX_HEADER_LEN * 10];
   char *src, *dest, *start, *ptr;
-  /* Are we searching for a short form header? */
-  bool short_form = false;
+  bool alt_form = false;
   bool first_time = true;
   char src_tmp[MAX_HEADER_LEN + 1];
 
@@ -1061,32 +1060,18 @@ char * call::get_header(char* message, const char * name, bool content)
       break;
     }
     /* We didn't find the header, even in its short form. */
-    if (short_form) {
+    if (alt_form) {
+      DEBUG("Could not find %s or %s in message: \"%s\"", alt_name(name), name, message);
       return last_header;
     }
 
-    /* We should retry with the short form. */
-    short_form = true;
-    if (!strcasecmp(name, "call-id:")) {
-      name = "i:";
-    } else if (!strcasecmp(name, "contact:")) {
-      name = "m:";
-    } else if (!strcasecmp(name, "content-encoding:")) {
-      name = "e:";
-    } else if (!strcasecmp(name, "content-length:")) {
-      name = "l:";
-    } else if (!strcasecmp(name, "content-type:")) {
-      name = "c:";
-    } else if (!strcasecmp(name, "from:")) {
-      name = "f:";
-    } else if (!strcasecmp(name, "to:")) {
-      name = "t:";
-    } else if (!strcasecmp(name, "via:")) {
-      name = "v:";
-    } else {
-      /* There is no short form to try. */
+    /* We should retry with the alternate form. */
+    alt_form = true;
+    if(!strcasecmp(name,alt_name(name))){
+      DEBUG("Could not find %s in message: \"%s\"", name, message);
       return last_header;
     }
+    else name = alt_name(name);
   }
   while (1);
 
@@ -1115,12 +1100,67 @@ char * call::get_header(char* message, const char * name, bool content)
   while((ptr = strstr(last_header, "\r\r")) != NULL) {
     memmove(ptr, ptr+1, strlen(ptr));
   }
-  /* Remove illegal double Newline characters */  
+  /* Remove illegal double Newline characters */
   while((ptr = strstr(last_header, "\n\n")) != NULL) {
     memmove(ptr, ptr+1, strlen(ptr));
   }
 
+  if(alt_form && !content){
+    ptr = strstr(last_header, name);
+    ptr += strlen(name);
+    char start_tmp[strlen(ptr) + strlen(name)];
+    strcpy(start_tmp, alt_name(name));
+    strcat(start_tmp, ptr);
+    strcpy(start, start_tmp);
+  }
   return start;
+}
+
+char * call::alt_name(const char * name) {
+    if (!strcasecmp(name, "call-id:")) {
+      return strdup("i:");
+    } else if (!strcasecmp(name, "contact:")) {
+      return strdup("m:");
+    } else if (!strcasecmp(name, "content-encoding:")) {
+      return strdup("e:");
+    } else if (!strcasecmp(name, "content-length:")) {
+      return strdup("l:");
+    } else if (!strcasecmp(name, "content-type:")) {
+      return strdup("c:");
+    } else if (!strcasecmp(name, "from:")) {
+      return strdup("f:");
+    } else if (!strcasecmp(name, "subject:")) {
+      return strdup("s:");
+    } else if (!strcasecmp(name, "supported:")) {
+      return strdup("k:");
+    } else if (!strcasecmp(name, "to:")) {
+      return strdup("t:");
+    } else if (!strcasecmp(name, "via:")) {
+      return strdup("v:");
+    } else if (!strcasecmp(name, "i:")) {
+      return strdup("Call-ID:");
+    } else if (!strcasecmp(name, "m:")) {
+      return strdup("Contact:");
+    } else if (!strcasecmp(name, "e:")) {
+      return strdup("Content-Encoding:");
+    } else if (!strcasecmp(name, "l:")) {
+      return strdup("Content-Length:");
+    } else if (!strcasecmp(name, "c:")) {
+      return strdup("Content-Type:");
+    } else if (!strcasecmp(name, "f:")) {
+      return strdup("From:");
+    } else if (!strcasecmp(name, "s:")) {
+      return strdup("Subject:");
+    } else if (!strcasecmp(name, "k:")) {
+      return strdup("Supported:");
+    } else if (!strcasecmp(name, "t:")) {
+      return strdup("To:");
+    } else if (!strcasecmp(name, "v:")) {
+      return strdup("Via:");
+    } else {
+      return strdup(name);
+    }
+
 }
 
 char * call::get_first_line(char * message)
@@ -2651,7 +2691,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           supresscrlf = true;
         }
         break;
-                                  }
+      }
       case E_Message_Custom: {
         dest += comp->comp_param.fxn(this, comp, dest, left);
         break;
@@ -4136,7 +4176,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
         /* Generate the username to verify it against. */
         char *tmp = createSendingMessage(currentAction->getMessage(0), -2 /* do not add crlf*/);
-        char *username = strdup(tmp);
+        char *userreturn strdup(tmp);
         /* Generate the password to verify it against. */
         tmp= createSendingMessage(currentAction->getMessage(1), -2 /* do not add crlf*/);
         char *password = strdup(tmp);

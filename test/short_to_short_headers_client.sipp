@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="short_headers" parameters="-mc">
+  <!-- Start client transaction -->
+  <send dialog="1" start_txn="C1">
+    <![CDATA[
+
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      v: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      f: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      t: sipp <sip:sipp@[remote_ip]:[remote_port]>
+      i: [call_id]
+      m: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      CSeq: [cseq] REGISTER
+      l: [len]
+
+    ]]>
+  </send>
+                                                                                                                                                                                          
+  <recv response="200" dialog="1" use_txn="C1">
+      <action>
+        <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="v:" check_it="true" assign_to="br" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="f:" check_it="true" assign_to="fr" />
+        <ereg regexp="sip:sipp@127.0.0.1:15060" search_in="hdr" header="t:" check_it="true" assign_to="to" />
+        <ereg regexp="([0-9]+-){2}[0-9]+@127.0.0.1" search_in="hdr" header="i:" check_it="true" assign_to="id" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="m:" check_it="true" assign_to="id" />
+      </action>
+  </recv>
+
+  <!-- Start client transaction with increment of numbers -->
+  <send dialog="1" start_txn="C2">
+    <![CDATA[
+
+      SOMETHING sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      v: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      f: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      t: sipp <sip:sipp@[remote_ip]:[remote_port]>
+      i: [call_id]
+      m: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      CSeq: [cseq] SOMETHING
+      l: [len]
+
+    ]]>
+  </send>
+
+  <recv response="200" dialog="1" use_txn="C2">
+      <action>
+        <ereg regexp="z9hG4bK-[0-9]+-1-2" search_in="hdr" header="v:" check_it="true" assign_to="br" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="f:" check_it="true" assign_to="fr" />
+        <ereg regexp="sip:sipp@127.0.0.1:15060" search_in="hdr" header="t:" check_it="true" assign_to="to" />
+        <ereg regexp="([0-9]+-){2}[0-9]+@127.0.0.1" search_in="hdr" header="i:" check_it="true" assign_to="id" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="m:" check_it="true" assign_to="id" />
+      </action>
+  </recv>
+
+  <!-- receive response f C1 and re-v (simulate RX retransmission) -->
+  <recv response="200" dialog="1" use_txn="C1">
+      <action>
+        <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="v:" check_it="true" assign_to="br" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="f:" check_it="true" assign_to="fr" />
+        <ereg regexp="sip:sipp@127.0.0.1:15060" search_in="hdr" header="t:" check_it="true" assign_to="to" />
+        <ereg regexp="([0-9]+-){2}[0-9]+@127.0.0.1" search_in="hdr" header="i:" check_it="true" assign_to="id" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="m:" check_it="true" assign_to="id" />	   
+      </action>
+  </recv>
+  
+  
+  <!-- reuse C1: effectively retransmit original transaction -->
+  <send dialog="1" use_txn="C1">
+    <![CDATA[
+
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      v: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      f: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      t: sipp <sip:sipp@[remote_ip]:[remote_port]>
+      i: [call_id]
+      m: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      CSeq: [cseq] REGISTER
+      l: [len]
+
+    ]]>
+  </send>
+
+  <recv response="200" dialog="1" use_txn="C1">
+      <action>
+        <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="v:" check_it="true" assign_to="br" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="f:" check_it="true" assign_to="fr" />
+        <ereg regexp="sip:sipp@127.0.0.1:15060" search_in="hdr" header="t:" check_it="true" assign_to="to" />
+        <ereg regexp="([0-9]+-){2}[0-9]+@127.0.0.1" search_in="hdr" header="i:" check_it="true" assign_to="id" />
+        <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="m:" check_it="true" assign_to="id" />
+      </action>
+  </recv>
+</scenario>

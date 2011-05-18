@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="short_headers" parameters="-mc">
+  <recv request="REGISTER" dialog="1" start_txn="S1"/>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_v:]
+      [last_f:]
+      [last_t:][local_tag_param]
+      [last_i:]
+      [last_m:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <recv request="SOMETHING" dialog="1" start_txn="S2"/>
+
+  <send dialog="1" use_txn="S2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_v:]
+      [last_f:]
+      [last_t:][local_tag_param]
+      [last_i:]
+      [last_m:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <!-- Unprompted retransmission -->
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_v:]
+      [last_f:]
+      [last_t:][local_tag_param]
+      [last_i:]
+      [last_m:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+  
+  <!-- Receive retransmission & re-responsd -->
+  <recv request="REGISTER" dialog="1" use_txn="S1"/>
+
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_v:]
+      [last_f:]
+      [last_t:][local_tag_param]
+      [last_i:]
+      [last_m:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+</scenario>
