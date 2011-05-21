@@ -4176,7 +4176,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
         /* Generate the username to verify it against. */
         char *tmp = createSendingMessage(currentAction->getMessage(0), -2 /* do not add crlf*/);
-        char *userreturn strdup(tmp);
+        char *username = strdup(tmp);
         /* Generate the password to verify it against. */
         tmp= createSendingMessage(currentAction->getMessage(1), -2 /* do not add crlf*/);
         char *password = strdup(tmp);
