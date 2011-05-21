@@ -512,7 +512,8 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   memset(&(play_args_a.from), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_v.from), 0, sizeof(struct sockaddr_storage));
   hasMediaInformation = 0;
-  media_thread = 0;
+  for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) media_threads[i] = 0;
+  number_of_active_rtp_threads = 0;
 #endif
 
   recv_timeout = 0;
@@ -613,9 +614,11 @@ call::~call()
   }
   
 # ifdef PCAPPLAY
-  if (media_thread != 0) {
-    pthread_cancel(media_thread);
-    pthread_join(media_thread, NULL);
+  for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) {
+    if (media_threads[i] != 0) {
+      pthread_cancel(media_threads[i]);
+      pthread_join(media_threads[i], NULL);
+    }
   }
 #endif
 
@@ -4390,16 +4393,24 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 #define PTHREAD_STACK_MIN	16384
 #endif
         //pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-        if (media_thread != 0) {
+
+        
+/*
+        if (media_thread != 0) {}
           DEBUG("media_thread already active: kill it before starting a new one");
           // If a media_thread is already active, kill it before starting a new one
           pthread_cancel(media_thread);
           pthread_join(media_thread, NULL);
           media_thread = 0;
         }
-        int ret = pthread_create(&media_thread, &attr, send_wrapper, (void *) play_args);
+*/
+        if (number_of_active_rtp_threads >= MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS-1) 
+          ERROR("Trying to play too many concurrent media threads. Current maximum is %d.", MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS);
+
+        int ret = pthread_create(&media_threads[number_of_active_rtp_threads++], &attr, send_wrapper, (void *) play_args);
         if(ret)
           ERROR("Can't create thread to send RTP packets");
+        DEBUG("Created media thread %d.", number_of_active_rtp_threads);
         pthread_attr_destroy(&attr);
 #endif
     } else {

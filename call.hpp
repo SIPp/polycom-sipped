@@ -50,6 +50,8 @@
 #define SIP_TRANSACTION_TIMEOUT 32000
 #define DEFAULT_AUTO_ANSWER_EXPIRES 3600
 
+#define MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS 20
+
 /* Retransmission check methods. */
 #define RTCHECK_FULL	1
 #define RTCHECK_LOOSE	2
@@ -168,7 +170,8 @@ private:
 
 #ifdef PCAPPLAY
   int hasMediaInformation;
-  pthread_t media_thread;
+  pthread_t media_threads[MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS];
+  int number_of_active_rtp_threads;
   play_args_t play_args_a;
   play_args_t play_args_v;
 #endif
