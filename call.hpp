@@ -328,7 +328,7 @@ move to dialogState
   /* If content is true, we only return the header's contents. */
   char * get_header(const char* message, const char * name, bool content);
   char * get_header(char* message, const char * name, bool content);
-  char * alt_name  (const char* name);
+  char * swap_long_and_short_form_header(const char* name);
   char * get_first_line(char* message);
   string get_last_request_uri(const char *last_recv_msg);
   unsigned long hash(char * msg);

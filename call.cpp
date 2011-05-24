@@ -1014,7 +1014,7 @@ char * call::get_header(char* message, const char * name, bool content)
 
   /* for safety's sake */
   if (NULL == name || NULL == strrchr(name, ':')) {
-    WARNING("Can not searching for header (no colon): %s", name ? name : "(null)");
+    WARNING("Cannot search for header (no colon): %s", name ? name : "(null)");
     return last_header;
   }
 
@@ -1064,17 +1064,17 @@ char * call::get_header(char* message, const char * name, bool content)
     }
     /* We didn't find the header, even in its short form. */
     if (alt_form) {
-      DEBUG("Could not find %s or %s in message: \"%s\"", alt_name(name), name, message);
+      DEBUG("Could not find %s or %s in message: \"%s\"", swap_long_and_short_form_header(name), name, message);
       return last_header;
     }
 
     /* We should retry with the alternate form. */
     alt_form = true;
-    if(!strcasecmp(name,alt_name(name))){
+    if(!strcasecmp(name,swap_long_and_short_form_header(name))){
       DEBUG("Could not find %s in message: \"%s\"", name, message);
       return last_header;
     }
-    else name = alt_name(name);
+    else name = swap_long_and_short_form_header(name);
   }
   while (1);
 
@@ -1112,14 +1112,14 @@ char * call::get_header(char* message, const char * name, bool content)
     ptr = strstr(last_header, name);
     ptr += strlen(name);
     char start_tmp[strlen(ptr) + strlen(name)];
-    strcpy(start_tmp, alt_name(name));
+    strcpy(start_tmp, swap_long_and_short_form_header(name));
     strcat(start_tmp, ptr);
     strcpy(start, start_tmp);
   }
   return start;
 }
 
-char * call::alt_name(const char * name) {
+char * call::swap_long_and_short_form_header(const char * name) {
     if (!strcasecmp(name, "call-id:")) {
       return strdup("i:");
     } else if (!strcasecmp(name, "contact:")) {
