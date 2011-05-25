@@ -1108,6 +1108,7 @@ char * call::get_header(char* message, const char * name, bool content)
     memmove(ptr, ptr+1, strlen(ptr));
   }
 
+  /* Take the content of the message and place the alternate form of the header in front */
   if(alt_form && !content){
     ptr = strstr(last_header, name);
     ptr += strlen(name);
@@ -2078,6 +2079,8 @@ bool call::abortCall(bool writeLog)
     deadcall_ptr = new deadcall(id, reason);
   }
   delete this;
+
+  call_scenario->stats->computeStat(CStat::E_CALL_FAILED);
 
   DEBUG_OUT();
   return false;

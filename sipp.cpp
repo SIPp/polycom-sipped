@@ -1294,6 +1294,7 @@ void print_bottom_line(FILE *f, int last)
   if(last) {
     fprintf(f,"------------------------------ Test Terminated --------------------------------" SIPP_ENDL);
   } else if(quitting) {
+    DEBUG("Printing quit message, quitting = %d", quitting);
     fprintf(f,"------- Waiting for active calls to end. Press [q] again to force exit. -------" SIPP_ENDL );
   } else if(paused) {
     fprintf(f,"----------------- Traffic Paused - Press [p] again to resume ------------------" SIPP_ENDL );
@@ -1638,12 +1639,14 @@ bool process_key(int c) {
 
     case 'q':
       quitting+=10;
+      DEBUG("q pressed. quitting = %d", quitting);
       print_statistics(0);
       break;
 
     case 'Q':
       /* We are going to break, so we never have a chance to press q twice. */
       quitting+=20;
+      DEBUG("Q pressed. quitting = %d", quitting);
       print_statistics(0);
       break;
     }
@@ -3434,7 +3437,8 @@ void traffic_thread()
 	sockets_pending_reset.erase(sockets_pending_reset.begin());
     }
 
-    if ((main_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + main_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated)) >= stop_after) {
+    if (((main_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + main_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated)) >= stop_after) && !quitting) {
+        DEBUG("Setting quitting to 1, since Incoming Calls: %d plus Outgoing Calls: %d is greater than stop_after: %d", main_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated), main_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated), stop_after);
 	quitting = 1;
     }
     if (quitting) {
@@ -3444,7 +3448,7 @@ void traffic_thread()
       }
       /* Quitting and no more openned calls, close all */
       if(!main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)) {
-	/* We can have calls that do not count towards our open-call count (e.g., dead calls). */
+        /* We can have calls that do not count towards our open-call count (e.g., dead calls). */
 	abort_all_tasks();
 
 	for (int i = 0; i < pollnfds; i++) {
@@ -4528,8 +4532,10 @@ int main(int argc, char *argv[])
 	  retrans_enabled = 0;
 	  watchdog_interval = 0;
     // default is to stop after 1 call if value not changed on command line.
-    if (stop_after == 0xffffffff)
-      stop_after = 1;
+          if (stop_after == 0xffffffff){
+            DEBUG("Setting stop_after to one since it is %u", stop_after);
+            stop_after = 1;
+          }
 	  break;
 	case SIPP_OPTION_USERS:
 	  REQUIRE_ARG();
@@ -4957,7 +4963,6 @@ int main(int argc, char *argv[])
   }
 
   DEBUG("Configuration complete, initializing...");
-  
   /* Load default scenario in case nothing was loaded */
   if(!main_scenario) {
     main_scenario = new scenario(0, 0, dump_xml);
