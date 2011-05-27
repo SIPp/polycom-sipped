@@ -1345,14 +1345,14 @@ void call::terminate(CStat::E_Action reason) {
 	  new deadcall(id, reason_str);
 	}
 	break;
-            case call::E_AR_REGEXP_SHOULDNT_MATCH:
-                computeStat(CStat::E_CALL_FAILED);
-                computeStat(CStat::E_FAILED_REGEXP_SHOULDNT_MATCH);
-                if (deadcall_wait && !initCall) {
-                    sprintf(reason_str, "regexp matched, but shouldn't at index %d", msg_index);
-                    new deadcall(id, reason_str);
-                }
-                break;
+      case call::E_AR_REGEXP_SHOULDNT_MATCH:
+        computeStat(CStat::E_CALL_FAILED);
+        computeStat(CStat::E_FAILED_REGEXP_SHOULDNT_MATCH);
+        if (deadcall_wait && !initCall) {
+          sprintf(reason_str, "regexp matched, but shouldn't at index %d", msg_index);
+          new deadcall(id, reason_str);
+        }
+        break;
       case call::E_AR_HDR_NOT_FOUND:
 	computeStat(CStat::E_CALL_FAILED);
 	computeStat(CStat::E_FAILED_REGEXP_HDR_NOT_FOUND);
@@ -1528,11 +1528,11 @@ bool call::executeMessage(message *curmsg) {
         if (clock_tick > send_timeout) {
           WARNING("Call-Id: %s, send timeout on message %s:%d: aborting call",
             id, curmsg->desc, curmsg->index);
-          computeStat(CStat::E_CALL_FAILED);
           computeStat(CStat::E_FAILED_TIMEOUT_ON_SEND);
           if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
             return (abortCall(true));
           } else {
+            computeStat(CStat::E_CALL_FAILED);
             delete this;
             return false;
           }
@@ -1642,11 +1642,11 @@ bool call::executeMessage(message *curmsg) {
           // if you set a timeout but not a label, the call is aborted 
           WARNING("Call-Id: %s, receive timeout on message %s:%d without label to jump to (ontimeout attribute): aborting call",
             id, curmsg->desc, curmsg->index);
-          computeStat(CStat::E_CALL_FAILED);
           computeStat(CStat::E_FAILED_TIMEOUT_ON_RECV);
           if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
             return (abortCall(true));
           } else {
+            computeStat(CStat::E_CALL_FAILED);
             delete this;
             return false;
           }
@@ -1659,11 +1659,11 @@ bool call::executeMessage(message *curmsg) {
         recv_timeout = 0;
         if (msg_index < (int)call_scenario->messages.size()) return true;
         // special case - the label points to the end - finish the call
-        computeStat(CStat::E_CALL_FAILED);
         computeStat(CStat::E_FAILED_TIMEOUT_ON_RECV);
         if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
           return (abortCall(true));
         } else {
+	  computeStat(CStat::E_CALL_FAILED);
           delete this;
           return false;
         }
@@ -1752,18 +1752,17 @@ bool call::run()
         }
 
         // here if asked to go to the last label  delete the call
-        computeStat(CStat::E_CALL_FAILED);
         computeStat(CStat::E_FAILED_MAX_UDP_RETRANS);
         if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
           // Abort the call by sending proper SIP message
           return(abortCall(true));
         } else {
           // Just delete existing call
+	  computeStat(CStat::E_CALL_FAILED);
           delete this;
           return false;
         }
       }
-      computeStat(CStat::E_CALL_FAILED);
       computeStat(CStat::E_FAILED_MAX_UDP_RETRANS);
       if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
         // Abort the call by sending proper SIP message
@@ -1771,6 +1770,7 @@ bool call::run()
         return(abortCall(true));
       } else {
         // Just delete existing call
+	computeStat(CStat::E_CALL_FAILED);
         delete this;
         return false;
       }
@@ -1987,11 +1987,11 @@ bool call::process_unexpected(char * msg, const char *reason)
     // usage of last_ keywords => for call aborting
     setLastMsg(msg, curmsg->dialog_number);
 
-    computeStat(CStat::E_CALL_FAILED);
     computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
     if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
       return (abortCall(true));
     } else {
+      computeStat(CStat::E_CALL_FAILED);
       delete this;
       return false;
     }
@@ -2079,9 +2079,7 @@ bool call::abortCall(bool writeLog)
     deadcall_ptr = new deadcall(id, reason);
   }
   delete this;
-
   call_scenario->stats->computeStat(CStat::E_CALL_FAILED);
-
   DEBUG_OUT();
   return false;
 }
@@ -3585,7 +3583,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       } else {
         if (!process_unexpected(msg, reason)) {
           DEBUG("Call aborted by unexpected message handling");
-          return false; // Call aborted by unexpected message handling
+          return false;
         }
       }
     } else {
@@ -3593,7 +3591,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       if ((L_case = checkAutomaticResponseMode(request)) == 0) {
         if (!process_unexpected(msg, reason)) {
           DEBUG("Call aborted by unexpected message handling");
-          return false; // Call aborted by unexpected message handling
+          return false;
         }
       } else {
         // call aborted by automatic response mode if needed
