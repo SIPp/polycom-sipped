@@ -232,7 +232,7 @@ struct sipp_option options_table[] = {
 	        "- On any other unexpected message, abort the call by sending a BYE or a CANCEL\n",
 		SIPP_OPTION_UNSETFLAG, &default_behaviors, 1},
        {"mc", "Enable multiple-dialog support by directing all messages to one scenario regardless of call-id.\n"
-       "Only 1 concurrent call is possible and stop calls (-m) defaults to 1", 
+       "Only 1 concurrent call is possible and stop calls (-m) defaults to 1",
        SIPP_OPTION_NO_CALL_ID_CHECK, NULL, 1}, 
 	{"nr", "Disable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_UNSETFLAG, &retrans_enabled, 1},
 	{"yr", "Enable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_SETFLAG, &retrans_enabled, 1},
@@ -3360,7 +3360,6 @@ void pollset_process(int wait)
       char msg[SIPP_MAX_MSG_SIZE];
       struct sockaddr_storage src;
       ssize_t len;
-
       len = read_message(sockets[read_index], msg, sizeof(msg), &src);
       if (len > 0) {
 	process_message(sockets[read_index], msg, len, &src);
@@ -4145,10 +4144,11 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
 
 int sipp_do_connect_socket(struct sipp_socket *socket) {
   int ret;
-
-  assert(socket->ss_transport == T_TCP || socket->ss_transport == T_TLS);
+  //We only connect our socket if using a connection-based protocol, or only one call is allowed.
+  assert(socket->ss_transport == T_TCP || socket->ss_transport == T_TLS || no_call_id_check );
 
   errno = 0;
+  DEBUG("Connecting to %u", socket->ss_dest); 
   ret = connect(socket->ss_fd, (struct sockaddr *)&socket->ss_dest, SOCK_ADDR_SIZE(&socket->ss_dest));
   if (ret < 0) {
     return ret;
@@ -5451,7 +5451,7 @@ int open_connections() {
   }
 
   if(!local_port) {
-    /* Not already binded, use user_port of 0 to leave
+    /* Not already binded, use user_port of 0 to let
      * the system choose a port. */
 
     if (bind_local || peripsocket) {
@@ -5460,7 +5460,7 @@ int open_connections() {
       memset((char*)&hints, 0, sizeof(hints));
       hints.ai_flags  = AI_PASSIVE;
       hints.ai_family = PF_UNSPEC;
-       
+
       if (peripsocket) {
         // On some machines it fails to bind to the self computed local
         // IP address.
@@ -5604,31 +5604,35 @@ int open_connections() {
   /* Trying to connect to Twin Sipp in 3PCC mode */
   if(twinSippMode) {
     if(thirdPartyMode == MODE_3PCC_CONTROLLER_A || thirdPartyMode == MODE_3PCC_A_PASSIVE) {
-       connect_to_peer(twinSippHost, twinSippPort, &twinSipp_sockaddr, twinSippIp, &twinSippSocket);
-     }else if(thirdPartyMode == MODE_3PCC_CONTROLLER_B){
-       connect_local_twin_socket(twinSippHost);
-      }else{
-       ERROR("TwinSipp Mode enabled but thirdPartyMode is different "
+      connect_to_peer(twinSippHost, twinSippPort, &twinSipp_sockaddr, twinSippIp, &twinSippSocket);
+    }else if(thirdPartyMode == MODE_3PCC_CONTROLLER_B){
+      connect_local_twin_socket(twinSippHost);
+    }else{
+      ERROR("TwinSipp Mode enabled but thirdPartyMode is different "
               "from 3PCC_CONTROLLER_B and 3PCC_CONTROLLER_A\n");
-      }
-   }else if (extendedTwinSippMode){       
-     if (thirdPartyMode == MODE_MASTER || thirdPartyMode == MODE_MASTER_PASSIVE) {
-       strcpy(twinSippHost,get_peer_addr(master_name));
-       get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
-       connect_local_twin_socket(twinSippHost);
-       connect_to_all_peers();
-     }else if(thirdPartyMode == MODE_SLAVE) {
-       strcpy(twinSippHost,get_peer_addr(slave_number));
-       get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
-       connect_local_twin_socket(twinSippHost);
-     }else{
-        ERROR("extendedTwinSipp Mode enabled but thirdPartyMode is different "
-              "from MASTER and SLAVE\n");
-     }
     }
+  }else if (extendedTwinSippMode){
+   if (thirdPartyMode == MODE_MASTER || thirdPartyMode == MODE_MASTER_PASSIVE) {
+     strcpy(twinSippHost,get_peer_addr(master_name));
+     get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
+     connect_local_twin_socket(twinSippHost);
+     connect_to_all_peers();
+   }else if(thirdPartyMode == MODE_SLAVE) {
+     strcpy(twinSippHost,get_peer_addr(slave_number));
+     get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
+     connect_local_twin_socket(twinSippHost);
+   }else{
+      ERROR("extendedTwinSipp Mode enabled but thirdPartyMode is different "
+            "from MASTER and SLAVE\n");
+   }
+  }
+
+  if(&remote_sockaddr && no_call_id_check && main_socket->ss_transport == T_UDP){
+    if(sipp_connect_socket(main_socket, &remote_sockaddr)) WARNING("Could not connect socket to remote address");
+  }
 
   return status;
-            } // open_connections
+} // open_connections
 
 
 void connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *peer_sockaddr, char *peer_ip, struct sipp_socket **peer_socket) {
