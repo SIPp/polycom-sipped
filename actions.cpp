@@ -169,7 +169,7 @@ bool           CAction::getHeadersOnly()  { return(M_headersOnly);  }
 int            CAction::getOccurence()    { return(M_occurence);    }
 int            CAction::getVarId()        { return(M_varId);        }
 int            CAction::getVarInId()      { return(M_varInId);      }
-int            CAction::getVarIn2Id()      { return(M_varIn2Id);      }
+int            CAction::getVarIn2Id()     { return(M_varIn2Id);     }
 char*          CAction::getLookingChar()  { return(M_lookingChar);  }
 SendingMessage *CAction::getMessage(int n)      { return(M_message[n]);      }
 CSample*       CAction::getDistribution() { return(M_distribution); }
@@ -177,6 +177,7 @@ double         CAction::getDoubleValue()  { return(M_doubleValue);  }
 char*          CAction::getStringValue()  { return(M_stringValue);  }
 #ifdef PCAPPLAY
 pcap_pkts  *   CAction::getPcapPkts()     { return(M_pcapArgs);     }
+int            CAction::getMediaPortOffset() { return(M_mediaPortOffset); }
 #endif
 
 void CAction::setActionType   (CAction::T_ActionType   P_value) 
@@ -239,6 +240,7 @@ void CAction::setNbSubVarId (int P_value) {
    M_subVarId = new int[M_maxNbSubVarId] ;
    M_nbSubVarId = 0 ;
 }
+
 int  CAction::getNbSubVarId () {
     return(M_nbSubVarId);        
 }
@@ -364,7 +366,7 @@ void CAction::setPcapArgs (pcap_pkts  *  P_value)
   }
 
   if(P_value != NULL)
-  { 
+  {
     M_pcapArgs = (pcap_pkts *)malloc(sizeof(*M_pcapArgs));
     memcpy(M_pcapArgs, P_value, sizeof(*M_pcapArgs));
   }
@@ -379,7 +381,7 @@ void CAction::setPcapArgs (char*        P_value)
   }
 
   if(P_value != NULL)
-  { 
+  {
     M_pcapArgs = (pcap_pkts *) malloc(sizeof(*M_pcapArgs));
     if (parse_play_args(P_value, M_pcapArgs) == -1)
     {
@@ -389,6 +391,10 @@ void CAction::setPcapArgs (char*        P_value)
       ERROR("Cannot read file %s\n", M_pcapArgs->file);
     }
   }
+}
+
+void CAction::setMediaPortOffset(int offset){
+  M_mediaPortOffset = offset;
 }
 #endif
 
@@ -451,13 +457,13 @@ CAction::CAction(scenario *scenario, int dialog_number)
   M_maxNbSubVarId = 0;
   M_subVarId      = NULL;
 
-  M_checkIt      = false;
-    M_checkItInverse      = false;
-  M_lookingPlace = E_LP_MSG;
-  M_lookingChar  = NULL;
-  M_caseIndep    = false;
-  M_occurence    = 1;
-  M_headersOnly  = true;   
+  M_checkIt        = false;
+  M_checkItInverse = false;
+  M_lookingPlace   = E_LP_MSG;
+  M_lookingChar    = NULL;
+  M_caseIndep      = false;
+  M_occurence      = 1;
+  M_headersOnly    = true;
   for (int i = 0; i < MAX_ACTION_MESSAGE; i++) {
     M_message[i]   = NULL;
     M_message_str[i] = NULL;
@@ -468,6 +474,7 @@ CAction::CAction(scenario *scenario, int dialog_number)
   M_distribution = NULL;
 #ifdef PCAPPLAY
   M_pcapArgs     = NULL;
+  M_mediaPortOffset = 0;
 #endif
   M_scenario     = scenario;
   M_dialog_number = dialog_number;

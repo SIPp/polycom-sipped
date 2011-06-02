@@ -2370,18 +2370,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         if (begin == msg_buffer) {
           ERROR("Can not find beginning of a line for the media port!\n");
         }
-        if (strstr(begin, "audio")) {
-          if (media_ip_is_ipv6) {
-            (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = port;
-          } else {
-            (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = port;
-          }
+        if (strstr(begin, "audio")) { 
+          set_audio_port(port);
         } else if (strstr(begin, "video")) {
-          if (media_ip_is_ipv6) {
-            (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = port;
-          } else {
-            (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = port;
-          }
+          set_video_port(port);
         } else {
           ERROR("media_port keyword with no audio or video on the current line (%s)", begin);
         }
@@ -2480,8 +2472,8 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Service:
         dest += snprintf(dest, left, "%s", service);
         break;
-      case E_Message_Branch:       
-        if (useTxn) {        
+      case E_Message_Branch:
+        if (useTxn) {
           if (src->isAck() && txn.isLastResponseCode2xx()) {
             // A 2xx-induced ACK starts a new transaction
             if (txn.getAckBranch().empty()) {
@@ -4370,12 +4362,14 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) {
           DEBUG("getActionType() is E_AT_PLAY_PCAP_AUDIO");
           play_args = &(this->play_args_a);
+          if (currentAction->getMediaPortOffset()) this->set_audio_port(media_port + currentAction->getMediaPortOffset());
         } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
           DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
           play_args = &(this->play_args_v);
+          if (currentAction->getMediaPortOffset()) this->set_video_port(media_port + currentAction->getMediaPortOffset());
         }
         play_args->pcap = currentAction->getPcapPkts();
-        /* port number is set in [auto_]media_port interpolation */
+        /* port number is set in [auto_]media_port interpolation*/
         if (media_ip_is_ipv6) {
           struct sockaddr_in6 *from = (struct sockaddr_in6 *)(void *) &(play_args->from);
           from->sin6_family = AF_INET6;
@@ -4394,7 +4388,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 #endif
         //pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
 
-        
+
 /*
         if (media_thread != 0) {}
           DEBUG("media_thread already active: kill it before starting a new one");
@@ -4701,3 +4695,22 @@ void call::free_dialogState() {
   last_dialog_state = 0;
 }
 
+#ifdef PCAPPLAY
+void call::set_audio_port(int port){
+  DEBUG("Setting audio port to %d", port);
+  if (media_ip_is_ipv6) {
+    (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = port;
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = port;
+  }
+}
+
+void call::set_video_port(int port){
+  DEBUG("Setting video port to %d", port);
+  if (media_ip_is_ipv6) {
+    (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = port;
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = port;
+  }
+}
+#endif

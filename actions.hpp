@@ -129,6 +129,7 @@ class CAction
     T_IntCmdType   getIntCmd();   /* exec specific function */
 #ifdef PCAPPLAY
     pcap_pkts     *getPcapPkts(); /* send_packets specific function */
+    int           getMediaPortOffset(); /* send_packets specific function */
 #endif
 
     void setActionType   (T_ActionType   P_value);
@@ -156,6 +157,7 @@ class CAction
 #ifdef PCAPPLAY
     void setPcapArgs     (char *         P_value);  /* send_packets specific function */
     void setPcapArgs     (pcap_pkts   *  P_value);  /* send_packets specific function */
+    void setMediaPortOffset (int offset);           /* send_packets specific function */
 #endif
 
     void setSubVarId     (int P_value);
@@ -209,6 +211,8 @@ class CAction
 #ifdef PCAPPLAY
       /* pcap specific member */
       pcap_pkts  *   M_pcapArgs;
+      /* offset from a exec pcap play command */
+      int            M_mediaPortOffset;
 #endif
       void setSubString(char** P_target, char* P_source, int P_start, int P_stop);
 };

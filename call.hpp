@@ -174,6 +174,8 @@ private:
   int number_of_active_rtp_threads;
   play_args_t play_args_a;
   play_args_t play_args_v;
+  void set_audio_port(int port);
+  void set_video_port(int port);
 #endif
 
   
@@ -321,7 +323,7 @@ move to dialogState
   char * get_header_field_code(char * msg, char * code);
   char * get_last_header(const char * name, const char *msg);
 
-  // only return payload of the header (not the 'header:' bit.
+  /* only return payload of the header (not the 'header:' bit) */
   char * get_header_content(const char *message, const char * name);
   char * get_header_content(char* message, const char * name);
 

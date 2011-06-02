@@ -113,7 +113,7 @@ typedef struct
   /* pointer to a RTP pkts container */
   pcap_pkts *pcap;
   /* Used in send_packets thread */
-    struct sockaddr_storage to;
+  struct sockaddr_storage to;
   struct sockaddr_storage from;
 } play_args_t;
 

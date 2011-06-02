@@ -132,14 +132,22 @@ send_packets (play_args_t * play_args)
   struct timeval start = { 0, 0 };
   struct timeval last = { 0, 0 };
   pcap_pkts *pkts = play_args->pcap;
-	/* to and from are pointers in case play_args (call sticky) gets modified! */
-  struct sockaddr_storage *to = &(play_args->to);
-  struct sockaddr_storage *from = &(play_args->from);
+  int allow_ports_to_change = 0; /* may be exposed at later date */
+  struct sockaddr_storage *to, *from, to_struct, from_struct;
   struct udphdr *udp;
   struct sockaddr_in6 to6, from6;
   char buffer[PCAP_MAXPACKET];
   int temp_sum;
 
+  if(allow_ports_to_change) {
+    to = &play_args -> to;
+    from = &play_args -> from;
+  } else {
+    to_struct = play_args -> to;
+    from_struct = play_args -> from;
+    to = &to_struct;
+    from = &from_struct;
+  }
 #ifndef MSG_DONTWAIT
   int fd_flags;
 #endif
@@ -215,21 +223,17 @@ send_packets (play_args_t * play_args)
 		&start);
 #ifdef MSG_DONTWAIT
     if (!media_ip_is_ipv6) {
-      ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT,
-                   (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
+      ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
     }
     else {
-      ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT,
-                   (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
+      ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
     }
 #else
     if (!media_ip_is_ipv6) {
-      ret = sendto(sock, buffer, pkt_index->pktlen, 0,
-                   (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
+      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
     }
     else {
-      ret = sendto(sock, buffer, pkt_index->pktlen, 0,
-                   (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
+      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
     }
 #endif
     if (ret < 0) {
@@ -238,11 +242,11 @@ send_packets (play_args_t * play_args)
       return( -1);
     }
 
-	  rtp_pckts_pcap++;
+    rtp_pckts_pcap++;
     rtp_bytes_pcap += pkt_index->pktlen - sizeof(*udp);
     memcpy (&last, &(pkt_index->ts), sizeof (struct timeval));
     pkt_index++;
-	}
+  }
 
   /* Closing the socket is handled by pthread_cleanup_push()/pthread_cleanup_pop() */
   pthread_cleanup_pop(1);

@@ -254,13 +254,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       src = key + 1;
       // allow +/-n for numeric variables
       newcomp->offset = 0;
-      if ((strncmp(keyword, "authentication", strlen("authentication")) &&
-        strncmp(keyword, "tdmmap", strlen("tdmmap"))) &&
-        ((key = strchr(keyword,'+')) || (key = strchr(keyword,'-')))) {
-          if (isdigit(*(key+1))) {
-            newcomp->offset = atoi(key);
-            *key = 0;
-          }
+      if ((strncmp(keyword, "authentication", strlen("authentication")) && strncmp(keyword, "tdmmap", strlen("tdmmap")))){
+        newcomp->offset = parseIntegerValue(keyword);
+        /* end the string before the +/- sign so that the parser doesn't read it as an unrecognized keyword */
+        if(((key = strchr(keyword,'+')) || (key = strchr(keyword,'-'))) && isdigit(*(key+1))) *key = 0;
       }
 
       char *spc = NULL;
@@ -383,7 +380,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           while ((diagptr > keyword) && (*(diagptr-1) == ' ')) diagptr--;
           newcomp->literal = strndup(keyword + strlen("last_"), diagptr - keyword - strlen("last_"));
         }
-        else 
+        else
           newcomp->literal = strdup(keyword + strlen("last_"));
         newcomp->literalLen = strlen(newcomp->literal);
 
