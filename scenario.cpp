@@ -1618,13 +1618,13 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       } else if ((ptr = xp_get_value((char *) "play_pcap_audio"))) {
         tmpAction->setPcapArgs(ptr);
         if((ptr = xp_get_value("media_port_offset")))
-          tmpAction->setMediaPortOffset(parseIntegerValue(ptr));
+          parseMediaPortOffset(ptr, tmpAction);
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_AUDIO);
         hasMedia = 1;
       } else if ((ptr = xp_get_value((char *) "play_pcap_video"))) {
         tmpAction->setPcapArgs(ptr);
         if((ptr = xp_get_value("media_port_offset")))
-          tmpAction->setMediaPortOffset(parseIntegerValue(ptr));
+          parseMediaPortOffset(ptr, tmpAction);
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
         hasMedia = 1;
 #else
@@ -1748,13 +1748,19 @@ void scenario::getCommonAttributes(message *message) {
   }
 }
 
-int parseIntegerValue(char* ptr){
+void parseMediaPortOffset(char* ptr, CAction* action) {
+  parseOffset(ptr) ? action->setMediaPortOffset(parseOffset(ptr))
+                   // If the offset is zero ensure that there is a zero in the code
+                   : (!*(ptr+1)||!*(ptr+2)) ? action->setMediaPortOffset(0)
+                                            : ERROR("Incorrectly formatted offset") ;
+}
+
+int parseOffset(char* ptr){
   char* val;
-  if (((val = strchr(ptr,'+')) || (val = strchr(ptr,'-')) && (isdigit(*(val+1))))) {
-    return atoi(val);
-  } else {
-    return 0;
-  }
+  if (((val = strchr(ptr,'+')) || (val = strchr(ptr,'-'))) && isdigit(*(val+1)))
+      return atoi(val);
+  else
+    return 0; //zero is returned as the default value
 }
 
 // char* manipulation : create a int[] from a char*

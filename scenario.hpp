@@ -277,6 +277,7 @@ double get_double(const char *ptr, const char *what);
 bool get_bool(const char *ptr, const char *what);
 int time_string(double ms, char *res, int reslen);
 int get_var(const char *varName, const char *what);
+void parseMediaPortOffset(char* ptr, CAction* action);
 int parseOffset(char* ptr);
 
 extern int get_cr_number(const char *msg);
