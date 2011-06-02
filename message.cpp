@@ -255,7 +255,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       // allow +/-n for numeric variables
       newcomp->offset = 0;
       if ((strncmp(keyword, "authentication", strlen("authentication")) && strncmp(keyword, "tdmmap", strlen("tdmmap")))){
-        newcomp->offset = parseIntegerValue(keyword);
+        newcomp->offset = parseOffset(keyword);
         /* end the string before the +/- sign so that the parser doesn't read it as an unrecognized keyword */
         if(((key = strchr(keyword,'+')) || (key = strchr(keyword,'-'))) && isdigit(*(key+1))) *key = 0;
       }
