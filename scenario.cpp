@@ -1748,12 +1748,14 @@ void scenario::getCommonAttributes(message *message) {
   }
 }
 
+#ifdef PCAPPLAY
 void parseMediaPortOffset(char* ptr, CAction* action) {
   parseOffset(ptr) ? action->setMediaPortOffset(parseOffset(ptr))
                    // If the offset is zero ensure that there is a zero in the code
                    : (!*(ptr+1)||!*(ptr+2)) ? action->setMediaPortOffset(0)
                                             : ERROR("Incorrectly formatted offset") ;
 }
+#endif
 
 int parseOffset(char* ptr){
   char* val;
