@@ -2394,14 +2394,14 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         if ( this->dynamicId > maxDynamicId ) { call::dynamicId = call::startDynamicId; } ;
         break;
       case E_Message_Call_ID:
-        if (src_dialog_state->call_id.empty()) {
+        if (ds->call_id.empty()) {
           // create new call-id and store with dialog state
           // Note this creates dialog state for src_dialog_state even though ds will in fact be used...
           static char new_id[MAX_HEADER_LEN];
           static char new_call_id[MAX_HEADER_LEN];
           compute_id(new_id, MAX_HEADER_LEN);
           snprintf(new_call_id, MAX_HEADER_LEN, "%d-%s", src->getDialogNumber(), new_id);
-          src_dialog_state->call_id = string(new_call_id);
+          ds->call_id = string(new_call_id);
         }
         dest += snprintf(dest, left, "%s", ds->call_id.c_str());
         break;
@@ -2525,13 +2525,26 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
       case E_Message_Remote_Tag_Param:
       case E_Message_Peer_Tag_Param:
-        if(ds->peer_tag) {
-          dest += snprintf(dest, left, ";tag=%s", ds->peer_tag);
-        }
-        break;
       case E_Message_Remote_Tag:
+        if (!ds->peer_tag) { 
+          // generate tag if 1st time used
+          ds->peer_tag = (char *)malloc(MAX_HEADER_LEN);
+          if (!ds->peer_tag) 
+            ERROR("Unable to allocate memory for remote_tag\n");
+          int idx;
+          if(P_index == -2)
+            idx = msg_index-1 + comp->offset;
+          else 
+            idx = P_index + comp->offset;
+          snprintf(ds->peer_tag, MAX_HEADER_LEN, "remote-%u-%u-%d", pid, number, idx);
+          DEBUG("Auto-generating remote_tag '%s'", ds->peer_tag);
+        }
+
         if(ds->peer_tag) {
-          dest += snprintf(dest, left, "%s", ds->peer_tag);
+          if((comp->type == E_Message_Remote_Tag_Param) || (comp->type == E_Message_Peer_Tag_Param))
+            dest += snprintf(dest, left, ";tag=%s", ds->peer_tag);
+          else
+            dest += snprintf(dest, left, "%s", ds->peer_tag);        
         }
         break;
       case E_Message_Local_Tag_Param:
