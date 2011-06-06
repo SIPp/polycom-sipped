@@ -53,7 +53,7 @@
       To: "Smoke Tester 29"<sip:3339957129@[remote_ip]:[remote_port]>[remote_tag_param]
       Call-ID: [call_id]
       CSeq: [cseq] PRACK
-      RAck:8193 785871661 INVITE
+      RAck:[last_RSeq value_only="true"] 1 INVITE
       Max-Forwards:10
       Content-Length: [len]
 
