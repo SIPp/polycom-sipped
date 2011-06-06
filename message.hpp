@@ -148,6 +148,7 @@ class SendingMessage {
     // store dialog number in message component if specified with tag
     // return value of true indicates dialog= keyword was found
     bool parse_dialog_number(char * src, struct MessageComponent* newcomp);
+    bool parse_value_only (char * src, struct MessageComponent* newcomp);
 
 };
 
@@ -165,6 +166,7 @@ struct MessageComponent {
   int offset;        // amount added or subtracted from stored value (-1 in case of [cseq-1])
   int varId;
   int dialog_number; // component may refer to another dialog in case of _n syntax
+  bool valueOnly;  // don't include header when printing info out.
   union u {
     /* Authentication Parameters. */
     struct {

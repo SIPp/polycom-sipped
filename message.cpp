@@ -368,17 +368,29 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
 
       } else if(!strncmp(keyword, "last_", strlen("last_"))) {
         newcomp->type = E_Message_Last_Header;
-
-        // parse optional dialog parameter 
-        if (parse_dialog_number(keyword, newcomp)) {
+        // parse optional dialog/content only parameter
+        bool is_dialog_number = parse_dialog_number(keyword, newcomp);
+        bool is_value_only = parse_value_only(keyword, newcomp);
+        if (is_dialog_number || is_value_only) {
           // if dialog= specified, only copy header portion
-          if (use_txn) {
+          if (use_txn && strstr(keyword, "dialog=")) {
             ERROR("Cannot use 'dialog=' attribute in [last_] keyword when also specifying 'use_txn' for the message.\n");
           }
           const char *diagptr = strstr(keyword, "dialog=");
-          assert(diagptr);
-          while ((diagptr > keyword) && (*(diagptr-1) == ' ')) diagptr--;
-          newcomp->literal = strndup(keyword + strlen("last_"), diagptr - keyword - strlen("last_"));
+          const char *valueptr = strstr(keyword, "value_only=");
+          const char *index;
+          if(diagptr){
+            // if both pointers exist start from the one closer to the beginning
+            if(valueptr) index = (diagptr < valueptr) ? diagptr : valueptr;
+            else index = diagptr;
+          }
+          else if (valueptr){
+            index = valueptr;
+          }
+          else ERROR("Incorrect formatting of options in \"last_\" header");
+          //Back up the pointer to the end of the last_* so we can extract * correctly
+          while ((index > keyword) && (*(index-1) == ' ')) index--;
+          newcomp->literal = strndup(keyword + strlen("last_"), index - keyword - strlen("last_"));
         }
         else
           newcomp->literal = strdup(keyword + strlen("last_"));
@@ -582,8 +594,8 @@ void SendingMessage::getKeywordParam(char * src, const char * param, char * outp
 
 // store dialog number in MessageComponent if specified
 // return value of true indicates dialog= keyword was found
-bool SendingMessage::parse_dialog_number(char * src, struct MessageComponent* newcomp)
-{    
+bool SendingMessage::parse_dialog_number(char* src, struct MessageComponent* newcomp)
+{
   char dialogNumber[KEYWORD_SIZE];
   getKeywordParam(src, "dialog=", dialogNumber);
   if (dialogNumber[0] != '\0') {
@@ -594,6 +606,16 @@ bool SendingMessage::parse_dialog_number(char * src, struct MessageComponent* ne
     return true;
   }
   else return false;
+}
+
+bool SendingMessage::parse_value_only(char* src, struct MessageComponent* newcomp) {
+  char valueOnly[KEYWORD_SIZE];
+  getKeywordParam(src, "value_only=", valueOnly);
+  if (valueOnly[0] != '\0') {
+    newcomp->valueOnly = get_bool(valueOnly , "Value Only");
+    return true;
+  }
+  return false;
 }
 
 void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword) {

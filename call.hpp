@@ -321,7 +321,7 @@ move to dialogState
   bool   connect_socket_if_needed();
 
   char * get_header_field_code(char * msg, char * code);
-  char * get_last_header(const char * name, const char *msg);
+  char * get_last_header(const char * name, const char *msg, bool valueOnly);
 
   /* only return payload of the header (not the 'header:' bit) */
   char * get_header_content(const char *message, const char * name);

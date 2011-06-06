@@ -946,7 +946,7 @@ char * call::get_header_field_code(char *msg, char * name)
 }
 
 // you gotta pass in the dialog state this is based on.
-char * call::get_last_header(const char * name, const char *msg)
+char * call::get_last_header(const char * name, const char *msg, bool valueOnly)
 {
   int len;
 
@@ -963,11 +963,11 @@ char * call::get_last_header(const char * name, const char *msg)
   }
 
   if (name[len - 1] == ':') {
-    return get_header(msg, name, false);
+    return get_header(msg, name, valueOnly);
   } else {
     char with_colon[MAX_HEADER_LEN];
     sprintf(with_colon, "%s:", name);
-    return get_header(msg, with_colon, false);
+    return get_header(msg, with_colon, valueOnly);
   }
 }
 
@@ -1213,7 +1213,7 @@ string call::get_last_request_uri (const char *last_recv_msg)
   char last_request_uri[MAX_HEADER_LEN];
   int tmp_len;
 
-  char * last_To = get_last_header("To:", last_recv_msg);
+  char * last_To = get_last_header("To:", last_recv_msg, false);
   if (!last_To) {
     return "";
   }
@@ -2692,7 +2692,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
                                 }
       case E_Message_Last_Header: {
-        char * last_header = get_last_header(comp->literal, txn.getLastReceivedMessage().c_str());
+        char * last_header = get_last_header(comp->literal, txn.getLastReceivedMessage().c_str(), comp->valueOnly);
         if(last_header) {
           dest += sprintf(dest, "%s", last_header);
         }
@@ -2790,7 +2790,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     /* Need the Method name from the CSeq of the Challenge */
     char method[MAX_HEADER_LEN];
-    tmp = get_last_header("CSeq:", txn.getLastReceivedMessage().c_str()); 
+    tmp = get_last_header("CSeq:", txn.getLastReceivedMessage().c_str(), false);
     if(!tmp) {
       ERROR("Could not extract method from cseq of challenge");
     }
