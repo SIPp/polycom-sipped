@@ -2403,7 +2403,8 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(new_call_id, MAX_HEADER_LEN, "%d-%s", src->getDialogNumber(), new_id);
           ds->call_id = string(new_call_id);
         }
-        dest += snprintf(dest, left, "%s", ds->call_id.c_str());
+        if(comp->encoding && !strcasecmp(comp->encoding, "uri")) dest += snprintf(dest, left, "%s", uri_encode(strdup(ds->call_id.c_str())));
+        else dest += snprintf(dest, left, "%s", ds->call_id.c_str());
         break;
       case E_Message_CSEQ:
         if (useTxn) {
@@ -2526,7 +2527,8 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Remote_Tag_Param:
       case E_Message_Peer_Tag_Param:
       case E_Message_Remote_Tag:
-        if (!ds->peer_tag) { 
+      {
+        if (!ds->peer_tag) {
           // generate tag if 1st time used
           ds->peer_tag = (char *)malloc(MAX_HEADER_LEN);
           if (!ds->peer_tag) 
@@ -2541,16 +2543,21 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         }
 
         if(ds->peer_tag) {
+          char *peer_tag = ds->peer_tag;
+          if(comp->encoding && strcasecmp(comp->encoding, "uri"))
+            peer_tag = uri_encode(peer_tag);
           if((comp->type == E_Message_Remote_Tag_Param) || (comp->type == E_Message_Peer_Tag_Param))
-            dest += snprintf(dest, left, ";tag=%s", ds->peer_tag);
+            dest += snprintf(dest, left, ";tag=%s", peer_tag);
           else
-            dest += snprintf(dest, left, "%s", ds->peer_tag);        
+            dest += snprintf(dest, left, "%s", peer_tag);
         }
         break;
+      }
       case E_Message_Local_Tag_Param:
       case E_Message_Local_Tag:
+      {
         if (!ds->local_tag) { 
-          // generate tag if 1st time used          
+          // generate tag if 1st time used
           ds->local_tag = (char *)malloc(MAX_HEADER_LEN);
           if (!ds->local_tag) 
             ERROR("Unable to allocate memory for local_tag\n");
@@ -2562,12 +2569,14 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(ds->local_tag, MAX_HEADER_LEN, "local-%u-%u-%d", pid, number, idx);
           DEBUG("Auto-generating local_tag '%s'", ds->local_tag);
         }
-        if(comp->type == E_Message_Local_Tag_Param) 
-          dest += snprintf(dest, left, ";tag=%s", ds->local_tag);
+        char *local_tag = ds->local_tag;
+        if(comp->encoding && !strcasecmp(comp->encoding, "uri")) local_tag = uri_encode(local_tag);
+        if(comp->type == E_Message_Local_Tag_Param)
+          dest += snprintf(dest, left, ";tag=%s", local_tag);
         else
-          dest += snprintf(dest, left, "%s", ds->local_tag);        
+          dest += snprintf(dest, left, "%s", local_tag);
         break;
-
+      }
       case E_Message_Contact_Uri:
         dest += snprintf(dest, left, "%s", ds->contact_uri);
         break;
@@ -4727,3 +4736,80 @@ void call::set_video_port(int port){
   }
 }
 #endif
+
+//Taken from http://www.codeguru.com/cpp/cpp/string/conversions/article.php/c12759
+//With minor modifications
+char *uri_encode(const char* src)
+{
+   const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
+   const int SRC_LEN = strlen(src);
+   char * const start = new char[SRC_LEN * 3];
+   char * end = start;
+   const char * const SRC_END = src + SRC_LEN;
+
+   for (; src < SRC_END; ++src)
+   {
+      if (!is_reserved_char(*src))
+         *end++ = *src;
+      else
+      {
+         // escape this char
+         *end++ = '%';
+         *end++ = DEC2HEX[*src >> 4];
+         *end++ = DEC2HEX[*src & 0xf];
+      }
+   }
+   *end++ = '\0';
+   return start;
+}
+
+bool is_reserved_char (char c) {
+  switch(c >> 4){
+    case 2:
+      switch(c & 0xf){
+        case 1: // !
+        case 3: // #
+        case 4: // $
+        case 5: // %
+        case 6: // &
+        case 7: // '
+        case 8: // (
+        case 9: // )
+        case 0xa: // *
+        case 0xb: // +
+        case 0xc: // ,
+        case 0xf: // /
+          return true;
+        default:
+          return false;
+      }
+      break;
+    case 3:
+      switch(c & 0xf){
+        case 0xa: // :
+        case 0xb: // ;
+        case 0xd: // =
+        case 0xf: // ?
+          return true;
+        default:
+          return false;
+      }
+    case 4:
+      switch(c & 0xf){
+        case 0: // @
+          return true;
+        default:
+          return false;
+      }
+    case 5:
+      switch(c & 0xf){
+        case 0xb: // [
+        case 0xd: // ]
+          return true;
+        default:
+          return false;
+      }
+    default:
+      return false;
+  }
+}

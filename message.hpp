@@ -149,6 +149,7 @@ class SendingMessage {
     // return value of true indicates dialog= keyword was found
     bool parse_dialog_number(char * src, struct MessageComponent* newcomp);
     bool parse_value_only (char * src, struct MessageComponent* newcomp);
+    void parse_encoding (char * src, struct MessageComponent* newcomp);
 
 };
 
@@ -162,6 +163,7 @@ int registerKeyword(char *keyword, customKeyword fxn);
 struct MessageComponent {
   MessageCompType type;
   char *literal;
+  char *encoding;
   int literalLen;
   int offset;        // amount added or subtracted from stored value (-1 in case of [cseq-1])
   int varId;

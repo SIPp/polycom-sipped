@@ -295,6 +295,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           if ((use_txn) && (i <= HighestTransactionSpecificKeywordsIndex) && (newcomp->dialog_number != dialog_number)) {
             ERROR("Cannot use 'dialog=' attribute in [%s] keyword when also specifying 'use_txn' for the message.\n", keyword);
           }
+          parse_encoding(keyword, newcomp);
           dialog_keyword = true;
           break;
         }
@@ -618,6 +619,12 @@ bool SendingMessage::parse_value_only(char* src, struct MessageComponent* newcom
   return false;
 }
 
+void SendingMessage::parse_encoding(char* src, struct MessageComponent* newcomp) {
+  char encoding[KEYWORD_SIZE];
+  getKeywordParam(src, "encoding=", encoding);
+  if (encoding[0] != '\0') newcomp->encoding = strdup(encoding);
+}
+
 void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword) {
   char my_auth_user[KEYWORD_SIZE + 1];
   char my_auth_pass[KEYWORD_SIZE + 1];
@@ -658,6 +665,7 @@ void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct M
 
 void SendingMessage::freeMessageComponent(struct MessageComponent *comp) {
   free(comp->literal);
+  if (comp->encoding) free(comp->encoding);
   if (comp->type == E_Message_Authentication) {
     if (comp->comp_param.auth_param.auth_user) {
       delete comp->comp_param.auth_param.auth_user;

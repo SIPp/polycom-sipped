@@ -384,3 +384,6 @@ void set_default_message(const char *which, char *message);
 char * get_call_id(char *msg);
 
 #endif
+
+char *uri_encode(const char *src);
+bool is_reserved_char(char c);
