@@ -46,7 +46,8 @@
 	  last_cseq_number: [last_cseq_number]
 	  branch: [branch]
 	  last_branch: [last_branch]
-	  last_Request_URI: [last_Request_URI]  
+	  last_Request_URI: [last_Request_URI]
+          RAck: [last_RSeq value_only="true"] [last_CSeq: value_only="true"]  
       Content-Length: 0
 
     ]]>

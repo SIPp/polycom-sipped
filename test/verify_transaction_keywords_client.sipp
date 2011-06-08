@@ -2,7 +2,6 @@
 <!DOCTYPE scenario SYSTEM "sipp.dtd">
 
 <scenario name="verify_transaction_keywords" parameters="-mc">
-  <!-- Start client transaction -->
   <send dialog="1" start_txn="C1">
     <![CDATA[
 
@@ -49,6 +48,7 @@
       CSeq: [cseq] SOMETHING
       client_cseq_keywords: [client_cseq] [client_cseq_method]
       Contact: sip:sipp@[local_ip]:[local_port]
+      RSeq: 9000
       Max-Forwards: 70
       Content-Length: [len]
 
@@ -69,7 +69,7 @@
            <ereg regexp="z9hG4bK-[0-9]+-1-2" search_in="hdr" header="last_branch:" check_it="true" assign_to="keyword25" />
            <ereg regexp="sip:sipp@127.0.0.1:5069" search_in="hdr" header="last_Request_URI:" check_it="true" assign_to="keyword26" />
            <ereg regexp="z9hG4bK-[0-9]+-1-2" search_in="hdr" header="branch:" check_it="true" assign_to="keyword27" />
-		   <trim assign_to="2b"/>
+           <ereg regexp="9000 2 SOMETHING" search_in="hdr" header="RAck:" check_it="true" assign_to="keyword28" />
 		   
       </action>
   </recv>
