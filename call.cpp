@@ -2407,7 +2407,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(new_call_id, MAX_HEADER_LEN, "%d-%s", src->getDialogNumber(), new_id);
           ds->call_id = string(new_call_id);
         }
-        if(comp->encoding && !strcasecmp(comp->encoding, "uri")) dest += snprintf(dest, left, "%s", uri_encode(strdup(ds->call_id.c_str())));
+        if(comp->encoding && !strcasecmp(comp->encoding, "uri")) dest += snprintf(dest, left, "%s", uri_encode(ds->call_id.c_str()));
         else dest += snprintf(dest, left, "%s", ds->call_id.c_str());
         break;
       case E_Message_CSEQ:
@@ -2548,7 +2548,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
         if(ds->peer_tag) {
           char *peer_tag = ds->peer_tag;
-          if(comp->encoding && strcasecmp(comp->encoding, "uri"))
+          if(comp->encoding && !strcasecmp(comp->encoding, "uri"))
             peer_tag = uri_encode(peer_tag);
           if((comp->type == E_Message_Remote_Tag_Param) || (comp->type == E_Message_Peer_Tag_Param))
             dest += snprintf(dest, left, ";tag=%s", peer_tag);
