@@ -1750,10 +1750,12 @@ void scenario::getCommonAttributes(message *message) {
 
 #ifdef PCAPPLAY
 void parseMediaPortOffset(char* ptr, CAction* action) {
-  parseOffset(ptr) ? action->setMediaPortOffset(parseOffset(ptr))
-                   // If the offset is zero ensure that there is a zero in the code
-                   : (!*(ptr+1)||!*(ptr+2)) ? action->setMediaPortOffset(0)
-                                            : ERROR("Incorrectly formatted offset") ;
+  if(!strlen(ptr)) ERROR("Incorrectly formatted offset. Offset should be specified as +/- and then a whole number");
+  if(parseOffset(ptr)) action->setMediaPortOffset(parseOffset(ptr));
+  //otherwise parseOffset has returned zero, either the offset is zero, the offset has been specified without a +/-,
+  //or there is some error (if the offset is specified without a + or - default to positive)
+  else if (isdigit(*ptr)||( ptr+1 && *ptr+1 == '0'))  action->setMediaPortOffset(atoi(ptr));
+  else ERROR("Incorrectly formatted offset. Offset should be specified as +/- and then a whole number") ;
 }
 #endif
 
