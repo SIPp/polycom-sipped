@@ -63,6 +63,10 @@ extern  SSL_CTX             *sip_trp_ssl_ctx;
 
 extern  map<string, struct sipp_socket *>     map_perip_fd;
 
+char short_and_long_headers[NUM_OF_SHORT_FORM_HEADERS * 2][MAX_HEADER_NAME_LEN] =
+  { "i:", "m:", "e:", "l:", "c:", "f:", "s:", "k:", "t:", "v:",
+    "Call-ID:", "Contact:", "Content-Encoding:", "Content-Length:", "Content-Type:", "From:", "Subject:", "Supported:", "To:", "Via:"};
+
 #ifdef PCAPPLAY
 /* send_packets pthread wrapper */
 void *send_wrapper(void *);
@@ -1120,49 +1124,49 @@ char * call::get_header(char* message, const char * name, bool content)
   return start;
 }
 
-char * call::swap_long_and_short_form_header(const char * name) {
+const char * call::swap_long_and_short_form_header(const char * name) {
     if (!strcasecmp(name, "call-id:")) {
-      return strdup("i:");
+      return short_and_long_headers[E_CALL_ID_SHORT_FORM];
     } else if (!strcasecmp(name, "contact:")) {
-      return strdup("m:");
+      return short_and_long_headers[E_CONTACT_SHORT_FORM];
     } else if (!strcasecmp(name, "content-encoding:")) {
-      return strdup("e:");
+      return short_and_long_headers[E_CONTENT_ENCODING_SHORT_FORM];
     } else if (!strcasecmp(name, "content-length:")) {
-      return strdup("l:");
+      return short_and_long_headers[E_CONTENT_LENGTH_SHORT_FORM];
     } else if (!strcasecmp(name, "content-type:")) {
-      return strdup("c:");
+      return short_and_long_headers[E_CONTENT_TYPE_SHORT_FORM];
     } else if (!strcasecmp(name, "from:")) {
-      return strdup("f:");
+      return short_and_long_headers[E_FROM_SHORT_FORM];
     } else if (!strcasecmp(name, "subject:")) {
-      return strdup("s:");
+      return short_and_long_headers[E_SUBJECT_SHORT_FORM];
     } else if (!strcasecmp(name, "supported:")) {
-      return strdup("k:");
+      return short_and_long_headers[E_SUPPORTED_SHORT_FORM];
     } else if (!strcasecmp(name, "to:")) {
-      return strdup("t:");
+      return short_and_long_headers[E_TO_SHORT_FORM];
     } else if (!strcasecmp(name, "via:")) {
-      return strdup("v:");
+      return short_and_long_headers[E_VIA_SHORT_FORM];
     } else if (!strcasecmp(name, "i:")) {
-      return strdup("Call-ID:");
+      return short_and_long_headers[E_CALL_ID_LONG_FORM];
     } else if (!strcasecmp(name, "m:")) {
-      return strdup("Contact:");
+      return short_and_long_headers[E_CONTACT_LONG_FORM];
     } else if (!strcasecmp(name, "e:")) {
-      return strdup("Content-Encoding:");
+      return short_and_long_headers[E_CONTENT_ENCODING_LONG_FORM];
     } else if (!strcasecmp(name, "l:")) {
-      return strdup("Content-Length:");
+      return short_and_long_headers[E_CONTENT_LENGTH_LONG_FORM];
     } else if (!strcasecmp(name, "c:")) {
-      return strdup("Content-Type:");
+      return short_and_long_headers[E_CONTENT_TYPE_LONG_FORM];
     } else if (!strcasecmp(name, "f:")) {
-      return strdup("From:");
+      return short_and_long_headers[E_FROM_LONG_FORM];
     } else if (!strcasecmp(name, "s:")) {
-      return strdup("Subject:");
+      return short_and_long_headers[E_SUBJECT_LONG_FORM];
     } else if (!strcasecmp(name, "k:")) {
-      return strdup("Supported:");
+      return short_and_long_headers[E_SUPPORTED_LONG_FORM];
     } else if (!strcasecmp(name, "t:")) {
-      return strdup("To:");
+      return short_and_long_headers[E_TO_LONG_FORM];
     } else if (!strcasecmp(name, "v:")) {
-      return strdup("Via:");
+      return short_and_long_headers[E_VIA_LONG_FORM];
     } else {
-      return strdup(name);
+      return name;
     }
 
 }
@@ -4764,51 +4768,27 @@ char *uri_encode(const char* src)
 }
 
 bool is_reserved_char (char c) {
-  switch(c >> 4){
-    case 2:
-      switch(c & 0xf){
-        case 1: // !
-        case 3: // #
-        case 4: // $
-        case 5: // %
-        case 6: // &
-        case 7: // '
-        case 8: // (
-        case 9: // )
-        case 0xa: // *
-        case 0xb: // +
-        case 0xc: // ,
-        case 0xf: // /
-          return true;
-        default:
-          return false;
-      }
-      break;
-    case 3:
-      switch(c & 0xf){
-        case 0xa: // :
-        case 0xb: // ;
-        case 0xd: // =
-        case 0xf: // ?
-          return true;
-        default:
-          return false;
-      }
-    case 4:
-      switch(c & 0xf){
-        case 0: // @
-          return true;
-        default:
-          return false;
-      }
-    case 5:
-      switch(c & 0xf){
-        case 0xb: // [
-        case 0xd: // ]
-          return true;
-        default:
-          return false;
-      }
+  switch(c){
+    case '!':
+    case '#':
+    case '$':
+    case '%':
+    case '&':
+    case '\'':
+    case '(':
+    case ')':
+    case '*':
+    case '+':
+    case ',':
+    case '/':
+    case ':':
+    case ';':
+    case '=':
+    case '?':
+    case '@':
+    case '[':
+    case ']':
+      return true;
     default:
       return false;
   }

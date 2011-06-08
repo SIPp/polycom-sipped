@@ -56,6 +56,10 @@
 #define RTCHECK_FULL	1
 #define RTCHECK_LOOSE	2
 
+/* For keeping track of short and long form header */
+#define MAX_HEADER_NAME_LEN  18
+#define NUM_OF_SHORT_FORM_HEADERS 10
+
 #ifdef __HPUX
   extern int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * aka_OP, char * aka_AMF, char * aka_K, char * result);
 #else
@@ -66,6 +70,30 @@
 
 
 typedef std::map<int, DialogState*> perDialogStateMap;
+
+enum SHORT_AND_LONG_FORM_HEADERS
+{
+  E_CALL_ID_SHORT_FORM,
+  E_CONTACT_SHORT_FORM,
+  E_CONTENT_ENCODING_SHORT_FORM,
+  E_CONTENT_LENGTH_SHORT_FORM,
+  E_CONTENT_TYPE_SHORT_FORM,
+  E_FROM_SHORT_FORM,
+  E_SUBJECT_SHORT_FORM,
+  E_SUPPORTED_SHORT_FORM,
+  E_TO_SHORT_FORM,
+  E_VIA_SHORT_FORM,
+  E_CALL_ID_LONG_FORM,
+  E_CONTACT_LONG_FORM,
+  E_CONTENT_ENCODING_LONG_FORM,
+  E_CONTENT_LENGTH_LONG_FORM,
+  E_CONTENT_TYPE_LONG_FORM,
+  E_FROM_LONG_FORM,
+  E_SUBJECT_LONG_FORM,
+  E_SUPPORTED_LONG_FORM,
+  E_TO_LONG_FORM,
+  E_VIA_LONG_FORM,
+};
 
 class call : virtual public task, virtual public listener, public virtual socketowner {
 public:
@@ -330,7 +358,7 @@ move to dialogState
   /* If content is true, we only return the header's contents. */
   char * get_header(const char* message, const char * name, bool content);
   char * get_header(char* message, const char * name, bool content);
-  char * swap_long_and_short_form_header(const char* name);
+  const char * swap_long_and_short_form_header(const char* name);
   char * get_first_line(char* message);
   string get_last_request_uri(const char *last_recv_msg);
   unsigned long hash(char * msg);
