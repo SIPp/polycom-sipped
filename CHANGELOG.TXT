@@ -1,16 +1,51 @@
 This file tracks changes responsible for version number updates.
+
+3.2.14 06-13-2011
+- SIPp to listen only for traffic FROM a specific address. This will allow it to ignore unrelated traffic (like REGISTER requests from 
+other phones). Must also allow multiple instances running at the same time.  Made a change for the case when -mc is enabled, and SIPp 
+is running as a client.  In this case the socket can be connected to the given remote address so all other traffic is ignored.  Made a 
+change to the sipp do connect function, to let connect be called on UDP sockets when only one call is being run.
+- If script stops early due to 'Q' being pressed this is FAIL, not PASS (change SIPp return code).
+- Calculate source RTP ports at or before streaming of Video & Audio RTP so that source port of 0 is never used => instead use same port 
+that is transmitted (later) in SIPp's SDP response. Must not break support for renegotiating SDP ports in subsequent reINVITEs / dialogs. 
+Added "media_port_offset" to allow the user to set offsets for each pcap play.  If you wish to run RTP before the SDP is sent out simply 
+set offset to zero.  Added functionality in sendpackets to allow each pcap play to mantain it's own port throughout the entire play.  Added 
+parsing to get the offset, and generalized it to use in the parsing of offsets for other elements as well (such as when the sdp contains 
+[media_port+#]).
+- Remove RTP-related startup debug output 
+
+
+3.2.13 05-21-2011
+- Must not return fail code for non errors such as "The minor watchdog timer 500ms has been tripped" (Disabled watchdog when -mc is enabled.)
+- Aligned Pause and NOP in the sequence diagram (add/remove whitespace)
+- Fix typo in SSL
+- Don't display the error (or return error return code) message if the phone is doing –aa and receives a register: this is by design!
+- Implement short header support by matching [last_X] in short form to long form and vice versa and transposing the result to the correct 
+format. For example [last_i:] will match 'call-id: Value' header in previous messages and the resulting output will be changed to 
+'i: value' in output. Likewise [last_Call-Id] will match 'i: value' in previous message and the resulting output will be changed to 
+'Call-Id: value'.  Added logic to call.cpp to allow sipp to go back and forth between the long and short form headers in get_header 
+(originally just checked for short name given long). 
+
+(Added an "alt_name" helper function which returns the short/long form given the 
+long/short form. Added some helpful debug messages when the header is not found.  Updated test cases to add a check for this functionality.)
+
+
 3.2.12 05-13-2011
+
 - Add transaction support (use_txn, start_txn)
 - Add transaction support to keywords client_cseq*, server_cseq*, received_cseq*, cseq*, branch, last_branch, last_cseq_number, last_request_uri, last_message, last_*
 - Aborting rather than warn when regex with checkit fails
 - Allow re-use of regex variable names (eliminate false positivies)
 - Ensure manually generated call-id will be stored when message is sent (ie Call-ID: [call_id dialog="2] in a message within dialog 3 will adopt call-id 3) 
 
+
+
 3.2.11 03-31-2011
 - Improve parsing out of leading tabs and whitespace within CDATA sections
 - Improve parsing of next_url, contact_, to_, from_ uri & name_and_uri parameters to exclude parameters after 1st >
 - Tentative support for exec pcap_play on Windows
 - Adjust exec_xml_character_conversion testcase for Linux & Windows support (echo "something" produces different results depending on platform)
+
 
 3.2.10 02-24-2011
 - Perform conversion of &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') in exec command and verify.
@@ -35,18 +70,22 @@ This file tracks changes responsible for version number updates.
 - Modify tapress.pl to have delay between all key presses (rather than just digits)
 
 3.2.7 12-20-2010
+
 - Add [local_tag] [local_tag_param]
 - Ad dump_xml  and -dump_sequence_diagram options
 - Add parameterized includes
+
 
 3.2.6 12-08-2010
 - Add -trace_debug option to output information about SIPp execution
 - Fix seg fault when using dump command without a parameter
 
+
 3.2.5ed 11-17-2010
 - Version format changed to parallel SF SIPp trunk which bumped version from 3.1 to 3.2
 - Make <include> work relative to -sf directory and support embeded directories
 - Extend test harness for cygwin to support windows test execution
+
 
 3.14ed 11-10-2010
 - Implement make install and make test targets
@@ -55,6 +94,7 @@ This file tracks changes responsible for version number updates.
 - Merge in two changes from sourceforge svn tree
   * Revision: 594 ENH: Added option to configure global T2 Timer (Patch contributed by sipp@hirschbichler.biz)
   * Revision: 595 FIX: sipp crashes when the line is too large. BugID-2968740(Patch contributed by Mitko-Mitev)
+
 
 Initial cvs checkin is based on trunk version from sourceforge as of November 11, 2010, SIPp version 3.1.
 All changes to date for enabling functional testing and improved ease of use:
@@ -74,25 +114,48 @@ All changes to date for enabling functional testing and improved ease of use:
 * Fix worst formatting mistakes in terms of tab & indendation mis-usage
 
 ======================================
+
 pre-CVS versions:
 
+
+
 3.13ed 11-04-2010
+
 - Fix <exec> on windows (by using cmd.exe instead of system command which requires sh)
 
+
+
 3.12ed 10-27-2010
+
 - Improve call_id auto-generation, important when using same dialog number in multiple files.
+
 - Require "/> rather than "> in xi:include tag
 
+
+
 3.11ed 10-18-2010
+
 - support <xi:include pname="file"/> for include
+
 - 
 
 
+
+
+
 3.1e 09-28-2010 - initial offering
+
 - support -no_call_id_check
+
 - support dialog=n tags for storing multiple dialogs state
+
 - support auto-response to register requests
+
 - fix crash in statistics
+
+
+
+
 
 
 
