@@ -8,6 +8,8 @@
 require 'rubygems'
 require 'getopt/std'
 require 'English'
+require 'rbconfig'
+require 'win32/process' if Config::CONFIG["host_os"] =~ /mswin|mingw/
 
 #
 # Todo:
@@ -30,13 +32,14 @@ class SippTest
 				:expected_exitstatus
   
   def initialize(name, client_options, server_options = '')
-    @name = name
-    @client_options = client_options
+    @is_windows = Config::CONFIG["host_os"] =~ /mswin|mingw/
+	@name = name
+	@client_options = client_options
     @server_options = server_options
     @sipp_local_port = 5069
     @sipp_remote_port = 15060
     @sipp_logging_parameters = "" # "-trace_screen -trace_msg"
-    @sipp_path = "../sipp"
+    @sipp_path = (@is_windows) ? "sipp" : "../sipp"
     @logging = "verbose" # silent, normal, verbose
     @error_message = "";
     @server_screen_destination = "server_console.out" # "#{@name}_server.out"
@@ -48,6 +51,8 @@ class SippTest
 	
 	@run_time = 0;
 	@expected_exitstatus = 0;
+	
+	@to_output = (@is_windows)? ">" : "&>"
 
   end
 
@@ -74,19 +79,25 @@ class SippTest
   end
 
   def server_commandline
-    return "#{@sipp_path} #{@server_options} -i 127.0.0.1 -p #{@sipp_remote_port} #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_local_port} &> #{@server_screen_destination}"
+    return "#{@sipp_path} #{@server_options} -i 127.0.0.1 -p #{@sipp_remote_port} #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_local_port}" + @to_output + "#{@server_screen_destination}"
   end
 
   def client_commandline
     if(@expected_error_log.nil?)
-      return "#{@sipp_path} #{@client_options} -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port} &> #{@client_screen_destination}"
+      return "#{@sipp_path} #{@client_options} -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port}" + @to_output + "#{@client_screen_destination}"
     else
-      return "#{@sipp_path} #{@client_options} -trace_err -error_file error.log -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port} &> #{@client_screen_destination}"
+      return "#{@sipp_path} #{@client_options} -trace_err -error_file error.log -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port}" + @to_output + "#{@client_screen_destination}"
     end
   end
 
   def post_execution_validation
     result = true
+	
+	if (@is_windows)
+	  remove_carriage_returns()
+	end
+	
+	#Note that expected_client/server_output use strings, whereas expected_error_log used a regular expression.
 	if (!@expected_client_output.nil?)
       if (@expected_client_output != get_client_output())
 	    puts "Expected client output does not match actual.\n" unless @logging == "silent"
@@ -128,10 +139,10 @@ class SippTest
 
   def start_sipp_client(testcase_client)
     success = false;
-    puts "Executing client with '#{testcase_client}'" unless @logging != "verbose"
+    puts "Executing client with '#{testcase_client}'" if @logging == "verbose"
 
     result = system(testcase_client)
-	print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" unless @logging != "verbose"
+	print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" if @logging == "verbose"
 	
     if ( (result && @expected_exitstatus == 0) || !expected_error_log.nil? ) 
       success = true
@@ -174,33 +185,40 @@ class SippTest
   # run server sipp process in background, saving pid
   def start_sipp_server(testcase_server)
     @server_options.empty? and return false
-    puts "Executing server with '#{testcase_server}'" unless @logging != "verbose"
-
-    @server_pid = fork do
-      if (!exec(testcase_server))
-        puts "[ERROR] - Failed to execute server command '#{testcase_server}'"
-# if this fails we need to know so that test fails, otherwise client might just run forever...
-        @server_aborted = true
-        return false
+    puts "Executing server with '#{testcase_server}'" if @logging == "verbose"
+    if @is_windows
+	  @server_pid = IO.popen(testcase_server).pid
+	else
+      @server_pid = fork do
+        if (!exec(testcase_server))
+          puts "[ERROR] - Failed to execute server command '#{testcase_server}'"
+          # if this fails we need to know so that test fails, otherwise client might just run forever...
+          @server_aborted = true
+          return false
+        end
       end
-    end
+	end
   end #start_sipp_server
 
   def stop_sipp_server
     # kill background SIPp server if it was started
     @server_options.empty? and return false
-
-    # kill immediate children of the shell whose pid is stored in @server_pid
-    # may want to
-#    Hash[*`ps -f`.scan(/\s\d+\s/).map{|x|x.to_i}].each{ |pid,ppid|
-    `ps -f`.each{|s|
-      a = s.split()
-      if (a[2].to_i == @server_pid)
-        puts "Killing #{a[1]} because its ppid of #{@server_pid} matches the server process.\n" unless @logging != "verbose"
-        Process.kill("SIGINT", a[1].to_i)
-      end
-    }
-
+    
+	if @is_windows
+	  system("taskkill /F /IM sipp.exe")
+	  Process.kill("SIGINT", @server_pid)
+	else
+      # kill immediate children of the shell whose pid is stored in @server_pid
+      # may want to
+      # Hash[*`ps -f`.scan(/\s\d+\s/).map{|x|x.to_i}].each{ |pid,ppid|
+      `ps -f`.each{|s|
+        a = s.split()
+        if (a[2].to_i == @server_pid)
+          puts "Killing #{a[1]} because its ppid of #{@server_pid} matches the server process.\n" if @logging == "verbose"
+          Process.kill("SIGINT", a[1].to_i)
+        end
+      }
+    end
     Process.wait(@server_pid)
 
   end # stop_sipp_server
@@ -221,6 +239,15 @@ class SippTest
 	puts "%Q!#{output}!"
   end
 
+  def remove_carriage_returns()
+    if (!@expected_client_output.nil?)
+	  @expected_client_output = @expected_client_output.gsub("\r","")
+	end
+	if not @expected_server_output.nil?
+	  @expected_server_output = @expected_server_output.gsub("\r","")
+	end
+  end
+  
   def remove_space_and_crlf(astring)
 	output = astring.gsub("\r", "")
 	output.gsub!("\n", "")
@@ -229,4 +256,5 @@ class SippTest
   end
   
 end # class SippTest
+
 
