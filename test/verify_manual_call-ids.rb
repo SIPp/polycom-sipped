@@ -13,8 +13,8 @@ class KeywordScenarios < Test::Unit::TestCase
   def test_scenarios
     #Verify CSeq and branch
 
-    test_reject = SippTest.new("reject_call", "-sf manual_call-id_client.sipp -mc", "-sf manual_call-id_server.sipp -mc")
-    assert(test_reject.run())
+    test_manual_call_id = SippTest.new("manual_call_id", "-sf manual_call-id_client.sipp -mc", "-sf manual_call-id_server.sipp -mc")
+    assert(test_manual_call_id.run())
 
   end
 end
