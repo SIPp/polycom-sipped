@@ -7,7 +7,7 @@
 
 
 require 'test/unit'
-require 'sipp_test'
+require './sipp_test'
 
 class VerifyAARepressesUnexpedMessageError < Test::Unit::TestCase
   def test_aa_represses_unexpected_message_error

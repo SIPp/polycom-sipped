@@ -6,7 +6,7 @@
 #
 
 require 'test/unit'
-require 'sipp_test'
+require './sipp_test'
 
 class Exec < Test::Unit::TestCase
   def test_exec_command
@@ -19,14 +19,14 @@ class Exec < Test::Unit::TestCase
   
   def test_exec_verify_pass
 	# verify <exec verify=""> with pass [runs slow, passes with 0 exit code]
-    test = SippTest.new("exec_verify_pass", "-sf exec_verify.sipp -m 1 -l 1 -key command \"perl -e 'sleep 3; exit 0;'\"", "-sn uas -aa ")
+    test = SippTest.new("exec_verify_pass", "-sf exec_verify.sipp -m 1 -l 1 -key command \"perl pass.pl\"", "-sn uas -aa ")
 	test.expected_minimum_run_time = 3
     assert(test.run())
   end
   
   def test_exec_verify_fail
 	# verify <exec verify=""> with fail [runs slow, causes sipp to exit with failure code]
-    test = SippTest.new("exec_verify_fail", "-sf exec_verify.sipp -m 1 -l 1 -key command \"perl -e 'sleep 3; exit 123;'\"", "-sn uas -aa ")
+    test = SippTest.new("exec_verify_fail", "-sf exec_verify.sipp -m 1 -l 1 -key command \"perl fail.pl\"", "-sn uas -aa ")
 	test.expected_minimum_run_time = 3
 	test.expected_exitstatus = 255
     assert(test.run())

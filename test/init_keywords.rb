@@ -6,7 +6,7 @@
 #
 
 require 'test/unit'
-require 'sipp_test'
+require './sipp_test'
 
 class Exec < Test::Unit::TestCase
   

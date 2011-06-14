@@ -7,7 +7,7 @@
 
 
 require 'test/unit'
-require 'sipp_test'
+require './sipp_test'
 
 class IncludeDirectory < Test::Unit::TestCase
   def test_include_directory

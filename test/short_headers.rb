@@ -7,7 +7,7 @@
 
 
 require 'test/unit'
-require 'sipp_test'
+require './sipp_test'
 
 class ShortHeaders < Test::Unit::TestCase
   def test_short_headers
