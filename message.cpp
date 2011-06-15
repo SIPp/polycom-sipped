@@ -130,7 +130,6 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
   char * key;
   char   current_line[MAX_HEADER_LEN];
   const char * line_mark = NULL;
-  const char * tsrc;
   int    num_cr = get_cr_number(src);
 
   this->msg_scenario = msg_scenario;
@@ -209,29 +208,12 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       src++;
 
       /* Like strchr, but don't count things in quotes. */
-      for(tsrc = src; *tsrc; tsrc++) {
-        if (*tsrc == '\"') {
-          do {
-            tsrc++;
-          } while(*tsrc && *tsrc != '\"');
-          if (!*tsrc) {
-            break;
-          }
-        }
-        if (*tsrc == '[')
-          break;
-      }
-      if (*tsrc != '[') {
-        tsrc = NULL;
-      }
-
-      /* Like strchr, but don't count things in quotes. */
       // cast away const of src [*UGLY*]
-      for(key = (char *) src; *key; key++) {
+      for(key = (char *) src; *key && *key != '\n'; key++) {
         if (*key == '\"') {
           do {
             key++;
-          } while(*key && *key != '\"');
+          } while(*key && *key != '\"' && *key != '\n');
         }
         if (*key == ']')
           break;
@@ -239,12 +221,8 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       if (*key != ']') {
         key = NULL;
       }
-
-      if ((tsrc) && (tsrc<key)){
-        memcpy(keyword, src-1,  tsrc - src + 1);
-        src=tsrc+1;
-        dest += sprintf(dest, "%s", keyword);
-      }
+      if (*key == '\n') 
+        ERROR("Cannot have end of line characters in the middle of keywords. Possibly a missing ']'.");
 
       if((!key) || ((key - src) > KEYWORD_SIZE) || (!(key - src))){
         ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
@@ -369,7 +347,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
 
       } else if(!strncmp(keyword, "last_", strlen("last_"))) {
         newcomp->type = E_Message_Last_Header;
-        // parse optional dialog/content only parameter
+        // parse optional dialog/value only parameter
         bool is_dialog_number = parse_dialog_number(keyword, newcomp);
         bool is_value_only = parse_value_only(keyword, newcomp);
         if (is_dialog_number || is_value_only) {
@@ -644,7 +622,6 @@ void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct M
   if(*my_auth_pass == '\0') {
     strcpy(my_auth_pass, auth_password);
   }
-
 
   dst->comp_param.auth_param.auth_user = new SendingMessage(msg_scenario, my_auth_user, true /* skip sanity */);
   dst->comp_param.auth_param.auth_pass = new SendingMessage(msg_scenario, my_auth_pass, true);
