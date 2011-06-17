@@ -141,12 +141,9 @@ class CAction
     void setVarInId      (int            P_value);
     void setVarIn2Id      (int            P_value);
     void setLookingChar  (char*          P_value);
-//    void setAction       (CAction        P_action);
     void setCaseIndep    (bool           P_action);
     void setOccurence   (int            P_value);
     void setHeadersOnly  (bool           P_value);
-//    void setScenario     (scenario *     P_scenario);     / set by constructor so not needed
-//    void setDialogNumber (int           P_dialog_number); \ only place called was setAction, which itself is never called. 
     void setRegExp       (char*		 P_value);  /* ereg specific function. */
     int  executeRegExp   (char* P_string, VariableTable *P_callVarTable);
     void setMessage      (char*          P_value, int n = 0);  /* log specific function  */

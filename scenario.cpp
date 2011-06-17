@@ -1750,18 +1750,34 @@ void scenario::getCommonAttributes(message *message) {
 
 #ifdef PCAPPLAY
 void parseMediaPortOffset(char* ptr, CAction* action) {
-  if(!strlen(ptr)) ERROR("Incorrectly formatted offset. Offset should be specified as +/- and then a whole number");
-  if(parseOffset(ptr)) action->setMediaPortOffset(parseOffset(ptr));
-  //otherwise parseOffset has returned zero, either the offset is zero, the offset has been specified without a +/-,
-  //or there is some error (if the offset is specified without a + or - default to positive)
-  else if (isdigit(*ptr)||( ptr+1 && *ptr+1 == '0'))  action->setMediaPortOffset(atoi(ptr));
-  else ERROR("Incorrectly formatted offset. Offset should be specified as +/- and then a whole number") ;
+  if(!strlen(ptr)) {
+    ERROR("Incorrectly formatted offset. Offset should be specified as +/- and then a whole number");
+  }
+  if(parseOffset(ptr)) {
+    action->setMediaPortOffset(parseOffset(ptr));
+  } else if (isdigit(*ptr)||( ptr+1 && *ptr+1 == '0')) {
+    // parseOffset has returned zero and offset is zero, the offset has been specified without a +/-,
+    action->setMediaPortOffset(atoi(ptr));
+  } else {
+    // some error (if the offset is specified without a + or - default to positive)
+    ERROR("Incorrectly formatted offset '%s'. Offset should be specified as +/- and then a whole number (ie +5 or -10).") ;
+  }
 }
 #endif
 
+// optional leading + or - (so accepts blank => 0, or + or - an integer, assumes no offset is +.
+// ie '', '+5', '-5' and '5'.
+bool parseInteger(char *ptr, int&result) {
+  //use atoi();
+  //if atoi returns 0 be sure it really was zero. if not return false.
+  //otherwise return true.
+}
+
+// must have leading + or - (so accepts blank => 0, or + or - an integer
+// ie '', '+5', '-5' but never '5'.
 int parseOffset(char* ptr){
   char* val;
-  if (((val = strchr(ptr,'+')) || (val = strchr(ptr,'-'))) && isdigit(*(val+1)))
+  if (((val = strchr(ptr,'+')) || (val = strchr(ptr,'-')) && isdigit(*(val+1))))
       return atoi(val);
   else
     return 0; //zero is returned as the default value

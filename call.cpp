@@ -2758,7 +2758,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   if (length_marker || auth_marker) {
     body = strstr(msg_buffer, "\r\n\r\n");
     if (body) {
-	    auth_body += strlen("\r\n\r\n"); // !!! This line seems suspcted as is equivalent to char *auth_body = 4. What is auth_body for anyway? !!!
+	    auth_body = body + strlen("\r\n\r\n");
     }
   }
 
