@@ -230,7 +230,6 @@ test:
 .PHONY: install
 install: all
 	install -m 0755 sipp $(prefix)/bin
-	install -m 0755 tapress.pl $(prefix)/bin
 	chown root $(prefix)/bin/sipp
 	chmod 6755 $(prefix)/bin/sipp
 	
