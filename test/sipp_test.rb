@@ -40,7 +40,7 @@ class SippTest
     @sipp_remote_port = 15060
     @sipp_logging_parameters = "" # "-trace_screen -trace_msg"
     @sipp_path = "../sipp"
-    @logging = "verbose" # silent, normal, verbose
+    @logging = "normal" # silent, normal, verbose
     @error_message = "";
     @server_screen_destination = "server_console.out" # "#{@name}_server.out"
     @client_screen_destination = "client_console.out" # "#{@name}_client.out"
