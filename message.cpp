@@ -419,7 +419,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
     *dest++ = '\0';
     literalLen = dest - literal;
     literal = (char *)realloc(literal, literalLen);
-    if (!literal) { ERROR("Out of memory!"); } 
+    if (!literal) { ERROR("Out of memory!"); }
 
     MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
     if (!newcomp) { ERROR("Out of memory!"); }
@@ -600,7 +600,14 @@ bool SendingMessage::parse_value_only(char* src, struct MessageComponent* newcom
 void SendingMessage::parse_encoding(char* src, struct MessageComponent* newcomp) {
   char encoding[KEYWORD_SIZE];
   getKeywordParam(src, "encoding=", encoding);
-  if (encoding[0] != '\0') newcomp->encoding = strdup(encoding);
+  if(encoding[0]!='\0'){
+    if (!strcasecmp(encoding, "uri"))
+      newcomp->encoding = E_ENCODING_URI;
+    else
+      ERROR("Encoding type \"%s\" not recognized", encoding);
+  } else {
+    newcomp->encoding = E_ENCODING_NONE;
+  }
 }
 
 void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword) {
@@ -642,7 +649,6 @@ void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct M
 
 void SendingMessage::freeMessageComponent(struct MessageComponent *comp) {
   free(comp->literal);
-  if (comp->encoding) free(comp->encoding);
   if (comp->type == E_Message_Authentication) {
     if (comp->comp_param.auth_param.auth_user) {
       delete comp->comp_param.auth_param.auth_user;

@@ -60,6 +60,9 @@
 #define MAX_HEADER_NAME_LEN  18
 #define NUM_OF_SHORT_FORM_HEADERS 10
 
+/* to ensure the buffer for encoding is as long as the longest possible encoded message */
+#define ENCODE_LEN_PER_CHAR 3
+
 #ifdef __HPUX
   extern int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * aka_OP, char * aka_AMF, char * aka_K, char * result);
 #else
@@ -70,30 +73,6 @@
 
 
 typedef std::map<int, DialogState*> perDialogStateMap;
-
-enum SHORT_AND_LONG_FORM_HEADERS
-{
-  E_CALL_ID_SHORT_FORM,
-  E_CONTACT_SHORT_FORM,
-  E_CONTENT_ENCODING_SHORT_FORM,
-  E_CONTENT_LENGTH_SHORT_FORM,
-  E_CONTENT_TYPE_SHORT_FORM,
-  E_FROM_SHORT_FORM,
-  E_SUBJECT_SHORT_FORM,
-  E_SUPPORTED_SHORT_FORM,
-  E_TO_SHORT_FORM,
-  E_VIA_SHORT_FORM,
-  E_CALL_ID_LONG_FORM,
-  E_CONTACT_LONG_FORM,
-  E_CONTENT_ENCODING_LONG_FORM,
-  E_CONTENT_LENGTH_LONG_FORM,
-  E_CONTENT_TYPE_LONG_FORM,
-  E_FROM_LONG_FORM,
-  E_SUBJECT_LONG_FORM,
-  E_SUPPORTED_LONG_FORM,
-  E_TO_LONG_FORM,
-  E_VIA_LONG_FORM,
-};
 
 class call : virtual public task, virtual public listener, public virtual socketowner {
 public:
@@ -363,6 +342,31 @@ move to dialogState
   string get_last_request_uri(const char *last_recv_msg);
   unsigned long hash(char * msg);
 
+//headers with short forms.
+enum T_compactHeaders
+{
+  E_CALL_ID_SHORT_FORM,
+  E_CONTACT_SHORT_FORM,
+  E_CONTENT_ENCODING_SHORT_FORM,
+  E_CONTENT_LENGTH_SHORT_FORM,
+  E_CONTENT_TYPE_SHORT_FORM,
+  E_FROM_SHORT_FORM,
+  E_SUBJECT_SHORT_FORM,
+  E_SUPPORTED_SHORT_FORM,
+  E_TO_SHORT_FORM,
+  E_VIA_SHORT_FORM,
+  E_CALL_ID_LONG_FORM,
+  E_CONTACT_LONG_FORM,
+  E_CONTENT_ENCODING_LONG_FORM,
+  E_CONTENT_LENGTH_LONG_FORM,
+  E_CONTENT_TYPE_LONG_FORM,
+  E_FROM_LONG_FORM,
+  E_SUBJECT_LONG_FORM,
+  E_SUPPORTED_LONG_FORM,
+  E_TO_LONG_FORM,
+  E_VIA_LONG_FORM,
+};
+
   typedef std::map <std::string, int> file_line_map;
   file_line_map *m_lineNumber;
   int    userId;
@@ -411,7 +415,14 @@ void set_default_message(const char *which, char *message);
 
 char * get_call_id(char *msg);
 
-#endif
+enum T_encoding
+{
+  E_ENCODING_NONE,
+  E_ENCODING_URI
+};
 
-char *uri_encode(const char *src);
+void encode(struct MessageComponent *comp, const char *src, char *dest);
+void uri_encode(const char *src, char *dest);
 bool is_reserved_char(char c);
+
+#endif

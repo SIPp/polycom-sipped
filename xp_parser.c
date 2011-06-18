@@ -652,6 +652,7 @@ char * xp_get_value(const char * name)
         if(index > XP_MAX_FILE_LEN) return NULL;
       }
       buffer[index] = 0;
+      xp_convert_special_characters(buffer);
       return buffer;
     }
   }
@@ -705,7 +706,7 @@ void xp_convert_special_characters(char * buffer)
 {
   char * src = strchr(buffer, '&');
   char * dst = src;
-  if (!src) 
+  if (!src)
     return ;
 
 
@@ -739,7 +740,7 @@ void xp_convert_special_characters(char * buffer)
         *dst = *src;
       }
     }
-    else 
+    else
       *dst = *src;
     dst++;
     src++;

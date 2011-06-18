@@ -163,7 +163,7 @@ int registerKeyword(char *keyword, customKeyword fxn);
 struct MessageComponent {
   MessageCompType type;
   char *literal;
-  char *encoding;
+  int encoding; // method for encoding header value (0 indicates basic encoding)
   int literalLen;
   int offset;        // amount added or subtracted from stored value (-1 in case of [cseq-1])
   int varId;

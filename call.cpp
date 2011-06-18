@@ -2407,8 +2407,13 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(new_call_id, MAX_HEADER_LEN, "%d-%s", src->getDialogNumber(), new_id);
           ds->call_id = string(new_call_id);
         }
-        if(comp->encoding && !strcasecmp(comp->encoding, "uri")) dest += snprintf(dest, left, "%s", uri_encode(ds->call_id.c_str()));
-        else dest += snprintf(dest, left, "%s", ds->call_id.c_str());
+        if(comp->encoding != E_ENCODING_NONE) {
+          char *call_id = (char *)alloca(ds->call_id.length() * ENCODE_LEN_PER_CHAR + 1);
+          encode(comp, ds->call_id.c_str(), call_id);
+          dest += snprintf(dest, left, "%s", call_id);
+        } else {
+          dest += snprintf(dest, left, "%s", ds->call_id.c_str());
+        }
         break;
       case E_Message_CSEQ:
         if (useTxn) {
@@ -2547,9 +2552,13 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         }
 
         if(ds->peer_tag) {
-          char *peer_tag = ds->peer_tag;
-          if(comp->encoding && !strcasecmp(comp->encoding, "uri"))
-            peer_tag = uri_encode(peer_tag);
+          char *peer_tag;
+          if(comp->encoding != E_ENCODING_NONE){
+            peer_tag = (char *)alloca(strlen(ds->peer_tag) * ENCODE_LEN_PER_CHAR + 1);
+            encode(comp, ds->peer_tag, peer_tag);
+          } else {
+            peer_tag = ds->peer_tag;
+          }
           if((comp->type == E_Message_Remote_Tag_Param) || (comp->type == E_Message_Peer_Tag_Param))
             dest += snprintf(dest, left, ";tag=%s", peer_tag);
           else
@@ -2563,7 +2572,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         if (!ds->local_tag) { 
           // generate tag if 1st time used
           ds->local_tag = (char *)malloc(MAX_HEADER_LEN);
-          if (!ds->local_tag) 
+          if (!ds->local_tag)
             ERROR("Unable to allocate memory for local_tag\n");
           int idx;
           if(P_index == -2)
@@ -2573,8 +2582,13 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(ds->local_tag, MAX_HEADER_LEN, "local-%u-%u-%d", pid, number, idx);
           DEBUG("Auto-generating local_tag '%s'", ds->local_tag);
         }
-        char *local_tag = ds->local_tag;
-        if(comp->encoding && !strcasecmp(comp->encoding, "uri")) local_tag = uri_encode(local_tag);
+        char *local_tag;
+        if(comp->encoding != E_ENCODING_NONE) {
+          local_tag = (char *)alloca(strlen(ds->local_tag) * ENCODE_LEN_PER_CHAR + 1);
+          encode(comp, ds->local_tag, local_tag);
+        } else {
+          local_tag = ds->local_tag;
+        }
         if(comp->type == E_Message_Local_Tag_Param)
           dest += snprintf(dest, left, ";tag=%s", local_tag);
         else
@@ -2758,7 +2772,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   if (length_marker || auth_marker) {
     body = strstr(msg_buffer, "\r\n\r\n");
     if (body) {
-	    auth_body = body + strlen("\r\n\r\n");
+	    auth_body += strlen("\r\n\r\n");
     }
   }
 
@@ -3830,7 +3844,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   }
 #endif
 
-  /* If we are not advancing state, we should quite before we change this stuff. */
+  /* If we are not advancing state, we should quit before we change this stuff. */
   if (!call_scenario->messages[search_index]->advance_state) {
     return true;
   }
@@ -3986,7 +4000,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       } else {
         ERROR("Invalid looking place: %d\n", currentAction->getLookingPlace());
       }
-     
+
       M_callVariableTable->getVar(currentAction->getVarId()) -> resetNbOfMatches(); 
       currentAction->executeRegExp(haystack, M_callVariableTable);
 
@@ -4202,7 +4216,11 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         tmp= createSendingMessage(currentAction->getMessage(1), -2 /* do not add crlf*/);
         char *password = strdup(tmp);
 
+        DEBUG("VERIFYING AUTHENTICATION WITH USERNAME %s and PASSWORD %s and AUTH %s", username, password, auth);
+
         result = verifyAuthHeader(username, password, method, auth);
+        if(result) DEBUG("Verification successful");
+        else DEBUG("Verification failed.");
 
         free(username);
         free(password);
@@ -4238,7 +4256,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       }
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_TEST) {
       double value = currentAction->compare(M_callVariableTable);
-      M_callVariableTable->getVar(currentAction->getVarId())->setBool(value);
+      if(currentAction->getCheckIt()==true && !value){
+        if(currentAction->getVarIn2Id()) ERROR("Test %s %s %s has failed.", display_scenario->allocVars->getName(currentAction->getVarInId()), currentAction->comparatorToString(currentAction->getComparator())), display_scenario->allocVars->getName(currentAction->getVarIn2Id());
+        else ERROR("Test %s %s %f has failed.", display_scenario->allocVars->getName(currentAction->getVarInId()), currentAction->comparatorToString(currentAction->getComparator()), currentAction->getDoubleValue());
+      }
+      if (currentAction->getVarId()){
+        M_callVariableTable->getVar(currentAction->getVarId())->setBool(value);
+      }
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_STRCMP) {
       char *rhs = M_callVariableTable->getVar(currentAction->getVarInId())->getString();
       char *lhs;
@@ -4741,53 +4765,61 @@ void call::set_video_port(int port){
 }
 #endif
 
+void encode(struct MessageComponent *comp, const char *src, char *dest){
+  switch(comp->encoding){
+    case E_ENCODING_URI:
+      uri_encode(src,dest);
+      break;
+    //Added for future expansion
+    default:
+      ERROR("Unrecognized encoding type. Trying to encode \"%s\"", src);
+  }
+}
+
 //Taken from http://www.codeguru.com/cpp/cpp/string/conversions/article.php/c12759
-//With minor modifications
-char *uri_encode(const char* src)
+//With modification
+void uri_encode(const char* src, char *dest)
 {
    const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
    const int SRC_LEN = strlen(src);
-   char * const start = new char[SRC_LEN * 3];
-   char * end = start;
    const char * const SRC_END = src + SRC_LEN;
 
    for (; src < SRC_END; ++src)
    {
       if (!is_reserved_char(*src))
-         *end++ = *src;
+         *dest++ = *src;
       else
       {
          // escape this char
-         *end++ = '%';
-         *end++ = DEC2HEX[*src >> 4];
-         *end++ = DEC2HEX[*src & 0xf];
+         *dest++ = '%';
+         *dest++ = DEC2HEX[*src >> 4];
+         *dest++ = DEC2HEX[*src & 0xf];
       }
    }
-   *end++ = '\0';
-   return start;
+   *dest++ = '\0';
 }
 
 bool is_reserved_char (char c) {
   switch(c){
-    case '!':
-    case '#':
-    case '$':
-    case '%':
-    case '&':
+    case '!' :
+    case '#' :
+    case '$' :
+    case '%' :
+    case '&' :
     case '\'':
-    case '(':
-    case ')':
-    case '*':
-    case '+':
-    case ',':
-    case '/':
-    case ':':
-    case ';':
-    case '=':
-    case '?':
-    case '@':
-    case '[':
-    case ']':
+    case '(' :
+    case ')' :
+    case '*' :
+    case '+' :
+    case ',' :
+    case '/' :
+    case ':' :
+    case ';' :
+    case '=' :
+    case '?' :
+    case '@' :
+    case '[' :
+    case ']' :
       return true;
     default:
       return false;
