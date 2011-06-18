@@ -10,7 +10,7 @@ require 'test/unit'
 require './sipp_test'
 
 class KeywordScenarios < Test::Unit::TestCase
-  def test_scenarios
+  def test_keyword_scenarios
     #Verify CSeq and branch
 
     test_reject = SippTest.new("reject_call", "-sf reject_call_client.sipp -mc", "-sf reject_call_server.sipp -mc")

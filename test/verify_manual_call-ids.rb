@@ -10,7 +10,7 @@ require 'test/unit'
 require './sipp_test'
 
 class KeywordScenarios < Test::Unit::TestCase
-  def test_scenarios
+  def test_manual_call_id
     #Verify CSeq and branch
 
     test_manual_call_id = SippTest.new("manual_call_id", "-sf manual_call-id_client.sipp -mc", "-sf manual_call-id_server.sipp -mc")
