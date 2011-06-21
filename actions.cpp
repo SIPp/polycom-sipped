@@ -65,8 +65,10 @@ const char * CAction::comparatorToString(T_Comparator comp) {
 }
 
 bool CAction::compare(VariableTable *variableTable) {
-  double lhs = variableTable->getVar(M_varInId)->getDouble();
-  double rhs = M_varIn2Id ? variableTable->getVar(M_varIn2Id)->getDouble() : M_doubleValue;
+  double lhs;
+  variableTable->getVar(M_varInId)->toDouble(&lhs, "compare");
+  double rhs;
+  (M_varIn2Id) ? variableTable->getVar(M_varIn2Id)->toDouble(&rhs, "compare") : rhs = M_doubleValue;
 
   switch(M_comp) {
     case E_C_EQ:
@@ -283,7 +285,6 @@ void CAction::setRegExp(char *P_value) {
 
   M_regularExpression = strdup(P_value);
   M_regExpSet = true;
-
   errorCode = regcomp(&(M_internalRegExp), M_regularExpression, REGEXP_PARAMS);
   if(errorCode != 0)
   {
@@ -324,6 +325,8 @@ int CAction::executeRegExp(char* P_string, VariableTable *P_callVarTable)
     for(int i = 0; i <= getNbSubVarId(); i++) {
       if(pmatch[i].rm_eo == -1) break ;
 
+      //FIXME: Some regular expressions do not play nicely with this framework. Why?
+      //       e.g. using [0-9]* as your regular expression will set matching value to NULL.
       setSubString(&result, P_string, pmatch[i].rm_so, pmatch[i].rm_eo);
       L_callVar->setMatchingValue(result);
 
@@ -336,7 +339,7 @@ int CAction::executeRegExp(char* P_string, VariableTable *P_callVarTable)
   return(nbOfMatch);
 }
 
-
+//FIXME: why use a char** for the target instead of just a char*?
 void CAction::setSubString(char** P_target, char* P_source, int P_start, int P_stop)
 {
   int sizeOf;

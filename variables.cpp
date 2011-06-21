@@ -71,7 +71,7 @@ void CCallVariable::setMatchingValue(char* P_matchingVal)
 {
   M_type = E_VT_REGEXP;
   if(M_matchingValue != NULL) {
-    delete [] M_matchingValue;    
+    delete [] M_matchingValue;
   }
   M_matchingValue     = P_matchingVal;
   M_nbOfMatchingValue++;
@@ -123,24 +123,24 @@ char *CCallVariable::getString()
 }
 
 /* Convert this variable to a double. Returns true on success, false on failure. */
-bool CCallVariable::toDouble(double *newValue)
+bool CCallVariable::toDouble(double *newValue, char *what)
 {
   char *p;
-
+  DEBUG_IN();
   switch(M_type) {
   case E_VT_REGEXP:
     if(M_nbOfMatchingValue < 1) {
       return false;
     }
     *newValue = strtod(M_matchingValue, &p);
-    if (*p) {
-      return false;
+    if (!*newValue && !has_leading_zero(M_matchingValue)) {
+      ERROR("Invalid format. Could not convert \"%s\" to a double, while performing %s", M_matchingValue, what);
     }
     break;
   case E_VT_STRING:
     *newValue = strtod(M_stringValue, &p);
-    if (*p) {
-      return false;
+    if (!*newValue && !has_leading_zero(M_matchingValue)) {
+      ERROR("Invalid format. Could not convert \"%s\" to a double, while performing %s", M_matchingValue, what);
     }
     break;
   case E_VT_DOUBLE:
@@ -152,6 +152,7 @@ bool CCallVariable::toDouble(double *newValue)
   default:
     return false;
   }
+  DEBUG_OUT();
   return true;
 }
 
@@ -370,4 +371,10 @@ void AllocVariableTable::validate() {
   if (av_parent) {
     av_parent->validate();
   }
+}
+
+bool has_leading_zero(char *ptr) {
+  if(!ptr) return false;
+  while(*ptr == ' ') ptr++;
+  return *ptr == '0' || ((*ptr == '+' || *ptr == '-') && (ptr+1 && *(ptr+1) == '0'));
 }

@@ -76,7 +76,7 @@ public:
   bool getBool();
 
   /* Cast this to a double variable, return the result in newValue. */
-  bool toDouble(double *newValue);
+  bool toDouble(double *newValue, char *what);
 
   // constructor and destructor
   CCallVariable();
@@ -132,4 +132,5 @@ void clear_int_str(int_str_map m);
 void clear_str_int(str_int_map m);
 void clear_int_int(int_int_map m);
 
+bool has_leading_zero(char *ptr);
 #endif

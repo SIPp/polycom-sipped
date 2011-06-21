@@ -4235,19 +4235,23 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       double operand = get_rhs(currentAction);
       paused_until = (int)operand;
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_ADD) {
-      double value = M_callVariableTable->getVar(currentAction->getVarId())->getDouble();
+      double value;
+      M_callVariableTable->getVar(currentAction->getVarId())->toDouble(&value, "add");
       double operand = get_rhs(currentAction);
       M_callVariableTable->getVar(currentAction->getVarId())->setDouble(value + operand);
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_SUBTRACT) {
-      double value = M_callVariableTable->getVar(currentAction->getVarId())->getDouble();
+      double value;
+      M_callVariableTable->getVar(currentAction->getVarId())->toDouble(&value, "subtract");
       double operand = get_rhs(currentAction);
       M_callVariableTable->getVar(currentAction->getVarId())->setDouble(value - operand);
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_MULTIPLY) {
-      double value = M_callVariableTable->getVar(currentAction->getVarId())->getDouble();
+      double value;
+      M_callVariableTable->getVar(currentAction->getVarId())->toDouble(&value, "multiply");
       double operand = get_rhs(currentAction);
       M_callVariableTable->getVar(currentAction->getVarId())->setDouble(value * operand);
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_DIVIDE) {
-      double value = M_callVariableTable->getVar(currentAction->getVarId())->getDouble();
+      double value;
+      M_callVariableTable->getVar(currentAction->getVarId())->toDouble(&value, "divide");
       double operand = get_rhs(currentAction);
       if (operand == 0) {
         WARNING("Action failure: Can not divide by zero ($%d/$%d)!\n", currentAction->getVarId(), currentAction->getVarInId());
@@ -4256,7 +4260,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       }
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_TEST) {
       double value = currentAction->compare(M_callVariableTable);
-      if(currentAction->getCheckIt()==true && !value){
+      if(currentAction->getCheckIt()==true && !value) {
         if(currentAction->getVarIn2Id()) ERROR("Test %s %s %s has failed.", display_scenario->allocVars->getName(currentAction->getVarInId()), currentAction->comparatorToString(currentAction->getComparator())), display_scenario->allocVars->getName(currentAction->getVarIn2Id());
         else ERROR("Test %s %s %f has failed.", display_scenario->allocVars->getName(currentAction->getVarInId()), currentAction->comparatorToString(currentAction->getComparator()), currentAction->getDoubleValue());
       }
@@ -4289,7 +4293,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_TO_DOUBLE) {
       double value;
 
-      if (M_callVariableTable->getVar(currentAction->getVarInId())->toDouble(&value)) {
+      if (M_callVariableTable->getVar(currentAction->getVarInId())->toDouble(&value, "to double")) {
         M_callVariableTable->getVar(currentAction->getVarId())->setDouble(value);
       } else {
         WARNING("Invalid double conversion from $%d to $%d", currentAction->getVarInId(), currentAction->getVarId());

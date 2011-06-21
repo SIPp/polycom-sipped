@@ -353,7 +353,6 @@ int scenario::get_var(const char *varName, const char *what) {
 
 int scenario::xp_get_var(const char *name, const char *what) {
   char *ptr;
-
   if (!(ptr = xp_get_value(name))) {
     ERROR("%s is missing the required '%s' variable parameter.", what, name);
   }
@@ -1357,15 +1356,11 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
     CAction *tmpAction = new CAction(this, dialog_number);
 
     if(!strcmp(actionElem, "ereg")) {
-      ptr = xp_get_string("regexp", "ereg");
-
       // keeping regexp expression in memory
       if(currentRegExp != NULL)
         delete[] currentRegExp;
-      currentRegExp = new char[strlen(ptr)+1];
-      buffer = new char[strlen(ptr)+1];
-      xp_replace(ptr, buffer, "&lt;", "<");
-      xp_replace(buffer, currentRegExp, "&gt;", ">");
+      currentRegExp = xp_get_string("regexp", "ereg");
+
       if(buffer != NULL)
         delete[] buffer;
       tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_REGEXP);
@@ -1375,7 +1370,6 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setCaseIndep(xp_get_bool("case_indep", "ereg", false));
       tmpAction->setHeadersOnly(xp_get_bool("start_line", "ereg", false));
 
-      free(ptr);
       if ( 0 != ( ptr = xp_get_value((char *)"search_in") ) ) {
         tmpAction->setOccurence(1);
 
@@ -1417,8 +1411,8 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
 
       int varId = get_var(currentTabVarName[0], "assign_to");
       tmpAction->setVarId(varId);
-      
-	  tmpAction->setRegExp(currentRegExp);
+
+      tmpAction->setRegExp(currentRegExp);
       if (currentNbVarNames > 1 ) {
         sub_currentNbVarId = currentNbVarNames - 1 ;
         tmpAction->setNbSubVarId(sub_currentNbVarId);
@@ -1429,9 +1423,9 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
         }
       }
 
-	  if (xp_get_value("check_it")) {
+      if (xp_get_value("check_it")) {
         tmpAction->setCheckIt(xp_get_bool("check_it", "ereg", false));
-		get_var(currentTabVarName[0], "assign_to");
+	get_var(currentTabVarName[0], "assign_to");
         if (xp_get_value("check_it_inverse")) {
           ERROR("Can not have both check_it and check_it_inverse for ereg!");
         }
@@ -1515,7 +1509,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setVarId(xp_get_var("assign_to", "todouble"));
       tmpAction->setVarInId(xp_get_var("variable", "todouble"));
     } else if(!strcmp(actionElem, "test")) {
-      tmpAction->setVarId(xp_get_var("assign_to", "test"));
+      if (xp_get_value("assign_to")) tmpAction->setVarId(xp_get_var("assign_to", "test"));
       tmpAction->setVarInId(xp_get_var("variable", "test"));
       if (xp_get_value("value")) {
         tmpAction->setDoubleValue(xp_get_double("value", "test"));
@@ -1541,6 +1535,14 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
         tmpAction->setComparator(CAction::E_C_LEQ);
       } else {
         ERROR("Invalid 'compare' parameter: %s", ptr);
+      }
+      if (xp_get_value("check_it")) {
+        tmpAction->setCheckIt(xp_get_bool("check_it", "test", false));
+        if (xp_get_value("check_it_inverse")) {
+          ERROR("Can not have both check_it and check_it_inverse for test!");
+        }
+      } else {
+        tmpAction->setCheckItInverse(xp_get_bool("check_it_inverse", "test", false));
       }
       free(ptr);
     } else if(!strcmp(actionElem, "verifyauth")) {
@@ -1591,12 +1593,10 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
     } else if(!strcmp(actionElem, "exec")) {
       if((ptr = xp_get_value((char *)"command"))) {
         tmpAction->setActionType(CAction::E_AT_EXECUTE_CMD);
-        xp_convert_special_characters(ptr);
         tmpAction->setMessage(ptr);
       } /* end (ptr = xp_get_value("command")  */ 
       else if((ptr = xp_get_value((char *)"verify"))) {
         tmpAction->setActionType(CAction::E_AT_VERIFY_CMD);
-        xp_convert_special_characters(ptr);
         tmpAction->setMessage(ptr);
       } /* end (ptr = xp_get_value("verify")  */ 
       else if((ptr = xp_get_value((char *)"int_cmd"))) {
@@ -1750,27 +1750,25 @@ void scenario::getCommonAttributes(message *message) {
 
 #ifdef PCAPPLAY
 void parseMediaPortOffset(char* ptr, CAction* action) {
-  if(!strlen(ptr)) {
-    ERROR("Incorrectly formatted offset. Offset should be specified as +/- and then a whole number");
-  }
-  if(parseOffset(ptr)) {
-    action->setMediaPortOffset(parseOffset(ptr));
-  } else if (isdigit(*ptr)||( ptr+1 && *ptr+1 == '0')) {
-    // parseOffset has returned zero and offset is zero, the offset has been specified without a +/-,
-    action->setMediaPortOffset(atoi(ptr));
+  int offset;
+  if(parseInteger(ptr, offset)) {
+    action->setMediaPortOffset(offset);
   } else {
     // some error (if the offset is specified without a + or - default to positive)
-    ERROR("Incorrectly formatted offset '%s'. Offset should be specified as +/- and then a whole number (ie +5 or -10).") ;
+    ERROR("Incorrectly formatted offset '%s'. Offset should be specified as +/- and then a whole number (ie +5 or -10).", ptr) ;
   }
 }
 #endif
 
 // optional leading + or - (so accepts blank => 0, or + or - an integer, assumes no offset is +.
 // ie '', '+5', '-5' and '5'.
-bool parseInteger(char *ptr, int&result) {
-  //use atoi();
+bool parseInteger(char *ptr, int& result) {
   //if atoi returns 0 be sure it really was zero. if not return false.
   //otherwise return true.
+  result = atoi(ptr);
+  if ( result == 0 && !has_leading_zero(ptr))
+    return false;
+  return true;
 }
 
 // must have leading + or - (so accepts blank => 0, or + or - an integer
@@ -1784,7 +1782,7 @@ int parseOffset(char* ptr){
 }
 
 // char* manipulation : create a int[] from a char*
-// test first is the char* is formed by int separeted by coma
+// test first is the char* is formed by int separated by comas
 // and then create the table
 
 int isWellFormed(char * P_listeStr, int * nombre)

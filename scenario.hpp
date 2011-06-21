@@ -46,11 +46,11 @@
 
 #define MODE_3PCC_NONE		0
 #define MODE_3PCC_CONTROLLER_A  2
-#define MODE_3PCC_CONTROLLER_B  3   
+#define MODE_3PCC_CONTROLLER_B  3
 #define MODE_3PCC_A_PASSIVE     4
 
 /* 3pcc extended mode*/
-#define MODE_MASTER             5 
+#define MODE_MASTER             5
 #define MODE_MASTER_PASSIVE     6
 #define MODE_SLAVE              7
 
@@ -278,6 +278,7 @@ bool get_bool(const char *ptr, const char *what);
 int time_string(double ms, char *res, int reslen);
 int get_var(const char *varName, const char *what);
 void parseMediaPortOffset(char* ptr, CAction* action);
+bool parseInteger(char* ptr, int& result);
 int parseOffset(char* ptr);
 
 extern int get_cr_number(const char *msg);
