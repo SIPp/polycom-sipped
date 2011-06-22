@@ -1,6 +1,11 @@
 This file tracks changes responsible for version number updates.
 
 3.2.14 06-13-2011
+- Add check_it="true" option to <text> tag to cause SIPp to return FAIL if test returns false.
+- Allow <test> tag to operate on string types (automatically converting results to doubles) so regexp matches can be tested.
+- Accept xml encoding of < > & ' and " in the &lt; &gt; &amp; &quot; &apos;
+- Implement encoding="uri" attribute for keywords
+- Implement Windows-native test harness so testing of pcap and ossl functionality possible.
 - SIPp to listen only for traffic FROM a specific address. This will allow it to ignore unrelated traffic (like REGISTER requests from 
 other phones). Must also allow multiple instances running at the same time.  Made a change for the case when -mc is enabled, and SIPp 
 is running as a client.  In this case the socket can be connected to the given remote address so all other traffic is ignored.  Made a 
@@ -19,7 +24,7 @@ parsing to get the offset, and generalized it to use in the parsing of offsets f
 - Must not return fail code for non errors such as "The minor watchdog timer 500ms has been tripped" (Disabled watchdog when -mc is enabled.)
 - Aligned Pause and NOP in the sequence diagram (add/remove whitespace)
 - Fix typo in SSL
-- Don't display the error (or return error return code) message if the phone is doing –aa and receives a register: this is by design!
+- Don't display the error (or return error return code) message if the phone is doing -aa and receives a register: this is by design!
 - Implement short header support by matching [last_X] in short form to long form and vice versa and transposing the result to the correct 
 format. For example [last_i:] will match 'call-id: Value' header in previous messages and the resulting output will be changed to 
 'i: value' in output. Likewise [last_Call-Id] will match 'i: value' in previous message and the resulting output will be changed to 
@@ -55,11 +60,13 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Untested implementation of improved start-txn and use-txn tags
 - Minor parser bug-fixes including ability now to place <scenario> tag immediately following <!DOCTYPE> tag.
 
+
 3.2.9 02-07-2011
 - Start in client mode even when first message is <recv> if <nop> preceeds it and -mc was specified (this eliminates need for <init> section in most cases).
 - Fix bug associated with <exec command> as first statement
 - Improve redirected output on windows, including waiting and retrying opening of exec log file to serialize exec output.
 - Ensure dialog parameter not used with -mc option.
+
 
 3.2.8 01-13-2011
 - Add -trace_exec, -exec_file, -exec_overwrite parameters (to log stdout/stderr output from <exec>).
@@ -68,6 +75,7 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Add <exec verify="..."> option that waits for command to exit and validates return code was 0, aborting if not.
 - Allow use of [remote_ip] and [local_ip] keywords in <init> section
 - Modify tapress.pl to have delay between all key presses (rather than just digits)
+
 
 3.2.7 12-20-2010
 
