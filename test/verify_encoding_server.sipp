@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Generated Scenario for 172.23.70.42:5060 using Snipp v1.2" parameters="-mc" source="snipp.pl -i 172.23.70.42 -f PlaceCall4Bk2Bk.pcap" id="" config="">
+  <recv request="SOMETHING" dialog="1" start_txn="S1">
+  </recv>
+
+<!-- <pause milliseconds = "1"/> -->
+  <send dialog="1" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      Call-ID: [call_id]
+
+      encoded_remote_tag: [remote_tag encoding="uri"]
+      encoded_local_tag: [local_tag encoding="uri"]
+      encoded_call_id: [call_id encoding="uri"]
+   
+      &test: <>&"'
+ 
+      slashtest: \x6E\x7A
+     
+      CSeq: [last_cseq_number] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+</scenario>

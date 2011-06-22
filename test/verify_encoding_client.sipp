@@ -43,6 +43,8 @@
         <ereg regexp="%21%2A%27%28%29%3A%40%26%3D%2B%24%2C%2F%3F%23" search_in="hdr" header="encoded_remote_tag:" check_it="true" assign_to="remotetag"/>
         <ereg regexp="%21%2A%27%28%29%3A%40%26%3D%2B%24%2C%2F%3F%23" search_in="hdr" header="encoded_local_tag:" check_it="true" assign_to="localtag"/>
         <ereg regexp="%21%2A%27%28%29%3A%40%26%3D%2B%24%2C%2F%3F%23" search_in="hdr" header="encoded_call_id:" check_it="true" assign_to="callid"/>
-      </action>     
+        <ereg regexp="&lt;&gt;&amp;&quot;&apos;" search_in="hdr" header="&amp;test:" check_it="true" assign_to="&amp;test"/>
+        <ereg regexp="nz" search_in="hdr" header="slashtest:" check_it="true" assign_to="slashtest"/>
+     </action>     
   </recv>
 </scenario>

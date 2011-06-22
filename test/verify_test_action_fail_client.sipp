@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Encoding Test" parameters="-mc" id="" config=""> 
+  <send dialog="1" start_txn="C1">
+    <![CDATA[
+
+      SOMETHING sip:123@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: "1556" <sip:1556@[local_ip]:[local_port]>;tag=1234
+      To: <sip:123@[remote_ip]:[remote_port];user=phone>;tag=1234
+      CSeq: [cseq] INVITE
+      Call-ID: 98@!-$h.
+      Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>
+      Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, INFO, MESSAGE, SUBSCRIBE, NOTIFY, PRACK, UPDATE, REFER
+      User-Agent: PolycomSoundPointIP-SPIP_650-UA/3.3.1.0933
+      Accept-Language: en
+      Supported: 100rel,replaces
+      Allow-Events: talk,hold,conference
+      Max-Forwards: 70
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=- 1304960850 1304960850 IN IP4 [local_ip]
+      s=Polycom IP Phone
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 9 0 8 18 127
+      a=rtpmap:9 G722/8000
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:8 PCMA/8000
+      a=rtpmap:18 G729/8000
+      a=fmtp:18 annexb=no
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+  <recv response="100" dialog="1" use_txn="C1">
+      <action>
+        <ereg regexp="[0-9]" search_in="hdr" header="CSeq:" check_it="true" assign_to="firstcseq"/>
+     </action>     
+  </recv>
+
+  <send dialog="1" start_txn="C2">
+    <![CDATA[
+
+      SOMETHING sip:123@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: "1556" <sip:1556@[local_ip]:[local_port]>;tag=1234
+      To: <sip:123@[remote_ip]:[remote_port];user=phone>;tag=1234
+      CSeq: [cseq] INVITE
+      Call-ID: 98@!-$h.
+      Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>
+      Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, INFO, MESSAGE, SUBSCRIBE, NOTIFY, PRACK, UPDATE, REFER
+      User-Agent: PolycomSoundPointIP-SPIP_650-UA/3.3.1.0933
+      Accept-Language: en
+      Supported: 100rel,replaces
+      Allow-Events: talk,hold,conference
+      Max-Forwards: 70
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=- 1304960850 1304960850 IN IP4 [local_ip]
+      s=Polycom IP Phone
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 9 0 8 18 127
+      a=rtpmap:9 G722/8000
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:8 PCMA/8000
+      a=rtpmap:18 G729/8000
+      a=fmtp:18 annexb=no
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+  <recv response="100" dialog="1" use_txn="C2">
+      <action>
+        <ereg regexp="[0-9]" search_in="hdr" header="CSeq:" check_it="true" assign_to="secondcseq"/>
+        <test variable="firstcseq" compare="equal" variable2="secondcseq" check_it="true"/>
+     </action>     
+  </recv>
+</scenario>

@@ -23,9 +23,10 @@ require "./verify_aa_represses_unexpected_message_error.rb"
 require "./verify_keywords.rb"
 require "./verify_transaction_keywords.rb"
 require "./verify_keywords_scenarios.rb"
-require "./verify_fail"
+require "./verify_error_messages.rb"
+require "./verify_test_action.rb"
 require "./verify_manual_call-ids.rb"
-require "./verify_uri_encoding.rb"
+require "./verify_encoding.rb"
 
 def show_help_message
   puts "Usage: test \n\n";

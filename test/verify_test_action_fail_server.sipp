@@ -5,7 +5,6 @@
   <recv request="SOMETHING" dialog="1" start_txn="S1">
   </recv>
 
-<!-- <pause milliseconds = "1"/> -->
   <send dialog="1" use_txn="S1">
     <![CDATA[
 
@@ -13,13 +12,28 @@
       [last_Via:]
       [last_From:]
       [last_To:]
-      Call-ID: [call_id]
-      encoded_remote_tag: [remote_tag encoding="uri"]
-      encoded_local_tag: [local_tag encoding="uri"]
-      encoded_call_id: [call_id encoding="uri"]
+      Call-ID: [call_id]     
       CSeq: [last_cseq_number] INVITE
       Content-Length: [len]
 
     ]]>
   </send>
+
+  <recv request="SOMETHING" dialog="1" start_txn="S2">
+  </recv>
+
+  <send dialog="1" use_txn="S2">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      Call-ID: [call_id]     
+      CSeq: [last_cseq_number] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
 </scenario>
