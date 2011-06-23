@@ -2618,6 +2618,7 @@ static int read_error(struct sipp_socket *socket, int ret) {
 	 * send again we may "ressurect" the socket by reconnecting it.*/
         sipp_socket_invalidate(socket);
         if (reset_close) {
+          WARNING("TCP connection closed remotely. Ending call.");
 	  close_calls(socket);
 	}
       }
@@ -4301,7 +4302,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.14"
+	  printf("\n SIPped v3.2.14BETA3"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -5074,7 +5075,7 @@ int main(int argc, char *argv[])
 
   /* Always create and Bind RTP socket */
   /* to avoid ICMP                     */
-  if (1) {
+//  if (1) {
     /* retrieve RTP local addr */
     struct addrinfo   hints;
     struct addrinfo * local_addr;
@@ -5169,7 +5170,7 @@ int main(int argc, char *argv[])
       ERROR_NO(msg);
     }
     /* Second socket bound */
-  }
+//  }
 
   /* Creating the remote control socket thread */
   setup_ctrl_socket();
@@ -5226,6 +5227,7 @@ bool reconnect_allowed() {
 }
 
 void reset_connection(struct sipp_socket *socket) {
+  DEBUG_IN();
   if (!reconnect_allowed()) {
       ERROR_NO("Max number of reconnections reached");
     }
@@ -5248,11 +5250,13 @@ void reset_connection(struct sipp_socket *socket) {
   } else {
     WARNING("Socket required a reconnection.");
   }
+  DEBUG_OUT();
 }
 
 /* Close just those calls for a given socket (e.g., if the remote end closes
  * the connection. */
 void close_calls(struct sipp_socket *socket) {
+  DEBUG_IN();
   owner_list *owners = get_owners_for_socket(socket);
   owner_list::iterator owner_it;
   socketowner *owner_ptr = NULL;
@@ -5265,6 +5269,7 @@ void close_calls(struct sipp_socket *socket) {
   }
 
   delete owners;
+  DEBUG_OUT();
 }
 
 int determine_remote_ip() {
