@@ -1294,7 +1294,6 @@ void print_bottom_line(FILE *f, int last)
   if(last) {
     fprintf(f,"------------------------------ Test Terminated --------------------------------" SIPP_ENDL);
   } else if(quitting) {
-    DEBUG("Printing quit message, quitting = %d", quitting);
     fprintf(f,"------- Waiting for active calls to end. Press [q] again to force exit. -------" SIPP_ENDL );
   } else if(paused) {
     fprintf(f,"----------------- Traffic Paused - Press [p] again to resume ------------------" SIPP_ENDL );
