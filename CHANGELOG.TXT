@@ -1,6 +1,8 @@
 This file tracks changes responsible for version number updates.
 
 3.2.14 06-13-2011
+- SIPp crashing when ']' missing from keyword parameter.  Removed tsrc, as it wasn't actually doing anything except when 
+the scenario file was misformatted.  Added error message when end of keyword character is missing.
 - Add check_it="true" option to <text> tag to cause SIPp to return FAIL if test returns false.
 - Allow <test> tag to operate on string types (automatically converting results to doubles) so regexp matches can be tested.
 - Accept xml encoding of < > & ' and " in the &lt; &gt; &amp; &quot; &apos;
