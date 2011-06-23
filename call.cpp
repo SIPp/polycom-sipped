@@ -2772,7 +2772,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   if (length_marker || auth_marker) {
     body = strstr(msg_buffer, "\r\n\r\n");
     if (body) {
-	    auth_body += strlen("\r\n\r\n");
+	    auth_body = body + strlen("\r\n\r\n");
     }
   }
 
