@@ -10,6 +10,7 @@ require 'getopt/std'
 require 'English'
 require 'rbconfig'
 require 'win32/process' if Config::CONFIG["host_os"] =~ /mswin|mingw/
+require 'optparse'
 
 #
 # Todo:
@@ -25,6 +26,27 @@ require 'win32/process' if Config::CONFIG["host_os"] =~ /mswin|mingw/
 #
 # Note use 'ruby test.rb --name test_name' to execute the test named 'test_name' in test file 'test.rb'
 
+$options = {}
+optparse = OptionParser.new do|opts|
+  # Set a banner, displayed at the top
+  # of the help screen.
+  opts.banner = "Usage: ruby test_case.rb [options]"
+ 
+  # Define the $options, and what they do
+  opts.on(["silent", "normal", "verbose"], '-v LEVEL', '--verbosity LEVEL', 'Set verbosity depending on LEVEL' ) do|level|
+    $options[:verbose] = level
+  end
+
+  # This displays the help screen, all programs are
+  # assumed to have this option.
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts opts
+    exit
+  end
+end
+ 
+optparse.parse!
+
 class SippTest
   attr_accessor :client_options, :server_options, :logging, 
                 :expected_client_output, :expected_server_output, :expected_error_log,
@@ -32,15 +54,16 @@ class SippTest
 				:expected_exitstatus
   
   def initialize(name, client_options, server_options = '')
+    parse_options($options)
     @is_windows = Config::CONFIG["host_os"] =~ /mswin|mingw/
-	@name = name
-	@client_options = client_options
+    @name = name
+    @client_options = client_options
     @server_options = server_options
     @sipp_local_port = 5069
     @sipp_remote_port = 15060
     @sipp_logging_parameters = "" # "-trace_screen -trace_msg"
     @sipp_path = (@is_windows)? "..\\sipp.exe" : "../sipp"
-    @logging = "normal" # silent, normal, verbose
+    @logging = "normal" unless @logging
     @error_message = "";
     @server_screen_destination = "server_console.out" # "#{@name}_server.out"
     @client_screen_destination = "client_console.out" # "#{@name}_client.out"
@@ -48,11 +71,11 @@ class SippTest
 
     @server_pid = -1
     @server_aborted = false
+
+    @run_time = 0;
+    @expected_exitstatus = 0;
 	
-	@run_time = 0;
-	@expected_exitstatus = 0;
-	
-	@to_output = (@is_windows)? ">" : "&>"
+    @to_output = (@is_windows)? ">" : "&>"
 
   end
 
@@ -232,6 +255,12 @@ class SippTest
 #	test.puts_escaped_string(client_output)
 # Note that test which compare output to must use -skip_rlimit flag to eliminate FD_SETSIZE errors
  
+  def parse_options(options)
+    if options[:verbose]
+      @logging = $options[:verbose]
+    end 
+  end
+
   def puts_escaped_string(astring)
 	output = astring.gsub("\n", "\\n")
 	output.gsub!("\r", "\\r")
@@ -256,5 +285,4 @@ class SippTest
   end
   
 end # class SippTest
-
 
