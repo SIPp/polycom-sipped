@@ -128,10 +128,8 @@ void screen_exit(int rc)
     // In order to compute the return code, get the counter
     // of failed calls. If there is 0 failed calls, then everything is OK!
     if (counter_value_failed == 0) {
-      
       if ((timeout_exit) && (counter_value_success < 1)) {
-        
-      DEBUG("exit(EXIT_TEST_RES_INTERNAL=%d)", EXIT_TEST_RES_INTERNAL);
+        DEBUG("exit(EXIT_TEST_RES_INTERNAL=%d)", EXIT_TEST_RES_INTERNAL);
         exit (EXIT_TEST_RES_INTERNAL);
       } else {
       DEBUG("exit(EXIT_TEST_OK=%d)", EXIT_TEST_OK);
@@ -148,7 +146,7 @@ void screen_exit(int rc)
 
 void screen_quit()
 {
-  screen_exit(EXIT_TEST_RES_UNKNOWN);
+  screen_exit(EXIT_TEST_FAILED);
 }
 
 
