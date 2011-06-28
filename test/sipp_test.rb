@@ -115,26 +115,28 @@ class SippTest
 
   def post_execution_validation
     result = true
-	
-	if (@is_windows)
-	  remove_carriage_returns()
-	end
-	
-	#Note that expected_client/server_output use strings, whereas expected_error_log used a regular expression.
-	if (!@expected_client_output.nil?)
+
+    if (@is_windows)
+      remove_carriage_returns()
+    end
+
+    #Note that expected_client/server_output use strings, whereas expected_error_log used a regular expression.
+    if (!@expected_client_output.nil?)
       if (@expected_client_output != get_client_output())
-	    puts "Expected client output does not match actual.\n" unless @logging == "silent"
-		puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
-		result = false;
-	  end
-	end
-	if (!@expected_server_output.nil?)
+        puts "Expected client output does not match actual.\n" unless @logging == "silent"
+	puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
+	result = false;
+      end
+    end
+
+    if (!@expected_server_output.nil?)
       if (@expected_server_output != get_server_output())
-	    puts "Expected server output does not match actual.\n" unless @logging == "silent"
-		puts "Expected = '#{@expected_server_output}'\nActual = '#{get_server_output()}'\n" if @logging == "verbose"
-		result = false;
-	  end
-	end
+        puts "Expected server output does not match actual.\n" unless @logging == "silent"
+        puts "Expected = '#{@expected_server_output}'\nActual = '#{get_server_output()}'\n" if @logging == "verbose"
+        result = false;
+      end
+    end
+
     if(!@expected_error_log.nil?)
       if !(@expected_error_log.match get_error_log)
         puts "Expected error log does not match actual.\n" unless @logging == "silent"
@@ -143,21 +145,22 @@ class SippTest
       end
     end
         
-	if (!@expected_minimum_run_time.nil?)
+    if (!@expected_minimum_run_time.nil?)
       if (@expected_minimum_run_time > @run_time)
-	    puts "Run time #{@run_time} is less than expected minimum of #{@expected_minimum_run_time}.\n" unless @logging == "silent"
-		result = false;
-	  end
-	end
-	if (!@expected_maximum_run_time.nil?)
+        puts "Run time #{@run_time} is less than expected minimum of #{@expected_minimum_run_time}.\n" unless @logging == "silent"
+        result = false;
+      end
+    end
+
+    if (!@expected_maximum_run_time.nil?)
       if (@expected_maximum_run_time < @run_time)
-	    puts "Run time #{@run_time} is greater than expected maximum of #{@expected_maximum_run_time}.\n" unless @logging == "silent"
-		result = false;
-	  end
-	end
+        puts "Run time #{@run_time} is greater than expected maximum of #{@expected_maximum_run_time}.\n" unless @logging == "silent"
+          result = false;
+      end
+    end
 	
-   #override to perform any additional follow-up tests here.
-   return result
+    #override to perform any additional follow-up tests here.
+    return result
   end
 
   def start_sipp_client(testcase_client)
@@ -174,15 +177,15 @@ class SippTest
     elsif ($CHILD_STATUS.signaled?)
       @error_message =  "[ERROR] - child died with signal #{$CHILD_STATUS.termsig}]"
     elsif ($CHILD_STATUS.exited?)
-	  if ($CHILD_STATUS.exitstatus != @expected_exitstatus)
-		@error_message =  "[FAIL] exited with value #{$CHILD_STATUS.exitstatus} while expecting #{@expected_exitstatus}."
-	  else
-		success = true
+      if ($CHILD_STATUS.exitstatus != @expected_exitstatus)
+	@error_message =  "[FAIL] exited with value #{$CHILD_STATUS.exitstatus} while expecting #{@expected_exitstatus}."
+      else
+        success = true
       end
-	else 
-	  @error_message = "Unknown failure: #{$CHILD_STATUS.to_s}"
+    else 
+      @error_message = "Unknown failure: #{$CHILD_STATUS.to_s}"
     end
-    return success
+  return success
   end
 
   def result_message(success)
@@ -262,26 +265,26 @@ class SippTest
   end
 
   def puts_escaped_string(astring)
-	output = astring.gsub("\n", "\\n")
-	output.gsub!("\r", "\\r")
-	output.gsub!("!", "\\!")
-	puts "%Q!#{output}!"
+    output = astring.gsub("\n", "\\n")
+    output.gsub!("\r", "\\r")
+    output.gsub!("!", "\\!")
+    puts "%Q!#{output}!"
   end
 
   def remove_carriage_returns()
     if (!@expected_client_output.nil?)
-	  @expected_client_output = @expected_client_output.gsub("\r","")
-	end
-	if not @expected_server_output.nil?
-	  @expected_server_output = @expected_server_output.gsub("\r","")
-	end
+      @expected_client_output = @expected_client_output.gsub("\r","")
+    end
+    if not @expected_server_output.nil?
+      @expected_server_output = @expected_server_output.gsub("\r","")
+    end
   end
   
   def remove_space_and_crlf(astring)
-	output = astring.gsub("\r", "")
-	output.gsub!("\n", "")
-	output.gsub!(" ", "")	
-	return output
+    output = astring.gsub("\r", "")
+    output.gsub!("\n", "")
+    output.gsub!(" ", "")	
+    return output
   end
   
 end # class SippTest
