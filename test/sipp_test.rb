@@ -9,8 +9,9 @@ require 'rubygems'
 require 'getopt/std'
 require 'English'
 require 'rbconfig'
-require 'win32/process' if Config::CONFIG["host_os"] =~ /mswin|mingw/
 require 'optparse'
+require 'win32/process' if Config::CONFIG["host_os"] =~ /mswin|mingw/
+require 'sys/proctable' if Config::CONFIG["host_os"] =~ /mswin|mingw/
 
 #
 # Todo:
@@ -76,6 +77,7 @@ class SippTest
     @expected_exitstatus = 0;
 	
     @to_output = (@is_windows)? ">" : "&>"
+    @redirect_error = (@is_windows)? " 2>&1" : ""
 
   end
 
@@ -102,14 +104,14 @@ class SippTest
   end
 
   def server_commandline
-    return "#{@sipp_path} #{@server_options} -i 127.0.0.1 -p #{@sipp_remote_port} #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_local_port}" + @to_output + "#{@server_screen_destination}"
+    return "#{@sipp_path} #{@server_options} -i 127.0.0.1 -p #{@sipp_remote_port} #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_local_port}" + @to_output + "#{@server_screen_destination}" + @redirect_error
   end
 
   def client_commandline
     if(@expected_error_log.nil?)
-      return "#{@sipp_path} #{@client_options} -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port}" + @to_output + "#{@client_screen_destination}"
+      return "#{@sipp_path} #{@client_options} -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port}" + @to_output + "#{@client_screen_destination}" + @redirect_error
     else
-      return "#{@sipp_path} #{@client_options} -trace_err -error_file error.log -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port}" + @to_output + "#{@client_screen_destination}"
+      return "#{@sipp_path} #{@client_options} -trace_err -error_file error.log -i 127.0.0.1 -p #{@sipp_local_port}  #{@sipp_logging_parameters} 127.0.0.1:#{@sipp_remote_port}" + @to_output + "#{@client_screen_destination}" + @redirect_error
     end
   end
 
@@ -231,7 +233,11 @@ class SippTest
     @server_options.empty? and return false
     
 	if @is_windows
-	  system("taskkill /F /IM sipp.exe")
+	  Sys::ProcTable.ps.each { |ps|
+        if ps.name.downcase == "sipp.exe"
+          Process.kill('KILL', ps.pid)
+        end
+      }
 	  Process.kill("SIGINT", @server_pid)
 	else
       # kill immediate children of the shell whose pid is stored in @server_pid
