@@ -4216,7 +4216,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         tmp= createSendingMessage(currentAction->getMessage(1), -2 /* do not add crlf*/);
         char *password = strdup(tmp);
 
-        DEBUG("VERIFYING AUTHENTICATION WITH USERNAME %s and PASSWORD %s and AUTH %s", username, password, auth);
+        DEBUG("Verifying authentication with username %s and password %s and auth %s", username, password, auth);
 
         result = verifyAuthHeader(username, password, method, auth);
         if(result) DEBUG("Verification successful");
