@@ -601,7 +601,7 @@ void scenario::checkOptionalRecv(char *elem, unsigned int scenario_file_cursor) 
   last_recv_optional = false;
 }
 
-scenario::scenario(char * filename, int deflt, int dumpxml)
+scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
 {
   char * elem;
   char *method_list = NULL;
@@ -616,6 +616,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml)
     if(!xp_set_xml_buffer_from_file(filename, dumpxml)) {
       ERROR("Unable to load or parse '%s' xml scenario file", filename);
     }
+    reduce_to_path(filename);
+    scenario_path = strdup(filename);
   } else {
     if(!xp_set_xml_buffer_from_string(default_scenario[deflt], dumpxml)) {
       ERROR("Unable to load default xml scenario file");
@@ -1052,6 +1054,7 @@ void clear_int_int(int_int_map m) {
 }
 
 scenario::~scenario() {
+  DEBUG_IN();
   for (msgvec::iterator i = messages.begin(); i != messages.end(); i++) {
     delete *i;
   }
@@ -1072,6 +1075,9 @@ scenario::~scenario() {
   clear_str_int(labelMap);
   clear_str_int(initLabelMap);
 //  clear_str_int(txnMap);
+
+  if (scenario_path) free(scenario_path);
+  DEBUG_OUT();
 }
 
 CSample *parse_distribution(bool oldstyle = false) {
@@ -1616,13 +1622,25 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
         tmpAction->setIntCmd(type);
 #ifdef PCAPPLAY
       } else if ((ptr = xp_get_value((char *) "play_pcap_audio"))) {
-        tmpAction->setPcapArgs(ptr);
+        if(scenario_path){
+          char *temp = (char *)alloca(strlen(scenario_path) + strlen(ptr) + 1);
+          strcpy(temp , scenario_path);
+          tmpAction->setPcapArgs(strcat(temp, ptr));
+        } else {
+          tmpAction->setPcapArgs(ptr);
+        }
         if((ptr = xp_get_value("media_port_offset")))
           parseMediaPortOffset(ptr, tmpAction);
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_AUDIO);
         hasMedia = 1;
       } else if ((ptr = xp_get_value((char *) "play_pcap_video"))) {
-        tmpAction->setPcapArgs(ptr);
+        if(scenario_path){
+          char *temp = (char *)alloca(strlen(scenario_path) + strlen(ptr) + 1);
+          strcpy(temp , scenario_path);
+          tmpAction->setPcapArgs(strcat(temp, ptr));
+        } else {
+          tmpAction->setPcapArgs(ptr);
+        }
         if((ptr = xp_get_value("media_port_offset")))
           parseMediaPortOffset(ptr, tmpAction);
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
@@ -1944,6 +1962,15 @@ int find_scenario(const char *scenario) {
 
   ERROR("Invalid default scenario name '%s'.\n", scenario);
   return -1;
+}
+
+void reduce_to_path(char *filename)
+{
+  char *end = filename + strlen(filename);
+  while ((end > filename) && (*(end-1) != '/') && (*(end-1) != '\\')){
+    end--;
+  }
+  *end = '\0';
 }
 
 // TIP: to integrate an existing XML scenario, use the following sed line:

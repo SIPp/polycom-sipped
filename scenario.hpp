@@ -233,6 +233,8 @@ private:
 
   bool hidedefault;
   bool last_recv_optional;
+
+  char* scenario_path;
 };
 
 /* There are external variable containing the current scenario */
@@ -280,6 +282,7 @@ int get_var(const char *varName, const char *what);
 void parseMediaPortOffset(char* ptr, CAction* action);
 bool parseInteger(char* ptr, int& result);
 int parseOffset(char* ptr);
+void reduce_to_path(char* filename);
 
 extern int get_cr_number(const char *msg);
 
