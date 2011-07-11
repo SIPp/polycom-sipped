@@ -43,7 +43,7 @@
 /************* Constants and Global variables ***********/
 
 #define XP_MAX_NAME_LEN   256
-#define XP_MAX_FILE_LEN   65536
+#define XP_MAX_FILE_LEN   655360
 #define XP_MAX_STACK_LEN  256
 
 char   xp_file     [XP_MAX_FILE_LEN + 1];
@@ -416,7 +416,7 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index, unsigned *
     } // if sub_list != 0
 
     if(*index >= XP_MAX_FILE_LEN) {
-      printf("Error: XML definition too long.\n");
+      printf("Error: XML scenario file too long (current maximum for all content including includes is %d bytes).\n", XP_MAX_FILE_LEN);
       fclose(f);
       return 0; 
     }
