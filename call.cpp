@@ -2304,6 +2304,9 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         }
         break;
       case E_Message_Remote_IP:
+        if (!strlen(remote_ip_escaped)){
+          ERROR("The \"[remote_ip]\" keyword requires a remote IP be specified on the command line");
+        }
         dest += snprintf(dest, left, "%s", remote_ip_escaped);
         break;
       case E_Message_Remote_Host:
