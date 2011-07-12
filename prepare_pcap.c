@@ -49,6 +49,10 @@ typedef struct _ipv6_hdr {
     char dontcare2[33];
 } ipv6_hdr;
 
+typedef struct _vlan_hdr {
+  u_int16_t vlan_data;
+  u_int16_t vlan_type;
+} vlan_hdr;
 
 #ifdef __HPUX
 int check(u_int16_t *buffer, int len){
@@ -91,6 +95,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
   u_long pktlen;
   pcap_pkt *pkt_index;
   ether_hdr *ethhdr;
+  vlan_hdr *vlanhdr;
   struct iphdr *iphdr;
   ipv6_hdr *ip6hdr;
   struct udphdr *udphdr;
@@ -116,12 +121,32 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
   {
 #endif
     ethhdr = (ether_hdr *)pktdata;
-    if (ntohs(ethhdr->ether_type) != 0x0800 /* IPv4 */
+    int num_of_vlan_headers = 0;
+    if (ntohs(ethhdr->ether_type) == 0x8100 /* VLAN */) {
+      int num_of_vlan_headers = 1;
+      vlanhdr = (vlan_hdr *)((char *)ethhdr + sizeof(*ethhdr));
+      while (ntohs(vlanhdr->vlan_type) == 0x8100 /* VLAN */) {
+        num_of_vlan_headers ++;
+        vlanhdr = (vlan_hdr *)((char*)vlanhdr + sizeof(*vlanhdr));
+      }
+      if(num_of_vlan_headers > 2){
+        WARNING("%d VLAN headers detected. There should be at most 2");
+      }
+      if (ntohs(vlanhdr->vlan_type) != 0x0800 /* IPv4 */
+          && ntohs(vlanhdr->vlan_type) != 0x86dd) /* IPv6 */ {
+        fprintf(stderr, "Ignoring non IP{4,6} packet!\n");
+        continue;
+      }
+      iphdr = (struct iphdr *)((char *)vlanhdr + sizeof(*vlanhdr));
+    }
+    else if (ntohs(ethhdr->ether_type) != 0x0800 /* IPv4 */
           && ntohs(ethhdr->ether_type) != 0x86dd) /* IPv6 */ {
       fprintf(stderr, "Ignoring non IP{4,6} packet!\n");
       continue;
     }
-    iphdr = (struct iphdr *)((char *)ethhdr + sizeof(*ethhdr));
+    else {
+      iphdr = (struct iphdr *)((char *)ethhdr + sizeof(*ethhdr));
+    }
     if (iphdr && iphdr->version == 6) {
       //ipv6
       pktlen = (u_long) pkthdr->len - sizeof(*ethhdr) - sizeof(*ip6hdr);
