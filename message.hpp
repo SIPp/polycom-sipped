@@ -150,6 +150,7 @@ class SendingMessage {
     bool parse_dialog_number(char * src, struct MessageComponent* newcomp);
     bool parse_value_only (char * src, struct MessageComponent* newcomp);
     void parse_encoding (char * src, struct MessageComponent* newcomp);
+    void parse_generated (char * src, struct MessageComponent* newcomp);
 
 };
 
@@ -169,6 +170,7 @@ struct MessageComponent {
   int varId;
   int dialog_number; // component may refer to another dialog in case of _n syntax
   bool valueOnly;  // don't include header when printing info out.
+  bool generated; // auto generate component
   union u {
     /* Authentication Parameters. */
     struct {

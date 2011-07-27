@@ -232,6 +232,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       src = key + 1;
       // allow +/-n for numeric variables
       newcomp->offset = 0;
+
       if ((strncmp(keyword, "authentication", strlen("authentication")) && strncmp(keyword, "tdmmap", strlen("tdmmap")))){
         newcomp->offset = parseOffset(keyword);
         /* end the string before the +/- sign so that the parser doesn't read it as an unrecognized keyword */
@@ -278,6 +279,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           break;
         }
       }
+
+       if (newcomp->type >= E_Message_Peer_Tag_Param && newcomp->type <= E_Message_Remote_Tag ) {
+         parse_generated(keyword, newcomp);
+       }
 
       if (simple_keyword || dialog_keyword) {
         messageComponents.push_back(newcomp);
@@ -607,6 +612,16 @@ void SendingMessage::parse_encoding(char* src, struct MessageComponent* newcomp)
       ERROR("Encoding type \"%s\" not recognized", encoding);
   } else {
     newcomp->encoding = E_ENCODING_NONE;
+  }
+}
+
+void SendingMessage::parse_generated(char* src, struct MessageComponent* newcomp) {
+  char generated[KEYWORD_SIZE];
+  getKeywordParam(src, "generated=", generated);
+  if (generated[0]!='\0'){
+    newcomp->generated = get_bool(generated, "Generated");
+  } else {
+    newcomp->generated = false;
   }
 }
 

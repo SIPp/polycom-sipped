@@ -2540,7 +2540,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Peer_Tag_Param:
       case E_Message_Remote_Tag:
       {
-        if (!ds->peer_tag) {
+        if (!ds->peer_tag && comp->generated) {
           // generate tag if 1st time used
           ds->peer_tag = (char *)malloc(MAX_HEADER_LEN);
           if (!ds->peer_tag) 
