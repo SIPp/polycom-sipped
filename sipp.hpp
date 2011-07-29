@@ -258,6 +258,7 @@ extern unsigned int       pid                     _DEFVAL(0);
 extern bool               print_all_responses     _DEFVAL(false);
 extern unsigned long      stop_after              _DEFVAL(0xffffffff);
 extern int                quitting                _DEFVAL(0);
+extern bool               q_pressed               _DEFVAL(false);
 extern int                interrupt               _DEFVAL(0);
 extern bool               paused                  _DEFVAL(false);
 extern int                lose_packets            _DEFVAL(0);

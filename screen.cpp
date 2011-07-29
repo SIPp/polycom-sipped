@@ -125,14 +125,17 @@ void screen_exit(int rc)
   } else {
     // Normal exit: we need to determine if the calls were all
     // successful or not.
-    // In order to compute the return code, get the counter
+    // First check if the user ended the call manually.
+    // Then in order to compute the return code, get the counter
     // of failed calls. If there is 0 failed calls, then everything is OK!
-    if (counter_value_failed == 0) {
+    if (q_pressed) {
+      exit (EXIT_TEST_MANUALLY_STOPPED);
+    } else if (counter_value_failed == 0) {
       if ((timeout_exit) && (counter_value_success < 1)) {
         DEBUG("exit(EXIT_TEST_RES_INTERNAL=%d)", EXIT_TEST_RES_INTERNAL);
         exit (EXIT_TEST_RES_INTERNAL);
       } else {
-      DEBUG("exit(EXIT_TEST_OK=%d)", EXIT_TEST_OK);
+        DEBUG("exit(EXIT_TEST_OK=%d)", EXIT_TEST_OK);
         exit(EXIT_TEST_OK);
       }
     } else {
@@ -146,7 +149,7 @@ void screen_exit(int rc)
 
 void screen_quit()
 {
-  screen_exit(EXIT_TEST_FAILED);
+   screen_exit(EXIT_TEST_KILLED);
 }
 
 
@@ -238,7 +241,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     if(!error_lfi.fptr) {
       c += sprintf(c, "%s: Unable to create '%s': %s.\n",
         screen_exename, screen_logfile, strerror(errno));
-      screen_exit(EXIT_FATAL_ERROR);
+      screen_exit(EXIT_SYSTEM_ERROR);
     } else {
       DEBUG("%s: The following events occured:\n", screen_exename);
       fprintf(error_lfi.fptr, "%s: The following events occured:\n",
