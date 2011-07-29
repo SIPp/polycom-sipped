@@ -1638,6 +1638,7 @@ bool process_key(int c) {
 
     case 'q':
       quitting+=10;
+      q_pressed = true;
       DEBUG("q pressed. quitting = %d", quitting);
       print_statistics(0);
       break;
@@ -1645,6 +1646,7 @@ bool process_key(int c) {
     case 'Q':
       /* We are going to break, so we never have a chance to press q twice. */
       quitting+=20;
+      q_pressed = true;
       DEBUG("Q pressed. quitting = %d", quitting);
       print_statistics(0);
       break;
@@ -3459,7 +3461,9 @@ void traffic_thread()
 	if (screenf) {
 	  print_screens();
 	}
-
+        if (q_pressed) {
+          screen_exit(EXIT_TEST_MANUALLY_STOPPED);
+        }
         screen_exit(EXIT_TEST_RES_UNKNOWN);
       }
     }
@@ -5018,7 +5022,7 @@ int main(int argc, char *argv[])
         case -1:
           // error when forking !
           ERROR_NO("Forking error");
-          exit(EXIT_FATAL_ERROR);
+          exit(EXIT_SYSTEM_ERROR);
         case 0:
           // child process - poursuing the execution
 	  // close all of our file descriptors
