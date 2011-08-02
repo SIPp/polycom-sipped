@@ -235,6 +235,8 @@ private:
   bool last_recv_optional;
 
   char* scenario_path;
+
+  void parseCheckIt(CAction* action, char* varName, char* what);
 };
 
 /* There are external variable containing the current scenario */

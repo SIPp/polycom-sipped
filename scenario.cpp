@@ -1024,7 +1024,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
   if (messages.size() == 0) {
     ERROR("Did not find any messages inside of scenario!");
   }
-}
+}//scenairo::scenario
 
 void scenario::runInit() {
   call *initcall;
@@ -1429,15 +1429,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
         }
       }
 
-      if (xp_get_value("check_it")) {
-        tmpAction->setCheckIt(xp_get_bool("check_it", "ereg", false));
-	get_var(currentTabVarName[0], "assign_to");
-        if (xp_get_value("check_it_inverse")) {
-          ERROR("Can not have both check_it and check_it_inverse for ereg!");
-        }
-      } else {
-        tmpAction->setCheckItInverse(xp_get_bool("check_it_inverse", "ereg", false));
-      }
+      parseCheckIt(tmpAction, currentTabVarName[0], "ereg");
 
       freeStringTable(currentTabVarName, currentNbVarNames);
 
@@ -1515,7 +1507,13 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setVarId(xp_get_var("assign_to", "todouble"));
       tmpAction->setVarInId(xp_get_var("variable", "todouble"));
     } else if(!strcmp(actionElem, "test")) {
-      if (xp_get_value("assign_to")) tmpAction->setVarId(xp_get_var("assign_to", "test"));
+      char* assignTo;
+      if (xp_get_value("assign_to")){
+        tmpAction->setVarId(xp_get_var("assign_to", "test"));
+        assignTo = strdup(xp_get_value("assign_to"));
+      } else {
+         assignTo = strdup("");
+      }
       tmpAction->setVarInId(xp_get_var("variable", "test"));
       if (xp_get_value("value")) {
         tmpAction->setDoubleValue(xp_get_double("value", "test"));
@@ -1542,15 +1540,9 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       } else {
         ERROR("Invalid 'compare' parameter: %s", ptr);
       }
-      if (xp_get_value("check_it")) {
-        tmpAction->setCheckIt(xp_get_bool("check_it", "test", false));
-        if (xp_get_value("check_it_inverse")) {
-          ERROR("Can not have both check_it and check_it_inverse for test!");
-        }
-      } else {
-        tmpAction->setCheckItInverse(xp_get_bool("check_it_inverse", "test", false));
-      }
+      parseCheckIt(tmpAction, assignTo, "test");
       free(ptr);
+      free(assignTo);
     } else if(!strcmp(actionElem, "verifyauth")) {
 #ifdef _USE_OPENSSL
       tmpAction->setVarId(xp_get_var("assign_to", "verifyauth"));
@@ -1778,6 +1770,21 @@ void parseMediaPortOffset(char* ptr, CAction* action) {
 }
 #endif
 
+//gets the boolean value of check it or check it inverse, and sets it in the action
+void scenario::parseCheckIt(CAction* action, char* varName, char* what) {
+  if (xp_get_value("check_it")) {
+    if(xp_get_bool("check_it", what, false)) {
+      action->setCheckIt(true);
+      if(strlen(varName)) get_var(varName, what);
+    }
+    if (xp_get_value("check_it_inverse")) {
+      ERROR("Can not have both check_it and check_it_inverse in %s.", what);
+    }
+  } else if (xp_get_bool("check_it_inverse", what, false)) {
+    action->setCheckItInverse(true);
+    if(strlen(varName)) get_var(varName, what);
+  }
+}
 // optional leading + or - (so accepts blank => 0, or + or - an integer, assumes no offset is +.
 // ie '', '+5', '-5' and '5'.
 bool parseInteger(char *ptr, int& result) {
