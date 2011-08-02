@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Describe this scenario here" parameters="-mc -aa" source="" id="" config="">
+  <recv request="INVITE" dialog="1"/>
+
+  <send dialog="1">
+    <![CDATA[
+
+      NOTIFY sip:5200@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch];rport
+      Max-Forwards: 70
+      From: "5100" <sip:5100@[local_ip]:[local_port]>[local_tag_param]
+      To: <sip:5200@[remote_ip]:[remote_port]>[remote_tag_param]
+      Contact: <sip:5100@[local_ip]:[local_port];transport=[transport]>
+      Call-ID: [call_id]
+      CSeq: [cseq] NOTIFY
+      User-Agent: Deltapath frSIP PBX
+      Remote-Party-ID: "5100" <sip:5100@202.130.106.33>;privacy=off;screen=no
+      Event: conference
+      Subscription-State: active
+      Refer-To: <sip:5300@[local_ip]:[local_port]?Replaces=[call_id dialog="1" encoding="URI"];to-tag%3D[remote_tag dialog="2" generated="true"]%3Bfrom-tag%3D[local_tag dialog="2"]>
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <send dialog="1">
+    <![CDATA[
+
+      NOTIFY sip:5200@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch];rport
+      Max-Forwards: 70
+      From: "5100" <sip:5100@[local_ip]:[local_port]>[local_tag_param]
+      To: <sip:5200@[remote_ip]:[remote_port]>[remote_tag_param]
+      Contact: <sip:5100@[local_ip]:[local_port];transport=[transport]>
+      Call-ID: [call_id]
+      CSeq: [cseq] NOTIFY
+      User-Agent: Deltapath frSIP PBX
+      Remote-Party-ID: "5100" <sip:5100@202.130.106.33>;privacy=off;screen=no
+      Event: conference
+      Subscription-State: active
+      Refer-To: <sip:5300@[local_ip]:[local_port]?Replaces=[call_id dialog="1" encoding="URI"];to-tag%3D[remote_tag dialog="3" generated="false"]%3Bfrom-tag%3D[local_tag dialog="3"]>
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+</scenario>
