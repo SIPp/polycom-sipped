@@ -4004,7 +4004,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         ERROR("Invalid looking place: %d\n", currentAction->getLookingPlace());
       }
 
-      M_callVariableTable->getVar(currentAction->getVarId()) -> resetNbOfMatches(); 
+      M_callVariableTable->getVar(currentAction->getVarId())->resetNbOfMatches(); 
       currentAction->executeRegExp(haystack, M_callVariableTable);
 
       if( (!(M_callVariableTable->getVar(currentAction->getVarId())->isSet())) && (currentAction->getCheckIt() == true) ) {
@@ -4695,6 +4695,8 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     setLastMsg(old_last_recv_msg);
 
     CStat::globalStat(CStat::E_AUTO_ANSWERED);
+    message *curmsg = call_scenario->messages[msg_index];
+    curmsg->nb_unexp++;
     return true;
     break;
   }
