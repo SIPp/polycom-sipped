@@ -27,6 +27,8 @@ require "./verify_error_messages.rb"
 require "./verify_test_action.rb"
 require "./verify_manual_call-ids.rb"
 require "./verify_encoding.rb"
+require "./verify_generated.rb"
+require "./verify_error_codes.rb"
 
 def show_help_message
   puts "Usage: test \n\n";
