@@ -1519,9 +1519,9 @@ void print_statistics(int last)
 	  errstart++;
 	}
 	if (strlen(errstart) > 60) {
-	  printf("Last Error: %.60s..." SIPP_ENDL, errstart);
+	  printf("Last Message: %.60s..." SIPP_ENDL, errstart);
 	} else {
-	  printf("Last Error: %s" SIPP_ENDL, errstart);
+	  printf("Last Message: %s" SIPP_ENDL, errstart);
 	}
   fflush(stdout);
     }

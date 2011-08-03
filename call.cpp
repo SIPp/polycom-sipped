@@ -4697,6 +4697,7 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     CStat::globalStat(CStat::E_AUTO_ANSWERED);
     message *curmsg = call_scenario->messages[msg_index];
     curmsg->nb_unexp++;
+    MESSAGE("Unexpected REGISTER, INFO, UPDATE, or NOTIFY message recieved. Automatic response generated.\n");
     return true;
     break;
   }

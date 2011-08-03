@@ -218,30 +218,41 @@ void screen_init(void (*exit_handler)())
   }
 }
 
-static void _screen_error(int fatal, bool use_errno, int error, const char *fmt, va_list ap)
-{
-  static unsigned long long count = 0;
-  char * c = screen_last_error;
+static void _set_last_msg (const char *fmt, va_list ap) {
+  char* c = screen_last_error;
   struct timeval currentTime;
-
-  CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
-
   GET_TIME (&currentTime);
 
   c+= sprintf(c, "%s: ", CStat::formatTime(&currentTime));
   c+= vsprintf(c, fmt, ap);
-  if (use_errno) {
-    c += sprintf(c, ", errno = %d (%s)", error, strerror(error));
-  }
   c+= sprintf(c, ".\n");
+}
+
+static void _screen_error(int fatal, bool use_errno, int error, const char *fmt, va_list ap)
+{
+  static unsigned long long count = 0;
+  char* msg = strdup(fmt);
+
+  CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
+
+  if (use_errno) {
+    char tmp[50];
+    sprintf(tmp, ", errno = %d (%s)", error,  strerror(error));
+    realloc(msg, strlen(msg) + strlen(tmp) + 1);
+    strcat(msg, tmp);
+  }
+
   screen_errors++;
 
   if(screen_inited && !error_lfi.fptr && print_all_responses) {
     rotate_errorf();
     if(!error_lfi.fptr) {
-      c += sprintf(c, "%s: Unable to create '%s': %s.\n",
+      char tmp[50];
+      sprintf(tmp, "%s: Unable to create '%s': %s.\n",
         screen_exename, screen_logfile, strerror(errno));
-      screen_exit(EXIT_SYSTEM_ERROR);
+      realloc(msg, strlen(msg) + strlen(tmp) + 1);
+      strcat(msg, tmp);
+      screen_exit(EXIT_FATAL_ERROR);
     } else {
       DEBUG("%s: The following events occured:\n", screen_exename);
       fprintf(error_lfi.fptr, "%s: The following events occured:\n",
@@ -250,6 +261,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     }
   }
 
+  _set_last_msg(msg, ap);
+  free(msg);
   DEBUG("%s", screen_last_error);
   if(error_lfi.fptr) {
     count += fprintf(error_lfi.fptr, "%s", screen_last_error);
@@ -320,6 +333,13 @@ void WARNING_NO(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   _screen_error(false, true, errno, fmt, ap);
+  va_end(ap);
+}
+
+void MESSAGE(const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  _set_last_msg(fmt, ap);
   va_end(ap);
 }
 }

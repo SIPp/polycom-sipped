@@ -35,6 +35,7 @@ extern "C" {
   void WARNING(const char *fmt, ...);
   void ERROR_NO(const char *fmt, ...);
   void WARNING_NO(const char *fmt, ...);
+  void MESSAGE(const char *fmt, ...);
 #ifdef __cplusplus
 }
 #endif
