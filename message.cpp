@@ -218,11 +218,12 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         if (*key == ']')
           break;
       }
+      if (*key == '\n') 
+        ERROR("Cannot have end of line characters in the middle of keywords. Possibly a missing ']' or a duplicate 'CDATA[' section in scenario while parsing '%s'.", current_line);
+
       if (*key != ']') {
         key = NULL;
       }
-      if (*key == '\n') 
-        ERROR("Cannot have end of line characters in the middle of keywords. Possibly a missing ']'.");
 
       if((!key) || ((key - src) > KEYWORD_SIZE) || (!(key - src))){
         ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
