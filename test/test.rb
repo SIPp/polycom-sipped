@@ -29,6 +29,7 @@ require "./verify_manual_call-ids.rb"
 require "./verify_encoding.rb"
 require "./verify_generated.rb"
 require "./verify_error_codes.rb"
+require "./zero_content_length_header_not_last_scenarios.rb"
 
 def show_help_message
   puts "Usage: test \n\n";

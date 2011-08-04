@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="zero_content_length_header_not_last" params="-mc">
+  <send dialog="1">
+    <![CDATA[
+
+      NOTIFY sip:6104438079@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      Event: call-info
+      Allow-Events: message-summary, refer, dialog, line-seize, presence, call-info, as-feature-event
+      Max-Forwards: 69
+      Call-ID: [call_id]
+      From: <sip:6104438079@[local_ip]:[local_port]>[local_tag_param]
+      To: "6104438079" <sip:6104438079@[remote_ip]:[remote_port]>[remote_tag_param]
+      CSeq: [cseq] NOTIFY
+      Contact: <sip:6104438079@[local_ip]:[local_port];transport=[transport]>
+      Organization: MetaSwitch
+      Supported: 100rel, resource-priority
+      Subscription-State: active
+      Content-Length: [len]
+      Call-Info: <sip:208.59.253.70>;appearance-index=1;appearance-state=alerting,<sip:208.59.253.70>;appearance-index=*;appearance-state=idle
+
+    ]]>
+  </send>
+
+
+  <recv response="200">
+      <action>
+           <ereg regexp=".*" search_in="hdr" header="Call-Info:" check_it="true" assign_to="dontcare" />
+           <log message="Call-Info header is '[$dontcare]'" />           
+      </action>
+  </recv>
+
+  <!-- End of CDATA marker is on the same line as the Content-length header to verify \r\n is added properly -->
+  <send dialog="1">
+    <![CDATA[
+
+      NOTIFY sip:6104438079@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      Event: call-info
+      Allow-Events: message-summary, refer, dialog, line-seize, presence, call-info, as-feature-event
+      Max-Forwards: 69
+      Call-ID: [call_id]
+      From: <sip:6104438079@[local_ip]:[local_port]>[local_tag_param]
+      To: "6104438079" <sip:6104438079@[remote_ip]:[remote_port]>[remote_tag_param]
+      CSeq: [cseq] NOTIFY
+      Contact: <sip:6104438079@[local_ip]:[local_port];transport=[transport]>
+      Organization: MetaSwitch
+      Supported: 100rel, resource-priority
+      Subscription-State: active
+      Content-Length: [len]]]>
+  </send>
+
+  <recv response="200" dialog="2">
+      <action>
+           <ereg regexp=" 0" search_in="hdr" header="Previous-Content-Length:" check_it="true" assign_to="contentlength" />
+           <log message="Previous-Content-Length header is '[$contentlength]'" />           
+      </action>
+  </recv>
+  
+</scenario>
+
+

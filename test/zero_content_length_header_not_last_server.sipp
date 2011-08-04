@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="zero_content_length_header_not_last" params="-mc">
+  <recv request="NOTIFY" dialog="1" />
+
+  <send dialog="1" >
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      Content-Length: 0
+      [last_Call-Info:]
+
+    ]]>
+  </send>
+
+  <recv request="NOTIFY" dialog="1" >
+  </recv>
+
+   <send dialog="1" >
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      Content-Length: 0
+      Previous-Content-Length: [last_Content-Length value_only="true"]
+
+    ]]>
+  </send>
+ 
+</scenario>
+
+
