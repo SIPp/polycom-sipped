@@ -1,4 +1,9 @@
 This file tracks changes responsible for version number updates.
+3.2.15 xx-xx-xxxx
+- Fix generation of Content-Length: [len] when used in middle of header list
+- Improve error message associated with unknown response CSEQ method when mixing start_txn and non-txn usage.
+- Log error message rather than crash when \n encountered in [keywords].
+- Report error if [remote_ip] used but not specified on command line - Done July 12 2011 
 
 3.2.14 06-13-2011
 - SIPp crashing when ']' missing from keyword parameter.  Removed tsrc, as it wasn't actually doing anything except when 

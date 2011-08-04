@@ -2785,14 +2785,14 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       ERROR("The authentication keyword should appear in the message header, not the body!");
     }
 
+    char tmp = length_marker[5]; // save letter that will be overwritten by \0
     if (body && dest - body > 4 && dest - body < 100004) {
-      char tmp = length_marker[5];
       sprintf(length_marker, "%5u", (unsigned)(dest - body - 4 + len_offset));
-      length_marker[5] = tmp;
     } else {
       // Other cases: Content-Length is 0
-      sprintf(length_marker, "    0\r\n\r\n");
+      sprintf(length_marker, "    0");
     }
+    length_marker[5] = tmp; // restore letter that was overwritten by \0
   }
 
   if (msgLen) {
@@ -3325,12 +3325,13 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
       /* Always true for the first message. */
       result = true;
     } else {
+      // no use_txn => verify that this request was sent by SIPp
       if (curmsg->recv_response_for_cseq_method_list &&
 	    strstr(curmsg->recv_response_for_cseq_method_list, responsecseqmethod)) {
         /* If we do not have a transaction defined, we just check the CSEQ method. */
         result = true;
       } else {
-        sprintf(reason, "Method '%s' is not one of the methods sent by SIPp to initiate a transaction (%s).",
+        sprintf(reason, "Method '%s' is not one of the methods sent by SIPp to initiate a transaction. The methods are (%s). Note that requests generated with the start_txn attribute are not included in this list and the associated <recv> must have a matching use_txn() attribute.",
           responsecseqmethod, curmsg->recv_response_for_cseq_method_list);
       }
     } 
