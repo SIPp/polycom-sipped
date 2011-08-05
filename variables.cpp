@@ -365,7 +365,7 @@ void AllocVariableTable::validate() {
     if (variableReferences[var_it->second] < 2) {
       const char *varName = var_it->first.c_str();
       int varRef = variableReferences[var_it->second];
-      ERROR("Variable $%s is set but never refrenced. This may be due to a spelling error.\n If this was the intended behaviour, please use trim to reference the variable a second time.\n", varName);
+      ERROR("Variable $%s is set but never refrenced. This may be due to a spelling error or unintended space in the variable name. If this was the intended behaviour, please use trim to reference the variable a second time.", varName);
     }
   }
   if (av_parent) {
