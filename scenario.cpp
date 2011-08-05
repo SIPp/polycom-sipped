@@ -1507,13 +1507,11 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setVarId(xp_get_var("assign_to", "todouble"));
       tmpAction->setVarInId(xp_get_var("variable", "todouble"));
     } else if(!strcmp(actionElem, "test")) {
-      char* assignTo;
+      char* assignTo = 0; // used to bump usage count if specified
       if (xp_get_value("assign_to")){
         tmpAction->setVarId(xp_get_var("assign_to", "test"));
-        assignTo = strdup(xp_get_value("assign_to"));
-      } else {
-         assignTo = strdup("");
-      }
+        assignTo = xp_get_value("assign_to");
+      } 
       tmpAction->setVarInId(xp_get_var("variable", "test"));
       if (xp_get_value("value")) {
         tmpAction->setDoubleValue(xp_get_double("value", "test"));
@@ -1542,7 +1540,6 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       }
       parseCheckIt(tmpAction, assignTo, "test");
       free(ptr);
-      free(assignTo);
     } else if(!strcmp(actionElem, "verifyauth")) {
 #ifdef _USE_OPENSSL
       tmpAction->setVarId(xp_get_var("assign_to", "verifyauth"));
@@ -1775,14 +1772,14 @@ void scenario::parseCheckIt(CAction* action, char* varName, char* what) {
   if (xp_get_value("check_it")) {
     if(xp_get_bool("check_it", what, false)) {
       action->setCheckIt(true);
-      if(strlen(varName)) get_var(varName, what);
+      if(varName) get_var(varName, what); // bump usage count
     }
     if (xp_get_value("check_it_inverse")) {
       ERROR("Can not have both check_it and check_it_inverse in %s.", what);
     }
   } else if (xp_get_bool("check_it_inverse", what, false)) {
     action->setCheckItInverse(true);
-    if(strlen(varName)) get_var(varName, what);
+    if(varNam)) get_var(varName, what); // bump usage count
   }
 }
 // optional leading + or - (so accepts blank => 0, or + or - an integer, assumes no offset is +.
