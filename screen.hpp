@@ -51,6 +51,8 @@ extern "C" {
 #define EXIT_BIND_ERROR            -2
 #define EXIT_SYSTEM_ERROR          -3
 
+#define MAX_ERROR_SIZE            1024
+
 void screen_set_exename(char * exe_name);
 void screen_init(void (*exit_handler)());
 void screen_clear();

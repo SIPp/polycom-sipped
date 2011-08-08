@@ -236,8 +236,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
 
   if (use_errno) {
-    char tmp[50];
-    sprintf(tmp, ", errno = %d (%s)", error,  strerror(error));
+    char tmp[MAX_ERROR_SIZE];
+    snprintf(tmp, MAX_ERROR_SIZE, ", errno = %d (%s)", error,  strerror(error));
     realloc(msg, strlen(msg) + strlen(tmp) + 1);
     strcat(msg, tmp);
   }
@@ -247,8 +247,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   if(screen_inited && !error_lfi.fptr && print_all_responses) {
     rotate_errorf();
     if(!error_lfi.fptr) {
-      char tmp[50];
-      sprintf(tmp, "%s: Unable to create '%s': %s.\n",
+      char tmp[MAX_ERROR_SIZE];
+      snprintf(tmp, MAX_ERROR_SIZE, "%s: Unable to create '%s': %s.\n",
         screen_exename, screen_logfile, strerror(errno));
       realloc(msg, strlen(msg) + strlen(tmp) + 1);
       strcat(msg, tmp);
