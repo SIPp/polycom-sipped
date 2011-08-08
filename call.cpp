@@ -66,6 +66,7 @@ extern  map<string, struct sipp_socket *>     map_perip_fd;
 char short_and_long_headers[NUM_OF_SHORT_FORM_HEADERS * 2][MAX_HEADER_NAME_LEN] =
   { "i:", "m:", "e:", "l:", "c:", "f:", "s:", "k:", "t:", "v:",
     "Call-ID:", "Contact:", "Content-Encoding:", "Content-Length:", "Content-Type:", "From:", "Subject:", "Supported:", "To:", "Via:"};
+char encode_buffer[MAX_HEADER_LEN * ENCODE_LEN_PER_CHAR];
 
 #ifdef PCAPPLAY
 /* send_packets pthread wrapper */
@@ -2410,13 +2411,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(new_call_id, MAX_HEADER_LEN, "%d-%s", src->getDialogNumber(), new_id);
           ds->call_id = string(new_call_id);
         }
-        if(comp->encoding != E_ENCODING_NONE) {
-          char *call_id = (char *)alloca(ds->call_id.length() * ENCODE_LEN_PER_CHAR + 1);
-          encode(comp, ds->call_id.c_str(), call_id);
-          dest += snprintf(dest, left, "%s", call_id);
-        } else {
-          dest += snprintf(dest, left, "%s", ds->call_id.c_str());
-        }
+        dest += snprintf(dest, left, "%s", encode_as_needed(ds->call_id.c_str(), comp));
         break;
       case E_Message_CSEQ:
         if (useTxn) {
@@ -2434,13 +2429,13 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_CSEQ_Method:
         if (useTxn) {
           // using a transaction: use stored value.
-          dest += snprintf(dest, left, "%s", txn.getCseqMethod().c_str());
+          dest += snprintf(dest, left, "%s", encode_as_needed(txn.getCseqMethod().c_str(), comp));
         } else {
           // no transaction: value to use depends on if request or response:
           if (!src->isResponse()) {
-            dest += snprintf(dest, left, "%s", ds->client_cseq_method);
+            dest += snprintf(dest, left, "%s", encode_as_needed(ds->client_cseq_method, comp));
           } else {
-            dest += snprintf(dest, left, "%s", ds->server_cseq_method);
+            dest += snprintf(dest, left, "%s", encode_as_needed(ds->server_cseq_method, comp));
           }
         }
         break;
@@ -2455,10 +2450,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Client_CSEQ_Method:
         if (useTxn) {
           verifyIsClientTransaction(txn, "[client_cseq_method]", "[server_cseq_method]"); 
-          dest += snprintf(dest, left, "%s", txn.getCseqMethod().c_str());
+          dest += snprintf(dest, left, "%s", encode_as_needed(txn.getCseqMethod().c_str(), comp));
         }
         else
-          dest += snprintf(dest, left, "%s", ds->client_cseq_method);
+          dest += snprintf(dest, left, "%s", encode_as_needed(ds->client_cseq_method, comp));
         break;
 
       case E_Message_Server_CSEQ:
@@ -2474,10 +2469,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Received_CSEQ_Method:
         if (useTxn) {
           verifyIsServerTransaction(txn, "[server_cseq_method]", "[client_cseq_method]"); 
-          dest += snprintf(dest, left, "%s", txn.getCseqMethod().c_str());
+          dest += snprintf(dest, left, "%s", encode_as_needed(txn.getCseqMethod().c_str(), comp));
         }
         else
-          dest += snprintf(dest, left, "%s", ds->server_cseq_method);
+          dest += snprintf(dest, left, "%s", encode_as_needed(ds->server_cseq_method, comp));
         break;
       case E_Message_PID:
         dest += snprintf(dest, left, "%d", pid);
@@ -2520,7 +2515,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
       case E_Message_Next_Url:
         if (ds->next_req_url) {
-          dest += sprintf(dest, "%s", ds->next_req_url);
+          dest += sprintf(dest, "%s", encode_as_needed(ds->next_req_url, comp));
         }
         break;
       case E_Message_Len:
@@ -2540,7 +2535,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Peer_Tag_Param:
       case E_Message_Remote_Tag:
       {
-        if (!ds->peer_tag && comp->generated) {
+        if (!ds->peer_tag && comp->auto_generate_remote_tag) {
           // generate tag if 1st time used
           ds->peer_tag = (char *)malloc(MAX_HEADER_LEN);
           if (!ds->peer_tag) 
@@ -2553,19 +2548,11 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(ds->peer_tag, MAX_HEADER_LEN, "remote-%u-%u-%d", pid, number, idx);
           DEBUG("Auto-generating remote_tag '%s'", ds->peer_tag);
         }
-
         if(ds->peer_tag) {
-          char *peer_tag;
-          if(comp->encoding != E_ENCODING_NONE){
-            peer_tag = (char *)alloca(strlen(ds->peer_tag) * ENCODE_LEN_PER_CHAR + 1);
-            encode(comp, ds->peer_tag, peer_tag);
-          } else {
-            peer_tag = ds->peer_tag;
-          }
           if((comp->type == E_Message_Remote_Tag_Param) || (comp->type == E_Message_Peer_Tag_Param))
-            dest += snprintf(dest, left, ";tag=%s", peer_tag);
+            dest += snprintf(dest, left, ";tag=%s", encode_as_needed(ds->peer_tag, comp));
           else
-            dest += snprintf(dest, left, "%s", peer_tag);
+            dest += snprintf(dest, left, "%s", encode_as_needed(ds->peer_tag, comp));
         }
         break;
       }
@@ -2585,41 +2572,34 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           snprintf(ds->local_tag, MAX_HEADER_LEN, "local-%u-%u-%d", pid, number, idx);
           DEBUG("Auto-generating local_tag '%s'", ds->local_tag);
         }
-        char *local_tag;
-        if(comp->encoding != E_ENCODING_NONE) {
-          local_tag = (char *)alloca(strlen(ds->local_tag) * ENCODE_LEN_PER_CHAR + 1);
-          encode(comp, ds->local_tag, local_tag);
-        } else {
-          local_tag = ds->local_tag;
-        }
         if(comp->type == E_Message_Local_Tag_Param)
-          dest += snprintf(dest, left, ";tag=%s", local_tag);
+          dest += snprintf(dest, left, ";tag=%s", encode_as_needed(ds->local_tag, comp));
         else
-          dest += snprintf(dest, left, "%s", local_tag);
+          dest += snprintf(dest, left, "%s", encode_as_needed(ds->local_tag, comp));
         break;
       }
       case E_Message_Contact_Uri:
-        dest += snprintf(dest, left, "%s", ds->contact_uri);
+        dest += snprintf(dest, left, "%s", encode_as_needed(ds->contact_uri, comp));
         break;
       case E_Message_Contact_Name_And_Uri:
-        dest += snprintf(dest, left, "%s", ds->contact_name_and_uri);
+        dest += snprintf(dest, left, "%s", encode_as_needed(ds->contact_name_and_uri, comp));
         break;
       case E_Message_To_Uri:
-        dest += snprintf(dest, left, "%s", ds->to_uri);
+        dest += snprintf(dest, left, "%s", encode_as_needed(ds->to_uri, comp));
         break;
       case E_Message_To_Name_And_Uri:
-        dest += snprintf(dest, left, "%s", ds->to_name_and_uri);
+        dest += snprintf(dest, left, "%s", encode_as_needed(ds->to_name_and_uri, comp));
         break;
       case E_Message_From_Uri:
-        dest += snprintf(dest, left, "%s", ds->from_uri);
+        dest += snprintf(dest, left, "%s", encode_as_needed(ds->from_uri, comp));
         break;
       case E_Message_From_Name_And_Uri:
-        dest += snprintf(dest, left, "%s", ds->from_name_and_uri);
+        dest += snprintf(dest, left, "%s", encode_as_needed(ds->from_name_and_uri, comp));
         break;
 
       case E_Message_Routes:
         if (ds->dialog_route_set) {
-          dest += sprintf(dest, "Route: %s", ds->dialog_route_set);
+          dest += sprintf(dest, "Route: %s", encode_as_needed(ds->dialog_route_set, comp));
         } else if (*(dest - 1) == '\n') {
           supresscrlf = true;
         }
@@ -2738,21 +2718,21 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       case E_Message_Last_Message:
         DEBUG("[last_message] %s", txn.trace().c_str());
         if (!txn.getLastReceivedMessage().empty()) {
-          dest += sprintf(dest, "%s", txn.getLastReceivedMessage().c_str());
+          dest += sprintf(dest, "%s", encode_as_needed(txn.getLastReceivedMessage().c_str(), comp));
         }
         break;
       case E_Message_Last_Request_URI: {
         DEBUG("[last_Request_URI] %s", txn.trace().c_str());
-        dest += sprintf(dest, "%s", get_last_request_uri(txn.getLastReceivedMessage().c_str()).c_str());
+        dest += sprintf(dest, "%s", encode_as_needed(get_last_request_uri(txn.getLastReceivedMessage().c_str()).c_str(), comp));
         break;
                                        }
-      case E_Message_Last_CSeq_Number: {       
+      case E_Message_Last_CSeq_Number: {
         DEBUG("[last_CSeq_Number] %s", txn.trace().c_str());
         dest += sprintf(dest, "%d", get_cseq_value(txn.getLastReceivedMessage().c_str()) + comp->offset);
         break;
                                        }
       case E_Message_Last_Branch: {
-        dest += sprintf(dest, "%s", extract_branch(txn.getLastReceivedMessage().c_str()).c_str());
+        dest += sprintf(dest, "%s", encode_as_needed(extract_branch(txn.getLastReceivedMessage().c_str()).c_str(), comp));
         break;
       }
       case E_Message_TDM_Map:
@@ -4775,6 +4755,17 @@ void call::set_video_port(int port){
   }
 }
 #endif
+
+const char * encode_as_needed(const char *str, MessageComponent *comp){
+  const char *result;
+  if(comp->encoding != E_ENCODING_NONE){
+    encode(comp, str, encode_buffer);
+    result = encode_buffer;
+  } else {
+    result = str;
+  }
+  return result;
+}
 
 void encode(struct MessageComponent *comp, const char *src, char *dest){
   switch(comp->encoding){

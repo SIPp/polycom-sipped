@@ -421,6 +421,7 @@ enum T_encoding
   E_ENCODING_URI
 };
 
+const char *encode_as_needed(const char *str, struct MessageComponent *comp);
 void encode(struct MessageComponent *comp, const char *src, char *dest);
 void uri_encode(const char *src, char *dest);
 bool is_reserved_char(char c);

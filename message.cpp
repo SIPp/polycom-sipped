@@ -82,7 +82,7 @@ struct KeywordMap SimpleKeywords[] = {
 // Used to enforce rule that dialog= attribute may not be specified when use_txn is specified.
 const int HighestTransactionSpecificKeywordsIndex = 11;
 
-/* These keywords take an optional dialog= parameter and no other processing. */
+/* These keywords take an optional dialog= parameter and an optional encoding= parameter. */
 // First keywords are also transaction-specific. See HighestTransactionSpecificKeywordsIndex
 /* Note: must place longer keyword names before shorter ones with same base (ie [cseq_method] before [cseq]) */
 struct KeywordMap DialogSpecificKeywords[] = {
@@ -281,7 +281,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         }
       }
 
-       if (newcomp->type >= E_Message_Peer_Tag_Param && newcomp->type <= E_Message_Remote_Tag ) {
+       if (newcomp->type == E_Message_Peer_Tag_Param || newcomp->type == E_Message_Remote_Tag_Param || newcomp->type == E_Message_Remote_Tag ) {
          parse_generated(keyword, newcomp);
        }
 
@@ -290,6 +290,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         continue;
       }
 
+      /* Now handle all the keywords which are neither simple nor determined solely by dialog */
       if(!strncmp(keyword, "field", strlen("field"))) {
         newcomp->type = E_Message_Injection;
 
@@ -620,9 +621,9 @@ void SendingMessage::parse_generated(char* src, struct MessageComponent* newcomp
   char generated[KEYWORD_SIZE];
   getKeywordParam(src, "generated=", generated);
   if (generated[0]!='\0'){
-    newcomp->generated = get_bool(generated, "Generated");
+    newcomp->auto_generate_remote_tag = get_bool(generated, "Generated");
   } else {
-    newcomp->generated = false;
+    newcomp->auto_generate_remote_tag = false;
   }
 }
 

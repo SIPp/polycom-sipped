@@ -170,7 +170,7 @@ struct MessageComponent {
   int varId;
   int dialog_number; // component may refer to another dialog in case of _n syntax
   bool valueOnly;  // don't include header when printing info out.
-  bool generated; // auto generate component
+  bool auto_generate_remote_tag;
   union u {
     /* Authentication Parameters. */
     struct {
