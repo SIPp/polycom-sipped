@@ -4245,8 +4245,16 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_TEST) {
       double value = currentAction->compare(M_callVariableTable);
       if(currentAction->getCheckIt()==true && !value) {
-        if(currentAction->getVarIn2Id()) ERROR("Test %s %s %s has failed.", display_scenario->allocVars->getName(currentAction->getVarInId()), currentAction->comparatorToString(currentAction->getComparator())), display_scenario->allocVars->getName(currentAction->getVarIn2Id());
-        else ERROR("Test %s %s %f has failed.", display_scenario->allocVars->getName(currentAction->getVarInId()), currentAction->comparatorToString(currentAction->getComparator()), currentAction->getDoubleValue());
+        double var_value;
+        M_callVariableTable->getVar(currentAction->getVarInId())->toDouble(&var_value, "execute action");
+        const char *comparator = currentAction->comparatorToString(currentAction->getComparator());
+        if(currentAction->getVarIn2Id()) {
+          double var2_value;
+          M_callVariableTable->getVar(currentAction->getVarIn2Id())->toDouble(&var2_value, "execute action");
+          ERROR("Test %s %s %s has failed because %f %s %f is NOT true.", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
+        } else {
+          ERROR("Test %s %s %f has failed because %f %s %f is NOT true.", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
+        }
       }
       if (currentAction->getVarId()){
         M_callVariableTable->getVar(currentAction->getVarId())->setBool(value);
