@@ -3,9 +3,25 @@
 
 <scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Generated Scenario for 172.23.72.18:5060 using Snipp v1.2" parameters="-mc" source="snipp.pl -i 172.23.72.18 -f ReceiveCall4Bk2Bk.pcap" id="" config="">
 
+  <send>
+
+    <![CDATA[
+      INVITE sip:3339957129@[remote_ip]:[remote_port] SIP/2.0
+      Note: This message just ensures client has started before server performs send.
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: "Smoke Tester 59"<sip:7159@[local_ip]:[local_port]>[local_tag_param]
+      To: "Smoke Tester 29"<sip:3339957129@[remote_ip]:[remote_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] INVITE
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: [len]
+
+    ]]>
+  </send>
+  
   <recv request="INVITE" dialog="1" start_txn="S1">
       <action>
-          <ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="Via:" check_it="true" assign_to="br1"/>
+          <ereg regexp="z9hG4bK-[0-9]+-1-1" search_in="hdr" header="Via:" check_it="true" assign_to="br1"/>
           <ereg regexp="1 INVITE" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs1"/>
       </action>
   </recv>
@@ -50,7 +66,7 @@
 
   <recv request="PRACK" dialog="1" start_txn="S2">
       <action>
-          <ereg regexp="z9hG4bK-[0-9]+-1-3" search_in="hdr" header="Via:" check_it="true" assign_to="br2"/>
+          <ereg regexp="z9hG4bK-[0-9]+-1-4" search_in="hdr" header="Via:" check_it="true" assign_to="br2"/>
           <ereg regexp="2 PRACK" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs2"/>
           <ereg regexp="8193 1 INVITE" search_in="hdr" header="RAck:" check_it="true" assign_to="rack"/>
       </action>
@@ -106,7 +122,7 @@
 
   <recv request="ACK" dialog="1" use_txn="S1">
       <action>
-          <ereg regexp="z9hG4bK-ack-[0-9]+-1-6" search_in="hdr" header="Via:" check_it="true" assign_to="br3"/>
+          <ereg regexp="z9hG4bK-ack-[0-9]+-1-7" search_in="hdr" header="Via:" check_it="true" assign_to="br3"/>
           <ereg regexp="1 ACK" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs3"/>
       </action>
   </recv>
@@ -146,14 +162,14 @@
 
   <recv response="100" dialog="1" use_txn="C1">
       <action>
-          <ereg regexp="z9hG4bK-[0-9]+-1-7" search_in="hdr" header="Via:" check_it="true" assign_to="br4"/>
+          <ereg regexp="z9hG4bK-[0-9]+-1-8" search_in="hdr" header="Via:" check_it="true" assign_to="br4"/>
           <ereg regexp="1 INVITE" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs4"/>
       </action>
   </recv>
 
   <recv response="200" dialog="1" use_txn="C1">
       <action>
-          <ereg regexp="z9hG4bK-[0-9]+-1-7" search_in="hdr" header="Via:" check_it="true" assign_to="br5"/>
+          <ereg regexp="z9hG4bK-[0-9]+-1-8" search_in="hdr" header="Via:" check_it="true" assign_to="br5"/>
           <ereg regexp="1 INVITE" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs5"/>
       </action>
   </recv>
@@ -215,14 +231,14 @@
 
   <recv response="100" dialog="1" use_txn="C1">
       <action>
-          <ereg regexp="z9hG4bK-[0-9]+-1-11" search_in="hdr" header="Via:" check_it="true" assign_to="br6"/>
+          <ereg regexp="z9hG4bK-[0-9]+-1-12" search_in="hdr" header="Via:" check_it="true" assign_to="br6"/>
           <ereg regexp="2 INVITE" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs6"/>
       </action>
   </recv>
 
   <recv response="200" dialog="1" use_txn="C1">
       <action>
-          <ereg regexp="z9hG4bK-[0-9]+-1-11" search_in="hdr" header="Via:" check_it="true" assign_to="br7"/>
+          <ereg regexp="z9hG4bK-[0-9]+-1-12" search_in="hdr" header="Via:" check_it="true" assign_to="br7"/>
           <ereg regexp="2 INVITE" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs7"/>
       </action>
   </recv>
@@ -266,7 +282,7 @@
 
   <recv response="200" dialog="1" use_txn="C1">
       <action>
-          <ereg regexp="z9hG4bK-[0-9]+-1-15" search_in="hdr" header="Via:" check_it="true" assign_to="br8"/>
+          <ereg regexp="z9hG4bK-[0-9]+-1-16" search_in="hdr" header="Via:" check_it="true" assign_to="br8"/>
           <ereg regexp="3 BYE" search_in="hdr" header="CSeq:" check_it="true" assign_to="cs8"/>
       </action>
   </recv>

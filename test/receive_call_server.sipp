@@ -3,6 +3,9 @@
 
 <scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Generated Scenario for 172.23.70.42:5060 using Snipp v1.2" parameters="-mc" source="snipp.pl -i 172.23.70.42 -f ReceiveCall4Bk2Bk.pcap" id="" config="">
 
+  <recv request="INVITE" >
+  </recv>
+  
   <send dialog="1" start_txn="C1">
     <![CDATA[
 
