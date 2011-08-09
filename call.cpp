@@ -472,9 +472,6 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
     userVars->putTable();
   }
 
-  // transactions starts empty and is built dynamically as messages that use them are encountered
-// moved to per-dialog state  transactions.clear();
-
   // If not updated by a message we use the start time 
   // information to compute rtd information
   start_time_rtd = (unsigned long long *)malloc(sizeof(unsigned long long) * call_scenario->stats->nRtds());
@@ -2169,47 +2166,6 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, int *msgLen) 
   return createSendingMessage(src, P_index, msg_buffer, sizeof(msg_buffer), msgLen);
 }
 
-/*
-// Return true if use_txn specified for currently indexed message
-bool call::use_txn(int index) {
-  if (index < 0)
-    index = msg_index;
-  return call_scenario->messages[index]->isUseTxn();
-}
-
-// Return name of transaction specified for currently indexed message
-string call::txn_name(int index) {
-  if (index < 0)
-    index = msg_index;
-  return call_scenario->messages[index]->getTransactionName();
-}
-
-// Get transaction assocaited with use_txn for currently indexed message
-// Error if not defined (so use isUseTxn() to be sure it's defined, first).
-TransactionState &call::get_txn(int index)
-{
-  if (index < 0)
-    index = msg_index;
-  DEBUG_IN("msg_index %d has dialog_number = %d", index, call_scenario->messages[index]->dialog_number);
-  DialogState *ds = get_dialogState(call_scenario->messages[index]->dialog_number);
-  return ds->get_transaction(call_scenario->messages[index]->getTransactionName(), index);
-/ *
-  Name_Transaction_Map::iterator txn = ds->get_transaction(call_scenario->messages[msg_index]->getTransactionName().c_str());
-  if (txn == ds->transactions.end() || txn->second.getBranch().empty()) {
-    ERROR("Message %d is attempting to use transaction '%s' prior to it being started with start_txn (not found or empty branch).", msg_index, call_scenario->messages[msg_index]->getTransactionName().c_str()); 
-  }
-  return txn;
-* /
-}
-*/
-
-/*
-// Get last message associated with indexed message
-const string &call::getLastReceivedMessage(int index) {
-  TransactionState &txn = get_txn(index);
-  return txn.getLastReceivedMessage();
-}
-*/
 
 // Get last message globally regardless of dialog or transaction
 const string &call::getDefaultLastReceivedMessage() {

@@ -221,10 +221,6 @@ private:
   /* Call Variable Table */
   VariableTable *M_callVariableTable;
 
-  /* Our transaction IDs (allocated to have same number of entries as call_scenario::transactions. * /
-move to dialogState
-  struct TransactionState *transactions; */
-
   /* result of execute action */
   enum T_ActionResult
     {

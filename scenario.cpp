@@ -1018,9 +1018,6 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
   /* Make sure that all variables are used more than once. */
   validate_variable_usage();
 
-  /* Make sure that all started transactions have responses, and vice versa. */
-//  validate_txn_usage();
-
   if (messages.size() == 0) {
     ERROR("Did not find any messages inside of scenario!");
   }
@@ -1065,16 +1062,8 @@ scenario::~scenario() {
   allocVars->putTable();
   delete stats;
 
-/* transactions moved to dialogState
-  for (unsigned int i = 0; i < transactions.size(); i++) {
-    free(transactions[i].name);
-  }
-  transactions.clear();
-*/
-
   clear_str_int(labelMap);
   clear_str_int(initLabelMap);
-//  clear_str_int(txnMap);
 
   if (scenario_path) free(scenario_path);
   DEBUG_OUT();
