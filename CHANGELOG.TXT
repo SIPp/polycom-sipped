@@ -1,6 +1,13 @@
 This file tracks changes responsible for version number updates.
 3.2.15 xx-xx-xxxx
-- Fix generation of Content-Length: [len] when used in middle of header list
+- RTP playback (play_pcap_X) support for 802.1q (VLAN) tagging.
+- Support running sipp files that use play_pcap_* from another directory (especially as this is how TA framework launches SIPp).
+- Add full DTD for <test>, arithmetic operators and other missing tags
+- Improve windows test harness
+- Make CTRL-C cause FAIL not PASS in receive_call test case
+- Ensure that check_it_inverse does not trigger the 'variable used one time error' for all functions that have it. - Done Aug 2, 2011
+- Ensure SIPp return codes are sufficient to understand the reason for exit and use those reason codes to make the Rsipp output english.
+- Fix generation of Content-Length: [len] when used in middle of header list and no body.
 - Improve error message associated with unknown response CSEQ method when mixing start_txn and non-txn usage.
 - Log error message rather than crash when \n encountered in [keywords].
 - Report error if [remote_ip] used but not specified on command line - Done July 12 2011 
