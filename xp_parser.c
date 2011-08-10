@@ -213,7 +213,7 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index, unsigned *
   if ((filename[0] != '\\') && (filename[0] != '/') )
     snprintf(path_and_filename, XP_MAX_NAME_LEN, "%s%s", path, filename);
   else
-    strcpy(path_and_filename, filename);    
+    strcpy(path_and_filename, filename);
   int new_path_length = xp_get_start_index_of_filename(path_and_filename);
   strncpy(new_path, path_and_filename, new_path_length);
   new_path[new_path_length] = 0;
@@ -442,7 +442,7 @@ int xp_set_xml_buffer_from_file(char * filename, int dumpxml)
 
   if (!result)
     return 0;
-  
+
   if(strstr(xp_position[xp_stack], "<?xml") != xp_position[xp_stack]) return 0;
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
   xp_position[xp_stack] = xp_position[xp_stack] + 2;
