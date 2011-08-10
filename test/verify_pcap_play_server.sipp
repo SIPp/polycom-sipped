@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="" parameters="-mc" source="" id="" config="">
+
+  <recv request="INVITE" dialog="1" start_txn="C1">
+  </recv>
+
+  <pause milliseconds="1000" />
+
+  <recv request="BYE" dialog="1" start_txn="S1">
+  </recv>
+
+</scenario>
