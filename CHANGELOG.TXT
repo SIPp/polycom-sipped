@@ -55,6 +55,7 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Add transaction support to keywords client_cseq*, server_cseq*, received_cseq*, cseq*, branch, last_branch, last_cseq_number, last_request_uri, last_message, last_*
 - Aborting rather than warn when regex with checkit fails
 - Allow re-use of regex variable names (eliminate false positivies)
+- Support auto-generation of remote_tag
 - Ensure manually generated call-id will be stored when message is sent (ie Call-ID: [call_id dialog="2] in a message within dialog 3 will adopt call-id 3) 
 
 
