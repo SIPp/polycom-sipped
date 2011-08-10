@@ -342,4 +342,106 @@ void MESSAGE(const char *fmt, ...) {
   _set_last_msg(fmt, ap);
   va_end(ap);
 }
+
+int _trace (struct logfile_info *lfi, const char *fmt, va_list ap) {
+  int ret = 0;
+  if(lfi->fptr) {
+    ret = vfprintf(lfi->fptr, fmt, ap);
+    fflush(lfi->fptr);
+
+    lfi->count += ret;
+
+    if (max_log_size && lfi->count > max_log_size) {
+      fclose(lfi->fptr);
+      lfi->fptr = NULL;
+    }
+
+    if (ringbuffer_size && lfi->count > ringbuffer_size) {
+      rotatef(lfi);
+      lfi->count = 0;
+    }
+  }
+  return ret;
+}
+
+int _DEBUG_LOG(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  va_start(ap, fmt);
+  ret = _trace(&debug_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
+int _TRACE_MSG(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  va_start(ap, fmt);
+  ret = _trace(&message_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
+int _TRACE_SHORTMSG(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  va_start(ap, fmt);
+  ret = _trace(&shortmessage_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
+int _LOG_MSG(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  va_start(ap, fmt);
+  ret = _trace(&log_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
+int _TRACE_CALLDEBUG(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  va_start(ap, fmt);
+  ret = _trace(&calldebug_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
+int _TRACE_EXEC(const char *fmt, ...) {
+  int ret;
+  va_list ap;
+
+  // re-open exec log file if not open from previous exec command
+  if (useExecf && !exec_lfi.fptr) {
+    DEBUG("rotating exec_lfi; exec_lfi.overwrite = %d", exec_lfi.overwrite);
+    int retry_count = 0;
+    while (!rotatef(&exec_lfi) && (retry_count++ < 9)) {
+      DEBUG("Unable to open exec_lfi ; waiting 1/10 second %d of maximum 10 times before retrying to allow conflicting process to terminate.", retry_count);
+      usleep(100000);
+    }
+    if (!exec_lfi.fptr) {
+      DEBUG("Unable to open exec log file; exiting.");
+      return -1;
+    }
+  }
+
+  va_start(ap, fmt);
+  ret = _trace(&exec_lfi, fmt, ap);
+  va_end(ap);
+
+  return ret;
+}
+
 }

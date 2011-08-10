@@ -2787,7 +2787,7 @@ int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flag
 /****************************** Network Interface *******************/
 
 /* Our message detection states: */
-#define CFM_NORMAL 0 /* No CR Found, searchinng for \r\n\r\n. */
+#define CFM_NORMAL 0 /* No CR Found, searchign for \r\n\r\n. */
 #define CFM_CONTROL 1 /* Searching for 27 */
 #define CFM_CR 2 /* CR Found, Searching for \n\r\n */
 #define CFM_CRLF 3 /* CRLF Found, Searching for \r\n */
@@ -4283,6 +4283,8 @@ int main(int argc, char *argv[])
 				     "Use 'sipp -h' for details",  argv[argi - 1]); }
 #define CHECK_PASS() if (option->pass != pass) { break; }
 
+  int default_scenario_to_use; // -1 indicates non-default scenario
+
   for (int pass = 0; pass <= 3; pass++) {
     for(argi = 1; argi < argc; argi++) {
       struct sipp_option *option = find_option(argv[argi]);
@@ -4595,15 +4597,13 @@ int main(int argc, char *argv[])
 	    if (useLogf == 1) {
 	      rotate_logfile();
 	    }
-	    main_scenario = new scenario(argv[argi], 0, dump_xml);
-	    main_scenario->stats->setFileName(scenario_file, (char*)".csv");
+            default_scenario_to_use = -1;
 	  } else if (!strcmp(argv[argi - 1], "-sn")) {
 	    int i = find_scenario(argv[argi]);
 
-	    main_scenario = new scenario(0, i, dump_xml);
 	    scenario_file = new char [strlen(argv[argi])+1] ;
 	    sprintf(scenario_file,"%s", argv[argi]);
-	    main_scenario->stats->setFileName(argv[argi], (char*)".csv");
+            default_scenario_to_use = i;
 	  } else if (!strcmp(argv[argi - 1], "-sd")) {
 	    int i = find_scenario(argv[argi]);
 	    fprintf(stdout, "%s", default_scenario[i]);
@@ -4856,6 +4856,8 @@ int main(int argc, char *argv[])
     }
 #endif
 
+// OPENING FILES HERE
+
   if (useDebugf) {
     rotate_debugf();
 
@@ -4879,14 +4881,14 @@ int main(int argc, char *argv[])
   if (useCallDebugf) {
     rotate_calldebugf();
   }
-  
+ 
   // Handled each time in TRACE_EXEC, but important as this establishes the file name
   if (useExecf) {
     rotate_execf();
   }
-  
-  
- if (useScreenf == 1) {
+
+
+  if (useScreenf == 1) {
     char L_file_name [MAX_PATH];
     sprintf (L_file_name, "%s_%d_screen.log", scenario_file, getpid());
     screenf = fopen(L_file_name, "w");
@@ -4946,7 +4948,7 @@ int main(int argc, char *argv[])
        FD_SETSIZE
 #endif
        ) {
-      fprintf (stderr, "Warning: open file limit > FD_SETSIZE; "
+      WARNING("Warning: open file limit > FD_SETSIZE; "
                "limiting max. # of open files to FD_SETSIZE = %d\n",
                FD_SETSIZE);
 
@@ -4967,6 +4969,17 @@ int main(int argc, char *argv[])
   }
 
   DEBUG("Configuration complete, initializing...");
+
+  if (scenario_file) {
+    if(default_scenario_to_use != -1) {
+      main_scenario = new scenario(0, default_scenario_to_use, dump_xml);
+      main_scenario->stats->setFileName(scenario_file, (char*)".csv");
+    } else {
+      main_scenario = new scenario(scenario_file, 0, dump_xml);
+      main_scenario->stats->setFileName(scenario_file, (char*)".csv");
+    }
+  }
+
   /* Load default scenario in case nothing was loaded */
   if(!main_scenario) {
     main_scenario = new scenario(0, 0, dump_xml);
@@ -5293,7 +5306,7 @@ int determine_remote_ip() {
       struct addrinfo   hints;
       struct addrinfo * local_addr;
 
-      fprintf(stderr,"Resolving remote host '%s'... ", remote_host);
+      printf ("Resolving remote host '%s'... ", remote_host);
 
       memset((char*)&hints, 0, sizeof(hints));
       hints.ai_flags  = AI_PASSIVE;
@@ -5326,7 +5339,7 @@ int determine_remote_ip() {
           htons((short)remote_port);
         sprintf(remote_ip_escaped, "[%s]", remote_ip); 
       }
-      fprintf(stderr,"Done.\n");
+      printf("Done.\n");
     }
   }
 
@@ -5946,114 +5959,4 @@ void rotate_debugf() {
 void rotate_execf() {
   rotatef(&exec_lfi);
 }
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-int _trace (struct logfile_info *lfi, const char *fmt, va_list ap) {
-  int ret = 0;
-  if(lfi->fptr) {
-    ret = vfprintf(lfi->fptr, fmt, ap);
-    fflush(lfi->fptr);
-
-    lfi->count += ret;
-
-    if (max_log_size && lfi->count > max_log_size) {
-      fclose(lfi->fptr);
-      lfi->fptr = NULL;
-    }
-
-    if (ringbuffer_size && lfi->count > ringbuffer_size) {
-      rotatef(lfi);
-      lfi->count = 0;
-    }
-  }
-  return ret;
-}
-
-
-int _TRACE_MSG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&message_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _TRACE_SHORTMSG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&shortmessage_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _LOG_MSG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&log_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _TRACE_CALLDEBUG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&calldebug_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _TRACE_EXEC(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  // re-open exec log file if not open from previous exec command
-  if (useExecf && !exec_lfi.fptr) {
-    DEBUG("rotating exec_lfi; exec_lfi.overwrite = %d", exec_lfi.overwrite);
-    int retry_count = 0;
-    while (!rotatef(&exec_lfi) && (retry_count++ < 9)) {
-      DEBUG("Unable to open exec_lfi ; waiting 1/10 second %d of maximum 10 times before retrying to allow conflicting process to terminate.", retry_count);
-      usleep(100000);
-    }
-    if (!exec_lfi.fptr) {
-      DEBUG("Unable to open exec log file; exiting.");
-      return -1;
-    }
-  }
-
-  va_start(ap, fmt);
-  ret = _trace(&exec_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _DEBUG_LOG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&debug_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-#ifdef __cplusplus
-}
-#endif
 

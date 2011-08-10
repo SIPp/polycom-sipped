@@ -513,6 +513,7 @@ LOGFILE(debug_lfi, "debug", false);
 LOGFILE(exec_lfi, "exec", false);
 
 void rotate_errorf();
+int rotatef(struct logfile_info *lfi);
 void log_off(struct logfile_info *lfi);
 
 /* Screen/Statistics Printing Functions. */
@@ -642,28 +643,5 @@ void free_peer_addr_map();
 #endif
 
 /* THis must go after the GLOBALS_FULL_DEFINITION, because we need the extern keyword. */
-#define TRACE_MSG(x, ...)       { _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define TRACE_CALLDEBUG(x, ...) { _TRACE_CALLDEBUG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define TRACE_SHORTMSG(x, ...)  { _TRACE_SHORTMSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define LOG_MSG(x, ...)         { _LOG_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define TRACE_EXEC(x, ...)  { _TRACE_EXEC(x, ##__VA_ARGS__); _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-
-#define DEBUG(x, ...) _DEBUG_LOG("%s() in %s:%d - " x "\n",  __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__)
-#define DEBUG_IN(x, ...) DEBUG("(Entered) - " x, ##__VA_ARGS__)
-#define DEBUG_OUT(x, ...) DEBUG("(Leaving) - " x, ##__VA_ARGS__)
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-int _TRACE_MSG(const char *fmt, ...);
-int _TRACE_CALLDEBUG(const char *fmt, ...);
-int _TRACE_SHORTMSG(const char *fmt, ...);
-int _LOG_MSG(const char *fmt, ...);
-int _TRACE_EXEC(const char *fmt, ...);
-int _DEBUG_LOG(const char *fmt, ...);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // __SIPP__
