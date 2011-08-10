@@ -94,14 +94,14 @@ float2timer (float time, struct timeval *tvp)
 }
 
 /* buffer should be "file_name" */
-int
-parse_play_args (char *buffer, pcap_pkts *pkts)
+int parse_play_args (char *buffer, pcap_pkts *pkts)
 {
   pkts->file = strdup (buffer);
   prepare_pkts(pkts->file, pkts);
   return 1;
 }
 
+//XXX: This is never called, why does it exist?
 void hexdump(char *p, int s) {
 	int i;
 	for (i = 0; i < s; i++) {
@@ -111,8 +111,7 @@ void hexdump(char *p, int s) {
 }
 
 /*Safe threaded version*/
-void do_sleep (struct timeval *, struct timeval *,
-               struct timeval *, struct timeval *);
+void do_sleep (struct timeval *, struct timeval *, struct timeval *, struct timeval *);
 void send_packets_cleanup(void *arg)
 {
   int sock = (int) arg;
@@ -219,8 +218,7 @@ send_packets (play_args_t * play_args)
     udp->uh_sum = temp_sum;
 #endif
 
-    do_sleep ((struct timeval *) &pkt_index->ts, &last, &didsleep,
-		&start);
+    do_sleep ((struct timeval *) &pkt_index->ts, &last, &didsleep, &start);
 #ifdef MSG_DONTWAIT
     if (!media_ip_is_ipv6) {
       ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
@@ -257,15 +255,14 @@ send_packets (play_args_t * play_args)
  * Given the timestamp on the current packet and the last packet sent,
  * calculate the appropriate amount of time to sleep and do so.
  */
-void do_sleep (struct timeval *time, struct timeval *last,
-	  struct timeval *didsleep, struct timeval *start)
+void do_sleep (struct timeval *time, struct timeval *last, struct timeval *didsleep, struct timeval *start)
 {
   struct timeval nap, now, delta;
   struct timespec sleep;
 
   if (gettimeofday (&now, NULL) < 0)
     {
-      fprintf (stderr, "Error gettimeofday: %s\n", strerror (errno));
+      WARNING("Error gettimeofday: %s\n", strerror (errno));
     }
 
   /* First time through for this file */

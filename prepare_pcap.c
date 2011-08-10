@@ -104,7 +104,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 
   pcap = pcap_open_offline(file, errbuf);
   if (!pcap) 
-    ERROR("Can't open PCAP file '%s'", file);
+    ERROR("Can't open PCAP file '%s'. pcap_open_offline returned error: '%s'", file, errbuf);
 
 #if HAVE_PCAP_NEXT_EX
   while (pcap_next_ex (pcap, &pkthdr, (const u_char **) &pktdata) == 1)
@@ -117,6 +117,8 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 #endif
   if (!pkthdr)
     ERROR("Can't allocate memory for pcap pkthdr");
+  int num_of_non_ip_packets = 0;
+  int num_of_non_udp_packets = 0;
   while ((pktdata = (u_char *) pcap_next (pcap, pkthdr)) != NULL)
   {
 #endif
@@ -130,18 +132,18 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
         vlanhdr = (vlan_hdr *)((char*)vlanhdr + sizeof(*vlanhdr));
       }
       if(num_of_vlan_headers > 2){
-        WARNING("%d VLAN headers detected. There should be at most 2");
+        WARNING("%d VLAN headers detected. There should be at most 2", num_of_vlan_headers);
       }
       if (ntohs(vlanhdr->vlan_type) != 0x0800 /* IPv4 */
           && ntohs(vlanhdr->vlan_type) != 0x86dd) /* IPv6 */ {
-        fprintf(stderr, "Ignoring non IP{4,6} packet!\n");
+        num_of_non_ip_packets ++;
         continue;
       }
       iphdr = (struct iphdr *)((char *)vlanhdr + sizeof(*vlanhdr));
     }
     else if (ntohs(ethhdr->ether_type) != 0x0800 /* IPv4 */
           && ntohs(ethhdr->ether_type) != 0x86dd) /* IPv6 */ {
-      fprintf(stderr, "Ignoring non IP{4,6} packet!\n");
+      num_of_non_ip_packets ++;
       continue;
     }
     else {
@@ -152,14 +154,14 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
       pktlen = (u_long) pkthdr->len - sizeof(*ethhdr) - sizeof(*ip6hdr);
       ip6hdr = (ipv6_hdr *)(void *) iphdr;
       if (ip6hdr->nxt_header != IPPROTO_UDP) {
-        fprintf(stderr, "prepare_pcap.c: Ignoring non UDP packet!\n");
+        DEBUG("prepare_pcap.c: Ignoring non UDP packet!\n");
 	     continue;
       }
       udphdr = (struct udphdr *)((char *)ip6hdr + sizeof(*ip6hdr));
     } else {
       //ipv4
       if (iphdr->protocol != IPPROTO_UDP) {
-        fprintf(stderr, "prepare_pcap.c: Ignoring non UDP packet!\n");
+        num_of_non_udp_packets ++;
         continue;
       }
 #if defined(__DARWIN) || defined(__CYGWIN) || defined(__FreeBSD__)
@@ -212,6 +214,12 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 #endif
     n_pkts++;
   }
+
+  if (num_of_non_ip_packets)
+    WARNING("Ignored %d non IP{4,6} packets.\n", num_of_non_ip_packets);
+  if (num_of_non_udp_packets)
+    WARNING("Ignored %d non UDP packets.\n", num_of_non_udp_packets);
+
   pkts->max = pkts->pkts + n_pkts;
   pkts->max_length = max_length;
   pkts->base = base;
