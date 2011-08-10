@@ -34,8 +34,9 @@ optparse = OptionParser.new do|opts|
   opts.banner = "Usage: ruby test_case.rb [options]"
  
   # Define the $options, and what they do
-  opts.on(["silent", "normal", "verbose"], '-v LEVEL', '--verbosity LEVEL', 'Set verbosity depending on LEVEL' ) do|level|
-    $options[:verbose] = level
+  opts.on(["silent", "normal", "verbose"], '-v', '--verbosity [LEVEL]', 'Set verbosity depending on LEVEL.
+                                     If LEVEL is not specified default is "verbose".' ) do|level|
+    $options[:verbose] = level || "verbose"
   end
 
   # This displays the help screen, all programs are
@@ -122,7 +123,7 @@ class SippTest
       remove_carriage_returns()
     end
 
-    #Note that expected_client/server_output use strings, whereas expected_error_log used a regular expression.
+    #Note that expected_client/server_output use strings, whereas expected_error_log uses a regular expression.
     if (!@expected_client_output.nil?)
       if (@expected_client_output != get_client_output())
         puts "Expected client output does not match actual.\n" unless @logging == "silent"
