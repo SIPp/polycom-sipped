@@ -112,8 +112,6 @@ void screen_exit(int rc)
   if (display_scenario) {
     counter_value_failed = display_scenario->stats->GetStat (CStat::CPT_C_FailedCall);
     counter_value_success = display_scenario->stats->GetStat (CStat::CPT_C_SuccessfulCall);
-  } else {
-    rc = EXIT_TEST_FAILED;
   }
 
   releaseGlobalAllocations();
@@ -221,10 +219,10 @@ void screen_init(void (*exit_handler)())
 
 static void _set_last_msg (const char *fmt, va_list ap) {
   char* c = screen_last_error;
-  struct timeval currentTime;
-  GET_TIME (&currentTime);
+//  struct timeval currentTime;
+//  GET_TIME (&currentTime);
 
-  c+= sprintf(c, "%s: ", CStat::formatTime(&currentTime));
+//  c+= sprintf(c, "%s: ", CStat::formatTime(&currentTime));
   c+= vsprintf(c, fmt, ap);
   c+= sprintf(c, ".\n");
 }

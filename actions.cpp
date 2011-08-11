@@ -66,9 +66,9 @@ const char * CAction::comparatorToString(T_Comparator comp) {
 
 bool CAction::compare(VariableTable *variableTable) {
   double lhs;
-  variableTable->getVar(M_varInId)->toDouble(&lhs, "compare");
+  variableTable->getVar(M_varInId)->toDouble(&lhs, "test. If you want to compare strings use strcmp");
   double rhs;
-  (M_varIn2Id) ? variableTable->getVar(M_varIn2Id)->toDouble(&rhs, "compare") : rhs = M_doubleValue;
+  (M_varIn2Id) ? variableTable->getVar(M_varIn2Id)->toDouble(&rhs, "test. If you want to compare strings use strcmp") : rhs = M_doubleValue;
 
   switch(M_comp) {
     case E_C_EQ:

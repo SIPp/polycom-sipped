@@ -4951,10 +4951,11 @@ int main(int argc, char *argv[])
        FD_SETSIZE
 #endif
        ) {
-      WARNING("Warning: open file limit > FD_SETSIZE; "
+      if (!no_call_id_check) {
+        WARNING("Warning: open file limit > FD_SETSIZE; "
                "limiting max. # of open files to FD_SETSIZE = %d\n",
                FD_SETSIZE);
-
+      }
       rlimit.rlim_max =
 #ifndef __CYGWIN
           (L_maxSocketPresent) ?  (unsigned int)max_multi_socket+min_socket : FD_SETSIZE ;
