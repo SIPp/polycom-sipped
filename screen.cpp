@@ -100,7 +100,7 @@ void screen_exit(int rc)
               "%s: There were more errors, see '%s' file\n",
               screen_exename, screen_logfile);
       } else {
-          fprintf(stderr, 
+          fprintf(stderr,
               "%s: There were more errors, enable -trace_err to log them.\n",
               screen_exename);
       }
@@ -149,6 +149,7 @@ void screen_exit(int rc)
 
 void screen_quit()
 {
+   WARNING("Test killed by signal");
    screen_exit(EXIT_TEST_KILLED);
 }
 

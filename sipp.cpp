@@ -3462,6 +3462,7 @@ void traffic_thread()
 	  print_screens();
 	}
         if (q_pressed) {
+          WARNING("Ending test because q was pressed by user");
           screen_exit(EXIT_TEST_MANUALLY_STOPPED);
         }
         screen_exit(EXIT_TEST_RES_UNKNOWN);
@@ -4308,7 +4309,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.15"
+	  printf("\n SIPped v3.2.16Beta1"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
