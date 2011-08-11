@@ -176,6 +176,7 @@ struct sipp_option options_table[] = {
 		SIPP_OPTION_DEFAULTS, &default_behaviors, 1},
 	{"dump_xml", "Dump expanded XML to screen. Useful for debugging includes", SIPP_OPTION_SETFLAG, &dump_xml, 1},
 	{"dump_sequence_diagram", "Dump sequence diagram.", SIPP_OPTION_SETFLAG, &dump_sequence_diagram, 1},
+        {"dsd", "Dump sequence diagram.", SIPP_OPTION_SETFLAG, &dump_sequence_diagram, 1},
 	{"debug_file", "Set the name of the call debug file.", SIPP_OPTION_LFNAME, &debug_lfi, 1},
 	{"debug_overwrite", "Overwrite the call debug file (default true).", SIPP_OPTION_LFOVERWRITE, &debug_lfi, 1},
 
