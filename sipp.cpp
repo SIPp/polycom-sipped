@@ -4847,8 +4847,6 @@ int main(int argc, char *argv[])
     sprintf(scenario_file, "%s", "sipp");
   }
 
-  if (!dump_xml && !dump_sequence_diagram)
-   screen_init(print_last_stats);
 
 #ifdef _USE_OPENSSL
     if ((transport == T_TLS) && (FI_init_ssl_context() != SSL_INIT_NORMAL))
@@ -4856,6 +4854,9 @@ int main(int argc, char *argv[])
       ERROR("FI_init_ssl_context() failed");
     }
 #endif
+
+  if (!dump_xml && !dump_sequence_diagram)
+   screen_init(print_last_stats);
 
 // OPENING FILES HERE
 

@@ -294,8 +294,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
         DEBUG("exit(EXIT_BIND_ERROR=%d)", EXIT_BIND_ERROR);
         exit(EXIT_BIND_ERROR);
       } else {
-        DEBUG("exit(EXIT_FATAL_ERROR=%d)", EXIT_FATAL_ERROR);
-        exit(EXIT_FATAL_ERROR);
+        DEBUG("exit(EXIT_ARGUMENT_ERROR=%d)", EXIT_ARGUMENT_ERROR);
+        exit(EXIT_ARGUMENT_ERROR);
       }
     } else {
       if(error == EADDRINUSE) {

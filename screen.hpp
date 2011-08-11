@@ -56,6 +56,7 @@ extern "C" {
 #define EXIT_FATAL_ERROR           -1
 #define EXIT_BIND_ERROR            -2
 #define EXIT_SYSTEM_ERROR          -3
+#define EXIT_ARGUMENT_ERROR        -4
 
 #define MAX_ERROR_SIZE            1024
 
