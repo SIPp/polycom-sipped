@@ -101,14 +101,6 @@ int parse_play_args (char *buffer, pcap_pkts *pkts)
   return 1;
 }
 
-//XXX: This is never called, why does it exist?
-void hexdump(char *p, int s) {
-	int i;
-	for (i = 0; i < s; i++) {
-		fprintf(stderr, "%02x ", *(char *)(p+i));
-	}
-	fprintf(stderr, "\n");
-}
 
 /*Safe threaded version*/
 void do_sleep (struct timeval *, struct timeval *, struct timeval *, struct timeval *);

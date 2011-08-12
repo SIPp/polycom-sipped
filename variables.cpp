@@ -364,7 +364,6 @@ void AllocVariableTable::validate() {
   for (str_int_map::iterator var_it = variableMap.begin(); var_it != variableMap.end(); var_it++) {
     const char *varName = var_it->first.c_str();
     if (variableReferences[var_it->second] < 2) {
-      const char *varName = var_it->first.c_str();
       int varRef = variableReferences[var_it->second];
       ERROR("Variable $%s is set but never checked, most likely indicating an error. If this was the intended behaviour, you may use the <trim> action to reference the variable a second time.", varName);
     }

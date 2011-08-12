@@ -2778,7 +2778,7 @@ int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flag
 /****************************** Network Interface *******************/
 
 /* Our message detection states: */
-#define CFM_NORMAL 0 /* No CR Found, searchign for \r\n\r\n. */
+#define CFM_NORMAL 0 /* No CR Found, searching for \r\n\r\n. */
 #define CFM_CONTROL 1 /* Searching for 27 */
 #define CFM_CR 2 /* CR Found, Searching for \n\r\n */
 #define CFM_CRLF 3 /* CRLF Found, Searching for \r\n */
