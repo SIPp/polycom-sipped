@@ -47,9 +47,6 @@
     </action>
   </nop>
 
-  <!-- <xi:include href="include_directory/include_pcap.xml" dialogs="1"/> 
-  we don't currently support including files from a seperate directory with pcap plays -->
-
   <send dialog="1">
     <![CDATA[
 
