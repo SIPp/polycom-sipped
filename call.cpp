@@ -4212,6 +4212,19 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           ERROR("Test %s %s %f has failed because %f %s %f is NOT true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
         }
       }
+
+      if(currentAction->getCheckItInverse()==true && value) {
+        double var_value;
+        M_callVariableTable->getVar(currentAction->getVarInId())->toDouble(&var_value, "execute action");
+        const char *comparator = currentAction->comparatorToString(currentAction->getComparator());
+        if(currentAction->getVarIn2Id()) {
+          double var2_value;
+          M_callVariableTable->getVar(currentAction->getVarIn2Id())->toDouble(&var2_value, "execute action");
+          ERROR("Test %s %s %s has failed because %f %s %f is true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
+        } else {
+          ERROR("Test %s %s %f has failed because %f %s %f is true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
+        }
+      }
       if (currentAction->getVarId()){
         M_callVariableTable->getVar(currentAction->getVarId())->setBool(value);
       }
@@ -4229,6 +4242,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           ERROR("String comparision between variables %s and %s has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
         } else {
           ERROR("String comparision between variable %s and inputted value has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+        }
+      }
+      if(currentAction->getCheckItInverse()==true && !value) {
+        if (currentAction->getVarIn2Id()) {
+          ERROR("String comparision between variables %s and %s has failed, because %s is the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+        } else {
+          ERROR("String comparision between variable %s and inputted value has failed, because %s is the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
         }
       }
       M_callVariableTable->getVar(currentAction->getVarId())->setDouble((double)value);
