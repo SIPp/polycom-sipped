@@ -1,5 +1,5 @@
 This file tracks changes responsible for version number updates.
-3.2.15 xx-xx-xxxx
+3.2.15 08-09-2011
 - RTP playback (play_pcap_X) support for 802.1q (VLAN) tagging.
 - Support running sipp files that use play_pcap_* from another directory (especially as this is how TA framework launches SIPp).
 - Add full DTD for <test>, arithmetic operators and other missing tags
