@@ -1508,17 +1508,7 @@ void print_statistics(int last)
     }
     print_bottom_line(stdout,last);
     if (!last && screen_last_error[0]) {
-	char *errstart = screen_last_error;
-	int colonsleft = 4;/* We want to skip the time. */
-	while (*errstart && colonsleft) {
-	  if (*errstart == ':') {
-		colonsleft--;
-	  }
-	  errstart++;
-	}
-	while (isspace(*errstart)) {
-	  errstart++;
-	}
+	char *errstart = jump_over_timestamp(screen_last_error);
 	if (strlen(errstart) > 60) {
 	  printf("Last Message: %.60s..." SIPP_ENDL, errstart);
 	} else {
@@ -5873,6 +5863,21 @@ void free_peer_addr_map() {
   for (peer_addr_it = peer_addrs.begin(); peer_addr_it != peer_addrs.end(); peer_addr_it++){
        free(peer_addr_it->second);
   }
+}
+
+char *jump_over_timestamp(char *src) {
+  char* tmp = src;
+  int colonsleft = 4;/* We want to skip the time. */
+  while (*tmp && colonsleft) {
+    if (*tmp == ':') {
+      colonsleft--;
+    }
+    tmp++;
+  }
+  while (isspace(*tmp)) {
+    tmp++;
+  }
+  return tmp;
 }
 
 // return true if log file opened, false if not.

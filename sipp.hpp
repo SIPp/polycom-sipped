@@ -625,6 +625,8 @@ void timeout_alarm(int);
 
 int determine_remote_and_local_ip();
 
+char *jump_over_timestamp(char *src);
+
 /* extended 3PCC mode */
 struct sipp_socket **get_peer_socket(char *);
 bool is_a_peer_socket(struct sipp_socket *);
