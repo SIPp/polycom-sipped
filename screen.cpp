@@ -93,7 +93,8 @@ void screen_exit(int rc)
   }
 
   if(screen_errors) {
-    fprintf(stderr, "%s", screen_last_error);
+    char *errstart = jump_over_timestamp(screen_last_error);
+    fprintf(stderr, "%s", errstart);
     if(screen_errors > 1) {
       if (screen_logfile[0] != (char)0) {
 	fprintf(stderr, 
@@ -219,10 +220,10 @@ void screen_init(void (*exit_handler)())
 
 static void _set_last_msg (const char *fmt, va_list ap) {
   char* c = screen_last_error;
-//  struct timeval currentTime;
-//  GET_TIME (&currentTime);
+  struct timeval currentTime;
+  GET_TIME (&currentTime);
 
-//  c+= sprintf(c, "%s: ", CStat::formatTime(&currentTime));
+  c+= sprintf(c, "%s: ", CStat::formatTime(&currentTime));
   c+= vsprintf(c, fmt, ap);
   c+= sprintf(c, ".\n");
 }
@@ -288,7 +289,6 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     if(!screen_inited) {
       if(error == EADDRINUSE) {
         fprintf(stderr, "Address in use");
-        DEBUG("Address in use\n");
         DEBUG("exit(EXIT_BIND_ERROR=%d)", EXIT_BIND_ERROR);
         exit(EXIT_BIND_ERROR);
       } else {
