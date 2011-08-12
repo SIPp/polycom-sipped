@@ -4207,9 +4207,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if(currentAction->getVarIn2Id()) {
           double var2_value;
           M_callVariableTable->getVar(currentAction->getVarIn2Id())->toDouble(&var2_value, "execute action");
-          ERROR("Test %s %s %s has failed because %f %s %f is NOT true.", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
+          ERROR("Test %s %s %s has failed because %f %s %f is NOT true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
         } else {
-          ERROR("Test %s %s %f has failed because %f %s %f is NOT true.", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
+          ERROR("Test %s %s %f has failed because %f %s %f is NOT true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
         }
       }
       if (currentAction->getVarId()){
@@ -4224,6 +4224,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         lhs = currentAction->getStringValue();
       }
       int value = strcmp(rhs, lhs);
+      if(currentAction->getCheckIt()==true && value) {
+        if (currentAction->getVarIn2Id()) {
+          ERROR("String comparision between variables %s and %s has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+        } else {
+          ERROR("String comparision between variable %s and inputted value has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+        }
+      }
       M_callVariableTable->getVar(currentAction->getVarId())->setDouble((double)value);
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_TRIM) {
       CCallVariable *var = M_callVariableTable->getVar(currentAction->getVarId());

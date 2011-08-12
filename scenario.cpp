@@ -248,7 +248,7 @@ char * xp_get_string(const char *name, const char *what) {
   char *ptr;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter.", what, name);
+    ERROR("%s is missing the required '%s' parameter", what, name);
   }
 
   return strdup(ptr);
@@ -260,7 +260,7 @@ double xp_get_double(const char *name, const char *what) {
   double val;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter.", what, name);
+    ERROR("%s is missing the required '%s' parameter", what, name);
   }
   helptext = (char *)malloc(100 + strlen(name) + strlen(what));
   sprintf(helptext, "%s '%s' parameter", what, name);
@@ -283,7 +283,7 @@ long xp_get_long(const char *name, const char *what) {
   long val;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter.", what, name);
+    ERROR("%s is missing the required '%s' parameter", what, name);
   }
   helptext = (char *)malloc(100 + strlen(name) + strlen(what));
   sprintf(helptext, "%s '%s' parameter", what, name);
@@ -318,7 +318,7 @@ double xp_get_bool(const char *name, const char *what) {
   bool val;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter.", what, name);
+    ERROR("%s is missing the required '%s' parameter", what, name);
   }
   helptext = (char *)malloc(100 + strlen(name) + strlen(what));
   sprintf(helptext, "%s '%s' parameter", what, name);
@@ -354,7 +354,7 @@ int scenario::get_var(const char *varName, const char *what) {
 int scenario::xp_get_var(const char *name, const char *what) {
   char *ptr;
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' variable parameter.", what, name);
+    ERROR("%s is missing the required '%s' variable parameter", what, name);
   }
 
   return get_var(ptr, what);
@@ -596,7 +596,7 @@ char *clean_cdata(char *ptr, int *removed_crlf = NULL) {
 
 void scenario::checkOptionalRecv(char *elem, unsigned int scenario_file_cursor) {
   if (last_recv_optional) {
-    ERROR("<recv> before <%s> sequence without a mandatory message. Please remove one 'optional=true' (element %d).", elem, scenario_file_cursor);
+    ERROR("<recv> before <%s> sequence without a mandatory message. Please remove one 'optional=true' (element %d)", elem, scenario_file_cursor);
   }
   last_recv_optional = false;
 }
@@ -634,7 +634,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
     ERROR("No element in xml scenario file");
   }
   if(strcmp("scenario", elem)) {
-    ERROR("'scenario' section in xml scenario file must be first after <?xml> version and <!DOCTYPE>.");
+    ERROR("'scenario' section in xml scenario file must be first after <?xml> version and <!DOCTYPE>");
   }
 
   if(char *ptr = xp_get_value((char *)"name")) {
@@ -711,7 +711,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
     } else if(!strcmp(elem, "label")) {
       ptr = xp_get_string("id", "label");
       if (labelMap.find(ptr) != labelMap.end()) {
-        ERROR("The label name '%s' is used twice.", ptr);
+        ERROR("The label name '%s' is used twice", ptr);
       }
       labelMap[ptr] = messages.size();
       free(ptr);
@@ -730,7 +730,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           /* Add an init label. */
           ptr = xp_get_value((char *)"id");
           if (initLabelMap.find(ptr) != initLabelMap.end()) {
-            ERROR("The label name '%s' is used twice.", ptr);
+            ERROR("The label name '%s' is used twice", ptr);
           }
           initLabelMap[ptr] = initmessages.size();
         } else {
@@ -739,8 +739,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         xp_close_element();
       }
     } else if (!strcmp(elem, "scenario")) {
-        DEBUG("Embedded <%s> tag in script.  Assumed to be due to include file and ignoring.", elem);
-        found_scenario_tag = true; // don't want to jump to </scenario> right away.      
+        DEBUG("Embedded <%s> tag in script.  Assumed to be due to include file and ignoring", elem);
+        found_scenario_tag = true; // don't want to jump to </scenario> right away.
     } else { /** Message Case */
       if (found_timewait) {
         ERROR("<timewait> can only be the last message in a scenario!\n");
@@ -789,20 +789,20 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         // While you can simply use use_txn rather than ack_txn and response_txn, you may still use the more
         // specific forms, but only with their respective message types.
         if ((xp_get_value("ack_txn")) && (!curmsg->send_scheme->isAck())) {
-          ERROR("Cannot use ack_txn for non-ACK packet.");
+          ERROR("Cannot use ack_txn for non-ACK packet");
         }
 
          if ((xp_get_value("response_txn")) && (!curmsg->send_scheme->isResponse())) {
-          ERROR("response_txn can only be used with response packets.");
+          ERROR("response_txn can only be used with response packets");
         }
 
         // If this is a request we are sending, then store our transaction/method matching information.
         if (!curmsg->send_scheme->isResponse()) {
           if ((ptr = xp_get_value("start_txn"))) {
             if (curmsg->send_scheme->isAck()) 
-              ERROR("An ACK message can not start a transaction. Use use_txn or ack_txn instead to re-use branch and cseq values (even though 2xx-ACK is technically a new SIP transaction).");
+              ERROR("An ACK message can not start a transaction. Use use_txn or ack_txn instead to re-use branch and cseq values (even though 2xx-ACK is technically a new SIP transaction)");
             if (curmsg->send_scheme->isCancel()) 
-              ERROR("Cannot use start_txn with CANCEL. Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction).");            
+              ERROR("Cannot use start_txn with CANCEL. Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction)");            
             curmsg->startTransaction(ptr);
           } else if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("ack_txn"))) {
             curmsg->useTransaction(ptr);
@@ -850,10 +850,10 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           curmsg -> recv_request = strdup(ptr);
 
           if ((xp_get_value("ack_txn")) && (strcmp(curmsg->recv_request, "ACK"))) {
-            ERROR("Cannot use ack_txn for non-ACK packet. Use use_txn or start_txn instead.");
+            ERROR("Cannot use ack_txn for non-ACK packet. Use use_txn or start_txn instead");
           }
           if ((ptr = xp_get_value("response_txn"))) {
-            ERROR("response_txn can not be used to receive a request.  Use use_txn or start_txn instead.");
+            ERROR("response_txn can not be used to receive a request.  Use use_txn or start_txn instead");
           }
           if ((ptr = xp_get_value("start_txn"))) {
             // mark as start so values are stored when message is received
@@ -923,7 +923,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
             distribution->timeDescr(desc, sizeof(desc));
             time_string(pause_duration, percentile, sizeof(percentile));
 
-            ERROR("The distribution %s has a 99th percentile of %s, which is larger than INT_MAX.  You should chose different parameters.", desc, percentile);
+            ERROR("The distribution %s has a 99th percentile of %s, which is larger than INT_MAX.  You should chose different parameters", desc, percentile);
           }
 
           curmsg->pause_distribution = distribution;
@@ -1150,7 +1150,7 @@ CSample *parse_distribution(bool oldstyle = false) {
       || !strcmp(distname, "gamma")
       || !strcmp(distname, "negbin")
       || !strcmp(distname, "weibull")) {
-    ERROR("The distribution '%s' is only available with GSL.", distname);
+    ERROR("The distribution '%s' is only available with GSL", distname);
 #endif
   } else {
     ERROR("Unknown distribution: %s\n", ptr);
@@ -1234,7 +1234,7 @@ void scenario::computeSippMode()
      if (sendMode == -1) {
        DEBUG("MSG_TYPE_RECV: encounteredNop = %d, no_call_id_check = %d", encounteredNop, no_call_id_check);
        if (encounteredNop && no_call_id_check) {
-         DEBUG("sendMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check.");
+         DEBUG("sendMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check");
          sendMode = MODE_CLIENT;
        }
        else
@@ -1242,7 +1242,7 @@ void scenario::computeSippMode()
       }
       if (creationMode == -1) {
         if (encounteredNop && no_call_id_check) {
-          DEBUG("creationMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check.");
+          DEBUG("creationMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check");
           creationMode = MODE_CLIENT;
         }
         else
@@ -1499,7 +1499,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       char* assignTo = 0; // used to bump usage count if specified
       if (xp_get_value("assign_to")){
         tmpAction->setVarId(xp_get_var("assign_to", "test"));
-        assignTo = xp_get_value("assign_to");
+        assignTo = xp_get_string("assign_to", "test");
       } 
       tmpAction->setVarInId(xp_get_var("variable", "test"));
       if (xp_get_value("value")) {
@@ -1529,6 +1529,9 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       }
       parseCheckIt(tmpAction, assignTo, "test");
       free(ptr);
+      if (assignTo) {
+        free(assignTo);
+      } 
     } else if(!strcmp(actionElem, "verifyauth")) {
 #ifdef _USE_OPENSSL
       tmpAction->setVarId(xp_get_var("assign_to", "verifyauth"));
@@ -1536,7 +1539,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setMessage(xp_get_string("password", "verifyauth"), 1);
       tmpAction->setActionType(CAction::E_AT_VERIFY_AUTH);
 #else
-      ERROR("The verifyauth action requires OpenSSL support.");
+      ERROR("The verifyauth action requires OpenSSL support");
 #endif
     } else if(!strcmp(actionElem, "lookup")) {
       tmpAction->setVarId(xp_get_var("assign_to", "lookup"));
@@ -1561,6 +1564,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setActionType(CAction::E_AT_CLOSE_CON);
     } else if(!strcmp(actionElem, "strcmp")) {
       tmpAction->setVarId(xp_get_var("assign_to", "strcmp"));
+      char *assignTo = xp_get_string("assign_to", "strcmp");
       tmpAction->setVarInId(xp_get_var("variable", "strcmp"));
       if (xp_get_value("value")) {
         tmpAction->setStringValue(xp_get_string("value", "strcmp"));
@@ -1570,6 +1574,8 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       } else {
         tmpAction->setVarIn2Id(xp_get_var("variable2", "strcmp"));
       }
+      parseCheckIt(tmpAction, assignTo, "strcmp");
+      free(assignTo);
       tmpAction->setActionType(CAction::E_AT_VAR_STRCMP);
     } else if(!strcmp(actionElem, "trim")) {
       tmpAction->setVarId(xp_get_var("assign_to", "trim"));
@@ -1719,7 +1725,7 @@ void scenario::getCommonAttributes(message *message) {
 
   if ((ptr = xp_get_value((char *)"next"))) {
     if (found_timewait) {
-      ERROR("next labels are not allowed in <timewait> elements.");
+      ERROR("next labels are not allowed in <timewait> elements");
     }
     message -> nextLabel = strdup(ptr);
     message -> test = xp_get_var("test", "test variable", -1);
@@ -1738,7 +1744,7 @@ void scenario::getCommonAttributes(message *message) {
 
   if ((ptr = xp_get_value((char *)"ontimeout"))) {
     if (found_timewait) {
-      ERROR("ontimeout labels are not allowed in <timewait> elements.");
+      ERROR("ontimeout labels are not allowed in <timewait> elements");
     }
     message -> onTimeoutLabel = strdup(ptr);
   }
@@ -1751,12 +1757,13 @@ void parseMediaPortOffset(char* ptr, CAction* action) {
     action->setMediaPortOffset(offset);
   } else {
     // some error (if the offset is specified without a + or - default to positive)
-    ERROR("Incorrectly formatted offset '%s'. Offset should be specified as +/- and then a whole number (ie +5 or -10).", ptr) ;
+    ERROR("Incorrectly formatted offset '%s'. Offset should be specified as +/- and then a whole number (ie +5 or -10)", ptr) ;
   }
 }
 #endif
 
 //gets the boolean value of check it or check it inverse, and sets it in the action
+//Note: uses xp_get_value() so previous results stored in the static buffer will change
 void scenario::parseCheckIt(CAction* action, char* varName, char* what) {
   if (xp_get_value("check_it")) {
     if(xp_get_bool("check_it", what, false)) {
@@ -1764,7 +1771,7 @@ void scenario::parseCheckIt(CAction* action, char* varName, char* what) {
       if(varName) get_var(varName, what); // bump usage count
     }
     if (xp_get_value("check_it_inverse")) {
-      ERROR("Can not have both check_it and check_it_inverse in %s.", what);
+      ERROR("Can not have both check_it and check_it_inverse in %s", what);
     }
   } else if (xp_get_bool("check_it_inverse", what, false)) {
     action->setCheckItInverse(true);
