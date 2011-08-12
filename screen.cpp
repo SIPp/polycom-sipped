@@ -238,7 +238,10 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   if (use_errno) {
     char tmp[MAX_ERROR_SIZE];
     snprintf(tmp, MAX_ERROR_SIZE, ", errno = %d (%s)", error,  strerror(error));
-    realloc(msg, strlen(msg) + strlen(tmp) + 1);
+    msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
+    if (!msg) {
+      ERROR("Could not realloc memory for the error message!");
+    }
     strcat(msg, tmp);
   }
 
@@ -250,7 +253,10 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
       char tmp[MAX_ERROR_SIZE];
       snprintf(tmp, MAX_ERROR_SIZE, "%s: Unable to create '%s': %s.\n",
         screen_exename, screen_logfile, strerror(errno));
-      realloc(msg, strlen(msg) + strlen(tmp) + 1);
+      msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
+      if (!msg) {
+        ERROR("Could not realloc memory for the error message!");
+      }
       strcat(msg, tmp);
       screen_exit(EXIT_FATAL_ERROR);
     } else {
