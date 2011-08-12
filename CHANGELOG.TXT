@@ -1,4 +1,12 @@
 This file tracks changes responsible for version number updates.
+3.2.16 08-12-2011
+- Add check_it and check_it_inverse to strcmp that aborts test if result is not 0 (that is, if the strings don’t match). 
+- Prettification of Error messages
+- -dsd option as shortcut for –dump_sequence_diagram [just have "dsd" do identical thing as "dump_sequence_diagram" in array of command line arguments]
+- improved rsipp error messages
+- All errors (after parameter parsing) output to log file for easier integration with AutoTester; precise return codes for those prior to log availability.
+
+
 3.2.15 08-09-2011
 - RTP playback (play_pcap_X) support for 802.1q (VLAN) tagging.
 - Support running sipp files that use play_pcap_* from another directory (especially as this is how TA framework launches SIPp).
@@ -11,6 +19,8 @@ This file tracks changes responsible for version number updates.
 - Improve error message associated with unknown response CSEQ method when mixing start_txn and non-txn usage.
 - Log error message rather than crash when \n encountered in [keywords].
 - Report error if [remote_ip] used but not specified on command line - Done July 12 2011 
+- No longer auto-generate remote_tag if unspecified; Implement generated="true"|"false" attribute for [remote_tag] and [remote_tag_param] 
+  such that it is auto-generated ONLY if generated="true" is specified.
 
 3.2.14 06-13-2011
 - SIPp crashing when ']' missing from keyword parameter.  Removed tsrc, as it wasn't actually doing anything except when 
