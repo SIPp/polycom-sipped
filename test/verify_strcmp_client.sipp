@@ -42,7 +42,7 @@
 
   <recv response="100" dialog="1" use_txn="C1">
       <action>
-         <ereg regexp="[0-9]" search_in="hdr" header="CSeq:" check_it="true" assign_to="firstcseq"/>
+         <ereg regexp="INVITE" search_in="hdr" header="CSeq:" check_it="true" assign_to="firstcseq"/>
      </action>     
   </recv>
 
@@ -84,11 +84,10 @@
 
   <recv response="100" dialog="1" use_txn="C2">
       <action>
-        <add assign_to="firstcseq" value="1"/>
-        <ereg regexp="[0-9]" search_in="hdr" header="CSeq:" check_it="true" assign_to="secondcseq"/>
-        <test variable="firstcseq" compare="equal" variable2="secondcseq" check_it="true" assign_to="assignTo"/>
-        <add assign_to="firstcseq" value="1"/>
-        <test variable="firstcseq" compare="equal" variable2="secondcseq" check_it_inverse="true" assign_to="assignTo"/>
+        <ereg regexp="INVITE" search_in="hdr" header="CSeq:" check_it="true" assign_to="secondcseq"/>
+        <ereg regexp="VI" search_in="hdr" header="CSeq:" check_it="true" assign_to="vi"/>
+        <strcmp variable="firstcseq" compare="equal" variable2="secondcseq" check_it="true" assign_to="strcmpresult"/>
+        <strcmp variable="firstcseq" compare="equal" variable2="vi" check_it_inverse="true" assign_to="strcmpresult"/>
      </action>     
   </recv>
 </scenario>
