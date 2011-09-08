@@ -4144,7 +4144,7 @@ int sipp_do_connect_socket(struct sipp_socket *socket) {
   assert(socket->ss_transport == T_TCP || socket->ss_transport == T_TLS || no_call_id_check );
 
   errno = 0;
-  DEBUG("Connecting to %u", socket->ss_dest); 
+  DEBUG("Connecting to %u", socket->ss_dest);
   ret = connect(socket->ss_fd, (struct sockaddr *)&socket->ss_dest, SOCK_ADDR_SIZE(&socket->ss_dest));
   if (ret < 0) {
     return ret;
@@ -4271,7 +4271,7 @@ int main(int argc, char *argv[])
   userVariables = new AllocVariableTable(globalVariables);
 
   /* Command line parsing */
-#define REQUIRE_ARG() if((++argi) >= argc) { ERROR("Missing argument for param '%s'.\n" \
+#define REQUIRE_ARG() if((++argi) >= argc || (argv[argi])[0] == '-') { ERROR("Missing argument for param '%s'.\n" \
 				     "Use 'sipp -h' for details",  argv[argi - 1]); }
 #define CHECK_PASS() if (option->pass != pass) { break; }
 
@@ -5507,13 +5507,13 @@ int open_connections() {
 
     if (local_ip_is_ipv6) {
       (_RCAST(struct sockaddr_in6 *, &local_sockaddr))->sin6_port
-          = htons((short)user_port);        
+          = htons((short)user_port);
     } else {
       (_RCAST(struct sockaddr_in *, &local_sockaddr))->sin_port
           = htons((short)user_port); 
     }
     if(sipp_bind_socket(main_socket, &local_sockaddr, &local_port)) {
-      ERROR_NO("Unable to bind main socket");
+      ERROR("Unable to bind main socket. This may be caused by an incorrectly specified local IP");
     }
   }
 
@@ -5642,8 +5642,9 @@ int open_connections() {
    }
   }
 
-  if(&remote_sockaddr && no_call_id_check && main_socket->ss_transport == T_UDP){
-    if(sipp_connect_socket(main_socket, &remote_sockaddr)) WARNING("Could not connect socket to remote address");
+  //casting remote_sockaddr as int* and derefrencing to get first byte. If it is null, no IP has been specified.
+  if(*(int*)&remote_sockaddr && no_call_id_check && main_socket->ss_transport == T_UDP) { 
+    if(sipp_connect_socket(main_socket, &remote_sockaddr)) ERROR("Could not connect socket to remote address. Check to make sure the remote IP is valid.");
   }
 
   return status;
