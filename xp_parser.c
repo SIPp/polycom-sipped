@@ -80,7 +80,7 @@ char * xp_find_start_tag_end(char *ptr)
 {
   while(*ptr) {
     if (*ptr == '<') {
-      if ((strstr(ptr,"<!--") == ptr)) {
+      if (!strncmp(ptr, "<!--", strlen("<!--"))) {
         char * comment_end = strstr(ptr, "-->");
         if(!comment_end) return NULL;
         ptr = comment_end + 3;
@@ -117,15 +117,11 @@ char * xp_find_local_end()
   
   while(*ptr) {
     if (*ptr == '<') {
-      if ((*(ptr+1) == '!') && 
-          (*(ptr+2) == '[') &&
-          (strstr(ptr,"<![CDATA[") == ptr)) {
+      if (!strncmp(ptr,"<![CDATA[", strlen("<![CDATA["))) {
         char * cdata_end = strstr(ptr, "]]>");
         if(!cdata_end) return NULL;
         ptr = cdata_end + 3;
-      } else if ((*(ptr+1) == '!') && 
-          (*(ptr+2) == '-') &&
-          (strstr(ptr,"<!--") == ptr)) {
+      } else if (!strncmp(ptr, "<!--", strlen("<!--"))) {
         char * comment_end = strstr(ptr, "-->");
         if(!comment_end) return NULL;
         ptr = comment_end + 3;
@@ -170,7 +166,7 @@ int xp_set_xml_buffer_from_string(char * str, int dumpxml)
   if (dumpxml) 
     printf("%s", &xp_file);
 
-  if(strstr(xp_position[xp_stack], "<?xml") != xp_position[xp_stack]) return 0;
+  if(strncmp(xp_position[xp_stack], "<?xml", strlen("<?xml"))) return 0;
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
   xp_position[xp_stack] = xp_position[xp_stack] + 2;
 
@@ -443,7 +439,7 @@ int xp_set_xml_buffer_from_file(char * filename, int dumpxml)
   if (!result)
     return 0;
 
-  if(strstr(xp_position[xp_stack], "<?xml") != xp_position[xp_stack]) return 0;
+  if(strncmp(xp_position[xp_stack], "<?xml", strlen("<?xml"))) return 0;
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
   xp_position[xp_stack] = xp_position[xp_stack] + 2;
 
@@ -479,34 +475,30 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
 
   while(*ptr) {
     if (*ptr == '<') {
-      if ((*(ptr+1) == '!') && 
-        (*(ptr+2) == '[') &&
-        (strstr(ptr,"<![CDATA[") == ptr)) {
+      if (!strncmp(ptr,"<![CDATA[", strlen("<![CDATA["))) {
           char * cdata_end = strstr(ptr, "]]>");
           if(!cdata_end) return NULL;
           ptr = cdata_end + 3;
-      } else if ((*(ptr+1) == '!') && 
-        (*(ptr+2) == '-') &&
-        (strstr(ptr,"<!--") == ptr)) {
+      } else if (!strncmp(ptr,"<!--", strlen("<!--"))) {
           char * comment_end = strstr(ptr, "-->");
           if(!comment_end) return NULL;
           ptr = comment_end + 3;
-      } else if (strstr(ptr,"<?xml") == ptr) {
+      } else if (!strncmp(ptr,"<?xml", strlen("<?xml"))) {
         char * xml_end = strstr(ptr, "?>");
         if(!xml_end) return NULL;
         ptr = xml_end + 2;
-      } else if (strstr(ptr,"<!DOCTYPE") == ptr) {
+      } else if (!strncmp(ptr,"<!DOCTYPE", strlen("<!DOCTYPE"))) {
         char * doctype_end = strstr(ptr, ">");
         if(!doctype_end) return NULL;
         ptr = doctype_end + 1;
-      } else if ((skip_scenario) && (strstr(ptr,"<scenario") == ptr) ) {
+      } else if ((skip_scenario) && !(strncmp(ptr,"<scenario", strlen("<scenario")))) {
         char * scenario_end = strstr(ptr, ">");
         DEBUG("  Skipping over embedded <scenario> tag (%d bytes); level = %d, index = %d\n", scenario_end-ptr, level, index);
         if(!scenario_end) return NULL;
         ptr = scenario_end + 1;
       } else if (*(ptr+1) == '/') {
-        if ((*(ptr+2) == 's') && (*(ptr+3) == 'c') && (strstr(ptr,"</scenario") == ptr) ) {
-          char * scenario_end = strstr(ptr, ">");
+        if (!strncmp(ptr, "</scenario", strlen("</scenario"))) {
+          char * scenario_end = strchr(ptr, '>');
           DEBUG("  Skipping over embedded </scenario> tag (%d bytes); level = %d, index = %d\n", scenario_end-ptr, level, index);
           if(!scenario_end) return NULL;
           ptr = scenario_end + 1;
