@@ -11,7 +11,7 @@ require './sipp_test'
 
 class VerifyStrcmp < Test::Unit::TestCase
   def test_test
-    positive_test = SippTest.new("verify_strcmp", "-sf verify_strcmp_client.sipp -mc -trace_debug", "-sf verify_strcmp_server.sipp -mc")
+    positive_test = SippTest.new("verify_strcmp", "-sf verify_strcmp_client.sipp -mc", "-sf verify_strcmp_server.sipp -mc")
     assert(positive_test.run())
   end
   def test_test_fail
