@@ -43,6 +43,11 @@ typedef struct _ether_hdr {
       u_int16_t ether_type; /* we only need the type, so we can determine, if the next header is IPv4 or IPv6 */
 } ether_hdr;
 
+typedef struct _sll_hdr {
+  char dontcare[14];
+  u_int16_t ether_type; /* we only need the type, so we can determine, if the next header is IPv4 or IPv6 */
+} sll_hdr;
+
 typedef struct _ipv6_hdr {
     char dontcare[6];
     u_int8_t nxt_header; /* we only need the next header, so we can determine, if the next header is UDP or not */
@@ -122,7 +127,16 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
   while ((pktdata = (u_char *) pcap_next (pcap, pkthdr)) != NULL)
   {
 #endif
-    ethhdr = (ether_hdr *)pktdata;
+    int link_type = pcap_datalink(pcap);
+    if(link_type == DLT_EN10MB) {
+      ethhdr = (ether_hdr *)pktdata;
+    }
+    else if(link_type == DLT_LINUX_SLL) {
+      ethhdr = (sll_hdr *)pktdata;
+    }
+    else {
+      ERROR("Unrecognized link layer type");
+    }
     int num_of_vlan_headers = 0;
     if (ntohs(ethhdr->ether_type) == 0x8100 /* VLAN */) {
       int num_of_vlan_headers = 1;
