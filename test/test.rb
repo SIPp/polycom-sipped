@@ -31,6 +31,7 @@ require "./verify_pcap_play.rb"
 require "./verify_encoding.rb"
 require "./verify_generated.rb"
 require "./verify_error_codes.rb"
+require "./verify_cooked_packets.rb"
 require "./zero_content_length_header_not_last_scenarios.rb"
 
 def show_help_message

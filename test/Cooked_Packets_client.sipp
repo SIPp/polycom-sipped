@@ -1,0 +1,917 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Describe this scenario here" parameters="-mc" source="snipp.pl -f Cooked_Packets.pcap -i 192.168.2.16" id="" config="">
+<!-- Generated Scenario for 192.168.2.16 using Snipp v1.2.11 -->
+
+  <send dialog="1">
+    <![CDATA[
+
+      INVITE sip:7327372120@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      From: "Ruiwen Wan35" <sip:2135@[local_ip]:[local_port];user=phone;att=SOMERSET-al68838k9a7b3>[local_tag_param]
+      To: "Ruiwen Wan2120" <sip:7327372120@[remote_ip]:[remote_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      P-asserted-identity: "Ruiwen Wan35"<sip:2135@135.16.215.35;user=phone>
+      Privacy: none
+      Supported: 
+      Max-forwards: 9
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366655 1 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 18 0 8 9 127
+      a=rtpmap:18 G729/8000
+      a=fmtp:18 annexb=no
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:8 PCMA/8000
+      a=rtpmap:9 G722/8000
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <recv response="100" dialog="1">
+  </recv>
+
+  <!-- <pause milliseconds = "180"/> -->
+  <recv response="180" dialog="1">
+  </recv>
+
+  <!-- <pause milliseconds = "830"/> -->
+  <recv response="200" dialog="1">
+  </recv>
+
+  <pause milliseconds = "120"/>
+  <send dialog="1">
+    <![CDATA[
+
+      ACK sip:7327372120@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      From: "Ruiwen Wan35" <sip:2135@[local_ip]:[local_port];user=phone;att=SOMERSET-al68838k9a7b3>[local_tag_param]
+      To: "Ruiwen Wan2120" <sip:7327372120@[remote_ip]:[remote_port]>[remote_tag_param]
+      Call-ID: [call_id]
+      CSeq: [cseq] ACK
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Max-forwards: 9
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "970"/> -->
+  <recv request="REGISTER" dialog="2">
+  </recv>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <send dialog="2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] REGISTER
+      Contact: <[contact_uri]>;methods="INVITE, ACK, BYE, CANCEL, OPTIONS, INFO, MESSAGE, SUBSCRIBE, NOTIFY, PRACK, UPDATE, REFER";expires=60
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "410"/> -->
+  <recv request="INVITE" dialog="1">
+  </recv>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <send dialog="1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <pause milliseconds = "60"/>
+  <send dialog="1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366655 2 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=inactive
+      m=audio [media_port] RTP/AVP 18 127
+      a=rtpmap:18 G729/8000
+      a=fmtp:18 annexb=no
+      a=rtpmap:127 telephone-event/8000
+      a=inactive
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <recv request="ACK" dialog="1">
+  </recv>
+
+  <!-- <pause milliseconds = "2600"/> -->
+  <recv request="INVITE" dialog="3">
+  </recv>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <send dialog="3">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <pause milliseconds = "240"/>
+  <send dialog="3">
+    <![CDATA[
+
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- The following packet triggered 'WARNING: The IP sent as the owner of the sdp negotiation has changed; this should not be an issue but signalling when running this script may not be the same as in the original scenario' -->
+  <!-- The following packet triggered 'WARNING: The IP sent in the sdp negotiation as the connection target has changed; this should not be an issue but signalling when running this script may not be the same as in the original scenario' -->
+  <pause milliseconds = "1230"/>
+  <send dialog="3">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366662 1 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port+2] RTP/AVP 18 127
+      a=rtpmap:18 G729/8000
+      a=fmtp:18 annexb=no
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <recv request="ACK" dialog="3">
+  </recv>
+
+  <pause milliseconds = "100"/>
+  <nop display="stream audio Cooked_Packets-192_168_2_1-16416_(1).pcap">
+    <action>
+      <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16416_(1).pcap"/>
+    </action>
+  </nop>
+
+  <!-- <pause milliseconds = "2590"/> -->
+  <recv request="INVITE" dialog="4" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "40"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDglv07-5hqrdqioflvtparijbs3f2a1vt6gv0vmo8jovg4opovh80000840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>;isfocus
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366676 1 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+4] RTP/AVP 0
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <recv request="ACK" dialog="4" use_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "90"/> -->
+  <recv request="REFER" dialog="1">
+  </recv>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <send dialog="1">
+    <![CDATA[
+
+      SIP/2.0 202 Accepted
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] REFER
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <send dialog="1">
+    <![CDATA[
+
+      BYE sip:7327372120@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      From: "Ruiwen Wan35" <sip:2135@[local_ip]:[local_port];user=phone;att=SOMERSET-al68838k9a7b3>[local_tag_param]
+      To: "Ruiwen Wan2120" <sip:7327372120@[remote_ip]:[remote_port]>[remote_tag_param]
+      Call-ID: [call_id]
+      CSeq: [cseq] BYE
+      Max-forwards: 9
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <recv response="200" dialog="1">
+  </recv>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <recv request="REFER" dialog="3">
+  </recv>
+
+  <pause milliseconds = "50"/>
+  <send dialog="3">
+    <![CDATA[
+
+      SIP/2.0 202 Accepted
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] REFER
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <nop display="stream audio Cooked_Packets-192_168_2_1-16420_(3).pcap">
+    <action>
+      <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16420_(3).pcap"/>
+    </action>
+  </nop>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <send dialog="3">
+    <![CDATA[
+
+      BYE sip:7327372120@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      From: <sip:2109@[local_ip]:[local_port];user=phone>[local_tag_param]
+      To: "Ruiwen Wan2120" <sip:7327372120@[remote_ip]:[remote_port]>[remote_tag_param]
+      Call-ID: [call_id]
+      CSeq: [cseq] BYE
+      Max-forwards: 9
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <recv response="200" dialog="3">
+  </recv>
+
+  <!-- <pause milliseconds = "70"/> -->
+  <recv request="INVITE" dialog="4" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <nop display="stream audio Cooked_Packets-192_168_2_1-16420_(4).pcap">
+    <action>
+      <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16420_(4).pcap"/>
+    </action>
+  </nop>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <pause milliseconds = "50"/>
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDglv07-5hqrdqioflvtparijbs3f2a1vt6gv0vmo8jovg4opovh80000840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>;isfocus
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366676 2 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+4] RTP/AVP 0
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <recv request="ACK" dialog="4" use_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "4990"/> -->
+  <recv request="INVITE" dialog="4" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <pause milliseconds = "50"/>
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDglv07-5hqrdqioflvtparijbs3f2a1vt6gv0vmo8jovg4opovh80000840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>;isfocus
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366676 3 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+4] RTP/AVP 0
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+      a=inactive
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "50"/> -->
+  <recv request="ACK" dialog="4" use_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "3100"/> -->
+  <recv request="INVITE" dialog="5" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <send dialog="5" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "40"/> -->
+  <send dialog="5" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 183 Session Progress
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Supported: 
+      Session: Media
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366689 1 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+6] RTP/AVP 0 127
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:127 telephone-event/8000
+      a=fmtp:127 0-15
+      a=ptime:20
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <nop display="stream audio Cooked_Packets-192_168_2_1-16424_(1).pcap">
+    <action>
+      <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16424_(1).pcap"/>
+    </action>
+  </nop>
+
+  <pause milliseconds = "170"/>
+  <send dialog="5" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 183 Session Progress
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Supported: 
+      Session: Media
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366689 1 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+6] RTP/AVP 0 127
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:127 telephone-event/8000
+      a=fmtp:127 0-15
+      a=ptime:20
+
+    ]]>
+  </send>
+
+  <pause milliseconds = "1940"/>
+  <send dialog="5" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Supported: 
+      Reason: broadworks;no-recon-on-answer
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366689 2 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=inactive
+      m=audio [media_port+6] RTP/AVP 18 127
+      a=inactive
+      a=rtpmap:18 G729/8000
+      a=fmtp:18 annexb=no
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <recv request="ACK" dialog="5" use_txn="S1">
+  </recv>
+
+  <pause milliseconds = "50"/>
+  <send dialog="5" start_txn="C1">
+    <![CDATA[
+
+      INVITE sip:7327372120@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      From: <sip:2107@[local_ip]:[local_port];user=phone>[local_tag_param]
+      To: "Ruiwen Wan2120" <sip:7327372120@[remote_ip]:[remote_port]>[remote_tag_param]
+      Call-ID: [call_id]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Supported: 
+      Max-forwards: 9
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366689 3 IN IP4 [local_ip]
+      s=-
+      c=IN IP4 [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port+6] RTP/AVP 18 0 8 9 127
+      a=rtpmap:18 G729/8000
+      a=fmtp:18 annexb=no
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:8 PCMA/8000
+      a=rtpmap:9 G722/8000
+      a=rtpmap:127 telephone-event/8000
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <recv response="200" dialog="5" use_txn="C1">
+  </recv>
+
+  <!-- <pause milliseconds = "40"/> -->
+  <send dialog="5" use_txn="C1">
+    <![CDATA[
+
+      ACK sip:7327372120@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      From: <sip:2107@[local_ip]:[local_port];user=phone>[local_tag_param]
+      To: "Ruiwen Wan2120" <sip:7327372120@[remote_ip]:[remote_port]>[remote_tag_param]
+      Call-ID: [call_id]
+      CSeq: [cseq] ACK
+      Contact: <sip:SDebuqc-5hqrdq24fivt93n1v53vmg31vujpf09o000s840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>
+      Max-forwards: 9
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <pause milliseconds = "90"/>
+  <nop display="stream audio Cooked_Packets-192_168_2_1-16424_(2).pcap">
+    <action>
+      <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16424_(2).pcap"/>
+    </action>
+  </nop>
+
+  <!-- <pause milliseconds = "2410"/> -->
+  <recv request="REFER" dialog="4" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 403 Forbidden
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] REFER
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <recv request="BYE" dialog="5" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <send dialog="5" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] BYE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <recv request="INVITE" dialog="4" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <nop display="stream audio Cooked_Packets-192_168_2_1-16428_(5).pcap">
+    <action>
+      <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16428_(5).pcap"/>
+    </action>
+  </nop>
+
+  <!-- <pause milliseconds = "0"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDglv07-5hqrdqioflvtparijbs3f2a1vt6gv0vmo8jovg4opovh80000840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>;isfocus
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366676 4 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+8] RTP/AVP 0
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "60"/> -->
+  <recv request="ACK" dialog="4" use_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "8941"/> -->
+  <recv request="REGISTER" dialog="2">
+  </recv>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <send dialog="2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:][local_tag_param]
+      [last_Call-ID:]
+      CSeq: [cseq] REGISTER
+      Contact: <[contact_uri]>;methods="INVITE, ACK, BYE, CANCEL, OPTIONS, INFO, MESSAGE, SUBSCRIBE, NOTIFY, PRACK, UPDATE, REFER";expires=60
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "7180"/> -->
+  <recv request="INVITE" dialog="4" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "30"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "40"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDglv07-5hqrdqioflvtparijbs3f2a1vt6gv0vmo8jovg4opovh80000840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>;isfocus
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366676 5 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+8] RTP/AVP 0
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+      a=inactive
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <recv request="ACK" dialog="4" use_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "5310"/> -->
+  <recv request="INVITE" dialog="4" start_txn="S1">
+  </recv>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <pause milliseconds = "50"/>
+  <nop display="stream audio Cooked_Packets-192_168_2_1-16428_(6).pcap">
+    <action>
+      <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16428_(6).pcap"/>
+    </action>
+  </nop>
+
+  <!-- <pause milliseconds = "10"/> -->
+  <send dialog="4" use_txn="S1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      Record-Route: <sip:7327372120@[local_ip]:[local_port];lr>
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      CSeq: [cseq] INVITE
+      Contact: <sip:SDglv07-5hqrdqioflvtparijbs3f2a1vt6gv0vmo8jovg4opovh80000840@[local_ip]:[local_port];att=SOMERSET-1d4mnu7jjqq60;transport=[transport]>;isfocus
+      Supported: 
+      Allow: ACK, BYE, CANCEL, INFO, INVITE, OPTIONS, PRACK, REFER, NOTIFY, UPDATE
+      Content-Type: application/sdp
+      Accept: application/media_control+xml, application/sdp, multipart/mixed
+      Content-Length: [len]
+      
+      v=0
+      o=BroadWorks 366676 6 IN IP4 [local_ip]
+      s=-
+      t=0 0
+      m=audio [media_port+8] RTP/AVP 0
+      c=IN IP4 [media_ip]
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+
+    ]]>
+  </send>
+
+  <!-- <pause milliseconds = "20"/> -->
+  <recv request="ACK" dialog="4" use_txn="S1">
+  </recv>
+
+</scenario>
