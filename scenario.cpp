@@ -1312,7 +1312,7 @@ void scenario::computeSippMode()
     ERROR("Unable to determine creation mode of the tool (server, client)\n");
   if(sendMode == -1)
     ERROR("Unable to determine send mode of the tool (server, client)\n");
-  DEBUG_OUT("sendMode = %d, creationMode = %d [MODE_CLIENT = %d, MODE_SERVER = %d]", sendMode, creationMode, MODE_CLIENT, MODE_SERVER);
+  DEBUG_OUT("sendMode = %d, creationMode = %s (%d)", sendMode, creationMode == MODE_CLIENT ? "MODE_CLIENT" : "MODE_SERVER", creationMode);
 }
 
 void scenario::handle_rhs(CAction *tmpAction, const char *what) {
