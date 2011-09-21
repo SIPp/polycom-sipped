@@ -432,12 +432,17 @@ int _TRACE_EXEC(const char *fmt, ...) {
   if (useExecf && !exec_lfi.fptr) {
     DEBUG("rotating exec_lfi; exec_lfi.overwrite = %d", exec_lfi.overwrite);
     int retry_count = 0;
-    while (!rotatef(&exec_lfi) && (retry_count++ < 9)) {
-      DEBUG("Unable to open exec_lfi ; waiting 1/10 second %d of maximum 10 times before retrying to allow conflicting process to terminate.", retry_count);
-      usleep(100000);
+    while (!rotatef(&exec_lfi) && (retry_count++ < 10)) {
+      WARNING("Unable to open exec_lfi ; failure %d of a maximum 10 tries.", retry_count);
+      if(retry_count < 6){
+         sleep(1);
+      }
+      else {
+        sleep(5);
+      }
     }
     if (!exec_lfi.fptr) {
-      DEBUG("Unable to open exec log file; exiting.");
+      ERROR("Unable to open exec log file, previous command took more than 30 seconds to run; exiting.");
       return -1;
     }
   }
