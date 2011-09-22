@@ -38,14 +38,13 @@
  */
 
 typedef struct _ether_hdr {
-      char ether_dst[6];
-      char ether_src[6];
-      u_int16_t ether_type; /* we only need the type, so we can determine, if the next header is IPv4 or IPv6 */
+  char dontcare[12];
+  u_int16_t ether_type; /* we only need the type, so we can determine, if the next header is IPv4 or IPv6 */
 } ether_hdr;
 
 typedef struct _sll_hdr {
   char dontcare[14];
-  u_int16_t ether_type; /* we only need the type, so we can determine, if the next header is IPv4 or IPv6 */
+  u_int16_t sll_type; /* we only need the type, so we can determine, if the next header is IPv4 or IPv6 */
 } sll_hdr;
 
 typedef struct _ipv6_hdr {
@@ -99,7 +98,8 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
   u_int16_t base = 0xffff;
   u_long pktlen;
   pcap_pkt *pkt_index;
-  ether_hdr *ethhdr;
+  u_int16_t ip_type;
+  int frame_size;
   vlan_hdr *vlanhdr;
   struct iphdr *iphdr;
   ipv6_hdr *ip6hdr;
@@ -129,18 +129,22 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 #endif
     int link_type = pcap_datalink(pcap);
     if(link_type == DLT_EN10MB) {
-      ethhdr = (ether_hdr *)pktdata;
+      ether_hdr* ethhdr = (ether_hdr *)pktdata;
+      ip_type = ethhdr->ether_type;
+      frame_size = sizeof(*ethhdr);
     }
     else if(link_type == DLT_LINUX_SLL) {
-      ethhdr = (sll_hdr *)pktdata;
+      sll_hdr* sllhdr = (sll_hdr *)pktdata;
+      ip_type = sllhdr->sll_type;
+      frame_size = sizeof(*sllhdr);
     }
     else {
       ERROR("Unrecognized link layer type");
     }
     int num_of_vlan_headers = 0;
-    if (ntohs(ethhdr->ether_type) == 0x8100 /* VLAN */) {
+    if (ntohs(ip_type) == 0x8100 /* VLAN */) {
       int num_of_vlan_headers = 1;
-      vlanhdr = (vlan_hdr *)((char *)ethhdr + sizeof(*ethhdr));
+      vlanhdr = (vlan_hdr *)((char *)pktdata + frame_size);
       while (ntohs(vlanhdr->vlan_type) == 0x8100 /* VLAN */) {
         num_of_vlan_headers ++;
         vlanhdr = (vlan_hdr *)((char*)vlanhdr + sizeof(*vlanhdr));
@@ -155,17 +159,17 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
       }
       iphdr = (struct iphdr *)((char *)vlanhdr + sizeof(*vlanhdr));
     }
-    else if (ntohs(ethhdr->ether_type) != 0x0800 /* IPv4 */
-          && ntohs(ethhdr->ether_type) != 0x86dd) /* IPv6 */ {
+    else if (ntohs(ip_type) != 0x0800 /* IPv4 */
+          && ntohs(ip_type) != 0x86dd) /* IPv6 */ {
       num_of_non_ip_packets ++;
       continue;
     }
     else {
-      iphdr = (struct iphdr *)((char *)ethhdr + sizeof(*ethhdr));
+      iphdr = (struct iphdr *)((char *)pktdata + frame_size);
     }
     if (iphdr && iphdr->version == 6) {
       //ipv6
-      pktlen = (u_long) pkthdr->len - sizeof(*ethhdr) - sizeof(*ip6hdr);
+      pktlen = (u_long) pkthdr->len - frame_size - sizeof(*ip6hdr);
       ip6hdr = (ipv6_hdr *)(void *) iphdr;
       if (ip6hdr->nxt_header != IPPROTO_UDP) {
         DEBUG("prepare_pcap.c: Ignoring non UDP packet!\n");
