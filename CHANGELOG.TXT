@@ -1,8 +1,21 @@
 This file tracks changes responsible for version number updates.
+3.2.18 xx-xx-xx
+Fix .xml stripping from scenario file parameter (-sf)
+Set deadcall_time to 0 with -mc by default
+Improved error/trace/debug logs associated with exec and raw socket failure
+Support RTP playback from cooked format (in prepare_pcap)
+Optimize load of SIPp with large files (strstr replaced)
+
+3.2.17 09-09-2011
+- Encoding attribute for DialogSpecific keywords
+- Eliminate bind error crash if wrong IP specified with -i
+- Improve error messages
+- Verify that value associated with argument exists (is not another argument)
+
 3.2.16 08-12-2011
-- Add check_it and check_it_inverse to strcmp that aborts test if result is not 0 (that is, if the strings don’t match). 
+- Add check_it and check_it_inverse to strcmp that aborts test if result is not 0 (that is, if the strings don't match). 
 - Prettification of Error messages
-- -dsd option as shortcut for –dump_sequence_diagram [just have "dsd" do identical thing as "dump_sequence_diagram" in array of command line arguments]
+- -dsd option as shortcut for dump_sequence_diagram [just have "dsd" do identical thing as "dump_sequence_diagram" in array of command line arguments]
 - improved rsipp error messages
 - All errors (after parameter parsing) output to log file for easier integration with AutoTester; precise return codes for those prior to log availability.
 

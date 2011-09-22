@@ -4251,6 +4251,7 @@ int main(int argc, char *argv[])
   userVariables = new AllocVariableTable(globalVariables);
 
   /* Command line parsing */
+  /* Verify that value associated with argument exists (is not another argument) */
 #define REQUIRE_ARG() if((++argi) >= argc || (argv[argi])[0] == '-') { ERROR("Missing argument for param '%s'.\n" \
 				     "Use 'sipp -h' for details",  argv[argi - 1]); }
 #define CHECK_PASS() if (option->pass != pass) { break; }
