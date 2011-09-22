@@ -3870,26 +3870,6 @@ void stop_all_traces()
   if(dumpInFile) dumpInFile = 0;
 }
 
-char* remove_pattern(char* P_buffer, char* P_extensionPattern) {
-
-  char *L_ptr = P_buffer;
-
-  if (P_extensionPattern == NULL) {
-    return P_buffer ;
-  }
-
-  if (P_buffer == NULL) {
-    return P_buffer ;
-  }
-
-  L_ptr = strstr(P_buffer, P_extensionPattern) ;
-  if (L_ptr != NULL) {
-    *L_ptr = '\0' ;
-  }
-
-  return P_buffer ;
-}
-
 static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd, int accepting) {
   struct sipp_socket *ret = NULL;
   DEBUG_IN();
@@ -4300,7 +4280,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.17"
+	  printf("\n SIPped v3.2.18-BETA"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4585,7 +4565,6 @@ int main(int argc, char *argv[])
 	  if (!strcmp(argv[argi - 1], "-sf")) {
 	    scenario_file = new char [strlen(argv[argi])+1] ;
 	    sprintf(scenario_file,"%s", argv[argi]);
-	    scenario_file = remove_pattern (scenario_file, (char*)".xml");
 	    if (useLogf == 1) {
 	      rotate_logfile();
 	    }
