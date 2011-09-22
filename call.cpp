@@ -3862,14 +3862,14 @@ void execute_system_shell_and_exit(char *x)
   if(ret == -1) {
     WARNING("system call error for %s",x);
   }
-  TRACE_MSG("Exec of '%s' returned %d", x, WEXITSTATUS(ret));
+  DEBUG("System(%s) returned %d", x, WEXITSTATUS(ret));
   exit(WEXITSTATUS(ret));
 
 
 #else
   // sh not available, use exec(command)
   int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
-  ERROR_NO("Exec of 'cmd.exe /c %s' failed", x);
+  ERROR_NO("Cannot execute command: Exec of 'cmd.exe /c %s' failed", x);
 #endif
 
 }
@@ -4336,7 +4336,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         else {
           /* fork again so command runs in background (this process will return EXIT_SUCCESS if system/exec works) */
           if((l_pid = fork()) < 0) {
-            ERROR_NO("Forking error child");
+            ERROR_NO("Internal Error: Attempting to fork for <exec> command and fork() returned an error");
           } else {
             if( l_pid == 0){
               execute_system_shell_and_exit(x);
@@ -4361,11 +4361,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         DEBUG("E_AT_EXECUTE_CMD: parent complete, exited = %d, status = %d.", WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
         if (verify_result) {
           if (!WIFEXITED(status)) {
-            ERROR("'%s' did not exit normally (status = %d)", x, status);
+            ERROR("System error running <exec verify>: '%s' did not exit normally (status = %d)", x, status);
           }
           else if (WEXITSTATUS(status) != EXIT_SUCCESS) {
-            ERROR("'%s' returned result code %d", x, WEXITSTATUS(status));
+            ERROR("<exce verify> FAIL: '%s' returned result code %d (non-zero result indicates failure; use -trace_exec to log more detail).", x, WEXITSTATUS(status));
           }
+        DEBUG("<exec verify=\"%s\"> PASS.", x);
         } // if (verify_result)
 
         break;

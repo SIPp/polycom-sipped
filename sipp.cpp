@@ -165,7 +165,7 @@ struct sipp_option options_table[] = {
 	{"cp", "Set the local control port number. Default is 8888.", SIPP_OPTION_INT, &control_port, 1},
 
 	{"d", "Controls the length of calls. More precisely, this controls the duration of 'pause' instructions in the scenario, if they do not have a 'milliseconds' section. Default value is 0 and default unit is milliseconds.", SIPP_OPTION_TIME_MS, &duration, 1},
-	{"deadcall_wait", "How long the Call-ID and final status of calls should be kept to improve message and error logs (default unit is ms).", SIPP_OPTION_TIME_MS, &deadcall_wait, 1},
+	{"deadcall_wait", "How long the Call-ID and final status of calls should be kept to improve message and error logs (default unit is ms). Default is 33 seconds, unless -mc is specified in which case it is 0.", SIPP_OPTION_TIME_MS, &deadcall_wait, 1},
 	{"default_behaviors", "Set the default behaviors that SIPp will use.  Possbile values are:\n"
 		"- all\tUse all default behaviors\n"
 		"- none\tUse no default behaviors\n"
@@ -233,7 +233,7 @@ struct sipp_option options_table[] = {
 	        "- On any other unexpected message, abort the call by sending a BYE or a CANCEL\n",
 		SIPP_OPTION_UNSETFLAG, &default_behaviors, 1},
        {"mc", "Enable multiple-dialog support by directing all messages to one scenario regardless of call-id.\n"
-       "Only 1 concurrent call is possible and stop calls (-m) defaults to 1",
+       "Only 1 concurrent call is possible, stop calls (-m) defaults to 1.",
        SIPP_OPTION_NO_CALL_ID_CHECK, NULL, 1}, 
 	{"nr", "Disable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_UNSETFLAG, &retrans_enabled, 1},
 	{"yr", "Enable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_SETFLAG, &retrans_enabled, 1},
@@ -4313,16 +4313,16 @@ int main(int argc, char *argv[])
 	  CHECK_PASS();
 	  *((int *)option->data) = get_long(argv[argi], argv[argi-1]);
 	  break;
-        case SIPP_OPTION_LONG:
-          REQUIRE_ARG();
-          CHECK_PASS();
-          *((long *)option->data) = get_long(argv[argi], argv[argi-1]);
-          break; 
-        case SIPP_OPTION_LONG_LONG:
-          REQUIRE_ARG();
-          CHECK_PASS();
-          *((unsigned long long *)option->data) = get_long_long(argv[argi], argv[argi-1]);
-          break;
+	case SIPP_OPTION_LONG:
+    REQUIRE_ARG();
+    CHECK_PASS();
+    *((long *)option->data) = get_long(argv[argi], argv[argi-1]);
+    break; 
+	case SIPP_OPTION_LONG_LONG:
+    REQUIRE_ARG();
+    CHECK_PASS();
+    *((unsigned long long *)option->data) = get_long_long(argv[argi], argv[argi-1]);
+    break;
 	case SIPP_OPTION_TIME_SEC:
 	  REQUIRE_ARG();
 	  CHECK_PASS();
@@ -4333,11 +4333,11 @@ int main(int argc, char *argv[])
 	  CHECK_PASS();
 	  *((int *)option->data) = get_time(argv[argi], argv[argi-1], 1);
 	  break;
-        case SIPP_OPTION_TIME_MS_LONG:
-          REQUIRE_ARG();
-          CHECK_PASS();
-          *((long *)option->data) = get_time(argv[argi], argv[argi-1], 1);
-          break;
+	case SIPP_OPTION_TIME_MS_LONG:
+    REQUIRE_ARG();
+    CHECK_PASS();
+    *((long *)option->data) = get_time(argv[argi], argv[argi-1], 1);
+    break;
 	case SIPP_OPTION_BOOL:
 	  REQUIRE_ARG();
 	  CHECK_PASS();
@@ -4509,11 +4509,12 @@ int main(int argc, char *argv[])
 	  open_calls_user_setting = 1;
 	  retrans_enabled = 0;
 	  watchdog_interval = 0;
+    deadcall_wait = 0;
     // default is to stop after 1 call if value not changed on command line.
-          if (stop_after == 0xffffffff){
-            DEBUG("Setting stop_after to one since it is %u", stop_after);
-            stop_after = 1;
-          }
+    if (stop_after == 0xffffffff){
+      DEBUG("Setting stop_after to one since it is %u", stop_after);
+      stop_after = 1;
+    }
 	  break;
 	case SIPP_OPTION_USERS:
 	  REQUIRE_ARG();

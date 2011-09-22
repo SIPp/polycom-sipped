@@ -614,7 +614,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
 
   if(filename) {
     if(!xp_set_xml_buffer_from_file(filename, dumpxml)) {
-      ERROR("Unable to load or parse '%s' xml scenario file", filename);
+      ERROR("Unable to open or parse '%s' xml scenario file", filename);
     }
     scenario_path = strdup(filename);
     reduce_to_path(scenario_path);
