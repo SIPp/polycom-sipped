@@ -11,7 +11,7 @@ require './sipp_test'
 
 class VerifyTestAction < Test::Unit::TestCase
   def test_test
-    positive_test = SippTest.new("verify_test_action", "-sf verify_test_action_client.sipp -mc -trace_debug", "-sf verify_test_action_server.sipp -mc")
+    positive_test = SippTest.new("verify_test_action", "-sf verify_test_action_client.sipp -mc", "-sf verify_test_action_server.sipp -mc")
     assert(positive_test.run())
   end
   def test_test_fail
