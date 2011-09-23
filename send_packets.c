@@ -211,6 +211,18 @@ send_packets (play_args_t * play_args)
 #endif
 
     do_sleep ((struct timeval *) &pkt_index->ts, &last, &didsleep, &start);
+    if (!media_ip_is_ipv6) {
+      if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0){
+        ERROR("Could not bind local port to send RTP traffic.");
+      }
+      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
+    }
+    else {
+      if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0){
+        ERROR("Could not bind local port to send RTP traffic.");
+      }
+      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
+    }
 #ifdef MSG_DONTWAIT
     if (!media_ip_is_ipv6) {
       ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));

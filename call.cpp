@@ -512,7 +512,17 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   memset(&(play_args_a.to), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_v.to), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_a.from), 0, sizeof(struct sockaddr_storage));
+  if (media_ip_is_ipv6) {
+    inet_pton(AF_INET, local_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_addr.s_addr = inet_addr(local_ip);
+  }
   memset(&(play_args_v.from), 0, sizeof(struct sockaddr_storage));
+  if (media_ip_is_ipv6) {
+    inet_pton(AF_INET, local_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_addr.s_addr = inet_addr(local_ip);
+  }
   hasMediaInformation = 0;
   for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) media_threads[i] = 0;
   number_of_active_rtp_threads = 0;
@@ -762,7 +772,7 @@ bool call::connect_socket_if_needed()
     if (existing) {
       return true;
     }
-    
+
     sipp_customize_socket(call_socket);
 
     if (use_remote_sending_addr) {
@@ -884,7 +894,7 @@ int call::send_raw(char * msg, int index, int len)
         main_remote_socket->ss_count++;
       }
     }
-    sock=call_remote_socket ;
+    sock = call_remote_socket;
   }
 
   // If the length hasn't been explicitly specified, treat the message as a string
@@ -2022,7 +2032,7 @@ bool call::abortCall(bool writeLog)
     is_inv = !strncmp(last_send_msg, "INVITE", 6);
   } else {
     is_inv = false;
-  }  
+  }
   if ((creationMode != MODE_SERVER) && (msg_index > 0)) {
     if ((call_established == false) && (is_inv)) {
       src_recv = getDefaultLastReceivedMessage().c_str(); 
@@ -4417,18 +4427,6 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 #ifndef PTHREAD_STACK_MIN
 #define PTHREAD_STACK_MIN	16384
 #endif
-        //pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-
-
-/*
-        if (media_thread != 0) {}
-          DEBUG("media_thread already active: kill it before starting a new one");
-          // If a media_thread is already active, kill it before starting a new one
-          pthread_cancel(media_thread);
-          pthread_join(media_thread, NULL);
-          media_thread = 0;
-        }
-*/
         if (number_of_active_rtp_threads >= MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS-1) 
           ERROR("Trying to play too many concurrent media threads. Current maximum is %d.", MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS);
 
