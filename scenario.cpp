@@ -1223,10 +1223,18 @@ void scenario::computeSippMode()
       continue;
     case MSG_TYPE_SEND:
       if (sendMode == -1) {
-        sendMode = MODE_CLIENT;
+        if (transport == T_TLS && no_call_id_check) {
+          sendMode = MODE_SERVER;
+        } else {
+          sendMode = MODE_CLIENT;
+        }
       }
       if (creationMode == -1) {
-        creationMode = MODE_CLIENT;
+        if (transport == T_TLS && no_call_id_check) {
+          creationMode = MODE_SERVER;
+        } else {
+          creationMode = MODE_CLIENT;
+        }
       }
       break;
 
