@@ -433,7 +433,7 @@ int _TRACE_EXEC(const char *fmt, ...) {
     DEBUG("rotating exec_lfi; exec_lfi.overwrite = %d", exec_lfi.overwrite);
     int retry_count = 0;
     while (!rotatef(&exec_lfi) && (retry_count++ < 10)) {
-      WARNING("Unable to open exec_lfi ; failure %d of a maximum 10 tries.", retry_count);
+      WARNING("Unable to open exec_lfi ; failure %d of a maximum 11 tries", retry_count);
       if(retry_count < 6){
          sleep(1);
       }
