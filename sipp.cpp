@@ -4433,6 +4433,12 @@ int main(int argc, char *argv[])
 		printf("OpenSSL Initialization problem\n");
 		exit ( -1);
 	      }
+              if(!user_port) {
+                user_port = 5061;
+              }
+              if(!remote_port) {
+                remote_port = 5061;
+              }
 #else
 	      ERROR("To use a TLS transport you must compile SIPp with OpenSSL");
 #endif

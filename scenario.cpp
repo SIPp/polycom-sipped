@@ -1241,7 +1241,7 @@ void scenario::computeSippMode()
     case MSG_TYPE_RECV:
      if (sendMode == -1) {
        DEBUG("MSG_TYPE_RECV: encounteredNop = %d, no_call_id_check = %d", encounteredNop, no_call_id_check);
-       if (encounteredNop && no_call_id_check) {
+       if (encounteredNop && no_call_id_check && transport != T_TLS) {
          DEBUG("sendMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check");
          sendMode = MODE_CLIENT;
        }
@@ -1249,7 +1249,7 @@ void scenario::computeSippMode()
         sendMode = MODE_SERVER;
       }
       if (creationMode == -1) {
-        if (encounteredNop && no_call_id_check) {
+        if (encounteredNop && no_call_id_check && transport != T_TLS) {
           DEBUG("creationMode overriden to MODE_CLIENT due to initial NOP and no_call_id_check");
           creationMode = MODE_CLIENT;
         }
