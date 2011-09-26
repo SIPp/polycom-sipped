@@ -1210,7 +1210,18 @@ void scenario::computeSippMode()
 
   assert(messages.size() > 0);
 
-  for(unsigned int i=0; i<messages.size(); i++)
+  if (force_client_mode) {
+    if (force_server_mode) {
+      ERROR("Cannot have both force client mode, and force server mode enabled");
+    }
+    sendMode = MODE_CLIENT;
+    creationMode = MODE_CLIENT;
+  }
+  else if (force_server_mode) {
+    sendMode = MODE_SERVER;
+    creationMode = MODE_SERVER;
+  }
+  else for(unsigned int i=0; i<messages.size(); i++)
   {
     switch(messages[i]->M_type)
     {

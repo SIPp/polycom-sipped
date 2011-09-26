@@ -137,10 +137,6 @@ struct sipp_option {
 
 /* Put Each option, its help text, and type in this table. */
 struct sipp_option options_table[] = {
-	{"v", "Display version and copyright information.", SIPP_OPTION_VERSION, NULL, 0},
-
-	{"h", NULL, SIPP_OPTION_HELP, NULL, 0},
-	{"help", NULL, SIPP_OPTION_HELP, NULL, 0},
 
 	{"aa", "Enable automatic 200 OK answer for INFO, UPDATE, REGISTER and NOTIFY messages.", SIPP_OPTION_SETFLAG, &auto_answer, 1},
 	{"aa_expires", "Expires value used in auto responses that require one (currently only REGISTER response). Default unit is seconds. Default value is 3600.", SIPP_OPTION_INT, &auto_answer_expires, 1},
@@ -187,6 +183,13 @@ struct sipp_option options_table[] = {
 
 	{"f", "Set the statistics report frequency on screen. Default is 1 and default unit is seconds.", SIPP_OPTION_TIME_SEC, &report_freq, 1},
 	{"fd", "Set the statistics dump log report frequency. Default is 60 and default unit is seconds.", SIPP_OPTION_TIME_SEC, &report_freq_dumpLog, 1},
+        {"force_server_mode", "Set creation/send mode to server regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_server_mode, 1},
+        {"fsm", "Set creation/send mode to server regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_server_mode, 1},
+        {"force_client_mode", "Set creation/send mode to client regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_client_mode, 1},
+        {"fcm", "Set creation/send mode to client regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_client_mode, 1},
+
+	{"h", NULL, SIPP_OPTION_HELP, NULL, 0},
+	{"help", NULL, SIPP_OPTION_HELP, NULL, 0},
 
 	{"i", "Set the local IP address for 'Contact:','Via:', and 'From:' headers. Default is primary host IP address.\n", SIPP_OPTION_IP, local_ip, 1},
 	{"inf", "Inject values from an external CSV file during calls into the scenarios.\n"
@@ -323,10 +326,10 @@ struct sipp_option options_table[] = {
 
 
 
-  {"sendbuffer_warn", "Produce warnings instead of errors on SendBuffer failures.", SIPP_OPTION_BOOL, &sendbuffer_warn, 1},
+	{"sendbuffer_warn", "Produce warnings instead of errors on SendBuffer failures.", SIPP_OPTION_BOOL, &sendbuffer_warn, 1},
 
 	{"trace_msg", "Displays sent and received SIP messages in <scenario file name>_<pid>_messages.log", SIPP_OPTION_SETFLAG, &useMessagef, 1},
-  {"trace_shortmsg", "Displays sent and received SIP messages as CSV in <scenario file name>_<pid>_shortmessages.log", SIPP_OPTION_SETFLAG, &useShortMessagef, 1},
+	{"trace_shortmsg", "Displays sent and received SIP messages as CSV in <scenario file name>_<pid>_shortmessages.log", SIPP_OPTION_SETFLAG, &useShortMessagef, 1},
 	{"trace_screen", "Dump statistic screens in the <scenario_name>_<pid>_screens.log file when quitting SIPp. Useful to get a final status report in background mode (-bg option).", SIPP_OPTION_SETFLAG, &useScreenf, 1},
 	{"trace_err", "Trace all unexpected messages in <scenario file name>_<pid>_errors.log.", SIPP_OPTION_SETFLAG, &print_all_responses, 1},
 //	{"trace_timeout", "Displays call ids for calls with timeouts in <scenario file name>_<pid>_timeout.log", SIPP_OPTION_SETFLAG, &useTimeoutf, 1},
@@ -339,6 +342,8 @@ struct sipp_option options_table[] = {
 	{"trace_logs", "Allow tracing of <log> actions in <scenario file name>_<pid>_logs.log.", SIPP_OPTION_SETFLAG, &useLogf, 1},
 
 	{"users", "Instead of starting calls at a fixed rate, begin 'users' calls at startup, and keep the number of calls constant.", SIPP_OPTION_USERS, NULL, 1},
+
+	{"v", "Display version and copyright information.", SIPP_OPTION_VERSION, NULL, 0},
 
 	{"watchdog_interval", "Set gap between watchdog timer firings.  Default is 400, unless -mc option is used (in which case watchdogs are disabled by default).", SIPP_OPTION_TIME_MS, &watchdog_interval, 1},
 	{"watchdog_reset", "If the watchdog timer has not fired in more than this time period, then reset the max triggers counters.  Default is 10 minutes.", SIPP_OPTION_TIME_MS, &watchdog_reset, 1},
@@ -4436,7 +4441,7 @@ int main(int argc, char *argv[])
               if(!user_port) {
                 user_port = 5061;
               }
-              if(!remote_port) {
+              if(remote_port == DEFAULT_PORT) {
                 remote_port = 5061;
               }
 #else

@@ -442,7 +442,7 @@ int _TRACE_EXEC(const char *fmt, ...) {
       }
     }
     if (!exec_lfi.fptr) {
-      ERROR("Unable to open exec log file, previous command took more than 30 seconds to run; exiting.");
+      ERROR("Unable to open exec log file, previous command took more than 30 seconds to run; exiting");
       return -1;
     }
   }

@@ -158,7 +158,7 @@
 #define DEFAULT_RATE_SCALE           1.0
 #define DEFAULT_RATE_PERIOD_MS       1000
 #define DEFAULT_TRANSPORT            T_UDP
-#define DEFAULT_PORT                 5060  
+#define DEFAULT_PORT                 5060
 #define DEFAULT_MEDIA_PORT           6000
 #define DEFAULT_3PCC_PORT            6060
 #define DEFAULT_SERVICE              ((char *)"service")
@@ -187,7 +187,7 @@ extern int	          rate_increase           _DEFVAL(0);
 extern int	          rate_max	          _DEFVAL(0);
 extern bool	          rate_quit		  _DEFVAL(true);
 extern int                users                   _DEFVAL(-1);
-extern int               rate_period_ms           _DEFVAL(DEFAULT_RATE_PERIOD_MS);
+extern int                rate_period_ms          _DEFVAL(DEFAULT_RATE_PERIOD_MS);
 extern int                sleeptime               _DEFVAL(0);
 extern unsigned long      defl_recv_timeout       _DEFVAL(0);
 extern unsigned long      defl_send_timeout       _DEFVAL(0);
@@ -211,10 +211,9 @@ extern void             * monosocket_comp_state   _DEFVAL(0);
 extern char             * service                 _DEFVAL(DEFAULT_SERVICE);
 extern char             * auth_password           _DEFVAL(DEFAULT_AUTH_PASSWORD);
 extern unsigned long      report_freq             _DEFVAL(DEFAULT_REPORT_FREQ);
-extern unsigned long      report_freq_dumpLog     _DEFVAL
-                                                (DEFAULT_REPORT_FREQ_DUMP_LOG);
-extern bool		  periodic_rtd		  _DEFVAL(false);
-extern const char		* stat_delimiter          _DEFVAL(";");
+extern unsigned long      report_freq_dumpLog     _DEFVAL (DEFAULT_REPORT_FREQ_DUMP_LOG);
+extern bool		  periodic_rtd            _DEFVAL(false);
+extern const char	* stat_delimiter          _DEFVAL(";");
 
 extern bool               timeout_exit            _DEFVAL(false);
 extern bool               timeout_error           _DEFVAL(false);
@@ -272,9 +271,9 @@ extern int                twinSippPort            _DEFVAL(DEFAULT_3PCC_PORT);
 extern bool               twinSippMode            _DEFVAL(false);
 extern bool               extendedTwinSippMode    _DEFVAL(false);
 
-extern bool               nostdin                 _DEFVAL(false);        
-extern bool               backgroundMode          _DEFVAL(false);        
-extern bool               signalDump              _DEFVAL(false);        
+extern bool               nostdin                 _DEFVAL(false);
+extern bool               backgroundMode          _DEFVAL(false);
+extern bool               signalDump              _DEFVAL(false);
 
 extern int                currentScreenToDisplay  _DEFVAL
                                                   (DISPLAY_SCENARIO_SCREEN);
@@ -284,8 +283,11 @@ extern char             * auth_uri                _DEFVAL(0);
 extern const char       * call_id_string          _DEFVAL("%u-%p@%s");
 extern char             **generic[100];
 extern bool              no_call_id_check         _DEFVAL(false);
-extern int               dump_xml                  _DEFVAL(0);
-extern int               dump_sequence_diagram      _DEFVAL(0);
+extern int               dump_xml                 _DEFVAL(0);
+extern int               dump_sequence_diagram    _DEFVAL(0);
+
+extern bool              force_client_mode        _DEFVAL(false);
+extern bool              force_server_mode        _DEFVAL(false);
 
 /* TDM map */
 extern bool               use_tdmmap              _DEFVAL(false);
@@ -304,7 +306,6 @@ extern SSL                  *twinSipp_ssl ;
 extern char                 *tls_cert_name     _DEFVAL(DEFAULT_TLS_CERT) ;
 extern char                 *tls_key_name      _DEFVAL(DEFAULT_TLS_KEY)  ;
 extern char                 *tls_crl_name      _DEFVAL(DEFAULT_TLS_CRL)  ;
-
 #endif
 
 // extern field file management
