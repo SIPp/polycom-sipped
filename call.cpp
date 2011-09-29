@@ -902,6 +902,14 @@ int call::send_raw(char * msg, int index, int len)
     len = strlen(msg);
   }
 
+  if (!sock) {
+    int num_of_open_socks = 0;
+    while (sockets[num_of_open_socks]) {
+      num_of_open_socks++;
+    }
+    sock = sockets[num_of_open_socks-1];
+  }
+
   assert(sock);
 
   rc = write_socket(sock, msg, len, WS_BUFFER, &call_peer);
