@@ -414,7 +414,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   nb_last_delay = 0;
   use_ipv6 = ipv6;
   queued_msg = NULL;
-  
+
 #ifdef _USE_OPENSSL
   dialog_authentication = NULL;
   dialog_challenge_type = 0;
@@ -439,7 +439,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   } else {
     memset(&call_peer, 0, sizeof(call_peer));
   }
-  
+
   // initialising the CallVariable with the Scenario variable
   int i;
   VariableTable *userVars = NULL;
@@ -850,7 +850,7 @@ int call::send_raw(char * msg, int index, int len)
     char* cs=get_header_content(msg,"CSeq:");
     TRACE_SHORTMSG("%s\tS\t%s\tCSeq:%s\t%s\n",
       CStat::formatTime(&currentTime),id, cs, get_first_line(msg));
-  }  
+  }
 
   if((index!=-1) && (lost(index))) {
     TRACE_MSG("%s message voluntary lost (while sending).", TRANSPORT_TO_STRING(transport));
@@ -3228,12 +3228,12 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
       }
       result = !regexec(curmsg -> regexp_compile, request, (size_t)0, NULL, 0);
       if (!result) {
-        sprintf(reason, "Regular expression match failed for index %d: %s", index, curmsg->recv_request);              
+        sprintf(reason, "Regular expression match failed for index %d: %s", index, curmsg->recv_request);
       }
     } else {
       result = !strcmp(curmsg -> recv_request, request);
       if (!result) {
-        sprintf(reason, "Request '%s' does not match expected request '%s'", request, curmsg->recv_request);              
+        sprintf(reason, "Request '%s' does not match expected request '%s'", request, curmsg->recv_request);
       }
     }
     if (result && curmsg->isUseTxn()) {
@@ -3266,7 +3266,7 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
       } else {
         sprintf(reason, "Transaction '%s' requires branch '%s' and current packet has mismatching branch of '%s'", 
               curmsg->getTransactionName().c_str(), txn.getBranch().c_str(), branch);
-      }      
+      }
     } else if (index == 0) {
       /* Always true for the first message. */
       result = true;
@@ -3625,7 +3625,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     ds->peer_tag = strdup(ptr);
     if (!ds->peer_tag) 
       ERROR("Out of memory allocating peer tag.");
-   
+
   }
   /* Update local_tag */
   if (reply_code)
@@ -3635,7 +3635,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   if (ptr) {
     if(strlen(ptr) > (MAX_HEADER_LEN - 1))
       ERROR("Local tag too long. Change MAX_HEADER_LEN and recompile sipp");
-    
+
     if (ds->local_tag && strcmp(ds->local_tag, ptr)) {
       LOG_MSG("Local tag already specified as '%s' but message received changes it to '%s'\n", ds->local_tag, ptr);
     }
@@ -4599,7 +4599,7 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
       WARNING("Continuing call on an unexpected BYE for call: %s", (id==NULL)?"none":id);
     }
     break ;
-      
+
   case E_AM_UNEXP_CANCEL: // response for an unexpected cancel
     // usage of last_ keywords
     setLastMsg(P_recv);
@@ -4609,27 +4609,27 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     if (default_behaviors & DEFAULT_BEHAVIOR_ABORTUNEXP) {
       WARNING("Aborting call on an unexpected CANCEL for call: %s", (id==NULL)?"none":id);
       if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-	      sendBuffer(createSendingMessage(get_default_message("200"), -1));
+        sendBuffer(createSendingMessage(get_default_message("200"), -1));
       }
-    
-    // if twin socket call => reset the other part here 
-    if (twinSippSocket && (msg_index > 0)) {
-      res = sendCmdBuffer
-      (createSendingMessage(get_default_message("3pcc_abort"), -1));
-    }
-    
-    computeStat(CStat::E_CALL_FAILED);
-    computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
-    delete this;
+
+      // if twin socket call => reset the other part here 
+      if (twinSippSocket && (msg_index > 0)) {
+        res = sendCmdBuffer
+        (createSendingMessage(get_default_message("3pcc_abort"), -1));
+      }
+
+      computeStat(CStat::E_CALL_FAILED);
+      computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
+      delete this;
     } else {
       WARNING("Continuing call on unexpected CANCEL for call: %s", (id==NULL)?"none":id);
     }
-    break ;
-      
+    break;
+
   case E_AM_PING: // response for a random ping
     // usage of last_ keywords
     setLastMsg(P_recv);
-    
+
    if (default_behaviors & DEFAULT_BEHAVIOR_PINGREPLY) {
     WARNING("Automatic response mode for an unexpected PING for call: %s", (id==NULL)?"none":id);
     sendBuffer(createSendingMessage(get_default_message("200"), -1));
@@ -4639,7 +4639,7 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
     if (twinSippSocket && (msg_index > 0)) {
       res = sendCmdBuffer(createSendingMessage(get_default_message("3pcc_abort"), -1));
     }
-    
+
     CStat::globalStat(CStat::E_AUTO_ANSWERED);
     delete this;
     } else {
