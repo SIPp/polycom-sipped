@@ -754,7 +754,6 @@ int get_decimal_from_hex(char hex) {
 
 int                  pollnfds;
 struct pollfd        pollfiles[SIPP_MAXFDS];
-struct sipp_socket  *sockets[SIPP_MAXFDS];
 
 static int pending_messages = 0;
 
@@ -3117,7 +3116,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
     return;
   }
   listener *listener_ptr = get_listener(no_call_id_check == false ? call_id : NULL);
- 
+
   if (useShortMessagef == 1) {
               struct timeval currentTime;
               GET_TIME (&currentTime);
@@ -3960,6 +3959,7 @@ int socket_fd(bool use_ipv6, int transport) {
 }
 
 struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
+  DEBUG_IN();
   struct sipp_socket *ret;
   int fd = socket_fd(use_ipv6, transport);
 
@@ -3989,6 +3989,7 @@ struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
     close(fd);
     ERROR("Could not allocate new socket structure!");
   }
+  DEBUG_OUT();
   return ret;
 }
 
@@ -4034,6 +4035,7 @@ struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *exi
 }
 
 struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
+  DEBUG_IN();
   struct sipp_socket *ret;
   struct sockaddr_storage remote_sockaddr;
   int fd;
@@ -4067,8 +4069,8 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
 
   ret  = sipp_allocate_socket(accept_socket->ss_ipv6, accept_socket->ss_transport, fd, 1);
   if (!ret) {
-	close(fd);
-	ERROR_NO("Could not allocate new socket!");
+    close(fd);
+    ERROR_NO("Could not allocate new socket!");
   }
 
   memcpy(&ret->ss_remote_sockaddr, &remote_sockaddr, sizeof(ret->ss_remote_sockaddr));
@@ -4087,6 +4089,7 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
 #endif
   }
 
+  DEBUG_OUT();
   return ret;
 }
 
@@ -5392,7 +5395,7 @@ int determine_remote_and_local_ip() {
 int open_connections() {
   int status=0;
   local_port = 0;
-  
+
   /* Creating and binding the local socket */
   if ((main_socket = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
     ERROR_NO("Unable to get the local socket");
@@ -5586,16 +5589,16 @@ int open_connections() {
 	      sipp_close_socket(main_socket);
 	      reset_number--;
 	      return 1;
-	   }else{
-      if(errno == EINVAL){
-        /* This occurs sometime on HPUX but is not a true INVAL */
-        ERROR_NO("Unable to connect a TCP socket, remote peer error.\n"
-              "Use 'sipp -h' for details");
       } else {
-        ERROR_NO("Unable to connect a TCP socket.\n"
+        if(errno == EINVAL){
+          /* This occurs sometime on HPUX but is not a true INVAL */
+          ERROR_NO("Unable to connect a TCP socket, remote peer error.\n"
+                "Use 'sipp -h' for details");
+        } else {
+          ERROR_NO("Unable to connect a TCP socket.\n"
                  "Use 'sipp -h' for details");
+        }
       }
-    }
     }
 
     sipp_customize_socket(tcp_multiplex);
@@ -5680,7 +5683,7 @@ ERROR("Unknown peer host '%s'.\n"
       }
       strcpy(peer_ip, get_inet_address(peer_sockaddr));
       if((*peer_socket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-	ERROR_NO("Unable to get a twin sipp TCP socket");
+        ERROR_NO("Unable to get a twin sipp TCP socket");
       }
 
       /* Mark this as a control socket. */
@@ -5779,9 +5782,9 @@ void connect_local_twin_socket(char * twinSippHost)
              }
              strcpy(twinSippIp, get_inet_address(&twinSipp_sockaddr));
 
-	     if((localTwinSippSocket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-	       ERROR_NO("Unable to get a listener TCP socket ");
-	     }
+             if((localTwinSippSocket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
+               ERROR_NO("Unable to get a listener TCP socket ");
+             }
 
            memset(&localTwin_sockaddr, 0, sizeof(struct sockaddr_storage));
            if (!is_ipv6) {

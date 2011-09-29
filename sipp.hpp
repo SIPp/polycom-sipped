@@ -639,12 +639,15 @@ void close_peer_sockets();
 void close_local_sockets();
 void free_peer_addr_map();
 
+/******************** Recv Poll Processing *********************/
+
+extern struct sipp_socket  *sockets[SIPP_MAXFDS];
+
+
 /********************* Reset global kludge  *******************/
 
 #ifdef GLOBALS_FULL_DEFINITION
 #undef extern
 #endif
-
-/* THis must go after the GLOBALS_FULL_DEFINITION, because we need the extern keyword. */
 
 #endif // __SIPP__
