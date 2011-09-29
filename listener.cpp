@@ -75,7 +75,7 @@ listener *get_listener(char *id) {
   if (listener_it == listeners.end()) {
     return NULL;
   }
-  
+
   return listener_it->second;
 
 }
