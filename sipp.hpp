@@ -639,6 +639,7 @@ void close_peer_sockets();
 void close_local_sockets();
 void free_peer_addr_map();
 
+void generate_alt_path(char * path, const char * name);
 /******************** Recv Poll Processing *********************/
 
 extern struct sipp_socket  *sockets[SIPP_MAXFDS];

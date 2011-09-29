@@ -484,7 +484,10 @@ int sip_tls_load_crls( SSL_CTX *ctx , char *crlfile)
   }
 
   /* Add the CRLS to the lookpup object */
-  if (X509_load_crl_file(lookup,crlfile,X509_FILETYPE_PEM) != 1) {
+  char alt_path_crl[strlen(getenv("SIPPED")) + strlen(crlfile) + 2];
+  generate_alt_path(alt_path_crl, crlfile);
+  if (X509_load_crl_file(lookup,crlfile,X509_FILETYPE_PEM) != 1
+      && X509_load_crl_file(lookup,alt_path_crl,X509_FILETYPE_PEM) != 1) {
     return (-1);
   }
 
@@ -518,14 +521,14 @@ static ssl_init_status FI_init_ssl_context (void)
   /*  Load the trusted CA's */
   SSL_CTX_load_verify_locations(sip_trp_ssl_ctx, tls_cert_name, NULL);
   SSL_CTX_load_verify_locations(sip_trp_ssl_ctx_client, tls_cert_name, NULL);
-  
+
   /*  CRL load from application specified only if specified on the command line */
   if (strlen(tls_crl_name) != 0) {
     if(sip_tls_load_crls(sip_trp_ssl_ctx,tls_crl_name) == -1) {
       ERROR("FI_init_ssl_context: Unable to load CRL file (%s)", tls_crl_name);
       return SSL_INIT_ERROR;
     }
-  
+
     if(sip_tls_load_crls(sip_trp_ssl_ctx_client,tls_crl_name) == -1) {
       ERROR("FI_init_ssl_context: Unable to load CRL (client) file (%s)", tls_crl_name);
       return SSL_INIT_ERROR;
@@ -543,7 +546,6 @@ static ssl_init_status FI_init_ssl_context (void)
                        sip_tls_verify_callback);
   }
 
-
   /* Selection Cipher suits - load the application specified ciphers */
   SSL_CTX_set_default_passwd_cb_userdata(sip_trp_ssl_ctx,
                                              (void *)CALL_BACK_USER_DATA );
@@ -554,29 +556,31 @@ static ssl_init_status FI_init_ssl_context (void)
   SSL_CTX_set_default_passwd_cb( sip_trp_ssl_ctx_client,
                                              passwd_call_back_routine );
 
-  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx,
-                                        tls_cert_name,
-                                        SSL_FILETYPE_PEM ) != 1 ) {
+  char alt_path_cert[strlen(getenv("SIPPED")) + strlen(tls_cert_name) + 2];
+  generate_alt_path(alt_path_cert, tls_cert_name);
+
+  char alt_path_key[strlen(getenv("SIPPED")) + strlen(tls_key_name) + 2];
+  generate_alt_path(alt_path_key, tls_key_name);
+
+  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx, tls_cert_name, SSL_FILETYPE_PEM ) != 1
+       && SSL_CTX_use_certificate_file(sip_trp_ssl_ctx, alt_path_cert, SSL_FILETYPE_PEM ) != 1) {
     ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file failed");
     return SSL_INIT_ERROR;
   }
 
-  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client,
-                                        tls_cert_name,
-                                        SSL_FILETYPE_PEM ) != 1 ) {
+  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client, tls_cert_name, SSL_FILETYPE_PEM ) != 1
+       && SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client, alt_path_cert, SSL_FILETYPE_PEM ) != 1) {
     ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file (client) failed");
     return SSL_INIT_ERROR;
   }
-  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx,
-                                       tls_key_name,
-                                       SSL_FILETYPE_PEM ) != 1 ) {
+  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx, tls_key_name, SSL_FILETYPE_PEM ) != 1
+       && SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx, alt_path_key, SSL_FILETYPE_PEM ) != 1) {
     ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file failed");
     return SSL_INIT_ERROR;
   }
 
-  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client,
-                                       tls_key_name,
-                                       SSL_FILETYPE_PEM ) != 1 ) {
+  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client, tls_key_name, SSL_FILETYPE_PEM ) != 1
+       && SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client, alt_path_key, SSL_FILETYPE_PEM ) != 1 ) {
     ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file (client) failed");
     return SSL_INIT_ERROR;
   }
@@ -5965,3 +5969,8 @@ void rotate_execf() {
   rotatef(&exec_lfi);
 }
 
+void generate_alt_path(char * path, const char * name) {
+  strcpy(path, getenv("SIPPED"));
+  strcat(path, "/");
+  strcat(path, name);
+}
