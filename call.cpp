@@ -3240,7 +3240,9 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
       }
     } else {
       result = !strcmp(curmsg -> recv_request, request);
-      if (!result) {
+      if (!*request) {
+        sprintf(reason, "Response '%d' does not match expected request '%s'", reply_code, curmsg->recv_request);
+      } else if (!result) {
         sprintf(reason, "Request '%s' does not match expected request '%s'", request, curmsg->recv_request);
       }
     }
