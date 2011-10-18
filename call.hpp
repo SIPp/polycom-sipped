@@ -181,8 +181,8 @@ private:
   int number_of_active_rtp_threads;
   play_args_t play_args_a;
   play_args_t play_args_v;
-  void set_audio_port(int port);
-  void set_video_port(int port);
+  void set_audio_from_port(int port);
+  void set_video_from_port(int port);
 #endif
 
   
@@ -249,7 +249,7 @@ private:
   double get_rhs(CAction *currentAction);
 
 
-// *** meothods that operate on default or specfied msg_index ***
+// *** methods that operate on default or specfied msg_index ***
 
   // Return true if use_txn specified for currently indexed message
   bool use_txn(int index=-1);

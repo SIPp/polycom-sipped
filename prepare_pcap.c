@@ -190,7 +190,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
       pktlen = (u_long) pkthdr->len - sizeof(*ethhdr) - sizeof(*iphdr);
 #else
       udphdr = (struct udphdr *)((char *)iphdr + (iphdr->ihl << 2));
-      pktlen = (u_long)(ntohs(udphdr->len));
+      pktlen = (u_long)(ntohs(udphdr->len)-(sizeof(struct udphdr)));
 #endif
     }
     if (pktlen > PCAP_MAXPACKET) {
@@ -205,7 +205,8 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
     pkt_index->data = (unsigned char *) malloc(pktlen);
     if (!pkt_index->data) 
       ERROR("Can't allocate memory for pcap pkt data");
-    memcpy(pkt_index->data, udphdr, pktlen);
+    // copy data, skipping over udp header itself
+    memcpy(pkt_index->data, (char *)udphdr+(sizeof(struct udphdr)), pktlen);
 
 #if defined(__HPUX) || defined(__DARWIN) || (defined __CYGWIN) || defined(__FreeBSD__)
     udphdr->uh_sum = 0 ;      

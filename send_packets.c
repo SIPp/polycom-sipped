@@ -118,19 +118,19 @@ send_packets (play_args_t * play_args)
 {
   int ret, sock, port_diff;
   pcap_pkt *pkt_index, *pkt_max;
-  uint16_t *from_port, *to_port;
   struct timeval didsleep = { 0, 0 };
   struct timeval start = { 0, 0 };
   struct timeval last = { 0, 0 };
   pcap_pkts *pkts = play_args->pcap;
   int allow_ports_to_change = 0; /* may be exposed at later date */
   struct sockaddr_storage *to, *from, to_struct, from_struct;
-  struct udphdr *udp;
   struct sockaddr_in6 to6, from6;
   char buffer[PCAP_MAXPACKET];
   int temp_sum;
+  int result = 0;
 
   if(allow_ports_to_change) {
+    // For now, never possible.
     to = &play_args -> to;
     from = &play_args -> from;
   } else {
@@ -142,30 +142,55 @@ send_packets (play_args_t * play_args)
 #ifndef MSG_DONTWAIT
   int fd_flags;
 #endif
+  DEBUG_IN();
 
   if (media_ip_is_ipv6) {
-    sock = socket(PF_INET6, SOCK_RAW, IPPROTO_UDP);
+    sock = socket(PF_INET6, SOCK_DGRAM, 0);
     if (sock < 0) {
-      ERROR("Can't create raw socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
+      ERROR_NO("Can't create raw socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
-    from_port = &(((struct sockaddr_in6 *)(void *) from )->sin6_port);
-    to_port = &(((struct sockaddr_in6 *)(void *) to )->sin6_port);
+    DEBUG("IPv6 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
+      ntohs(((struct sockaddr_in6 *)(void *) from )->sin6_port), 
+      ((struct sockaddr_in6 *)(void *) from )->sin6_addr.s6_addr, 
+      ntohs(((struct sockaddr_in6 *)(void *) to )->sin6_port), 
+      ((struct sockaddr_in6 *)(void *) to )->sin6_addr.s6_addr);
   }
   else {
-    sock = socket(PF_INET, SOCK_RAW, IPPROTO_UDP);
+    sock = socket(PF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-      ERROR("Can't create raw socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
+      ERROR_NO("Can't create raw socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
-    from_port = &(((struct sockaddr_in *)(void *) from )->sin_port);
-    to_port = &(((struct sockaddr_in *)(void *) to )->sin_port);
+    DEBUG("IPv4 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
+      ntohs(((struct sockaddr_in *)(void *) from )->sin_port), 
+      ((struct sockaddr_in *)(void *) from )->sin_addr.s_addr, 
+      ntohs(((struct sockaddr_in *)(void *) to )->sin_port), 
+      ((struct sockaddr_in *)(void *) to )->sin_addr.s_addr);
+  }
+  int sock_opt = 1;
+  if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *)&sock_opt, sizeof (sock_opt)) == -1) {
+    ERROR_NO("setsockopt(sock, SO_REUSEADDR) failed");
   }
 	
+  if (!media_ip_is_ipv6) {
+    if (bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0){
+      char ip[INET_ADDRSTRLEN];
+      inet_ntop(AF_INET, &(((struct sockaddr_in *) from)->sin_addr), ip, INET_ADDRSTRLEN);
+      ERROR_NO("Could not bind RTP traffic socket to %s:%hu", ip, ntohs(((struct sockaddr_in *) from)->sin_port));
+    }
+  }
+  else {
+    if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0){
+      char ip[INET6_ADDRSTRLEN];
+      inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) from)->sin6_addr), ip, INET_ADDRSTRLEN);
+      ERROR_NO("Could not bind socket to send RTP traffic %s:%hu", ip, ntohs(((struct sockaddr_in6 *)from )->sin6_port));
+    }
+  }
+
 #ifndef MSG_DONTWAIT
   fd_flags = fcntl(sock, F_GETFL , NULL);
   fd_flags |= O_NONBLOCK;
   fcntl(sock, F_SETFL , fd_flags);
 #endif
-  udp = (struct udphdr *)buffer;
 
   pkt_index = pkts->pkts;
   pkt_max = pkts->max;
@@ -178,51 +203,18 @@ send_packets (play_args_t * play_args)
     memcpy(&(to6.sin6_addr.s6_addr), &(((struct sockaddr_in6 *)(void *) to)->sin6_addr.s6_addr), sizeof(to6.sin6_addr.s6_addr));
     memcpy(&(from6.sin6_addr.s6_addr), &(((struct sockaddr_in6 *)(void *) from)->sin6_addr.s6_addr), sizeof(from6.sin6_addr.s6_addr));
   }
-	
+
 
   /* Ensure the sender socket is closed when the thread exits - this
    * allows the thread to be cancelled cleanly.
    */
   pthread_cleanup_push(send_packets_cleanup, ((void *) sock));
 
-
   while (pkt_index < pkt_max) {
-    memcpy(udp, pkt_index->data, pkt_index->pktlen);
-    port_diff = ntohs (udp->uh_dport) - pkts->base;
-    // modify UDP ports
-    udp->uh_sport = htons(port_diff + *from_port);
-    udp->uh_dport = htons(port_diff + *to_port);
-
-    if (!media_ip_is_ipv6) {
-      temp_sum = checksum_carry(pkt_index->partial_check + check((u_int16_t *) &(((struct sockaddr_in *)(void *) from)->sin_addr.s_addr), 4) + check((u_int16_t *) &(((struct sockaddr_in *)(void *) to)->sin_addr.s_addr), 4) + check((u_int16_t *) &udp->uh_sport, 4));
-    }
-    else {
-      temp_sum = checksum_carry(pkt_index->partial_check + check((u_int16_t *) &(from6.sin6_addr.s6_addr), 16) + check((u_int16_t *) &(to6.sin6_addr.s6_addr), 16) + check((u_int16_t *) &udp->uh_sport, 4));
-    }
-
-#ifndef _HPUX_LI
-#ifdef __HPUX
-    udp->uh_sum = (temp_sum>>16)+((temp_sum & 0xffff)<<16);
-#else
-    udp->uh_sum = temp_sum;
-#endif
-#else
-    udp->uh_sum = temp_sum;
-#endif
+    memcpy(buffer,  pkt_index->data, pkt_index->pktlen);
 
     do_sleep ((struct timeval *) &pkt_index->ts, &last, &didsleep, &start);
-    if (!media_ip_is_ipv6) {
-      if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0){
-        ERROR("Could not bind local port to send RTP traffic.");
-      }
-      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
-    }
-    else {
-      if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0){
-        ERROR("Could not bind local port to send RTP traffic.");
-      }
-      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
-    }
+
 #ifdef MSG_DONTWAIT
     if (!media_ip_is_ipv6) {
       ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
@@ -239,20 +231,21 @@ send_packets (play_args_t * play_args)
     }
 #endif
     if (ret < 0) {
-      close(sock);
-      WARNING("send_packets.c: sendto failed with error: %s", strerror(errno));
-      return( -1);
+      WARNING("send_packets.c: sendto failed with error: %s (sock = %d)", strerror(errno), sock);
+      result = -1;
+      break; // Can not return directly because of pthread_cleanup_push/pop's use of { and }
     }
 
     rtp_pckts_pcap++;
-    rtp_bytes_pcap += pkt_index->pktlen - sizeof(*udp);
+    rtp_bytes_pcap += pkt_index->pktlen;
     memcpy (&last, &(pkt_index->ts), sizeof (struct timeval));
     pkt_index++;
   }
 
   /* Closing the socket is handled by pthread_cleanup_push()/pthread_cleanup_pop() */
   pthread_cleanup_pop(1);
-  return 0;
+  DEBUG_OUT();
+  return result;
 }
 
 /*

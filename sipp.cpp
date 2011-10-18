@@ -4100,17 +4100,26 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
 int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr, int *port) {
   int ret;
   int len;
+  char ip_and_port[INET6_ADDRSTRLEN+10];
   DEBUG_IN();
 
   if (socket->ss_ipv6) {
     len = sizeof(struct sockaddr_in6);
+    char ip[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) saddr)->sin6_addr), ip, INET_ADDRSTRLEN);
+    sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in6 *)saddr )->sin6_port));
   } else {
     len = sizeof(struct sockaddr_in);
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(((struct sockaddr_in *) saddr)->sin_addr), ip, INET_ADDRSTRLEN);
+    sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in *) saddr)->sin_port));
   }
 
   if((ret = bind(socket->ss_fd, (sockaddr *)saddr, len))) {
+    DEBUG("Could not bind socket to %s (%d: %s)", ip_and_port, errno, strerror(errno));
     return ret;
   }
+  DEBUG("Bound socket to %s", ip_and_port);
 
   if (!port) {
     return 0;
@@ -4268,7 +4277,7 @@ int main(int argc, char *argv[])
 				     "Use 'sipp -h' for details",  argv[argi - 1]); }
 #define CHECK_PASS() if (option->pass != pass) { break; }
 
-  int default_scenario_to_use; // -1 indicates non-default scenario
+  int default_scenario_to_use = -2; // -1 indicates non-default scenario ; -2 indicates none specified
 
   for (int pass = 0; pass <= 3; pass++) {
     for(argi = 1; argi < argc; argi++) {
@@ -4579,22 +4588,22 @@ int main(int argc, char *argv[])
 	  strcpy(twinSippHost, argv[argi]);
 	  get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
 	  break;
-	case SIPP_OPTION_SCENARIO:
-	  REQUIRE_ARG();
-	  CHECK_PASS();
-	  if (!strcmp(argv[argi - 1], "-sf")) {
-	    scenario_file = new char [strlen(argv[argi])+1] ;
-	    sprintf(scenario_file,"%s", argv[argi]);
-	    if (useLogf == 1) {
-	      rotate_logfile();
-	    }
-            default_scenario_to_use = -1;
-	  } else if (!strcmp(argv[argi - 1], "-sn")) {
-	    int i = find_scenario(argv[argi]);
+  case SIPP_OPTION_SCENARIO:
+    REQUIRE_ARG();
+    CHECK_PASS();
+    if (!strcmp(argv[argi - 1], "-sf")) {
+      scenario_file = new char [strlen(argv[argi])+1] ;
+      sprintf(scenario_file,"%s", argv[argi]);
+      if (useLogf == 1) {
+        rotate_logfile();
+      }
+      default_scenario_to_use = -1;
+    } else if (!strcmp(argv[argi - 1], "-sn")) {
+      int i = find_scenario(argv[argi]);
 
-	    scenario_file = new char [strlen(argv[argi])+1] ;
-	    sprintf(scenario_file,"%s", argv[argi]);
-            default_scenario_to_use = i;
+      scenario_file = new char [strlen(argv[argi])+1] ;
+      sprintf(scenario_file,"%s", argv[argi]);
+      default_scenario_to_use = i;
 	  } else if (!strcmp(argv[argi - 1], "-sd")) {
 	    int i = find_scenario(argv[argi]);
 	    fprintf(stdout, "%s", default_scenario[i]);
@@ -4829,6 +4838,10 @@ int main(int argc, char *argv[])
 
   if (global_lost) {
     lose_packets = 1;
+  }
+
+  if (default_scenario_to_use == -2) {
+    ERROR("You must specify a scenario (for example with -sf or -sn parameters)");
   }
 
   /* trace file setting */
@@ -5083,41 +5096,57 @@ int main(int argc, char *argv[])
     media_ip_is_ipv6 = false;
   }
 
+  /* retrieve RTP local addr */
+  struct addrinfo   hints;
+  struct addrinfo * local_addr;
+
+  memset((char*)&hints, 0, sizeof(hints));
+  hints.ai_flags  = AI_PASSIVE;
+  hints.ai_family = PF_UNSPEC;
+
+  /* Resolving local IP */
+  if (getaddrinfo(media_ip,
+                  NULL,
+                  &hints,
+                  &local_addr) != 0) {
+    ERROR("Unknown RTP address '%s'.\n"
+             "Use 'sipp -h' for details", media_ip);
+  }
+  
+  memset(&media_sockaddr,0,sizeof(struct sockaddr_storage));
+  media_sockaddr.ss_family = local_addr->ai_addr->sa_family;
+  
+  memcpy(&media_sockaddr,
+         local_addr->ai_addr,
+         SOCK_ADDR_SIZE(
+           _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
+  freeaddrinfo(local_addr);
+
+  media_port = user_media_port ? user_media_port : DEFAULT_MEDIA_PORT;
+
   /* Always create and Bind RTP socket */
   /* to avoid ICMP                     */
-//  if (1) {
-    /* retrieve RTP local addr */
-    struct addrinfo   hints;
-    struct addrinfo * local_addr;
-
-    memset((char*)&hints, 0, sizeof(hints));
-    hints.ai_flags  = AI_PASSIVE;
-    hints.ai_family = PF_UNSPEC;
-
-    /* Resolving local IP */
-    if (getaddrinfo(media_ip,
-                    NULL,
-                    &hints,
-                    &local_addr) != 0) {
-      ERROR("Unknown RTP address '%s'.\n"
-               "Use 'sipp -h' for details", media_ip);
+  int create_media_socket = 0;
+  if (!create_media_socket) {
+    if (media_sockaddr.ss_family == AF_INET) {
+      (_RCAST(struct sockaddr_in *,&media_sockaddr))->sin_port = htons((short)media_port);
+    } else {
+      (_RCAST(struct sockaddr_in6 *,&media_sockaddr))->sin6_port = htons((short)media_port);
+      media_ip_is_ipv6 = true;
     }
-    
-    memset(&media_sockaddr,0,sizeof(struct sockaddr_storage));
-    media_sockaddr.ss_family = local_addr->ai_addr->sa_family;
-    
-    memcpy(&media_sockaddr,
-           local_addr->ai_addr,
-           SOCK_ADDR_SIZE(
-             _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
-    freeaddrinfo(local_addr);
-
+  }
+  else {
     if((media_socket = socket(media_ip_is_ipv6 ? AF_INET6 : AF_INET,
                               SOCK_DGRAM, 0)) == -1) {
       char msg[512];
       sprintf(msg, "Unable to get the audio RTP socket (IP=%s, port=%d)", media_ip, media_port);
       ERROR_NO(msg);
     }
+    int sock_opt = 1;
+    if (setsockopt(media_socket, SOL_SOCKET, SO_REUSEADDR, (void *)&sock_opt, sizeof (sock_opt)) == -1) {
+      ERROR_NO("setsockopt(media_socket, SO_REUSEADDR) failed");
+    }
+
     /* create a second socket for video */
     if((media_socket_video = socket(media_ip_is_ipv6 ? AF_INET6 : AF_INET,
                                     SOCK_DGRAM, 0)) == -1) {
@@ -5125,27 +5154,30 @@ int main(int argc, char *argv[])
       sprintf(msg, "Unable to get the video RTP socket (IP=%s, port=%d)", media_ip, media_port+2);
       ERROR_NO(msg);
     }
+    if (setsockopt(media_socket_video, SOL_SOCKET, SO_REUSEADDR, (void *)&sock_opt, sizeof (sock_opt)) == -1) {
+      ERROR_NO("setsockopt(media_socket_video, SO_REUSEADDR) failed");
+    }
 
     int try_counter;
     int max_tries = user_media_port ? 1 : 100;
-    media_port = user_media_port ? user_media_port : DEFAULT_MEDIA_PORT;
     for (try_counter = 0; try_counter < max_tries; try_counter++) {
 
       if (media_sockaddr.ss_family == AF_INET) {
-	(_RCAST(struct sockaddr_in *,&media_sockaddr))->sin_port =
-	  htons((short)media_port);
+        (_RCAST(struct sockaddr_in *,&media_sockaddr))->sin_port =
+          htons((short)media_port);
       } else {
-	(_RCAST(struct sockaddr_in6 *,&media_sockaddr))->sin6_port =
-	  htons((short)media_port);
-	media_ip_is_ipv6 = true;
+        (_RCAST(struct sockaddr_in6 *,&media_sockaddr))->sin6_port =
+          htons((short)media_port);
+        media_ip_is_ipv6 = true;
       }
       strcpy(media_ip_escaped, media_ip);
 
       if(bind(media_socket,
 	    (sockaddr *)(void *)&media_sockaddr,
 	    SOCK_ADDR_SIZE(&media_sockaddr)) == 0) {
-	break;
+        break;
       }
+      DEBUG("Unable to bind to audio port %hu, try %d of %d", media_port, try_counter, max_tries);
 
       media_port++;
     }
@@ -5155,6 +5187,7 @@ int main(int argc, char *argv[])
       sprintf(msg, "Unable to bind audio RTP socket (IP=%s, port=%d)", media_ip, media_port);
       ERROR_NO(msg);
     }
+    DEBUG("Bound audio socket %s:%hu, after %d attempts", media_ip, media_port, try_counter);
 
     /*---------------------------------------------------------
        Bind the second socket to media_port+2 
@@ -5179,8 +5212,9 @@ int main(int argc, char *argv[])
       sprintf(msg, "Unable to bind video RTP socket (IP=%s, port=%d)", media_ip, media_port+2);
       ERROR_NO(msg);
     }
+    DEBUG("Bound video socket %s:%hu", media_ip, media_port+2);
     /* Second socket bound */
-//  }
+  }
 
   /* Creating the remote control socket thread */
   setup_ctrl_socket();
@@ -5202,6 +5236,7 @@ int main(int argc, char *argv[])
 
   /* Creating second RTP echo thread for video */
   if ((media_socket_video > 0) && (rtp_echo_enabled)) {
+    DEBUG("RTP echo enabled: starting rtp_echo_thread");
     if (pthread_create
         (&pthread3_id,
          NULL,
@@ -5512,7 +5547,12 @@ int open_connections() {
           = htons((short)user_port); 
     }
     if(sipp_bind_socket(main_socket, &local_sockaddr, &local_port)) {
-      ERROR("Unable to bind main socket. This may be caused by an incorrectly specified local IP");
+      if (local_ip_is_ipv6) {
+        ERROR_NO("Unable to bind main socket to IPv6 address, port %d. This may be caused by an incorrectly specified local IP ", user_port);
+      }
+      else {
+        ERROR_NO("Unable to bind main socket to %s:%d. Make sure that the local IP (as specified with -i) is actually an IP address on your computer", inet_ntoa(((struct sockaddr_in *) &local_sockaddr)->sin_addr), user_port);
+      }
     }
   }
 

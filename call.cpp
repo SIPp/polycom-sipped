@@ -230,7 +230,7 @@ void call::get_remote_media_addr(char *msg) {
         (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_flowinfo = 0;
         (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_scope_id = 0;
         (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_family = AF_INET6;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_port = audio_port;
+        (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_port = htons(audio_port);
         (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_addr = ip_media;
       }
       video_port = get_remote_port_media(msg, PAT_VIDEO);
@@ -239,7 +239,7 @@ void call::get_remote_media_addr(char *msg) {
         (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_flowinfo = 0;
         (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_scope_id = 0;
         (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_family = AF_INET6;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_port = video_port;
+        (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_port = htons(video_port);
         (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_addr = ip_media;
       }
       hasMediaInformation = 1;
@@ -253,14 +253,14 @@ void call::get_remote_media_addr(char *msg) {
       if (audio_port) {
         /* We have audio in the SDP: set the to_audio addr */
         (_RCAST(struct sockaddr_in *, &(play_args_a.to)))->sin_family = AF_INET;
-        (_RCAST(struct sockaddr_in *, &(play_args_a.to)))->sin_port = audio_port;
+        (_RCAST(struct sockaddr_in *, &(play_args_a.to)))->sin_port = htons(audio_port);
         (_RCAST(struct sockaddr_in *, &(play_args_a.to)))->sin_addr.s_addr = ip_media;
       }
       video_port = get_remote_port_media(msg, PAT_VIDEO);
       if (video_port) {
         /* We have video in the SDP: set the to_video addr */
         (_RCAST(struct sockaddr_in *, &(play_args_v.to)))->sin_family = AF_INET;
-        (_RCAST(struct sockaddr_in *, &(play_args_v.to)))->sin_port = video_port;
+        (_RCAST(struct sockaddr_in *, &(play_args_v.to)))->sin_port = htons(video_port);
         (_RCAST(struct sockaddr_in *, &(play_args_v.to)))->sin_addr.s_addr = ip_media;
       }
       hasMediaInformation = 1;
@@ -512,17 +512,19 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   memset(&(play_args_a.to), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_v.to), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_a.from), 0, sizeof(struct sockaddr_storage));
-  if (media_ip_is_ipv6) {
-    inet_pton(AF_INET, local_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
-  } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_addr.s_addr = inet_addr(local_ip);
-  }
   memset(&(play_args_v.from), 0, sizeof(struct sockaddr_storage));
+
+  // Store IP in audio and video structure from for use in send_packets:
   if (media_ip_is_ipv6) {
-    inet_pton(AF_INET, local_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
+    inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
+    inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_addr);
   } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_addr.s_addr = inet_addr(local_ip);
+    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_addr.s_addr = inet_addr(media_ip);
+    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_addr.s_addr = inet_addr(media_ip);
+    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_family = AF_INET;
+    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_family = AF_INET;
   }
+ 
   hasMediaInformation = 0;
   for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) media_threads[i] = 0;
   number_of_active_rtp_threads = 0;
@@ -697,7 +699,7 @@ bool call::connect_socket_if_needed()
     char peripaddr[256];
     if (!peripsocket) {
       if ((associate_socket(new_sipp_call_socket(use_ipv6, transport, &existing))) == NULL) {
-	 ERROR_NO("Unable to get a UDP socket (1)");
+        ERROR_NO("Unable to get a UDP socket (1)");
       }
     } else {
       char *tmp = peripaddr;
@@ -2353,9 +2355,9 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           ERROR("Can not find beginning of a line for the media port!\n");
         }
         if (strstr(begin, "audio")) { 
-          set_audio_port(port);
+          set_audio_from_port(port);
         } else if (strstr(begin, "video")) {
-          set_video_port(port);
+          set_video_from_port(port);
         } else {
           ERROR("media_port keyword with no audio or video on the current line (%s)", begin);
         }
@@ -4413,11 +4415,15 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) {
           DEBUG("getActionType() is E_AT_PLAY_PCAP_AUDIO");
           play_args = &(this->play_args_a);
-          if (currentAction->getMediaPortOffset()) this->set_audio_port(media_port + currentAction->getMediaPortOffset());
+          if (currentAction->getMediaPortOffset()) {
+            this->set_audio_from_port(media_port + currentAction->getMediaPortOffset());
+          }
         } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
           DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
           play_args = &(this->play_args_v);
-          if (currentAction->getMediaPortOffset()) this->set_video_port(media_port + currentAction->getMediaPortOffset());
+          if (currentAction->getMediaPortOffset()) {
+            this->set_video_from_port(media_port + currentAction->getMediaPortOffset());
+          }
         }
         play_args->pcap = currentAction->getPcapPkts();
         /* port number is set in [auto_]media_port interpolation*/
@@ -4431,14 +4437,16 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           from->sin_family = AF_INET;
           from->sin_addr.s_addr = inet_addr(media_ip);
         }
+
         /* Create a thread to send RTP packets */
         pthread_attr_t attr;
         pthread_attr_init(&attr);
 #ifndef PTHREAD_STACK_MIN
 #define PTHREAD_STACK_MIN	16384
 #endif
-        if (number_of_active_rtp_threads >= MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS-1) 
+        if (number_of_active_rtp_threads >= MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS-1) {
           ERROR("Trying to play too many concurrent media threads. Current maximum is %d.", MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS);
+        }
 
         int ret = pthread_create(&media_threads[number_of_active_rtp_threads++], &attr, send_wrapper, (void *) play_args);
         if(ret)
@@ -4738,21 +4746,21 @@ void call::free_dialogState() {
 }
 
 #ifdef PCAPPLAY
-void call::set_audio_port(int port){
+void call::set_audio_from_port(int port){
   DEBUG("Setting audio port to %d", port);
   if (media_ip_is_ipv6) {
-    (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = port;
+    (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = htons(port);
   } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = port;
+    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = htons(port);
   }
 }
 
-void call::set_video_port(int port){
+void call::set_video_from_port(int port){
   DEBUG("Setting video port to %d", port);
   if (media_ip_is_ipv6) {
-    (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = port;
+    (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = htons(port);
   } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = port;
+    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = htons(port);
   }
 }
 #endif
