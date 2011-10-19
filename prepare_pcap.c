@@ -184,13 +184,13 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
       }
 #if defined(__DARWIN) || defined(__CYGWIN) || defined(__FreeBSD__)
       udphdr = (struct udphdr *)((char *)iphdr + (iphdr->ihl << 2) + 4);
-      pktlen = (u_long)(ntohs(udphdr->uh_ulen));
+      pktlen = (u_long)(ntohs(udphdr->uh_ulen)) - (sizeof(struct udphdr));
 #elif defined ( __HPUX)
       udphdr = (struct udphdr *)((char *)iphdr + (iphdr->ihl << 2));
-      pktlen = (u_long) pkthdr->len - sizeof(*ethhdr) - sizeof(*iphdr);
+      pktlen = (u_long) pkthdr->len - sizeof(*ethhdr) - sizeof(*iphdr) - (sizeof(struct udphdr));
 #else
       udphdr = (struct udphdr *)((char *)iphdr + (iphdr->ihl << 2));
-      pktlen = (u_long)(ntohs(udphdr->len)-(sizeof(struct udphdr)));
+      pktlen = (u_long)(ntohs(udphdr->len) - (sizeof(struct udphdr)));
 #endif
     }
     if (pktlen > PCAP_MAXPACKET) {
