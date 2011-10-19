@@ -147,7 +147,7 @@ send_packets (play_args_t * play_args)
   if (media_ip_is_ipv6) {
     sock = socket(PF_INET6, SOCK_DGRAM, 0);
     if (sock < 0) {
-      ERROR_NO("Can't create raw socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
+      ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
     DEBUG("IPv6 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
       ntohs(((struct sockaddr_in6 *)(void *) from )->sin6_port), 
@@ -158,7 +158,7 @@ send_packets (play_args_t * play_args)
   else {
     sock = socket(PF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-      ERROR_NO("Can't create raw socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
+      ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
     DEBUG("IPv4 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
       ntohs(((struct sockaddr_in *)(void *) from )->sin_port), 
