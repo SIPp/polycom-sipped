@@ -1,12 +1,12 @@
 This file tracks changes responsible for version number updates.
-3.2.18 xx-xx-xx
+3.2.18 Oct-24-2011
 - Add many SSL enhancements
 - When there is a nop SIPp is forced into client mode, for TLS default to server mode.  Also default to port 5061 for TLS.
 - Make SIPp able to use the certificates in the directory in which sipp is being run from by using "SIPPED" environment variable to check direction sipp is in, as well as continuing to support certificates in the current directory.
 - Add -force_client_mode and -fcm to force client mode. Also added -force_server_mode/-fsm to force server mode.
 - Better error message when recieves response while expecting request.
 - Fix 'assertion failure when aa in forced client mode' bug  [happens when incoming TCP connection is established, handled with auto-answer, but the code 'expects' to be in server mode.]  If sipp trys to autorespond without a socket set up for the current call (like in the case above), sipp tries sending back on the last socket open (which should be the port opened to send the unexpected message in the first place).
-- Fix RTP playback from correct IP on multi-homed machiens (bind rtp socket to media_ip).
+- Fix RTP playback from correct IP on multi-homed machiens (bind rtp socket to media_ip, transmit as UDP, not raw).
 - Fix crash when no scenario is specified (ie neither -sf nor -sn)
 - Fix .xml stripping from scenario file parameter (-sf)
 - Set deadcall_time to 0 with -mc by default
