@@ -4360,6 +4360,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       {
       case -1:
         // error when forking !
+printf("call::executeAction() - 1) ERROR!!! case -1: error in first fork.\n");
         ERROR_NO("Forking error main");
         break;
 
@@ -4371,20 +4372,20 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         }
         else {
           /* fork again so command runs in background (this process will return EXIT_SUCCESS if system/exec works) */
-printf("call::executeAction() - about to fork second time (verify_result false).\n");
+printf("call::executeAction() - 2) about to fork second time (verify_result false).\n");
           if((l_pid = fork()) < 0) {
-printf("call::executeAction() - second fork failed.\n");
+printf("call::executeAction() - 3) second fork failed.\n");
             ERROR_NO("Internal Error: Attempting to fork for <exec> command and fork() returned an error");
-printf("call::executeAction() - just did ERROR_NO for second fork.\n");
+printf("call::executeAction() - 4) just did ERROR_NO for second fork.\n");
           } else {
             if( l_pid == 0){
-printf("call::executeAction() - second fork, l_pid == 0 (in process of second fork).\n");
+printf("call::executeAction() - 5) second fork, l_pid == 0 (in process of second fork).\n");
               execute_system_shell_and_exit(x);
-printf("call::executeAction() - after execute_system_shell_and_exit (should NEVER happen).\n");
+printf("call::executeAction() - 6) after execute_system_shell_and_exit (should NEVER happen).\n");
             } // if ( l_pid == 0) 
-printf("call::executeAction() - after second fork: must be caller so about to call DEBUG and exit.\n");
+printf("call::executeAction() - 7) after second fork: must be caller so about to call DEBUG and exit.\n");
           DEBUG("E_AT_EXECUTE_CMD: second fork's parent process is calling exit(EXIT_SUCCESS). l_pid = %d.", l_pid);
-printf("call::executeAction() - second fork, after debug, before EXIT_SUCCESS.\n");
+printf("call::executeAction() - 8) second fork, after debug, before EXIT_SUCCESS.\n");
           exit(EXIT_SUCCESS);
           }
         } // if (verify_result)
@@ -4396,15 +4397,15 @@ printf("call::executeAction() - second fork, after debug, before EXIT_SUCCESS.\n
         // If command, it will have forked again and returned EXIT_SUCCESS immediately.
         pid_t ret;
         int status;
+printf("call::executeAction() - 9) main process after 1st fork: about to call waitpid()\n");
         DEBUG("E_AT_EXECUTE_CMD: parent process continue (l_pid = %d).", l_pid);
-printf("call::executeAction() - main process after 1st fork: about to call waitpid()\n");
         while ((ret=waitpid(l_pid, &status, 0)) != l_pid) {
           DEBUG("E_AT_EXECUTE_CMD: waitpid returned other than l_pid (%d), exited = %d, status = %d.", ret, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
           if (ret != -1) {
             ERROR("waitpid returns %1d for child %1d", ret,l_pid);
           }
         }
-printf("call::executeAction() - main process after 1st fork: finished waitpid()\n");
+printf("call::executeAction() - 10) main process after 1st fork: finished waitpid()\n");
         DEBUG("E_AT_EXECUTE_CMD: parent complete, exited = %d, status = %d.", WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
         if (verify_result) {
           if (!WIFEXITED(status)) {
@@ -4416,6 +4417,7 @@ printf("call::executeAction() - main process after 1st fork: finished waitpid()\
         DEBUG("<exec verify=\"%s\"> PASS.", x);
         } // if (verify_result)
 
+printf("call::executeAction() - 11) Just before break;\n");
         break;
       }
     } else if (currentAction->getActionType() == CAction::E_AT_EXEC_INTCMD) {
