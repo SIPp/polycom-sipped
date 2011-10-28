@@ -810,10 +810,11 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
             // no transaction-related attribute so fall back on cseq method
             int len = method_list ? strlen(method_list) : 0;
             char *method = curmsg->send_scheme->getMethod(); 
-            method_list = (char *)realloc(method_list, len + strlen(method) + 1);
-            if (!method_list) {
+            char *new_method_list = (char *)realloc(method_list, len + strlen(method) + 1);
+            if (!new_method_list) {
               ERROR_NO("Out of memory allocating method_list!");
             }
+            method_list = new_method_list;
             strcpy(method_list + len, method);
           }
         } else {
@@ -1189,6 +1190,7 @@ void parse_slave_cfg()
            }
        }
      }
+     fclose(f);
    }else{
      ERROR("Can not open slave_cfg file %s\n", slave_cfg_file);
      }

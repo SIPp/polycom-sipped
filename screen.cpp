@@ -238,10 +238,11 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   if (use_errno) {
     char tmp[MAX_ERROR_SIZE];
     snprintf(tmp, MAX_ERROR_SIZE, ", errno = %d (%s)", error,  strerror(error));
-    msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
-    if (!msg) {
+    char *new_msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
+    if (!new_msg) {
       ERROR("Could not realloc memory for the error message!");
     }
+    msg = new_msg;
     strcat(msg, tmp);
   }
 
@@ -253,10 +254,11 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
       char tmp[MAX_ERROR_SIZE];
       snprintf(tmp, MAX_ERROR_SIZE, "%s: Unable to create '%s': %s.\n",
         screen_exename, screen_logfile, strerror(errno));
-      msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
-      if (!msg) {
+      char * new_msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
+      if (!new_msg) {
         ERROR("Could not realloc memory for the error message!");
       }
+      msg = new_msg;
       strcat(msg, tmp);
       screen_exit(EXIT_FATAL_ERROR);
     } else {
@@ -433,7 +435,7 @@ int _TRACE_EXEC(const char *fmt, ...) {
     DEBUG("rotating exec_lfi; exec_lfi.overwrite = %d", exec_lfi.overwrite);
     int retry_count = 0;
     while (!rotatef(&exec_lfi) && (retry_count++ < 10)) {
-      WARNING("Unable to open exec_lfi ; failure %d of a maximum 11 tries", retry_count);
+      WARNING("Unable to open exec log file, probably because previous exec command is still running.  Attempt %d of a maximum 11 tries", retry_count);
       if(retry_count < 6){
          sleep(1);
       }

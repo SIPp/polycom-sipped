@@ -2016,7 +2016,11 @@ void handle_stdin_socket() {
 	}
       } else {
 	int command_len = strlen(command_buffer);
-	command_buffer = (char *)realloc(command_buffer, command_len + 2);
+	char * new_command_buffer = (char *)realloc(command_buffer, command_len + 2);
+  if (!new_command_buffer) {
+    ERROR("Unable to allocate command buffer of size %d", command_len + 2);
+  }
+  command_buffer = new_command_buffer;
 	command_buffer[command_len++] = c;
 	command_buffer[command_len] = '\0';
 	putchar(c);
@@ -2024,7 +2028,11 @@ void handle_stdin_socket() {
       }
     } else if (c == 'c') {
       command_mode = 1;
-      command_buffer = (char *)realloc(command_buffer, 1);
+      char * new_command_buffer = (char *)realloc(command_buffer, 1);
+      if (!new_command_buffer) {
+        ERROR("Unable to allocate command buffer of size %d", 1);
+      }
+      command_buffer = new_command_buffer;
       command_buffer[0] = '\0';
       printf("Command: ");
       fflush(stdout);
@@ -3598,10 +3606,11 @@ char *wrap(const char *in, int offset, int size) {
   for (i = j = 0; i < l; i++) {
     out[j++] = in[i];
     if (in[i] == '\n') {
-      out = (char *)realloc(out, alloced += offset);
-      if (!out) {
-        ERROR_NO("realloc");
+      char * new_out = (char *)realloc(out, alloced += offset);
+      if (!new_out) {
+        ERROR_NO("Unable to allocate memory in wrap().");
       }
+      out = new_out;
       pos = 0;
       for (int k = 0; k < offset; k++) {
         out[j++] = ' ';
@@ -3625,10 +3634,11 @@ char *wrap(const char *in, int offset, int size) {
       if (k == 0 || out[k] == '\n') {
         pos = 0;
         out[j++] = '\n';
-        out = (char *)realloc(out, alloced += useoffset);
-        if (!out) {
-          ERROR_NO("realloc");
+        char * new_out = (char *)realloc(out, alloced += useoffset);
+        if (!new_out) {
+          ERROR_NO("Unable to allocate memory in wrap().");
         }
+        out = new_out;
         for (k = 0; k < useoffset; k++) {
           out[j++] = ' ';
         }
@@ -3647,10 +3657,11 @@ char *wrap(const char *in, int offset, int size) {
           i -= move_back;
         }
         k++;
-        out = (char *)realloc(out, alloced += useoffset);
-        if (!out) {
-          ERROR_NO("realloc");
+        char * new_out = (char *)realloc(out, alloced += useoffset);
+        if (!new_out) {
+          ERROR_NO("Unable to allocate memory in wrap().");
         }
+        out = new_out;
         for (m = 0; m < useoffset; m++) {
           if (k + useoffset + m < alloced) {
             out[k + useoffset + m] = out[k + m];
@@ -4302,7 +4313,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.18"
+	  printf("\n SIPped v3.2.19-BETA"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -4872,7 +4883,6 @@ int main(int argc, char *argv[])
     useLogf = 1;
     print_all_responses = 1;
     useScreenf = 1;
-    useExecf = 1;
   }
   
   if (useMessagef == 1) {

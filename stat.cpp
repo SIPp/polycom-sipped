@@ -918,10 +918,11 @@ int CStat::findCounter(const char *counter, bool alloc) {
   }
 
 
-  M_genericCounters = (unsigned long long *)realloc(M_genericCounters, sizeof(unsigned long long) * GENERIC_TYPES * M_genericMap.size());
-  if (!M_genericCounters) {
+  unsigned long long * new_genericCounters = (unsigned long long *)realloc(M_genericCounters, sizeof(unsigned long long) * GENERIC_TYPES * M_genericMap.size());
+  if (!new_genericCounters) {
     ERROR("Could not allocate generic counters!\n");
   }
+  M_genericCounters = new_genericCounters;
   M_genericCounters[(ret - 1) * GENERIC_TYPES + GENERIC_C] = 0;
   M_genericCounters[(ret - 1) * GENERIC_TYPES + GENERIC_PD] = 0;
   M_genericCounters[(ret - 1)* GENERIC_TYPES + GENERIC_PL] = 0;
@@ -946,10 +947,11 @@ int CStat::findRtd(const char *name, bool start) {
   M_revRtdMap[ret] = strdup(name);
 
 
-  M_rtdInfo = (unsigned long long *)realloc(M_rtdInfo, sizeof(unsigned long long) * RTD_TYPES * GENERIC_TYPES * M_rtdMap.size());
-  if (!M_rtdInfo) {
+  unsigned long long * new_rtdInfo = (unsigned long long *)realloc(M_rtdInfo, sizeof(unsigned long long) * RTD_TYPES * GENERIC_TYPES * M_rtdMap.size());
+  if (!new_rtdInfo) {
     ERROR("Could not allocate RTD info!\n");
   }
+  M_rtdInfo = new_rtdInfo;
   M_rtdInfo[((ret - 1) * RTD_TYPES * GENERIC_TYPES) + (GENERIC_C * RTD_TYPES) +  RTD_COUNT] = 0;
   M_rtdInfo[((ret - 1) * RTD_TYPES * GENERIC_TYPES) + (GENERIC_C * RTD_TYPES) +  RTD_SUM] = 0;
   M_rtdInfo[((ret - 1) * RTD_TYPES * GENERIC_TYPES) + (GENERIC_C * RTD_TYPES) +  RTD_SUMSQ] = 0;
@@ -1116,21 +1118,37 @@ char* CStat::sRepartitionHeader(T_dynamicalRepartition * tabRepartition,
 
   if(tabRepartition != NULL)
     {
-      repartitionHeader = (char *)realloc(repartitionHeader, strlen(P_repartitionName) + dlen + 1);
+      char * new_repartitionHeader = (char *)realloc(repartitionHeader, strlen(P_repartitionName) + dlen + 1);
+      if (!new_repartitionHeader) {
+        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(P_repartitionName) + dlen + 1);
+      }
+      repartitionHeader = new_repartitionHeader;
       sprintf(repartitionHeader, "%s%s", P_repartitionName, stat_delimiter);
       for(int i=0; i<(sizeOfTab-1); i++)
         {
           sprintf(buffer, "<%d%s", tabRepartition[i].borderMax, stat_delimiter);
-	  repartitionHeader = (char *)realloc(repartitionHeader, strlen(repartitionHeader) + strlen(buffer) + 1);
+	        char *new_repartitionHeader = (char *)realloc(repartitionHeader, strlen(repartitionHeader) + strlen(buffer) + 1);
+          if (!new_repartitionHeader) {
+            ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(repartitionHeader) + strlen(buffer) + 1);
+          }
+          repartitionHeader = new_repartitionHeader;
           strcat(repartitionHeader, buffer);
         }
       sprintf(buffer, ">=%d%s", tabRepartition[sizeOfTab-1].borderMax, stat_delimiter);
-      repartitionHeader = (char *)realloc(repartitionHeader, strlen(repartitionHeader) + strlen(buffer) + 1);
+      new_repartitionHeader = (char *)realloc(repartitionHeader, strlen(repartitionHeader) + strlen(buffer) + 1);
+      if (!new_repartitionHeader) {
+        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(repartitionHeader) + strlen(buffer) + 1);
+      }
+      repartitionHeader = new_repartitionHeader;
       strcat(repartitionHeader, buffer);
     }
   else
     {
-      repartitionHeader = (char *)realloc(repartitionHeader, 2);
+      char *new_repartitionHeader = (char *)realloc(repartitionHeader, 2);
+      if (!new_repartitionHeader) {
+        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", 2);
+      }
+      repartitionHeader = new_repartitionHeader;
       strcpy(repartitionHeader, "");
     }
 
@@ -1147,21 +1165,37 @@ char* CStat::sRepartitionInfo(T_dynamicalRepartition * tabRepartition,
   if(tabRepartition != NULL)
     {
       // if a repartition is present, this field match the repartition name
-      repartitionInfo = (char *)realloc(repartitionInfo, dlen + 1);
+      char *new_repartitionInfo = (char *)realloc(repartitionInfo, dlen + 1);
+      if (!new_repartitionInfo) {
+        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", dlen+1);
+      }
+      repartitionInfo = new_repartitionInfo;
       sprintf(repartitionInfo, stat_delimiter);
       for(int i=0; i<(sizeOfTab-1); i++)
         {   
           sprintf(buffer, "%lu%s", tabRepartition[i].nbInThisBorder, stat_delimiter);
-	  repartitionInfo = (char *)realloc(repartitionInfo, strlen(repartitionInfo) + strlen(buffer) + 1);
+	        char *new_repartitionInfo = (char *)realloc(repartitionInfo, strlen(repartitionInfo) + strlen(buffer) + 1);
+          if (!new_repartitionInfo) {
+            ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", strlen(buffer)+1);
+          }
+          repartitionInfo = new_repartitionInfo;
           strcat(repartitionInfo, buffer);
         }
       sprintf(buffer, "%lu%s", tabRepartition[sizeOfTab-1].nbInThisBorder, stat_delimiter);
-      repartitionInfo = (char *)realloc(repartitionInfo, strlen(repartitionInfo) + strlen(buffer) + 1);
+      new_repartitionInfo = (char *)realloc(repartitionInfo, strlen(repartitionInfo) + strlen(buffer) + 1);
+      if (!new_repartitionInfo) {
+        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", strlen(buffer)+1);
+      }
+      repartitionInfo = new_repartitionInfo;
       strcat(repartitionInfo, buffer);
     }
   else
     {
-      repartitionInfo = (char *)realloc(repartitionInfo, 2);
+      char *new_repartitionInfo = (char *)realloc(repartitionInfo, 2);
+      if (!new_repartitionInfo) {
+        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", 2);
+      }
+      repartitionInfo = new_repartitionInfo;
       repartitionInfo[0] = '\0';
     }
 

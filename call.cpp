@@ -575,10 +575,11 @@ int call::_callDebug(const char *fmt, ...) {
     int ret = vsnprintf(NULL, 0, fmt, ap);
     va_end(ap);
 
-    debugBuffer = (char *)realloc(debugBuffer, debugLength + ret + TIME_LENGTH + 2);
-    if (!debugBuffer) {
+    char *newDebugBuffer = (char *)realloc(debugBuffer, debugLength + ret + TIME_LENGTH + 2);
+    if (!newDebugBuffer) {
       ERROR("Could not allocate buffer (%d bytes) for callDebug file!", debugLength + ret + TIME_LENGTH + 2);
     }
+    debugBuffer = newDebugBuffer;
 
     struct timeval now;
     gettimeofday(&now, NULL);
@@ -639,7 +640,9 @@ call::~call()
 
   free(start_time_rtd);
   free(rtd_done);
-  free(debugBuffer);
+  if (debugBuffer) {
+    free(debugBuffer);
+  }
   DEBUG_OUT();
 }
 
@@ -669,16 +672,16 @@ void call::dump() {
   char s[MAX_HEADER_LEN];
   sprintf(s, "%s: State %d", id, msg_index);
   if (next_retrans) {
-    sprintf(s, "%s (next retrans %u)", s, next_retrans);
+    sprintf(s+strlen(s), " (next retrans %u)", next_retrans);
   }
   if (paused_until) {
-    sprintf(s, "%s (paused until %u)", s, paused_until);
+    sprintf(s+strlen(s), " (paused until %u)", paused_until);
   }
   if (recv_timeout) {
-    sprintf(s, "%s (recv timeout %u)", s, recv_timeout);
+    sprintf(s+strlen(s), " (recv timeout %u)", recv_timeout);
   }
   if (send_timeout) {
-    sprintf(s, "%s (send timeout %u)", s, send_timeout);
+    sprintf(s+strlen(s), " (send timeout %u)", send_timeout);
   }
   WARNING("%s", s);
 }
@@ -1577,7 +1580,11 @@ bool call::executeMessage(message *curmsg) {
 
     last_send_index = curmsg->index;
     last_send_len = msgLen;
-    last_send_msg = (char *) realloc(last_send_msg, msgLen+1);
+    char * new_last_send_msg = (char *) realloc(last_send_msg, msgLen+1);
+    if (!new_last_send_msg) {
+      ERROR("Could not allocate buffer (%d bytes) for last sent message!", msgLen+1);
+    }
+    last_send_msg = new_last_send_msg;
     memcpy(last_send_msg, msg_snd, msgLen);
     last_send_msg[msgLen] = '\0';
 
@@ -3798,7 +3805,11 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
         ERROR("Couldn't find 'Proxy-Authenticate' or 'WWW-Authenticate' in 401 or 407!");
       }
 
-      dialog_authentication = (char *) realloc(dialog_authentication, strlen(auth) + 2);
+      char *new_dialog_authentication = (char *) realloc(dialog_authentication, strlen(auth) + 2);
+      if (!new_dialog_authentication) {
+        ERROR("Unable to alloocate memory for dialog authentication string (%d bytes).", strlen(auth) + 2);
+      }
+      dialog_authentication = new_dialog_authentication;
       sprintf(dialog_authentication, "%s", auth);
 
       /* Store the code of the challenge for building the proper header */
@@ -3890,8 +3901,11 @@ void execute_system_shell_and_exit(char *x)
 
 #else
   // sh not available, use exec(command)
+printf("execute_system_shell_and_exit() - just before execlp\n");
   int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
-  ERROR_NO("Cannot execute command: Exec of 'cmd.exe /c %s' failed", x);
+  printf("ERROR: Cannot execute command: 'cmd.exe /c %s'.\n", x);
+  _exit(-1);
+  // Should probably be calling _exit here rather than exit(), but fundamentally we should abort anyway...
 #endif
 
 }
@@ -4357,29 +4371,40 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         }
         else {
           /* fork again so command runs in background (this process will return EXIT_SUCCESS if system/exec works) */
+printf("call::executeAction() - about to fork second time (verify_result false).\n");
           if((l_pid = fork()) < 0) {
+printf("call::executeAction() - second fork failed.\n");
             ERROR_NO("Internal Error: Attempting to fork for <exec> command and fork() returned an error");
+printf("call::executeAction() - just did ERROR_NO for second fork.\n");
           } else {
             if( l_pid == 0){
+printf("call::executeAction() - second fork, l_pid == 0 (in process of second fork).\n");
               execute_system_shell_and_exit(x);
+printf("call::executeAction() - after execute_system_shell_and_exit (should NEVER happen).\n");
             } // if ( l_pid == 0) 
+printf("call::executeAction() - after second fork: must be caller so about to call DEBUG and exit.\n");
           DEBUG("E_AT_EXECUTE_CMD: second fork's parent process is calling exit(EXIT_SUCCESS). l_pid = %d.", l_pid);
+printf("call::executeAction() - second fork, after debug, before EXIT_SUCCESS.\n");
           exit(EXIT_SUCCESS);
           }
         } // if (verify_result)
         break;
       default:
         // parent process continue
-        // reap first child immediately
+        // reap first child immediately.  
+        // If verify this will wait for process to continue. 
+        // If command, it will have forked again and returned EXIT_SUCCESS immediately.
         pid_t ret;
         int status;
         DEBUG("E_AT_EXECUTE_CMD: parent process continue (l_pid = %d).", l_pid);
+printf("call::executeAction() - main process after 1st fork: about to call waitpid()\n");
         while ((ret=waitpid(l_pid, &status, 0)) != l_pid) {
           DEBUG("E_AT_EXECUTE_CMD: waitpid returned other than l_pid (%d), exited = %d, status = %d.", ret, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
           if (ret != -1) {
             ERROR("waitpid returns %1d for child %1d", ret,l_pid);
           }
         }
+printf("call::executeAction() - main process after 1st fork: finished waitpid()\n");
         DEBUG("E_AT_EXECUTE_CMD: parent complete, exited = %d, status = %d.", WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
         if (verify_result) {
           if (!WIFEXITED(status)) {
@@ -4411,7 +4436,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 #ifdef PCAPPLAY
     } else if ((currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) ||
       (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO)) {
-        play_args_t *play_args;
+        play_args_t *play_args = 0;
         if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) {
           DEBUG("getActionType() is E_AT_PLAY_PCAP_AUDIO");
           play_args = &(this->play_args_a);
