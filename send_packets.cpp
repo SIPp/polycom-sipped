@@ -51,6 +51,7 @@
 #ifndef __CYGWIN
 #include <netinet/ip6.h>
 #endif
+#include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
@@ -106,7 +107,7 @@ int parse_play_args (char *buffer, pcap_pkts *pkts)
 void do_sleep (struct timeval *, struct timeval *, struct timeval *, struct timeval *);
 void send_packets_cleanup(void *arg)
 {
-  int sock = (int) arg;
+  int sock = (int) ((long) arg);
 
   // Close send socket
   close(sock);

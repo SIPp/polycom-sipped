@@ -118,7 +118,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 #ifdef __HPUX
   pkthdr = (pcap_pkthdr *) malloc (sizeof (*pkthdr));
 #else
-  pkthdr = malloc (sizeof (*pkthdr));
+  pkthdr = (pcap_pkthdr *) malloc (sizeof (*pkthdr));
 #endif
   if (!pkthdr)
     ERROR("Can't allocate memory for pcap pkthdr");

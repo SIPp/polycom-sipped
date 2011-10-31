@@ -117,13 +117,8 @@ typedef struct
   struct sockaddr_storage from;
 } play_args_t;
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-  int parse_play_args (char *, pcap_pkts *);
-  int send_packets (play_args_t *);
-#ifdef __cplusplus
-}
-#endif
+
+int parse_play_args (char *, pcap_pkts *);
+int send_packets (play_args_t *);
+
 #endif/*_SIPP_SEND_PACKETS_H_*/

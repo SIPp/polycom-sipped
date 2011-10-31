@@ -71,7 +71,7 @@ typedef char RESHEX[RESHEXLEN];
 #define OPLEN 16
 typedef u_char OP[OPLEN];
 
-AMF amfstar="\0\0";
+//AMF amfstar="\0\0";
 SQN sqn_he={0x00,0x00,0x00,0x00,0x00,0x00};
 
 /* end AKA */
@@ -514,7 +514,7 @@ char * base64_decode_string( const char *buf, unsigned int len, int *newlen )
 	return out;
 }
 
-char base64[64]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+char base64[65]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 char * base64_encode_string( const char *buf, unsigned int len, int *newlen )
 {
 	int i,k;
@@ -578,7 +578,7 @@ char * base64_encode_string( const char *buf, unsigned int len, int *newlen )
 
 
 
-char hexa[16]="0123456789abcdef";
+char hexa[17]="0123456789abcdef";
 int createAuthHeaderAKAv1MD5(char * user, char * aka_OP, 
                      char * aka_AMF, 
                      char * aka_K, 
