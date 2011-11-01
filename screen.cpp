@@ -313,7 +313,6 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   }
 }
 
-extern "C" {
 void ERROR(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -456,4 +455,3 @@ int _TRACE_EXEC(const char *fmt, ...) {
   return ret;
 }
 
-}

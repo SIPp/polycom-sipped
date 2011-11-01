@@ -82,7 +82,7 @@ int fortune(call *call, MessageComponent *comp, char *buf, int len) {
 }
 
 /* On initialization we register our keywords. */
-extern "C" int init(void) {
+int init(void) {
 	registerKeyword("fortune", fortune);
 	return 0;
 }

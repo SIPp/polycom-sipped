@@ -22,9 +22,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
   char * comp_load();
 
@@ -65,7 +62,5 @@ extern "C" {
 
 #define COMP_KO      -1
   
-#ifdef __cplusplus
-}
-#endif
+
 

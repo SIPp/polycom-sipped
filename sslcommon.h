@@ -38,9 +38,6 @@
 */
 
 /* Initialises an SSL context and makes the lib thread safe */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifndef SSL_MAIN
   extern
@@ -67,8 +64,5 @@ extern "C" {
 #endif
 //    int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * result);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif
