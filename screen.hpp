@@ -28,23 +28,18 @@
 
 #include <stdio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void ERROR(const char *fmt, ...) __attribute__ ((noreturn));
-  void WARNING(const char *fmt, ...);
-  void ERROR_NO(const char *fmt, ...);
-  void WARNING_NO(const char *fmt, ...);
-  void MESSAGE(const char *fmt, ...);
-  int _DEBUG_LOG(const char *fmt, ...);
-  int _TRACE_MSG(const char *fmt, ...);
-  int _TRACE_CALLDEBUG(const char *fmt, ...);
-  int _TRACE_SHORTMSG(const char *fmt, ...);
-  int _LOG_MSG(const char *fmt, ...);
-  int _TRACE_EXEC(const char *fmt, ...);
-#ifdef __cplusplus
-}
-#endif
+void ERROR(const char *fmt, ...) __attribute__ ((noreturn));
+void WARNING(const char *fmt, ...);
+void ERROR_NO(const char *fmt, ...);
+void WARNING_NO(const char *fmt, ...);
+void MESSAGE(const char *fmt, ...);
+int _DEBUG_LOG(const char *fmt, ...);
+int _TRACE_MSG(const char *fmt, ...);
+int _TRACE_CALLDEBUG(const char *fmt, ...);
+int _TRACE_SHORTMSG(const char *fmt, ...);
+int _LOG_MSG(const char *fmt, ...);
+int _TRACE_EXEC(const char *fmt, ...);
+
 
 #define EXIT_TEST_OK               0
 #define EXIT_TEST_FAILED           1
