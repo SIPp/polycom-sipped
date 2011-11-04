@@ -47,6 +47,11 @@ typedef struct _sll_hdr {
   u_int16_t sll_type; /* we only need the type, so we can determine, if the next header is IPv4 or IPv6 */
 } sll_hdr;
 
+typedef struct _radio_hdr {
+    char dontcare[58];
+    u_int16_t radio_type;
+} radio_hdr;
+
 typedef struct _ipv6_hdr {
     char dontcare[6];
     u_int8_t nxt_header; /* we only need the next header, so we can determine, if the next header is UDP or not */
@@ -137,6 +142,11 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
       sll_hdr* sllhdr = (sll_hdr *)pktdata;
       ip_type = sllhdr->sll_type;
       frame_size = sizeof(*sllhdr);
+    }
+    else if(link_type == DLT_IEEE802_11_RADIO) {
+      radio_hdr* radiohdr = (radio_hdr *)pktdata;
+      ip_type = radiohdr->radio_type;
+      frame_size = sizeof(*radiohdr);
     }
     else {
       ERROR("Unrecognized link layer type");
