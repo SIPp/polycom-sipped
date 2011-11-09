@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <spawn.h>
 #include "scenario.hpp"
 #include "stat.hpp"
 #include "common.hpp"
