@@ -27,7 +27,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string.h>
+#ifndef __CYGWIN
 #include <spawn.h>
+#endif
 #include "scenario.hpp"
 #include "stat.hpp"
 #include "common.hpp"

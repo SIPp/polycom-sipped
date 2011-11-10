@@ -4383,6 +4383,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
       argv[i] = NULL;
 
+#ifndef __CYGWIN
       int err = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, NULL);
       if (err) printf("ERROR\n");
 
@@ -4408,6 +4409,20 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         }
         DEBUG("<exec verify=\"%s\"> PASS.", x);
       } // if (verify_result)
+#else
+      if(verify_result) {
+        int ret = spawnvp (P_WAIT, array[0], array);
+        if (ret < 0) {
+          ERROR("RET IS NEGATIVE: %d\n", ret);
+        } else if (ret > 0) {
+          ERROR ("RET IS POSITIVE: %d\n", ret);
+        } else {
+          DEBUG("EXEC VERIFY PASS!");
+        }
+      } else {
+        spawnvp (P_NOWAIT, array[0], array);
+      }
+#endif
 
 // CONSTRUCTION ENDS ***********************************************************************************************************************
 
