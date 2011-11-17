@@ -4411,7 +4411,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       } // if (verify_result)
 #else
       if(verify_result) {
-        int ret = spawnvp (P_WAIT, array[0], array);
+        int ret = spawnvp (_P_WAIT, argv[0], argv);
         if (ret < 0) {
           ERROR("RET IS NEGATIVE: %d\n", ret);
         } else if (ret > 0) {
@@ -4420,7 +4420,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           DEBUG("EXEC VERIFY PASS!");
         }
       } else {
-        spawnvp (P_NOWAIT, array[0], array);
+        spawnvp (_P_NOWAIT, argv[0], argv);
       }
 #endif
 

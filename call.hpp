@@ -29,6 +29,9 @@
 #include <string.h>
 #ifndef __CYGWIN
 #include <spawn.h>
+#else
+#include <stdio.h>
+#include <process.h>
 #endif
 #include "scenario.hpp"
 #include "stat.hpp"
