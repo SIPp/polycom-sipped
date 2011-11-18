@@ -4361,27 +4361,11 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
 // UNDER CONSTRUCTION ***********************************************************************************************************************
 
-      char * pch;
-
-      int i = 0;
-      pch=strchr(x,' ');
-      while (pch!=NULL)
-      {
-        pch=strchr(pch+1,' ');
-        i++;
-      }
-
-      char * argv[i+1];
-      i=0;
-
-      pch = strtok (x," ");
-      while (pch != NULL)
-      {
-        argv[i++] = pch;
-        pch = strtok (NULL, " ");
-      }
-
-      argv[i] = NULL;
+      int numArgs = countArguments(x);
+      //statically create an array to store the arguments 
+      //could also dynamically allocate array.
+      char * argv[numArgs+1]; //one for a NULL pointer.
+      getArguments(x, argv);
 
 #ifndef __CYGWIN
       int err = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, NULL);
@@ -4931,4 +4915,34 @@ bool is_reserved_char (char c) {
     default:
       return false;
   }
+}
+
+int countArguments(char* args) {
+  //pch is a character pointer
+  char * pch;
+
+   //count the number of spaces in x so we know how many arguments there are to pass to spawn
+  int i = 0;
+  pch=strchr(args, ' ');
+  while (pch!=NULL)
+  {
+    pch=strchr(pch+1,' ');
+    i++;
+  }
+
+  return i;
+}
+
+void getArguments(char* args, char** argv) {
+  int i=0;
+
+  //break up the string into pieces, and assign pointers to each piece
+  char* pch = strtok (args, " ");
+  while (pch != NULL)
+  {
+    argv[i++] = pch;
+    pch = strtok (NULL, " ");
+  }
+
+  argv[i] = NULL; //the last arg has to be null so spawn knows where to stop
 }
