@@ -2244,23 +2244,23 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         DEBUG("useTxn TRUE => call get_transaction");
     }
   }
-  TransactionState &txn = src_dialog_state->get_transaction(useTxn ? call_scenario->messages[P_index]->getTransactionName() : "", P_index);
+  TransactionState &default_txn = src_dialog_state->get_transaction(useTxn ? call_scenario->messages[P_index]->getTransactionName() : "", P_index);
 
   if (useTxn) {
     // verify that transaction client/server state matches message type
     if (src->isResponse()) {
-      if (!txn.isServerTransaction()) {
+      if (!default_txn.isServerTransaction()) {
         // trying to send response but is client transaction
         ERROR("Transaction '%s' as used in message %d is a client transaction meaning it was initiated by a SIPp-sent request. \n"
               "SIPp therefore cannot send a response in this transaction.", 
-              txn.getName().c_str(), P_index);
+              default_txn.getName().c_str(), P_index);
       }
     } else {
-      if (!txn.isClientTransaction()) { 
+      if (!default_txn.isClientTransaction()) { 
         // trying to send request but is server transaction
         ERROR("Transaction '%s' as used in message %d is a server transaction meaning it was initiated by a received request.\n"
               "SIPp therefore cannot send a request in this transaction. If you wish to start a new transaction, use start_txn.", 
-              txn.getName().c_str(), P_index);
+              default_txn.getName().c_str(), P_index);
         }
     }
   }
@@ -2273,6 +2273,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     // per-component dialog state may be different than message if explicitly specified via dialog= attribute
     DialogState *ds = (comp->dialog_number == src->getDialogNumber() ? src_dialog_state : get_dialogState(comp->dialog_number));
+
+    // if dialog number is different than message, use the default transaction of the specified dialog.
+    // Note it is an error and therefore impossible to specify dialog= attribute in a message that also uses start_txn or use_txn.
+    TransactionState &txn = (comp->dialog_number == src->getDialogNumber() ? default_txn : ds->get_transaction("", P_index));
 
     switch(comp->type) {
       case E_Message_Literal:
@@ -2783,7 +2787,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     /* Need the Method name from the CSeq of the Challenge */
     char method[MAX_HEADER_LEN];
-    tmp = get_last_header("CSeq:", txn.getLastReceivedMessage().c_str(), false);
+    tmp = get_last_header("CSeq:", default_txn.getLastReceivedMessage().c_str(), false);
     if(!tmp) {
       ERROR("Could not extract method from cseq of challenge");
     }
