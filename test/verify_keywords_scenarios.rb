@@ -17,7 +17,7 @@ class KeywordScenarios < Test::Unit::TestCase
     test_conference = SippTest.new("conference_call", "-sf conference_call_client.sipp -mc", "-sf conference_call_server.sipp -mc")
     test_place = SippTest.new("place_call", "-sf place_call_client.sipp -mc", "-sf place_call_server.sipp -mc")
     test_receive = SippTest.new("receive_call", "-sf receive_call_client.sipp -mc", "-sf receive_call_server.sipp -mc")
-    test_interdialog = SippTest.new("interdialog", "-sf interdialog_keyword_client.sipp -mc -trace_debug", "-sf interdialog_keyword_server.sipp -mc -trace_debug")
+    test_interdialog = SippTest.new("interdialog", "-sf interdialog_keyword_client.sipp -mc", "-sf interdialog_keyword_server.sipp -mc")
 
     assert(test_reject.run())
     assert(test_conference.run())
