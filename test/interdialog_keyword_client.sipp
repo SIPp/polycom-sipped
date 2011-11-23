@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="verify_transaction_keywords" parameters="-mc">
+  <send dialog="1" start_txn="C1">
+    <![CDATA[
+
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      To: sipp <sip:sipp@[local_ip]:[local_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] REGISTER
+      client_cseq_keywords: [client_cseq] [client_cseq_method]
+      Contact: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <!-- New Dialog -->
+  <send dialog="2">
+    <![CDATA[
+
+      REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: sipp <sip:sipp@[local_ip]:[local_port]>[local_tag_param]
+      To: sipp <sip:sipp@[local_ip]:[local_port]>
+      Call-ID: [call_id]
+      CSeq: 2 REGISTER
+      Contact: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 70
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+  <recv response="200" dialog="2">
+      <action>
+	<ereg regexp="z9hG4bK-[0-9]+-1-0" search_in="hdr" header="branch:" check_it="true" assign_to="CSEQ"/>	   
+      </action>
+  </recv>
+
+</scenario>
