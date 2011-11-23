@@ -65,7 +65,7 @@
       Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>
       User-Agent: PolycomSoundPointIP-SPIP_650-UA/3.3.1.0933
       Accept-Language: en
-      RAck: 785845347 1 INVITE
+      RAck: [last_rseq content_only="true"] 1 INVITE
       Max-Forwards: 70
       Content-Length: [len]
 
