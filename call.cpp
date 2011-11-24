@@ -4365,19 +4365,21 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
 // UNDER CONSTRUCTION ***********************************************************************************************************************
 
-      int numArgs = countArguments(x);
+      //int numArgs = countArguments(x);
       //statically create an array to store the arguments 
       //could also dynamically allocate array.
-      char * argv[numArgs+1]; //one for a NULL pointer.
-      getArguments(x, argv);
+      char * argv[4]; //two for starting command prompt, one for "x" (holds the cmd string), one for a NULL pointer.
+      //getArguments(x, argv);
 
 #ifndef __CYGWIN
+      argv[0] = "sh";
+      argv[1] = "-c";
+      argv[2] = x;
+      argv[3] = NULL;
       int err = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, NULL);
       if (err) printf("ERROR\n");
 
-
-
-
+//Error messages, etc, needs cleanup
       if (verify_result) {
         pid_t ret;
         int status;
@@ -4398,14 +4400,18 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         DEBUG("<exec verify=\"%s\"> PASS.", x);
       } // if (verify_result)
 #else
+      argv[0] = "cmd.exe";
+      argv[1] = "/C";
+      argv[2] = x;
+      argv[3] = NULL;
       if(verify_result) {
         int ret = spawnvp (_P_WAIT, argv[0], argv);
         if (ret < 0) {
-          ERROR("RET IS NEGATIVE: %d\n", ret);
+          ERROR("<exce verify> FAIL: '%s'. System error, process was not started: %d\n", x, ret);
         } else if (ret > 0) {
-          ERROR ("RET IS POSITIVE: %d\n", ret);
+          ERROR ("<exce verify> FAIL: '%s'. Abnormal exit with an abort or an interrupt: %d\n", x, ret);
         } else {
-          DEBUG("EXEC VERIFY PASS!");
+          DEBUG("<exec verify=\"%s\"> PASS.", x);
         }
       } else {
         spawnvp (_P_NOWAIT, argv[0], argv);
@@ -4414,69 +4420,6 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
 // CONSTRUCTION ENDS ***********************************************************************************************************************
 
-//       switch(l_pid = fork())
-//       {
-//       case -1:
-//         // error when forking !
-// printf("call::executeAction() - 1) ERROR!!! case -1: error in first fork.\n");
-//         ERROR_NO("Forking error main");
-//         break;
-//       case 0:
-//         // first child process - execute the command
-//         if (verify_result) {
-//           /* run command in this process and return exit code to waiting main sipp process */
-//           execute_system_shell_and_exit(x);
-//         }
-//         else {
-//           /* fork again so command runs in background (this process will return EXIT_SUCCESS if system/exec works) */
-// printf("call::executeAction() - 2) about to fork second time (verify_result false).\n");
-//           if((l_pid = fork()) < 0) {
-// printf("call::executeAction() - 3) second fork failed.\n");
-//             ERROR_NO("Internal Error: Attempting to fork for <exec> command and fork() returned an error");
-// printf("call::executeAction() - 4) just did ERROR_NO for second fork.\n");
-//           } else {
-//             if( l_pid == 0){
-// printf("call::executeAction() - 5) second fork, l_pid == 0 (in process of second fork).\n");
-//               execute_system_shell_and_exit(x);
-// printf("call::executeAction() - 6) after execute_system_shell_and_exit (should NEVER happen).\n");
-//             } // if ( l_pid == 0) 
-// printf("call::executeAction() - 7) after second fork: must be caller so about to call DEBUG and exit.\n");
-//           DEBUG("E_AT_EXECUTE_CMD: second fork's parent process is calling exit(EXIT_SUCCESS). l_pid = %d.", l_pid);
-// printf("call::executeAction() - 8) second fork, after debug, before EXIT_SUCCESS.\n");
-//           exit(EXIT_SUCCESS);
-//           }
-//         } // if (verify_result)
-//         break;
-//       default:
-//         // parent process continue
-//         // reap first child immediately.  
-//         // If verify this will wait for process to continue. 
-//         // If command, it will have forked again and returned EXIT_SUCCESS immediately.
-//         pid_t ret;
-//         int status;
-// printf("call::executeAction() - 9) main process after 1st fork: about to call waitpid()\n");
-//         DEBUG("E_AT_EXECUTE_CMD: parent process continue (l_pid = %d).", l_pid);
-//         while ((ret=waitpid(l_pid, &status, 0)) != l_pid) {
-//           DEBUG("E_AT_EXECUTE_CMD: waitpid returned other than l_pid (%d), exited = %d, status = %d.", ret, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
-//           if (ret != -1) {
-//             ERROR("waitpid returns %1d for child %1d", ret,l_pid);
-//           }
-//         }
-// printf("call::executeAction() - 10) main process after 1st fork: finished waitpid()\n");
-//         DEBUG("E_AT_EXECUTE_CMD: parent complete, exited = %d, status = %d.", WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
-//         if (verify_result) {
-//           if (!WIFEXITED(status)) {
-//             ERROR("System error running <exec verify>: '%s' did not exit normally (status = %d)", x, status);
-//           }
-//           else if (WEXITSTATUS(status) != EXIT_SUCCESS) {
-//             ERROR("<exce verify> FAIL: '%s' returned result code %d (non-zero result indicates failure; use -trace_exec to log more detail).", x, WEXITSTATUS(status));
-//           }
-//         DEBUG("<exec verify=\"%s\"> PASS.", x);
-//         } // if (verify_result)
-// 
-// printf("call::executeAction() - 11) Just before break;\n");
-//         break;
-//       }
     } else if (currentAction->getActionType() == CAction::E_AT_EXEC_INTCMD) {
       switch (currentAction->getIntCmd())
       {
