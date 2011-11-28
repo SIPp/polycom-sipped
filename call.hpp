@@ -69,6 +69,9 @@
 /* to ensure the buffer for encoding is as long as the longest possible encoded message */
 #define ENCODE_LEN_PER_CHAR 3
 
+/* the arguments to spawn are cmd.exe or sh and /C or -c respectively, the command you want to run, and lastly a NULL character */
+#define NUM_ARGS_FOR_SPAWN 4
+
 #ifdef __HPUX
   extern int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * aka_OP, char * aka_AMF, char * aka_K, char * result);
 #else
@@ -428,6 +431,6 @@ void encode(struct MessageComponent *comp, const char *src, char *dest);
 void uri_encode(const char *src, char *dest);
 bool is_reserved_char(char c);
 int countArguments(char* args);
-void getArguments(char* args, char** argv);
+void setArguments(char* args, char** argv);
 
 #endif

@@ -4334,13 +4334,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       ERROR("%s", x);
     } else if ((currentAction->getActionType() == CAction::E_AT_EXECUTE_CMD) ||
                (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD)) {
+      SendingMessage *curMsg = currentAction->getMessage();
       char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
       char redirect_command[MAX_HEADER_LEN];
       bool verify_result = (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD);
 
-
       // Add redirct to command and point x at modified string.
-
       if (useExecf) {
         DEBUG("Appending logging information to exec command"); // NOTE: This TRACE_EXEC also servers to ensure exec_lfi.file_name is defined.
         snprintf(redirect_command, MAX_HEADER_LEN, "%s >> %s 2>&1", x, exec_lfi.file_name);
@@ -4359,38 +4358,27 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         log_off(&exec_lfi);
       }
 
-      DEBUG("x is %s.", x);
-
       pid_t l_pid;
 
-// UNDER CONSTRUCTION ***********************************************************************************************************************
+      char * argv[NUM_ARGS_FOR_SPAWN]; //two for starting command prompt, one for "x" (holds the cmd string), one for a NULL pointer.
+      setArguments(x, argv);
 
-      //int numArgs = countArguments(x);
-      //statically create an array to store the arguments 
-      //could also dynamically allocate array.
-      char * argv[4]; //two for starting command prompt, one for "x" (holds the cmd string), one for a NULL pointer.
-      //getArguments(x, argv);
+      int ret;
 
 #ifndef __CYGWIN
-      argv[0] = "sh";
-      argv[1] = "-c";
-      argv[2] = x;
-      argv[3] = NULL;
-      int err = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, NULL);
-      if (err) printf("ERROR\n");
+      if ((ret = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, NULL)) != 0){
+        ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
+      }
 
-//Error messages, etc, needs cleanup
       if (verify_result) {
         pid_t ret;
         int status;
-        DEBUG("E_AT_EXECUTE_CMD: parent process continue (l_pid = %d).", l_pid);
         while ((ret=waitpid(l_pid, &status, 0)) != l_pid) {
           DEBUG("E_AT_EXECUTE_CMD: waitpid returned other than l_pid (%d), exited = %d, status = %d.", ret, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
           if (ret != -1) {
             ERROR("waitpid returns %1d for child %1d", ret,l_pid);
           }
         }
-        DEBUG("E_AT_EXECUTE_CMD: parent complete, exited = %d, status = %d.", WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
 
         if (!WIFEXITED(status)) {
           ERROR("System error running <exec verify>: '%s' did not exit normally (status = %d)", x, status);
@@ -4400,25 +4388,21 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         DEBUG("<exec verify=\"%s\"> PASS.", x);
       } // if (verify_result)
 #else
-      argv[0] = "cmd.exe";
-      argv[1] = "/C";
-      argv[2] = x;
-      argv[3] = NULL;
       if(verify_result) {
-        int ret = spawnvp (_P_WAIT, argv[0], argv);
+        ret = spawnvp (_P_WAIT, argv[0], argv);
         if (ret < 0) {
-          ERROR("<exce verify> FAIL: '%s'. System error, process was not started: %d\n", x, ret);
+          ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
         } else if (ret > 0) {
-          ERROR ("<exce verify> FAIL: '%s'. Abnormal exit with an abort or an interrupt: %d\n", x, ret);
+          ERROR ("<exec verify> FAIL: '%s'. Abnormal exit with an abort or an interrupt: %d\n", x, ret);
         } else {
           DEBUG("<exec verify=\"%s\"> PASS.", x);
         }
       } else {
-        spawnvp (_P_NOWAIT, argv[0], argv);
+        if ((ret = spawnvp (_P_NOWAIT, argv[0], argv)) < 0) {
+          ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
+        }
       }
 #endif
-
-// CONSTRUCTION ENDS ***********************************************************************************************************************
 
     } else if (currentAction->getActionType() == CAction::E_AT_EXEC_INTCMD) {
       switch (currentAction->getIntCmd())
@@ -4864,32 +4848,14 @@ bool is_reserved_char (char c) {
   }
 }
 
-int countArguments(char* args) {
-  //pch is a character pointer
-  char * pch;
-
-   //count the number of spaces in x so we know how many arguments there are to pass to spawn
-  int i = 0;
-  pch=strchr(args, ' ');
-  while (pch!=NULL)
-  {
-    pch=strchr(pch+1,' ');
-    i++;
-  }
-
-  return i;
-}
-
-void getArguments(char* args, char** argv) {
-  int i=0;
-
-  //break up the string into pieces, and assign pointers to each piece
-  char* pch = strtok (args, " ");
-  while (pch != NULL)
-  {
-    argv[i++] = pch;
-    pch = strtok (NULL, " ");
-  }
-
-  argv[i] = NULL; //the last arg has to be null so spawn knows where to stop
+void setArguments(char* args, char** argv) {
+#ifndef __CYGWIN
+  argv[0] = "sh";
+  argv[1] = "-c";
+#else
+  argv[0] = "cmd.exe";
+  argv[1] = "/C";
+#endif
+  argv[2] = args;
+  argv[3] = NULL;
 }
