@@ -50,6 +50,9 @@ char   xp_file     [XP_MAX_FILE_LEN + 1];
 char * xp_position [XP_MAX_STACK_LEN];
 int    xp_stack    = 0;
 
+char xml_special_char_encoding[][6] = {"lt;", "gt;", "amp;", "apos;", "quot;", "\0"};
+char xml_special_char[]           = {'<', '>', '&', '\'', '"'};
+
 /****************** Internal routines ********************/
 int xp_replace(char *source, char *dest, const char *search, const char *replace)
 {
@@ -619,7 +622,7 @@ char * xp_get_value(const char * name)
 	      buffer[index++] = '\\';
 	      break;
 	    case '"':
-	      buffer[index++] = '"';
+	      buffer[index++] = '\"';
 	      break;
 	    case 'n':
 	      buffer[index++] = '\n';
@@ -701,39 +704,31 @@ void xp_convert_special_characters(char * buffer)
   if (!src)
     return ;
 
-
   printf("xp_convert_special_characters: IN '%s'\n", buffer);
   /* start at first & and then copy inline from src to dest with correct characters */
   while (*src) {
     if (*src == '&') {
-      if ((src[1] == 'l') && (src[2] == 't') && (src[3] == ';')) {
-        *dst = '<';
-        src += 3;
+      src ++;
+
+      int i;
+      for (i = 0; xml_special_char_encoding[i]; i++) {
+        int len = strlen(xml_special_char_encoding[i]);
+        if (!strncmp(src, xml_special_char_encoding[i], len)) {
+          *dst = xml_special_char[i];
+          src += len - 1;
+          break;
+        }
       }
-      else if ((src[1] == 'a') && (src[2] == 'm') && (src[3] == 'p') && (src[4] == ';')) {
-        *dst = '&';
-        src += 4;
-      }
-      else if ((src[1] == 'g') && (src[2] == 't') && (src[3] == ';')) {
-        *dst = '>';
-        src += 3;
-      }
-      else if ((src[1] == 'q') && (src[2] == 'u') && (src[3] == 'o') && (src[4] == 't') && (src[5] == ';')) {
-        *dst = '"';
-        src += 5;
-      }
-      else if ((src[1] == 'a') && (src[2] == 'p') && (src[3] == 'o') && (src[4] == 's') && (src[5] == ';')) {
-        *dst = '\'';
-        src += 5;
-      }
-      else {
+
+      if (xml_special_char_encoding[i] == NULL) {
         /* Illegal use of &, but we'll be lenient (in violation of XML rules) and allow it through */
-        printf("WARNING: Illegal use of '&' in XML attribute: you should be using '&amp;' instead\n");
+        printf("Illegal use of '&' in XML attribute: you should be using '&amp;' instead\n");
         *dst = *src;
       }
-    }
-    else
+
+    } else {
       *dst = *src;
+    }
     dst++;
     src++;
   }
