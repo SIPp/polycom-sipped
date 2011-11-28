@@ -83,6 +83,8 @@ message::message(int index, const char *desc) : start_txn(false), txn_name("")
   peer_dest = NULL;
   peer_src = NULL;
 
+  dialog_number = -1;
+
   /* Statistics */
   nb_sent = 0;
   nb_recv = 0;
@@ -780,10 +782,10 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         char *tsrc = msg;
         while(*tsrc++);
 
-        curmsg -> dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
+        curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
         bool use_txn = (bool) xp_get_value("use_txn");
-        curmsg -> send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number, use_txn);
+        curmsg->send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number, use_txn);
         free(msg);
 
         // While you can simply use use_txn rather than ack_txn and response_txn, you may still use the more
@@ -865,7 +867,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           }          
         } // request
 
-        curmsg -> dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
+        curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
         curmsg->optional = xp_get_optional("optional", "recv");
         last_recv_optional = curmsg->optional;
@@ -937,6 +939,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         /* Does nothing at SIP level.  This message type can be used to handle
         * actions, increment counters, or for RTDs. */
         curmsg->M_type = MSG_TYPE_NOP;
+
+        curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
       }
       else if(!strcmp(elem, "recvCmd")) {
         curmsg->M_type = MSG_TYPE_RECVCMD;
@@ -947,7 +951,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
 
         /* 3pcc extended mode */
         if((ptr = xp_get_value((char *)"src"))) {
-          curmsg ->peer_src = strdup(ptr);
+          curmsg->peer_src = strdup(ptr);
         } else if (extendedTwinSippMode) {
           ERROR("You must specify a 'src' for recvCmd when using extended 3pcc mode!");
         }
