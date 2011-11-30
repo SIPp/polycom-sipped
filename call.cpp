@@ -4360,13 +4360,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
       pid_t l_pid;
 
-      char * argv[NUM_ARGS_FOR_SPAWN]; //two for starting command prompt, one for "x" (holds the cmd string), one for a NULL pointer.
+      char * argv[NUM_ARGS_FOR_SPAWN];
       setArguments(x, argv);
 
       int ret;
 
 #ifndef __CYGWIN
-      if ((ret = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, NULL)) != 0){
+      if ((ret = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, environ)) != 0){
         ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
       }
 
