@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
 <!DOCTYPE scenario SYSTEM "sipp.dtd">
 
-<scenario name="exec_command" params="-m 1 -l 1 ">
+<scenario name="exec_command" parameters="-m 1 -l 1 ">
 <!-- requires -key command "something" -->  <send >
     <![CDATA[
 
