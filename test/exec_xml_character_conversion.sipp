@@ -20,8 +20,11 @@
   </send>
 
 
-<nop>
-  <action>
-    <exec verify ="echo &quot;&lt; &gt; &amp; &apos;&quot;"/>
-	</action>
-</nop>
+  <nop>
+    <action>
+      <exec verify ="echo &quot;&lt; &gt; &amp; &apos;&quot;"/>
+    </action>
+  </nop>
+
+</scenario>
+
