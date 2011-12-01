@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Describe this scenario here" parameters="-mc" source="" id="" config="">
+<!-- Generated Scenario for 10.149.8.6 using Snipp v1.3.0 -->
+<!-- Note: sipp seems to ignore -p 12345 when in -t t1 mode and auto-creates a connection when the script starts from an arbitrarily chosen port -->
+
+  <pause milliseconds="3000"/>
+  <send dialog="1" start_txn="C1">
+    <![CDATA[
+
+      WAIT sip:3339957129@[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From:"Sender"<sip:7159@[local_ip]:[local_port];user=phone>[local_tag_param]
+      To:"Receiver"<sip:3339957129@[remote_ip]:[remote_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] IRRELEVANT
+      Contact:<sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+</scenario>

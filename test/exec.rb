@@ -35,7 +35,7 @@ class Exec < Test::Unit::TestCase
   def test_exec_logging
 	# verify <exec command> with stdout & stderr logging. [log file to end up with output]
 	atime = Time.now
-    test = SippTest.new("test_exec_logging", "-sf exec_two_verifies.sipp -m 1 -l 1 -trace_exec -exec_file exec_output.log -key command \"echo #{atime.to_s}\"", "-sn uas -aa ")
+    test = SippTest.new("test_exec_logging", "-sf exec_two_verifies.sipp -m 1 -l 1 -trace_exec -exec_file exec_output.log -key command \"echo #{atime.to_s}\" -trace_debug", "-sn uas -aa ")
     assert(test.run())
 	# verify that exec_output.log  contains #{atime.to_s}
 	data = File.read("exec_output.log")
@@ -52,7 +52,13 @@ class Exec < Test::Unit::TestCase
 	expected_windows = test.remove_space_and_crlf("<exec> verify \"echo \"< > & '\" >> exec_output.log 2>&1\"\n\"< > & '\" \n")
 	expected_linux = test.remove_space_and_crlf("<exec> verify \"echo \"< > & '\" >> exec_output.log 2>&1\"\n< > & ' \n")
 	result = test.remove_space_and_crlf(data)
-	assert((result == expected_linux) || (result == expected_windows), "data == expected")
+	assert((result == expected_linux) || (result == expected_windows), result + " == " + expected_linux)
   end
 
+  def test_exec_rsipp
+	# verify <exec verify="rsipp.pl ... ">, helps ensure that the $PATH variable has been set up properly
+    test = SippTest.new("exec_rsipp", "-mc -sf exec_rsipp.sipp", "-sn uas -aa ")
+	test.expected_minimum_run_time = 3
+    assert(test.run())
+  end
 end
