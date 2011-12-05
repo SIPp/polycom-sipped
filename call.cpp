@@ -4389,7 +4389,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       } // if (verify_result)
 #else
       if(verify_result) {
-        ret = spawnvp (_P_WAIT, argv[0], argv);
+        ret = spawnvpe (_P_WAIT, argv[0], argv, environ);
         if (ret < 0) {
           ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
         } else if (ret > 0) {
@@ -4398,7 +4398,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           DEBUG("<exec verify=\"%s\"> PASS.", x);
         }
       } else {
-        if ((ret = spawnvp (_P_NOWAIT, argv[0], argv)) < 0) {
+        if ((ret = spawnvpe (_P_NOWAIT, argv[0], argv, environ)) < 0) {
           ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
         }
       }
