@@ -2280,8 +2280,8 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     switch(comp->type) {
       case E_Message_Literal:
+        char *ptr = comp->literal;
         if (supresscrlf) {
-          char *ptr = comp->literal;
           while (isspace(*ptr)) ptr++;
           dest += snprintf(dest, left, "%s", ptr);
           supresscrlf = false;
@@ -4854,7 +4854,7 @@ void setArguments(char* args, char** argv) {
   argv[1] = "-c";
 #else
   argv[0] = "cmd.exe";
-  argv[1] = "/C";
+  argv[1] = "/c";
 #endif
   argv[2] = args;
   argv[3] = NULL;
