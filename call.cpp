@@ -2279,9 +2279,9 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     TransactionState &txn = (comp->dialog_number == src->getDialogNumber() ? default_txn : ds->get_transaction("", P_index));
 
     switch(comp->type) {
-      case E_Message_Literal:
-        char *ptr = comp->literal;
+      case E_Message_Literal:        
         if (supresscrlf) {
+          char *ptr = comp->literal;
           while (isspace(*ptr)) ptr++;
           dest += snprintf(dest, left, "%s", ptr);
           supresscrlf = false;
