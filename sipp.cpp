@@ -4910,6 +4910,7 @@ int main(int argc, char *argv[])
     if(!screenf) {
       ERROR("Unable to create '%s'", L_file_name);
     }
+  setvbuf(screenf, (char *)NULL, _IONBF, 0);
   }
 
   //check if no_call_id_check is enabled with call limit 1
@@ -6013,10 +6014,12 @@ void rotate_errorf() {
 
 void rotate_debugf() {
   rotatef(&debug_lfi);
+  setvbuf(debug_lfi.fptr, (char *)NULL, _IONBF, 0);
 }
 
 void rotate_execf() {
   rotatef(&exec_lfi);
+  setvbuf(exec_lfi.fptr, (char *)NULL, _IONBF, 0);
 }
 
 void generate_alt_path(char * path, const char * name) {
