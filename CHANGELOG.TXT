@@ -1,4 +1,16 @@
 This file tracks changes responsible for version number updates.
+3.2.20 Dec-8-2011
+- Use posix_spawn() or spawnvep() instead of fork/exec for performing <exec> operation to work around cygwin bug and prepare for Win32 port.
+- Add support for Radiotap and 802.11 QoS RTP playback
+- Improve error message when SIPp gets RESPONSE when it was execting a request.
+- Trace_debug no longer automatically enable trace_exec (so we can debug exec-related issues)
+- cppcheck cleanup (should have no effect)
+- Convert .c files to .cpp and remove extern "C" statements. Fix the few issues caused by C++ rather than C compiler rules
+- Now properly sets default transaction as -1 rather than 0.
+- Cleaned up the xp_convert_special_characters function.
+- Disable buffered output for debug and exec logs so log files get generated even if process is aborted.
+- Update error message with more detail when attempting to use start_txn with responses.
+
 3.2.18 Oct-24-2011
 - Add many SSL enhancements
 - When there is a nop SIPp is forced into client mode, for TLS default to server mode.  Also default to port 5061 for TLS.
@@ -14,7 +26,9 @@ This file tracks changes responsible for version number updates.
 - Support RTP playback from cooked format (in prepare_pcap)
 - Optimize load of SIPp with large files (strstr replaced)
 
+
 3.2.17 09-09-2011
+
 - Encoding attribute for DialogSpecific keywords
 - Eliminate bind error crash if wrong IP specified with -i
 - Improve error messages
@@ -26,6 +40,7 @@ This file tracks changes responsible for version number updates.
 - -dsd option as shortcut for dump_sequence_diagram [just have "dsd" do identical thing as "dump_sequence_diagram" in array of command line arguments]
 - improved rsipp error messages
 - All errors (after parameter parsing) output to log file for easier integration with AutoTester; precise return codes for those prior to log availability.
+
 
 
 3.2.15 08-09-2011
@@ -42,6 +57,7 @@ This file tracks changes responsible for version number updates.
 - Report error if [remote_ip] used but not specified on command line - Done July 12 2011 
 - No longer auto-generate remote_tag if unspecified; Implement generated="true"|"false" attribute for [remote_tag] and [remote_tag_param] 
   such that it is auto-generated ONLY if generated="true" is specified.
+
 
 3.2.14 06-13-2011
 - SIPp crashing when ']' missing from keyword parameter.  Removed tsrc, as it wasn't actually doing anything except when 
@@ -65,6 +81,7 @@ parsing to get the offset, and generalized it to use in the parsing of offsets f
 - Remove RTP-related startup debug output 
 
 
+
 3.2.13 05-21-2011
 - Must not return fail code for non errors such as "The minor watchdog timer 500ms has been tripped" (Disabled watchdog when -mc is enabled.)
 - Aligned Pause and NOP in the sequence diagram (add/remove whitespace)
@@ -75,13 +92,11 @@ format. For example [last_i:] will match 'call-id: Value' header in previous mes
 'i: value' in output. Likewise [last_Call-Id] will match 'i: value' in previous message and the resulting output will be changed to 
 'Call-Id: value'.  Added logic to call.cpp to allow sipp to go back and forth between the long and short form headers in get_header 
 (originally just checked for short name given long). 
-
 (Added an "alt_name" helper function which returns the short/long form given the 
 long/short form. Added some helpful debug messages when the header is not found.  Updated test cases to add a check for this functionality.)
 
 
 3.2.12 05-13-2011
-
 - Add transaction support (use_txn, start_txn)
 - Add transaction support to keywords client_cseq*, server_cseq*, received_cseq*, cseq*, branch, last_branch, last_cseq_number, last_request_uri, last_message, last_*
 - Aborting rather than warn when regex with checkit fails
@@ -98,6 +113,7 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Adjust exec_xml_character_conversion testcase for Linux & Windows support (echo "something" produces different results depending on platform)
 
 
+
 3.2.10 02-24-2011
 - Perform conversion of &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') in exec command and verify.
 - Correct [cseq] keyword behavior to only reflect outgoing transactions (no longer updated on recv)
@@ -105,6 +121,7 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Update parser to ignore embedded <scenario> <?xml> and <!DOCTYPE tags to facilitate xml-compliant include files
 - Untested implementation of improved start-txn and use-txn tags
 - Minor parser bug-fixes including ability now to place <scenario> tag immediately following <!DOCTYPE> tag.
+
 
 
 3.2.9 02-07-2011
@@ -123,11 +140,13 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Modify tapress.pl to have delay between all key presses (rather than just digits)
 
 
-3.2.7 12-20-2010
 
+3.2.7 12-20-2010
 - Add [local_tag] [local_tag_param]
 - Ad dump_xml  and -dump_sequence_diagram options
 - Add parameterized includes
+
+
 
 
 3.2.6 12-08-2010
@@ -135,10 +154,12 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Fix seg fault when using dump command without a parameter
 
 
+
 3.2.5ed 11-17-2010
 - Version format changed to parallel SF SIPp trunk which bumped version from 3.1 to 3.2
 - Make <include> work relative to -sf directory and support embeded directories
 - Extend test harness for cygwin to support windows test execution
+
 
 
 3.14ed 11-10-2010
@@ -148,11 +169,10 @@ long/short form. Added some helpful debug messages when the header is not found.
 - Merge in two changes from sourceforge svn tree
   * Revision: 594 ENH: Added option to configure global T2 Timer (Patch contributed by sipp@hirschbichler.biz)
   * Revision: 595 FIX: sipp crashes when the line is too large. BugID-2968740(Patch contributed by Mitko-Mitev)
-
-
+  
+  
 Initial cvs checkin is based on trunk version from sourceforge as of November 11, 2010, SIPp version 3.1.
 All changes to date for enabling functional testing and improved ease of use:
-
 * -mc option to enable dialog="n" option to messages
 * allow dialog specification in keywords where this makes sense
 * move per-dialog keywords (ie cseq) to per-dialog structure
@@ -169,47 +189,23 @@ All changes to date for enabling functional testing and improved ease of use:
 
 ======================================
 
+
 pre-CVS versions:
 
-
-
 3.13ed 11-04-2010
-
 - Fix <exec> on windows (by using cmd.exe instead of system command which requires sh)
-
-
-
 3.12ed 10-27-2010
 
 - Improve call_id auto-generation, important when using same dialog number in multiple files.
 
 - Require "/> rather than "> in xi:include tag
-
-
-
 3.11ed 10-18-2010
 
 - support <xi:include pname="file"/> for include
 
-- 
-
-
-
-
-
 3.1e 09-28-2010 - initial offering
 
 - support -no_call_id_check
-
 - support dialog=n tags for storing multiple dialogs state
-
 - support auto-response to register requests
-
 - fix crash in statistics
-
-
-
-
-
-
-
