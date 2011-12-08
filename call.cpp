@@ -3886,33 +3886,6 @@ double call::get_rhs(CAction *currentAction) {
   }
 }
 
-void execute_system_shell_and_exit(char *x)
-{
-// Execute shell in different ways via compiler check.
-// This is required because cygwin wrongly returns true for system(0)
-// even when the shell is not available
-// For some reason if system is invoked when sh is not available the program seg faults.
-// This is avoided by ifdef'ing out the system() call in favor of exec of cmd.exe on Windows.
-  DEBUG_IN("pid = %d", getpid());
-#ifndef __CYGWIN
-  int ret = system(x); // second child runs
-  if(ret == -1) {
-    WARNING("system call error for %s",x);
-  }
-  DEBUG("System(%s) returned %d", x, WEXITSTATUS(ret));
-  exit(WEXITSTATUS(ret));
-
-
-#else
-  // sh not available, use exec(command)
-printf("execute_system_shell_and_exit() - just before execlp\n");
-  int ret = execlp("cmd.exe", "cmd.exe", "/c", x, (char *) NULL);
-  printf("ERROR: Cannot execute command: 'cmd.exe /c %s'.\n", x);
-  _exit(-1);
-  // Should probably be calling _exit here rather than exit(), but fundamentally we should abort anyway...
-#endif
-
-}
 
 call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 {
