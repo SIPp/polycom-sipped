@@ -55,9 +55,9 @@ class Exec < Test::Unit::TestCase
 	assert((result == expected_linux) || (result == expected_windows), result + " == " + expected_linux)
   end
 
-  def test_exec_rsipp
-	# verify <exec verify="rsipp.pl ... ">, helps ensure that the $PATH variable has been set up properly
-    test = SippTest.new("exec_rsipp", "-mc -sf exec_rsipp.sipp", "-sn uas -aa ")
+  def test_exec_uses_correct_path
+	# verify <exec verify="rsipp.pl ... ">
+    test = SippTest.new("exec_uses_correct_path", "-mc -sf exec_uses_correct_path", "-sn uas -aa ")
 	test.expected_minimum_run_time = 3
     assert(test.run())
   end

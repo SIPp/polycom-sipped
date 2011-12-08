@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="Describe this scenario here" parameters="-mc -aa" source="" id="" config="">
+<!-- Generated Scenario for 10.149.8.6 using Snipp v1.3.0 -->
+
+  <nop display="Wait">
+    <action>
+      <exec verify="rsipp.pl -f wait_three_seconds.sipp -p 1234 -trace_debug"/>
+    </action>
+  </nop>
+
+  <send dialog="0">
+    <![CDATA[
+
+      SIP/2.0 200 EXEC ONCE
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[last_branch]
+      From: "1244869" <sip:1244869@172.23.72.18>[remote_tag_param]
+      To: [to_name_and_uri]
+      Call-ID: [call_id]
+      CSeq: 2 INVITE
+      WWW-Authenticate: Digest realm="am.mot.com",qop="auth",algorithm=MD5,nonce="abd5ff0039cc3246ac588be148381dfe"
+      User-Agent: ININ-TsServer/3.8.11.11317
+      Content-Length: [len]
+
+    ]]>
+  </send>
+
+
+</scenario>
