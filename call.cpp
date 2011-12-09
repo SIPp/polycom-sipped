@@ -4360,8 +4360,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 #else
       // Linux
       pid_t l_pid;
-      if ((int ret = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, environ)) != 0){
-        REPORT_ERROR("<exec verify> FAIL: '%s': %s", x, strerror(ret));
+      int result = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, environ);
+      if (result != 0){
+        REPORT_ERROR("<exec verify> FAIL: '%s': %s", x, strerror(result));
       }
 
       if (verify_result) {
