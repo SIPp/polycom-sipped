@@ -25,20 +25,28 @@
 #include "sipp.hpp"
 
 #include <curses.h>
+
+#ifndef WIN32
+# include <sys/time.h>
+# include <sys/resource.h>
+# include <unistd.h>
+# include <signal.h>
+#else
+# include <time.h>
+# include <csignal>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
+
 #include <screen.hpp>
 #include <errno.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 
 #ifdef __SUNOS
 #include<stdarg.h>
 #endif
 
-#include <unistd.h>
 
 extern bool    timeout_exit;
 
@@ -97,7 +105,7 @@ void screen_exit(int rc)
     fprintf(stderr, "%s", errstart);
     if(screen_errors > 1) {
       if (screen_logfile[0] != (char)0) {
-	fprintf(stderr, 
+        fprintf(stderr, 
               "%s: There were more errors, see '%s' file\n",
               screen_exename, screen_logfile);
       } else {
@@ -152,6 +160,13 @@ void screen_quit()
    screen_exit(EXIT_TEST_KILLED);
 }
 
+// Win32 signal passes the signal as a parameter
+void win32_screen_quit(int signum) 
+{
+  screen_quit();
+}
+
+
 
 void manage_oversized_file()
 {
@@ -166,7 +181,7 @@ void manage_oversized_file()
 
   sprintf (L_file_name, "%s_%d_traces_oversized.log", scenario_file, getpid());
   f = fopen(L_file_name, "w");
-  if(!f) ERROR_NO("Unable to open special error file\n"); 
+  if(!f) REPORT_ERROR_NO("Unable to open special error file\n"); 
   GET_TIME (&currentTime);
   fprintf(f,
           "-------------------------------------------- %s\n"
@@ -191,7 +206,6 @@ void screen_set_exename(char * exe_name)
 
 void screen_init(void (*exit_handler)())
 {
-  struct sigaction action_quit, action_file_size_exceeded;
   
   screen_inited = 1;
   screen_exit_handler = exit_handler;
@@ -204,6 +218,12 @@ void screen_init(void (*exit_handler)())
   }
   
   /* Map exit handlers to curses reset procedure */
+#ifdef WIN32
+  (void) signal(SIGTERM, win32_screen_quit);
+  (void) signal(SIGINT, win32_screen_quit);
+#else
+  struct sigaction action_quit, action_file_size_exceeded;
+
   memset(&action_quit, 0, sizeof(action_quit));
   memset(&action_file_size_exceeded, 0, sizeof(action_file_size_exceeded));
   (*(void **)(&(action_quit.sa_handler)))=(void *)screen_quit;
@@ -212,6 +232,7 @@ void screen_init(void (*exit_handler)())
   sigaction(SIGINT, &action_quit, NULL);
   sigaction(SIGKILL, &action_quit, NULL);  
   sigaction(SIGXFSZ, &action_file_size_exceeded, NULL);   // avoid core dump if the max file size is exceeded
+#endif
 
   if (backgroundMode == false) {
     screen_clear();
@@ -240,7 +261,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     snprintf(tmp, MAX_ERROR_SIZE, ", errno = %d (%s)", error,  strerror(error));
     char *new_msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
     if (!new_msg) {
-      ERROR("Could not realloc memory for the error message!");
+      REPORT_ERROR("Could not realloc memory for the error message!");
     }
     msg = new_msg;
     strcat(msg, tmp);
@@ -256,7 +277,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
         screen_exename, screen_logfile, strerror(errno));
       char * new_msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
       if (!new_msg) {
-        ERROR("Could not realloc memory for the error message!");
+        REPORT_ERROR("Could not realloc memory for the error message!");
       }
       msg = new_msg;
       strcat(msg, tmp);
@@ -313,7 +334,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   }
 }
 
-void ERROR(const char *fmt, ...) {
+void REPORT_ERROR(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   _screen_error(true, false, 0, fmt, ap);
@@ -321,7 +342,7 @@ void ERROR(const char *fmt, ...) {
   assert(0);
 }
 
-void ERROR_NO(const char *fmt, ...) {
+void REPORT_ERROR_NO(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   _screen_error(true, true, errno, fmt, ap);
@@ -435,15 +456,18 @@ int _TRACE_EXEC(const char *fmt, ...) {
     int retry_count = 0;
     while (!rotatef(&exec_lfi) && (retry_count++ < 10)) {
       WARNING("Unable to open exec log file, probably because previous exec command is still running.  Attempt %d of a maximum 11 tries", retry_count);
-      if(retry_count < 6){
-         sleep(1);
+      if(retry_count == 0){
+         usleep(250000);
+      }
+      else if(retry_count < 6){
+         usleep(1000000);
       }
       else {
-        sleep(5);
+        usleep(5000000);
       }
     }
     if (!exec_lfi.fptr) {
-      ERROR("Unable to open exec log file, previous command took more than 30 seconds to run; exiting");
+      REPORT_ERROR("Unable to open exec log file, previous command took more than 30 seconds to run; exiting");
       return -1;
     }
   }

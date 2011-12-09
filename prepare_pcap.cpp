@@ -17,14 +17,20 @@
  */
 #include <pcap.h>
 #include <stdlib.h>
-#include <netinet/in.h>
-#include <netinet/udp.h>
-#if defined(__HPUX) || defined(__CYGWIN) || defined(__FreeBSD__)
-#include <netinet/in_systm.h>
-#endif
-#include <netinet/ip.h>
-#ifndef __CYGWIN
-#include <netinet/ip6.h>
+#ifdef WIN32
+# include <winsock2.h>
+# include <ws2tcpip.h>
+# include "win32_compatibility.h"
+#else
+# include <netinet/in.h>
+# include <netinet/udp.h>
+# if defined(__HPUX) || defined(__CYGWIN) || defined(__FreeBSD__)
+# include <netinet/in_systm.h>
+# endif
+# include <netinet/ip.h>
+# ifndef __CYGWIN
+# include <netinet/ip6.h>
+# endif
 #endif
 #include <string.h>
 
@@ -114,7 +120,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 
   pcap = pcap_open_offline(file, errbuf);
   if (!pcap) 
-    ERROR("Can't open PCAP file '%s'. pcap_open_offline returned error: '%s'", file, errbuf);
+    REPORT_ERROR("Can't open PCAP file '%s'. pcap_open_offline returned error: '%s'", file, errbuf);
 
 #if HAVE_PCAP_NEXT_EX
   while (pcap_next_ex (pcap, &pkthdr, (const u_char **) &pktdata) == 1)
@@ -126,7 +132,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
   pkthdr = (pcap_pkthdr *) malloc (sizeof (*pkthdr));
 #endif
   if (!pkthdr)
-    ERROR("Can't allocate memory for pcap pkthdr");
+    REPORT_ERROR("Can't allocate memory for pcap pkthdr");
   int num_of_non_ip_packets = 0;
   int num_of_non_udp_packets = 0;
   while ((pktdata = (u_char *) pcap_next (pcap, pkthdr)) != NULL)
@@ -149,7 +155,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
       frame_size = sizeof(*radiohdr);
     }
     else {
-      ERROR("Unrecognized link layer type");
+      REPORT_ERROR("Unrecognized link layer type");
     }
     int num_of_vlan_headers = 0;
     if (ntohs(ip_type) == 0x8100 /* VLAN */) {
@@ -204,17 +210,17 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 #endif
     }
     if (pktlen > PCAP_MAXPACKET) {
-      ERROR("Packet size is too big or corrupt capture file (%d > %d)! Recompile with bigger PCAP_MAXPACKET in prepare_pcap.h", pktlen, PCAP_MAXPACKET);
+      REPORT_ERROR("Packet size is too big or corrupt capture file (%d > %d)! Recompile with bigger PCAP_MAXPACKET in prepare_pcap.h", pktlen, PCAP_MAXPACKET);
     }
     pkts->pkts = (pcap_pkt *) realloc(pkts->pkts, sizeof(*(pkts->pkts)) * (n_pkts + 1));
     if (!pkts->pkts)
-      ERROR("Can't re-allocate memory for pcap pkt");
+      REPORT_ERROR("Can't re-allocate memory for pcap pkt");
     pkt_index = pkts->pkts + n_pkts;
     pkt_index->pktlen = pktlen;
     pkt_index->ts = pkthdr->ts;
     pkt_index->data = (unsigned char *) malloc(pktlen);
     if (!pkt_index->data) 
-      ERROR("Can't allocate memory for pcap pkt data");
+      REPORT_ERROR("Can't allocate memory for pcap pkt data");
     // copy data, skipping over udp header itself
     memcpy(pkt_index->data, (char *)udphdr+(sizeof(struct udphdr)), pktlen);
 

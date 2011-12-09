@@ -39,7 +39,11 @@
 #include <ctype.h>
 
 #include <xp_parser.h>
+#include <win32_compatibility.h>
 
+#ifdef WIN32
+  #define snprintf _snprintf
+#endif
 /************* Constants and Global variables ***********/
 
 #define XP_MAX_NAME_LEN   256

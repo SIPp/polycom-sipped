@@ -36,10 +36,14 @@
 #define _SIPP_SEND_PACKETS_H_
 
 #include <time.h>
-#include <sys/time.h>
 #include <math.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#ifdef WIN32
+  #include <winsock2.h>
+#else
+  #include <sys/time.h>
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+#endif
 
 #include "prepare_pcap.h"
 

@@ -28,9 +28,13 @@
 
 #include <stdio.h>
 
-void ERROR(const char *fmt, ...) __attribute__ ((noreturn));
+#ifndef WIN32
+  void REPORT_ERROR(const char *fmt, ...) __attribute__ ((noreturn));
+#else
+  void REPORT_ERROR(const char *fmt, ...);
+#endif
 void WARNING(const char *fmt, ...);
-void ERROR_NO(const char *fmt, ...);
+void REPORT_ERROR_NO(const char *fmt, ...);
 void WARNING_NO(const char *fmt, ...);
 void MESSAGE(const char *fmt, ...);
 int _DEBUG_LOG(const char *fmt, ...);

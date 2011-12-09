@@ -25,14 +25,21 @@
 #include <map>
 #include <list>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <string.h>
-#ifndef __CYGWIN
-#include <spawn.h>
+#ifdef WIN32
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #include <stdio.h>
+  #include <process.h>
 #else
-#include <stdio.h>
-#include <process.h>
+  #include <sys/socket.h>
+  #ifdef CYGWIN
+    #include <stdio.h>
+    #include <process.h>
+  #else
+    #include <spawn.h>
+  #endif
 #endif
+#include <string.h>
 #include "scenario.hpp"
 #include "stat.hpp"
 #include "common.hpp"

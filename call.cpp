@@ -43,7 +43,12 @@
 #include <fstream>
 #include <iostream>
 #include <sys/types.h>
-#include <sys/wait.h>
+#ifndef WIN32
+  #include <sys/wait.h>
+#else
+  #include <io.h>
+  #include <process.h>
+#endif
 
 #ifdef PCAPPLAY
 #include "send_packets.h"
@@ -53,7 +58,7 @@
 #include "deadcall.hpp"
 #include "assert.h"
 
-#define callDebug(args...) do { if (useDebugf) { DEBUG(args); } if (useCallDebugf) { _callDebug( args ); } } while (0)
+#define callDebug(x, ...) do { if (useDebugf) { DEBUG(x, ##__VA_ARGS__); } if (useCallDebugf) { _callDebug(x, ##__VA_ARGS__ ); } } while (0)
 
 #ifdef _USE_OPENSSL
 extern  SSL                 *ssl_list[];
@@ -199,7 +204,7 @@ uint16_t get_remote_port_media(char *msg, int pattype)
     } else if (pattype == PAT_VIDEO) {
       pattern = "m=video ";
     } else {
-	ERROR("Internal error: Undefined media pattern %d\n", 3);
+	REPORT_ERROR("Internal error: Undefined media pattern %d\n", 3);
     }
 
     begin = strstr(msg, pattern);
@@ -210,7 +215,7 @@ uint16_t get_remote_port_media(char *msg, int pattype)
     begin += strlen(pattern) - 1;
     end = strstr(begin, "\r\n");
     if (!end)
-      ERROR("get_remote_port_media: no CRLF found");
+      REPORT_ERROR("get_remote_port_media: no CRLF found");
     memset(number, 0, sizeof(number));
     strncpy(number, begin, sizeof(number) - 1);
     return atoi(number);
@@ -310,7 +315,7 @@ unsigned long call::hash(char * msg) {
 	}
       }
   } else {
-    ERROR("Internal error: Invalid rtcheck %d\n", rtcheck);
+    REPORT_ERROR("Internal error: Invalid rtcheck %d\n", rtcheck);
   }
 
   return hash;
@@ -476,11 +481,11 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   // information to compute rtd information
   start_time_rtd = (unsigned long long *)malloc(sizeof(unsigned long long) * call_scenario->stats->nRtds());
   if (!start_time_rtd) {
-    ERROR("Could not allocate RTD times!");
+    REPORT_ERROR("Could not allocate RTD times!");
   }
   rtd_done = (bool *)malloc(sizeof(bool) * call_scenario->stats->nRtds());
   if (!start_time_rtd) {
-    ERROR("Could not allocate RTD done!");
+    REPORT_ERROR("Could not allocate RTD done!");
   }
   for (i = 0; i < call_scenario->stats->nRtds(); i++) {
     start_time_rtd[i] = getmicroseconds();
@@ -577,7 +582,7 @@ int call::_callDebug(const char *fmt, ...) {
 
     char *newDebugBuffer = (char *)realloc(debugBuffer, debugLength + ret + TIME_LENGTH + 2);
     if (!newDebugBuffer) {
-      ERROR("Could not allocate buffer (%d bytes) for callDebug file!", debugLength + ret + TIME_LENGTH + 2);
+      REPORT_ERROR("Could not allocate buffer (%d bytes) for callDebug file!", debugLength + ret + TIME_LENGTH + 2);
     }
     debugBuffer = newDebugBuffer;
 
@@ -702,7 +707,7 @@ bool call::connect_socket_if_needed()
     char peripaddr[256];
     if (!peripsocket) {
       if ((associate_socket(new_sipp_call_socket(use_ipv6, transport, &existing))) == NULL) {
-        ERROR_NO("Unable to get a UDP socket (1)");
+        REPORT_ERROR_NO("Unable to get a UDP socket (1)");
       }
     } else {
       char *tmp = peripaddr;
@@ -712,7 +717,7 @@ bool call::connect_socket_if_needed()
       if (i == map_perip_fd.end()) {
 	// Socket does not exist
 	if ((associate_socket(new_sipp_call_socket(use_ipv6, transport, &existing))) == NULL) {
-	  ERROR_NO("Unable to get a UDP socket (2)");
+	  REPORT_ERROR_NO("Unable to get a UDP socket (2)");
 	} else {
 	  /* Ensure that it stays persistent, because it is recorded in the map. */
 	  call_socket->ss_count++;
@@ -765,13 +770,13 @@ bool call::connect_socket_if_needed()
     }
 
     if (sipp_bind_socket(call_socket, &saddr, &call_port)) {
-      ERROR_NO("Unable to bind UDP socket");
+      REPORT_ERROR_NO("Unable to bind UDP socket");
     }
   } else { /* TCP or TLS. */
     struct sockaddr_storage *L_dest = &remote_sockaddr;
 
     if ((associate_socket(new_sipp_call_socket(use_ipv6, transport, &existing))) == NULL) {
-      ERROR_NO("Unable to get a TCP socket");
+      REPORT_ERROR_NO("Unable to get a TCP socket");
     }
 
     if (existing) {
@@ -808,9 +813,9 @@ bool call::connect_socket_if_needed()
       } else {
 	if(errno == EINVAL){
 	  /* This occurs sometime on HPUX but is not a true INVAL */
-	  ERROR("Unable to connect a TCP socket, remote peer error");
+	  REPORT_ERROR("Unable to connect a TCP socket, remote peer error");
 	} else {
-	  ERROR_NO("Unable to connect a TCP socket");
+	  REPORT_ERROR_NO("Unable to connect a TCP socket");
 	}
       }
     }
@@ -874,7 +879,7 @@ int call::send_raw(char * msg, int index, int len)
         struct sockaddr_storage *L_dest = &remote_sending_sockaddr;
 
         if((call_remote_socket= new_sipp_socket(use_ipv6, transport)) == NULL) {
-          ERROR_NO("Unable to get a socket for rsa option");
+          REPORT_ERROR_NO("Unable to get a socket for rsa option");
         }
 
         sipp_customize_socket(call_remote_socket);
@@ -883,9 +888,9 @@ int call::send_raw(char * msg, int index, int len)
           if (sipp_connect_socket(call_remote_socket, L_dest)) {
             if(errno == EINVAL){
               /* This occurs sometime on HPUX but is not a true INVAL */
-              ERROR("Unable to connect a %s socket for rsa option, remote peer error", TRANSPORT_TO_STRING(transport));
+              REPORT_ERROR("Unable to connect a %s socket for rsa option, remote peer error", TRANSPORT_TO_STRING(transport));
             } else {
-              ERROR_NO("Unable to connect a socket for rsa option");
+              REPORT_ERROR_NO("Unable to connect a socket for rsa option");
             }
           }
         }
@@ -942,7 +947,7 @@ void call::sendBuffer(char * msg, int len)
   /* call send_raw but with a special scenario index */
   if (send_raw(msg, -1, len) < 0) {
     if (sendbuffer_warn) {
-      ERROR_NO("Error sending raw message");
+      REPORT_ERROR_NO("Error sending raw message");
     } else {
       WARNING_NO("Error sending raw message");
     }
@@ -984,7 +989,7 @@ char * call::get_last_header(const char * name, const char *msg, bool valueOnly)
   /* Ideally this check should be moved to the XML parser so that it is not
    * along a critical path.  We could also handle lowercasing there. */
   if (len > MAX_HEADER_LEN) {
-    ERROR("call::get_last_header: Header to parse bigger than %d (%zu)", MAX_HEADER_LEN, strlen(name));
+    REPORT_ERROR("call::get_last_header: Header to parse bigger than %d (%zu)", MAX_HEADER_LEN, strlen(name));
   }
 
   if (name[len - 1] == ':') {
@@ -1137,7 +1142,7 @@ char * call::get_header(char* message, const char * name, bool content)
   if(alt_form && !content){
     ptr = strstr(last_header, name);
     ptr += strlen(name);
-    char start_tmp[strlen(ptr) + strlen(name)];
+    char *start_tmp = (char *) alloca(strlen(ptr) + strlen(name));
     strcpy(start_tmp, swap_long_and_short_form_header(name));
     strcat(start_tmp, ptr);
     strcpy(start, start_tmp);
@@ -1582,7 +1587,7 @@ bool call::executeMessage(message *curmsg) {
     last_send_len = msgLen;
     char * new_last_send_msg = (char *) realloc(last_send_msg, msgLen+1);
     if (!new_last_send_msg) {
-      ERROR("Could not allocate buffer (%d bytes) for last sent message!", msgLen+1);
+      REPORT_ERROR("Could not allocate buffer (%d bytes) for last sent message!", msgLen+1);
     }
     last_send_msg = new_last_send_msg;
     memcpy(last_send_msg, msg_snd, msgLen);
@@ -1732,12 +1737,12 @@ bool call::run()
   message *curmsg;
   if (initCall) {
     if(msg_index >= (int)call_scenario->initmessages.size()) {
-      ERROR("Scenario initialization overrun for call %s (%p) (index = %d)\n", id, this, msg_index);
+      REPORT_ERROR("Scenario initialization overrun for call %s (%p) (index = %d)\n", id, this, msg_index);
     }
     curmsg = call_scenario->initmessages[msg_index];
   } else {
     if(msg_index >= (int)call_scenario->messages.size()) {
-      ERROR("Scenario overrun for call %s (%p) (index = %d)\n", id, this, msg_index);
+      REPORT_ERROR("Scenario overrun for call %s (%p) (index = %d)\n", id, this, msg_index);
     }
     curmsg = call_scenario->messages[msg_index];
   }
@@ -1946,7 +1951,8 @@ SendingMessage *get_default_message(const char *which) {
       return default_messages[i];
     }
   }
-  ERROR("Internal Error: Unknown default message: %s!", which);
+  REPORT_ERROR("Internal Error: Unknown default message: %s!", which);
+  return 0;
 }
 
 void set_default_message(const char *which, char *msg) {
@@ -1957,7 +1963,7 @@ void set_default_message(const char *which, char *msg) {
       return;
     }
   }
-  ERROR("Internal Error: Unknown default message: %s!", which);
+  REPORT_ERROR("Internal Error: Unknown default message: %s!", which);
 }
 
 bool call::process_unexpected(char * msg, const char *reason)
@@ -2205,7 +2211,7 @@ void call::verifyIsServerTransaction(TransactionState &txn, const string &wrongK
 {
   DEBUG_IN("%s: %s", correctKeyword.c_str(), txn.trace().c_str());
   if (!txn.isServerTransaction()) { // cseq_* implies server transaction => make sure.
-    ERROR("Transaction '%s' in message %d was initiated by SIPp and is therefore a client transaction. \n"
+    REPORT_ERROR("Transaction '%s' in message %d was initiated by SIPp and is therefore a client transaction. \n"
           "You can not use [%s] with client transactions, use [%s] instead.  ]n"
           "For most transactions you can use [cseq] and [cseq_method] and the correct value will be used.", 
           txn.getName().c_str(), msg_index, wrongKeyword.c_str(), correctKeyword.c_str());
@@ -2216,7 +2222,7 @@ void call::verifyIsClientTransaction(TransactionState &txn, const string &wrongK
 {
   DEBUG_IN("%s: %s", correctKeyword.c_str(), txn.trace().c_str());
   if (!txn.isClientTransaction()) { // server_* implies server transaction => make sure.
-    ERROR("Transaction '%s' in message %d was initiated remotely and is therefore a server transaction. "
+    REPORT_ERROR("Transaction '%s' in message %d was initiated remotely and is therefore a server transaction. "
           "You can not use %s with server transactions, use %s instead."
           "For most transactions you can use [cseq] and [cseq_method] and the correct value will be used.", 
           txn.getName().c_str(), msg_index, wrongKeyword.c_str(), correctKeyword.c_str());
@@ -2251,14 +2257,14 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     if (src->isResponse()) {
       if (!default_txn.isServerTransaction()) {
         // trying to send response but is client transaction
-        ERROR("Transaction '%s' as used in message %d is a client transaction meaning it was initiated by a SIPp-sent request. \n"
+        REPORT_ERROR("Transaction '%s' as used in message %d is a client transaction meaning it was initiated by a SIPp-sent request. \n"
               "SIPp therefore cannot send a response in this transaction.", 
               default_txn.getName().c_str(), P_index);
       }
     } else {
       if (!default_txn.isClientTransaction()) { 
         // trying to send request but is server transaction
-        ERROR("Transaction '%s' as used in message %d is a server transaction meaning it was initiated by a received request.\n"
+        REPORT_ERROR("Transaction '%s' as used in message %d is a server transaction meaning it was initiated by a received request.\n"
               "SIPp therefore cannot send a request in this transaction. If you wish to start a new transaction, use start_txn.", 
               default_txn.getName().c_str(), P_index);
         }
@@ -2293,7 +2299,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
       case E_Message_Remote_IP:
         if (!strlen(remote_ip_escaped)){
-          ERROR("The \"[remote_ip]\" keyword requires a remote IP be specified on the command line");
+          REPORT_ERROR("The \"[remote_ip]\" keyword requires a remote IP be specified on the command line");
         }
         dest += snprintf(dest, left, "%s", remote_ip_escaped);
         break;
@@ -2326,7 +2332,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         * repeating it every single time. */
         struct sockaddr_storage server_sockaddr;
 
-        sipp_socklen_t len = SOCK_ADDR_SIZE(&server_sockaddr);
+        sipp_socklen_t len = sizeof(sockaddr_storage); // used to be SOCK_ADDR_SIZE(&server_sockaddr) but we don't yet know if v4 or v6
         getsockname(call_socket->ss_fd,
           (sockaddr *)(void *)&server_sockaddr, &len);
 
@@ -2363,14 +2369,14 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           begin--;
         }
         if (begin == msg_buffer) {
-          ERROR("Can not find beginning of a line for the media port!\n");
+          REPORT_ERROR("Can not find beginning of a line for the media port!\n");
         }
         if (strstr(begin, "audio")) { 
           set_audio_from_port(port);
         } else if (strstr(begin, "video")) {
           set_video_from_port(port);
         } else {
-          ERROR("media_port keyword with no audio or video on the current line (%s)", begin);
+          REPORT_ERROR("media_port keyword with no audio or video on the current line (%s)", begin);
         }
 #endif
         dest += sprintf(dest, "%u", port);
@@ -2512,7 +2518,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
       case E_Message_Authentication:
         if (auth_marker) {
-          ERROR("Only one [authentication] keyword is currently supported!\n");
+          REPORT_ERROR("Only one [authentication] keyword is currently supported!\n");
         }
         auth_marker = dest;
         dest += snprintf(dest, left, "[authentication place holder]");
@@ -2526,7 +2532,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           // generate tag if 1st time used
           ds->peer_tag = (char *)malloc(MAX_HEADER_LEN);
           if (!ds->peer_tag) 
-            ERROR("Unable to allocate memory for remote_tag\n");
+            REPORT_ERROR("Unable to allocate memory for remote_tag\n");
           int idx;
           if(P_index == -2)
             idx = msg_index-1 + comp->offset;
@@ -2550,7 +2556,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           // generate tag if 1st time used
           ds->local_tag = (char *)malloc(MAX_HEADER_LEN);
           if (!ds->local_tag)
-            ERROR("Unable to allocate memory for local_tag\n");
+            REPORT_ERROR("Unable to allocate memory for local_tag\n");
           int idx;
           if(P_index == -2)
             idx = msg_index-1 + comp->offset;
@@ -2638,7 +2644,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         char *filltext = comp->literal;
         int filllen = strlen(filltext);
         if (filllen == 0) {
-          ERROR("Internal error: [fill] keyword has zero-length text.");
+          REPORT_ERROR("Internal error: [fill] keyword has zero-length text.");
         }
         for (int i = 0, j = 0; i < length; i++, j++) {
           *dest++ = filltext[j % filllen];
@@ -2651,7 +2657,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         createSendingMessage(comp->comp_param.filename, -2, buffer, sizeof(buffer));
         FILE *f = fopen(buffer, "r");
         if (!f) {
-          ERROR("Could not open '%s': %s\n", buffer, strerror(errno));
+          REPORT_ERROR("Could not open '%s': %s\n", buffer, strerror(errno));
         }
         int ret;
         while ((ret = fread(dest, 1, left, f)) > 0) {
@@ -2659,7 +2665,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
           dest += ret;
         }
         if (ret < 0) {
-          ERROR("Error reading '%s': %s\n", buffer, strerror(errno));
+          REPORT_ERROR("Error reading '%s': %s\n", buffer, strerror(errno));
         }
         fclose(f);
         break;
@@ -2670,11 +2676,11 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         /* We are injecting an authentication line. */
         if (char *tmp = strstr(orig_dest, "[authentication")) {
           if (auth_marker) {
-            ERROR("Only one [authentication] keyword is currently supported!\n");
+            REPORT_ERROR("Only one [authentication] keyword is currently supported!\n");
           }
           auth_marker = tmp;
           auth_comp = (struct MessageComponent *)calloc(1, sizeof(struct MessageComponent));
-          if (!auth_comp) { ERROR("Out of memory!"); }
+          if (!auth_comp) { REPORT_ERROR("Out of memory!"); }
           auth_comp_allocated = true;
 
           tmp = strchr(auth_marker, ']');
@@ -2724,7 +2730,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       }
       case E_Message_TDM_Map:
         if (!use_tdmmap)
-          ERROR("[tdmmap] keyword without -tdmmap parameter on command line");
+          REPORT_ERROR("[tdmmap] keyword without -tdmmap parameter on command line");
         dest += snprintf(dest, left, "%d.%d.%d/%d",
           tdm_map_x+(int((tdm_map_number)/((tdm_map_b+1)*(tdm_map_c+1))))%(tdm_map_a+1),
           tdm_map_h,
@@ -2749,7 +2755,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   /* Fix up the length. */
   if (length_marker) {
     if (auth_marker > body) {
-      ERROR("The authentication keyword should appear in the message header, not the body!");
+      REPORT_ERROR("The authentication keyword should appear in the message header, not the body!");
     }
 
     char tmp = length_marker[5]; // save letter that will be overwritten by \0
@@ -2773,10 +2779,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
    */
   if (auth_marker) {
 #ifndef _USE_OPENSSL
-    ERROR("Authentication requires OpenSSL!");
+    REPORT_ERROR("Authentication requires OpenSSL!");
 #else
     if (!dialog_authentication) {
-      ERROR("Authentication keyword without dialog_authentication!");
+      REPORT_ERROR("Authentication keyword without dialog_authentication!");
     }
 
     int	   auth_marker_len;
@@ -2789,7 +2795,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     char method[MAX_HEADER_LEN];
     tmp = get_last_header("CSeq:", default_txn.getLastReceivedMessage().c_str(), false);
     if(!tmp) {
-      ERROR("Could not extract method from cseq of challenge");
+      REPORT_ERROR("Could not extract method from cseq of challenge");
     }
     tmp += 5;
     while(isspace(*tmp) || isdigit(*tmp)) tmp++;
@@ -2827,7 +2833,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     if (createAuthHeader(my_auth_user, my_auth_pass, method, uri, auth_body, dialog_authentication,
 	  my_aka_OP, my_aka_AMF, my_aka_K, result + authlen) == 0) {
-      ERROR("%s", result + authlen);
+      REPORT_ERROR("%s", result + authlen);
     }
     authlen = strlen(result);
 
@@ -2997,17 +3003,17 @@ string call::extract_cseq_method (char* msg)
 
 void call::extract_cseq_method (char* method, char* msg)
 {
-  char* cseq ;
+  const char* cseq ;
   if ((cseq = strcasestr (msg, "CSeq")))
   {
-    char * value ;
+    const char * value ;
     if (( value = strchr (cseq,  ':')))
     {
       value++;
       while ( isspace(*value)) value++;  // ignore any white spaces after the :
       while ( !isspace(*value)) value++;  // ignore the CSEQ numnber
       value++;
-      char *end = value;
+      const char *end = value;
       int nbytes = 0;
       /* A '\r' terminates the line, so we want to catch that too. */
       while ((*end != '\r') && (*end != '\n')) { end++; nbytes++; }
@@ -3243,7 +3249,7 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
       if (curmsg -> regexp_compile == NULL) {
         regex_t *re = new regex_t;
 	      if (regcomp(re, curmsg -> recv_request, REG_EXTENDED|REG_NOSUB)) {
-	        ERROR("Invalid regular expression for index %d: %s", index, curmsg->recv_request);
+	        REPORT_ERROR("Invalid regular expression for index %d: %s", index, curmsg->recv_request);
 	      }
 	      curmsg -> regexp_compile = re;
       }
@@ -3462,11 +3468,11 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
 
       reply_code = 0;
     } else {
-      ERROR("SIP method too long in received message '%s'",
+      REPORT_ERROR("SIP method too long in received message '%s'",
         msg);
     }
   } else {
-    ERROR("Invalid sip message received '%s'",
+    REPORT_ERROR("Invalid sip message received '%s'",
       msg);
   }
 
@@ -3639,7 +3645,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     ptr = get_tag_from_from(msg);
   if (ptr) {
     if(strlen(ptr) > (MAX_HEADER_LEN - 1)) 
-      ERROR("Peer tag too long. Change MAX_HEADER_LEN and recompile sipp");
+      REPORT_ERROR("Peer tag too long. Change MAX_HEADER_LEN and recompile sipp");
     
     if (ds->peer_tag && strcmp(ds->peer_tag, ptr)) {
       LOG_MSG("Remote tag already specified as '%s' but message received changes it to '%s'. Unusual unless running a forking scenario.\n", ds->peer_tag, ptr);
@@ -3647,7 +3653,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     if(ds->peer_tag) { free(ds->peer_tag); }
     ds->peer_tag = strdup(ptr);
     if (!ds->peer_tag) 
-      ERROR("Out of memory allocating peer tag.");
+      REPORT_ERROR("Out of memory allocating peer tag.");
 
   }
   /* Update local_tag */
@@ -3657,7 +3663,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     ptr = get_tag_from_to(msg);
   if (ptr) {
     if(strlen(ptr) > (MAX_HEADER_LEN - 1))
-      ERROR("Local tag too long. Change MAX_HEADER_LEN and recompile sipp");
+      REPORT_ERROR("Local tag too long. Change MAX_HEADER_LEN and recompile sipp");
 
     if (ds->local_tag && strcmp(ds->local_tag, ptr)) {
       LOG_MSG("Local tag already specified as '%s' but message received changes it to '%s'\n", ds->local_tag, ptr);
@@ -3665,7 +3671,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
     if(ds->local_tag) { free(ds->local_tag); }
     ds->local_tag = strdup(ptr);
     if (!ds->local_tag) 
-      ERROR("Out of memory allocating local tag.");    
+      REPORT_ERROR("Out of memory allocating local tag.");    
   }
   else if (ds->local_tag) {
     LOG_MSG("Message received without local tag, though local tag '%s' has been specified. Local tag will not be removed.", ds->local_tag);
@@ -3806,12 +3812,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
         strcpy(auth, get_header_content(msg, (char*)"WWW-Authenticate:"));
       }
       if (auth[0] == 0) {
-        ERROR("Couldn't find 'Proxy-Authenticate' or 'WWW-Authenticate' in 401 or 407!");
+        REPORT_ERROR("Couldn't find 'Proxy-Authenticate' or 'WWW-Authenticate' in 401 or 407!");
       }
 
       char *new_dialog_authentication = (char *) realloc(dialog_authentication, strlen(auth) + 2);
       if (!new_dialog_authentication) {
-        ERROR("Unable to alloocate memory for dialog authentication string (%d bytes).", strlen(auth) + 2);
+        REPORT_ERROR("Unable to alloocate memory for dialog authentication string (%d bytes).", strlen(auth) + 2);
       }
       dialog_authentication = new_dialog_authentication;
       sprintf(dialog_authentication, "%s", auth);
@@ -3922,7 +3928,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if(currentAction->getCheckIt() == true && (strlen(msgPart) < 0)) {
           // the sub message is not found and the checking action say it
           // MUST match --> Call will be marked as failed
-          ERROR("Failed regexp match: header %s not found in message %s\n", currentAction->getLookingChar(), msg);
+          REPORT_ERROR("Failed regexp match: header %s not found in message %s\n", currentAction->getLookingChar(), msg);
           return(call::E_AR_HDR_NOT_FOUND);
         }
         haystack = msgPart;
@@ -3931,7 +3937,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (!haystack) {
           if (currentAction->getCheckIt() == true) {
             // the body is not found, similar to above
-            ERROR("Failed regexp match: body not found in message %s\n", msg);
+            REPORT_ERROR("Failed regexp match: body not found in message %s\n", msg);
             return(call::E_AR_HDR_NOT_FOUND);
           }
           msgPart[0] = '\0';
@@ -3946,12 +3952,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (!haystack) {
           if (currentAction->getCheckIt() == true) {
             // the variable is not found, similar to above
-            ERROR("Failed regexp match: variable $%d not set\n", currentAction->getVarInId());
+            REPORT_ERROR("Failed regexp match: variable $%d not set\n", currentAction->getVarInId());
             return(call::E_AR_HDR_NOT_FOUND);
           }
         }
       } else {
-        ERROR("Invalid looking place: %d\n", currentAction->getLookingPlace());
+        REPORT_ERROR("Invalid looking place: %d\n", currentAction->getLookingPlace());
       }
 
       M_callVariableTable->getVar(currentAction->getVarId())->resetNbOfMatches(); 
@@ -3959,14 +3965,14 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
       if( (!(M_callVariableTable->getVar(currentAction->getVarId())->isSet())) && (currentAction->getCheckIt() == true) ) {
         // the message doesn't match and the checkit action say it MUST match
-        ERROR("Failed regexp match: looking in '%s', with regexp '%s'",
+        REPORT_ERROR("Failed regexp match: looking in '%s', with regexp '%s'",
           haystack, currentAction->getRegularExpression());
         return(call::E_AR_REGEXP_DOESNT_MATCH);
       } else if ( ((M_callVariableTable->getVar(currentAction->getVarId())->isSet())) &&
         (currentAction->getCheckItInverse() == true) )
       {
         // The inverse of the above
-        ERROR("Regexp matched but should not: looking in '%s', with regexp '%s'",
+        REPORT_ERROR("Regexp matched but should not: looking in '%s', with regexp '%s'",
           haystack, currentAction->getRegularExpression());
         return(call::E_AR_REGEXP_SHOULDNT_MATCH);
       }
@@ -3986,7 +3992,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       char *key = strdup(createSendingMessage(currentAction->getMessage(1), -2));
 
       if (inFiles.find(file) == inFiles.end()) {
-        ERROR("Invalid injection file for insert: %s", file);
+        REPORT_ERROR("Invalid injection file for insert: %s", file);
       }
 
       double value = inFiles[file]->lookup(key);
@@ -4000,7 +4006,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       char *value = strdup(createSendingMessage(currentAction->getMessage(1), -2));
 
       if (inFiles.find(file) == inFiles.end()) {
-        ERROR("Invalid injection file for insert: %s", file);
+        REPORT_ERROR("Invalid injection file for insert: %s", file);
       }
 
       inFiles[file]->insert(value);
@@ -4014,13 +4020,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       char *value = strdup(createSendingMessage(currentAction->getMessage(2), -2));
 
       if (inFiles.find(file) == inFiles.end()) {
-        ERROR("Invalid injection file for replace: %s", file);
+        REPORT_ERROR("Invalid injection file for replace: %s", file);
       }
 
       char *endptr;
       int lineNum = (int)strtod(line, &endptr);
       if (*endptr) {
-        ERROR("Invalid line number for replace: %s", line);
+        REPORT_ERROR("Invalid line number for replace: %s", line);
       }
 
       inFiles[file]->replace(lineNum, value);
@@ -4044,7 +4050,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       char *endptr;
       int port = (int)strtod(str_port, &endptr);
       if (*endptr) {
-        ERROR("Invalid port for setdest: %s", str_port);
+        REPORT_ERROR("Invalid port for setdest: %s", str_port);
       }
 
       int protocol;
@@ -4055,13 +4061,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       } else if (!strcmp(str_protocol, "tls") || !strcmp(str_protocol, "TLS")) {
         protocol = T_TLS;
       } else {
-        ERROR("Unknown transport for setdest: '%s'", str_protocol);
+        REPORT_ERROR("Unknown transport for setdest: '%s'", str_protocol);
       }
 
       if (!call_socket && protocol == T_TCP && transport == T_TCP) {
         bool existing;
         if ((associate_socket(new_sipp_call_socket(use_ipv6, transport, &existing))) == NULL) {
-          ERROR_NO("Unable to get a TCP socket");
+          REPORT_ERROR_NO("Unable to get a TCP socket");
         }
 
         if (!existing) {
@@ -4071,19 +4077,19 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
 
       if (protocol != call_socket->ss_transport) {
-        ERROR("Can not switch protocols during setdest.");
+        REPORT_ERROR("Can not switch protocols during setdest.");
       }
 
       if (protocol == T_UDP) {
         /* Nothing to do. */
       } else if (protocol == T_TLS) {
-        ERROR("Changing destinations is not supported for TLS.");
+        REPORT_ERROR("Changing destinations is not supported for TLS.");
       } else if (protocol == T_TCP) {
         if (!multisocket) {
-          ERROR("Changing destinations for TCP requires multisocket mode.");
+          REPORT_ERROR("Changing destinations for TCP requires multisocket mode.");
         }
         if (call_socket->ss_count > 1) {
-          ERROR("Can not change destinations for a TCP socket that has more than one user.");
+          REPORT_ERROR("Can not change destinations for a TCP socket that has more than one user.");
         }
       }
 
@@ -4095,10 +4101,10 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       is_ipv6 = false;
 
       if (getaddrinfo(str_host, NULL, &hints, &local_addr) != 0) {
-        ERROR("Unknown host '%s' for setdest", str_host);
+        REPORT_ERROR("Unknown host '%s' for setdest", str_host);
       }
       if (_RCAST(struct sockaddr_storage *, local_addr->ai_addr)->ss_family != call_peer.ss_family) {
-        ERROR("Can not switch between IPv4 and IPV6 using setdest!");
+        REPORT_ERROR("Can not switch between IPv4 and IPV6 using setdest!");
       }
       memcpy(&call_peer, local_addr->ai_addr, SOCK_ADDR_SIZE(_RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
       if (call_peer.ss_family == AF_INET) {
@@ -4136,9 +4142,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           } else {
             if(errno == EINVAL){
               /* This occurs sometime on HPUX but is not a true INVAL */
-              ERROR("Unable to connect a TCP socket, remote peer error");
+              REPORT_ERROR("Unable to connect a TCP socket, remote peer error");
             } else {
-              ERROR_NO("Unable to connect a TCP socket");
+              REPORT_ERROR_NO("Unable to connect a TCP socket");
             }
           }
         }
@@ -4220,9 +4226,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if(currentAction->getVarIn2Id()) {
           double var2_value;
           M_callVariableTable->getVar(currentAction->getVarIn2Id())->toDouble(&var2_value, "execute action");
-          ERROR("Test %s %s %s has failed because %f %s %f is NOT true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
+          REPORT_ERROR("Test %s %s %s has failed because %f %s %f is NOT true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
         } else {
-          ERROR("Test %s %s %f has failed because %f %s %f is NOT true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
+          REPORT_ERROR("Test %s %s %f has failed because %f %s %f is NOT true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
         }
       }
 
@@ -4233,9 +4239,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if(currentAction->getVarIn2Id()) {
           double var2_value;
           M_callVariableTable->getVar(currentAction->getVarIn2Id())->toDouble(&var2_value, "execute action");
-          ERROR("Test %s %s %s has failed because %f %s %f is true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
+          REPORT_ERROR("Test %s %s %s has failed because %f %s %f is true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, display_scenario->allocVars->getName(currentAction->getVarIn2Id()), var_value, comparator, var2_value);
         } else {
-          ERROR("Test %s %s %f has failed because %f %s %f is true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
+          REPORT_ERROR("Test %s %s %f has failed because %f %s %f is true", display_scenario->allocVars->getName(currentAction->getVarInId()), comparator, currentAction->getDoubleValue(), var_value, comparator, currentAction->getDoubleValue());
         }
       }
       if (currentAction->getVarId()){
@@ -4252,16 +4258,16 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       int value = strcmp(rhs, lhs);
       if(currentAction->getCheckIt()==true && value) {
         if (currentAction->getVarIn2Id()) {
-          ERROR("String comparision between variables %s and %s has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+          REPORT_ERROR("String comparision between variables %s and %s has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
         } else {
-          ERROR("String comparision between variable %s and inputted value has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+          REPORT_ERROR("String comparision between variable %s and inputted value has failed, because %s is NOT the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
         }
       }
       if(currentAction->getCheckItInverse()==true && !value) {
         if (currentAction->getVarIn2Id()) {
-          ERROR("String comparision between variables %s and %s has failed, because %s is the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+          REPORT_ERROR("String comparision between variables %s and %s has failed, because %s is the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
         } else {
-          ERROR("String comparision between variable %s and inputted value has failed, because %s is the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
+          REPORT_ERROR("String comparision between variable %s and inputted value has failed, because %s is the same as %s", display_scenario->allocVars->getName(currentAction->getVarInId()), display_scenario->allocVars->getName(currentAction->getVarIn2Id()), rhs, lhs);
         }
       }
       M_callVariableTable->getVar(currentAction->getVarId())->setDouble((double)value);
@@ -4275,7 +4281,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       char *q = strdup(p);
       var->setString(q);
       int l = strlen(q);
-      for (int i = l - 1; i >= 0 & isspace(q[i]); i--) {
+      for (int i = l - 1; ((i >= 0) && (isspace(q[i]))); i--) {
         q[i] = '\0';
       }
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_TO_DOUBLE) {
@@ -4293,7 +4299,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
       char *str = strdup(x);
       if (!str) {
-        ERROR("Out of memory duplicating string for assignment!");
+        REPORT_ERROR("Out of memory duplicating string for assignment!");
       }
       M_callVariableTable->getVar(currentAction->getVarId())->setString(str);
     } else if (currentAction->getActionType() == CAction::E_AT_LOG_TO_FILE) {
@@ -4304,7 +4310,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       WARNING("%s", x);
     } else if (currentAction->getActionType() == CAction::E_AT_LOG_ERROR) {
       char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
-      ERROR("%s", x);
+      REPORT_ERROR("%s", x);
     } else if ((currentAction->getActionType() == CAction::E_AT_EXECUTE_CMD) ||
                (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD)) {
       SendingMessage *curMsg = currentAction->getMessage();
@@ -4331,51 +4337,51 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         log_off(&exec_lfi);
       }
 
-      pid_t l_pid;
-
       char * argv[NUM_ARGS_FOR_SPAWN];
       setArguments(x, argv);
 
-      int ret;
-
-#ifndef __CYGWIN
-      if ((ret = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, environ)) != 0){
-        ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
+#if defined(WIN32) || defined(__CYGWIN)
+      // Win32 and Cygwin
+      intptr_t ret;
+      if(verify_result) {
+        ret = spawnvpe (_P_WAIT, argv[0], argv, environ);
+        if (ret < 0) {
+          REPORT_ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
+        } else if (ret > 0) {
+          REPORT_ERROR ("<exec verify> FAIL: '%s'. Abnormal exit with an abort or an interrupt: %d\n", x, ret);
+        } else {
+          DEBUG("<exec verify=\"%s\"> PASS.", x);
+        }
+      } else {
+        if ((ret = spawnvpe (_P_NOWAIT, argv[0], argv, environ)) < 0) {
+          REPORT_ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
+        }
+      }
+#else
+      // Linux
+      pid_t l_pid;
+      if ((int ret = posix_spawnp(&l_pid, argv[0], NULL, NULL, argv, environ)) != 0){
+        REPORT_ERROR("<exec verify> FAIL: '%s': %s", x, strerror(ret));
       }
 
       if (verify_result) {
         pid_t ret;
         int status;
         while ((ret=waitpid(l_pid, &status, 0)) != l_pid) {
-          DEBUG("E_AT_EXECUTE_CMD: waitpid returned other than l_pid (%d), exited = %d, status = %d.", ret, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
+          DEBUG("E_AT_EXECUTE_CMD: waitpid returned %d while, but we expected %d, exited = %d, status = %d.", ret, l_pid, WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : 99999);
           if (ret != -1) {
-            ERROR("waitpid returns %1d for child %1d", ret,l_pid);
+            REPORT_ERROR("waitpid returns %1d for child %1d", ret,l_pid);
           }
         }
 
         if (!WIFEXITED(status)) {
-          ERROR("System error running <exec verify>: '%s' did not exit normally (status = %d)", x, status);
+          REPORT_ERROR("System error running <exec verify>: '%s' did not exit normally (status = %d)", x, status);
         } else if (WEXITSTATUS(status) != EXIT_SUCCESS) {
-          ERROR("<exce verify> FAIL: '%s' returned result code %d (non-zero result indicates failure; use -trace_exec to log more detail).", x, WEXITSTATUS(status));
+          REPORT_ERROR("<exce verify> FAIL: '%s' returned result code %d (non-zero result indicates failure; use -trace_exec to log more detail).", x, WEXITSTATUS(status));
         }
         DEBUG("<exec verify=\"%s\"> PASS.", x);
       } // if (verify_result)
-#else
-      if(verify_result) {
-        ret = spawnvpe (_P_WAIT, argv[0], argv, environ);
-        if (ret < 0) {
-          ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
-        } else if (ret > 0) {
-          ERROR ("<exec verify> FAIL: '%s'. Abnormal exit with an abort or an interrupt: %d\n", x, ret);
-        } else {
-          DEBUG("<exec verify=\"%s\"> PASS.", x);
-        }
-      } else {
-        if ((ret = spawnvpe (_P_NOWAIT, argv[0], argv, environ)) < 0) {
-          ERROR("<exec verify> FAIL: '%s': %s", x, strerror(errno));
-        }
-      }
-#endif
+#endif // defined(WIN32) || defined(__CYGWIN)
 
     } else if (currentAction->getActionType() == CAction::E_AT_EXEC_INTCMD) {
       switch (currentAction->getIntCmd())
@@ -4429,406 +4435,20 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 #define PTHREAD_STACK_MIN	16384
 #endif
         if (number_of_active_rtp_threads >= MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS-1) {
-          ERROR("Trying to play too many concurrent media threads. Current maximum is %d.", MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS);
+          REPORT_ERROR("Trying to play too many concurrent media threads. Current maximum is %d.", MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS);
         }
 
         int ret = pthread_create(&media_threads[number_of_active_rtp_threads++], &attr, send_wrapper, (void *) play_args);
         if(ret)
-          ERROR("Can't create thread to send RTP packets");
+          REPORT_ERROR("Can't create thread to send RTP packets");
         DEBUG("Created media thread %d.", number_of_active_rtp_threads);
         pthread_attr_destroy(&attr);
-#endif
+#endif // ifdef PCAP_PLAY
     } else {
-      ERROR("call::executeAction unknown action");
+      REPORT_ERROR("call::executeAction unknown action");
     }
   } // end for
   DEBUG_OUT();
   return(call::E_AR_NO_ERROR);
 }
 
-void call::extractSubMessage(char * msg, char * matchingString, char* result, bool case_indep, int occurrence, bool headers) {
-
- char *ptr, *ptr1;
-  int sizeOf;
-  int i = 0;
- int len = strlen(matchingString);
- char mat1 = tolower(*matchingString);
- char mat2 = toupper(*matchingString);
-
- ptr = msg;
- while (*ptr) { 
-   if (!case_indep) {
-     ptr = strstr(ptr, matchingString);
-     if (ptr == NULL) break;
-     if (headers == true && ptr != msg && *(ptr-1) != '\n') {
-       ++ptr;
-       continue; 
-     }
-   } else {
-     if (headers) {
-       if (ptr != msg) {
-         ptr = strchr(ptr, '\n');
-         if (ptr == NULL) break;
-         ++ptr;
-         if (*ptr == 0) break;
-       }
-     } else {
-       ptr1 = strchr(ptr, mat1);
-       ptr = strchr(ptr, mat2);
-       if (ptr == NULL) {
-         if (ptr1 == NULL) break;
-         ptr = ptr1;
-       } else {
-         if (ptr1 != NULL && ptr1 < ptr) ptr = ptr1; 
-       }
-     }
-     if (strncasecmp(ptr, matchingString, len) != 0) {
-       ++ptr;
-       continue;
-     }
-   }
-   // here with ptr pointing to a matching string
-   if (occurrence <= 1) break; 
-   --occurrence;
-   ++ptr;
- }
-
- if(ptr != NULL && *ptr != 0) {
-   strncpy(result, ptr+len, MAX_SUB_MESSAGE_LENGTH);
-    sizeOf = strlen(result);
-    if(sizeOf >= MAX_SUB_MESSAGE_LENGTH)  
-      sizeOf = MAX_SUB_MESSAGE_LENGTH-1;
-    while((i<sizeOf) && (result[i] != '\n') && (result[i] != '\r'))
-      i++;
-    result[i] = '\0';
-  } else {
-    result[0] = '\0';
-  }
-}
-
-void call::getFieldFromInputFile(const char *fileName, int field, SendingMessage *lineMsg, char*& dest)
-{
-  if (inFiles.find(fileName) == inFiles.end()) {
-    ERROR("Invalid injection file: %s", fileName);
-  }
-  int line = (*m_lineNumber)[fileName];
-  if (lineMsg) {
-	char lineBuffer[20];
-	char *endptr;
-	createSendingMessage(lineMsg, -2, lineBuffer, sizeof(lineBuffer));
-	line = (int) strtod(lineBuffer, &endptr);
-	if (*endptr != 0) {
-	  ERROR("Invalid line number generated: '%s'", lineBuffer);
-	}
-	if (line > inFiles[fileName]->numLines()) {
-	  line = -1;
-	}
-  }
-  if (line < 0) {
-    return;
-  }
-  dest += inFiles[fileName]->getField(line, field, dest, SIPP_MAX_MSG_SIZE);
-}
-
-call::T_AutoMode call::checkAutomaticResponseMode(char * P_recv) {
-  if (strcmp(P_recv, "BYE")==0) {
-    return E_AM_UNEXP_BYE;
-  } else if (strcmp(P_recv, "CANCEL") == 0) {
-    return E_AM_UNEXP_CANCEL;
-  } else if (strcmp(P_recv, "PING") == 0) {
-    return E_AM_PING;
-  } else if (((strcmp(P_recv, "INFO") == 0) || (strcmp(P_recv, "NOTIFY") == 0) || (strcmp(P_recv, "UPDATE") == 0)) 
-               && (auto_answer == true)){
-    return E_AM_AA;
-  } else if ((strcmp(P_recv, "REGISTER") == 0)
-               && (auto_answer == true)){
-    return E_AM_AA_REGISTER;
-  } else {
-    return E_AM_DEFAULT;
-  }
-}
-
-// update the dialog state's last_recv_msg and
-// store globally for retransmission and auto-responder
-// index of -1 does not update per-transaction state
-// so potentially storing 4 copies of msg: default and specified dialog structure 
-// in default & specfied transactions
-// If no transaction and no dialog specified, only stored once (same as original sipp)
-void call::setLastMsg(const string &msg, int dialog_number, int message_index) {
-  DEBUG_IN("dialog_number = %d Message Length = %d", dialog_number, msg.length());
-  string name("");
-  if (message_index >= 0)
-    name = call_scenario->messages[message_index]->getTransactionName();
-
-  // update default state for non-dialog-specified messages
-  DialogState *ds = get_dialogState(-1);
-  ds->setLastReceivedMessage(msg, "", message_index);
-
-  // update per-dialog state too if a dialog or transaction is specified
-  if (dialog_number != -1 || !name.empty()) {
-    DEBUG("Setting per-dialog transaction state for dialog_number %d, transaction '%s'", dialog_number, name.c_str());
-    ds = get_dialogState(dialog_number);
-    ds->setLastReceivedMessage(msg, name, message_index);
-  }
-}
-
-
-bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
-{
-  int res;
-
-  switch (P_case) {
-  case E_AM_UNEXP_BYE: // response for an unexpected BYE
-    // usage of last_ keywords
-    setLastMsg(P_recv);
-
-    // The BYE is unexpected, count it
-    call_scenario->messages[msg_index] -> nb_unexp++;
-    if (default_behaviors & DEFAULT_BEHAVIOR_ABORTUNEXP) {
-      WARNING("Aborting call on an unexpected BYE for call: %s", (id==NULL)?"none":id);
-      if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-	      sendBuffer(createSendingMessage(get_default_message("200"), -1));
-      }
-
-      // if twin socket call => reset the other part here
-      if (twinSippSocket && (msg_index > 0)) {
-	      res = sendCmdBuffer(createSendingMessage(get_default_message("3pcc_abort"), -1));
-      }
-      computeStat(CStat::E_CALL_FAILED);
-      computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
-      delete this;
-    } else {
-      WARNING("Continuing call on an unexpected BYE for call: %s", (id==NULL)?"none":id);
-    }
-    break ;
-
-  case E_AM_UNEXP_CANCEL: // response for an unexpected cancel
-    // usage of last_ keywords
-    setLastMsg(P_recv);
-
-    // The CANCEL is unexpected, count it
-    call_scenario->messages[msg_index] -> nb_unexp++;
-    if (default_behaviors & DEFAULT_BEHAVIOR_ABORTUNEXP) {
-      WARNING("Aborting call on an unexpected CANCEL for call: %s", (id==NULL)?"none":id);
-      if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
-        sendBuffer(createSendingMessage(get_default_message("200"), -1));
-      }
-
-      // if twin socket call => reset the other part here 
-      if (twinSippSocket && (msg_index > 0)) {
-        res = sendCmdBuffer
-        (createSendingMessage(get_default_message("3pcc_abort"), -1));
-      }
-
-      computeStat(CStat::E_CALL_FAILED);
-      computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
-      delete this;
-    } else {
-      WARNING("Continuing call on unexpected CANCEL for call: %s", (id==NULL)?"none":id);
-    }
-    break;
-
-  case E_AM_PING: // response for a random ping
-    // usage of last_ keywords
-    setLastMsg(P_recv);
-
-   if (default_behaviors & DEFAULT_BEHAVIOR_PINGREPLY) {
-    WARNING("Automatic response mode for an unexpected PING for call: %s", (id==NULL)?"none":id);
-    sendBuffer(createSendingMessage(get_default_message("200"), -1));
-    // Note: the call ends here but it is not marked as bad. PING is a 
-    //       normal message.
-    // if twin socket call => reset the other part here 
-    if (twinSippSocket && (msg_index > 0)) {
-      res = sendCmdBuffer(createSendingMessage(get_default_message("3pcc_abort"), -1));
-    }
-
-    CStat::globalStat(CStat::E_AUTO_ANSWERED);
-    delete this;
-    } else {
-      WARNING("Do not answer on an unexpected PING for call: %s", (id==NULL)?"none":id);
-    }
-    break ;
-
-  case E_AM_AA:          // response for a random INFO, UPDATE or NOTIFY
-  case E_AM_AA_REGISTER: // response for a random REGISTER
-  {
-    // store previous last msg if msg is REGISTER, INFO, UPDATE or NOTIFY
-    // so we can restore last_recv_msg to previous one after sending ok
-    DEBUG("Automatic response mode for unexpected REGISTER, INFO, UPDATE, or NOTIFY");
-    string old_last_recv_msg = getDefaultLastReceivedMessage();
-    // usage of last_ keywords (note get_last_header) inserts 0's into header.
-    setLastMsg(P_recv);
-
-    if (P_case == E_AM_AA)
-      sendBuffer(createSendingMessage(get_default_message("200"), -1));
-    else {
-      sendBuffer(createSendingMessage(get_default_message("200register"), -1));
-    }
-
-    // restore previous last msg
-    setLastMsg(old_last_recv_msg);
-
-    CStat::globalStat(CStat::E_AUTO_ANSWERED);
-    message *curmsg = call_scenario->messages[msg_index];
-    curmsg->nb_unexp++;
-    MESSAGE("Unexpected REGISTER, INFO, UPDATE, or NOTIFY message recieved. Automatic response generated.");
-    return true;
-    break;
-  }
-  default:
-    ERROR("Internal error for automaticResponseMode - mode %d is not implemented!", P_case);
-    break ;
-  }
-
-  return false;
-}
-
-#ifdef PCAPPLAY
-void *send_wrapper(void *arg)
-{
-  play_args_t *s = (play_args_t *) arg;
-  //struct sched_param param;
-  //int ret;
-  //param.sched_priority = 10;
-  //ret = pthread_setschedparam(pthread_self(), SCHED_RR, &param);
-  //if(ret)
-  //  ERROR("Can't set RTP play thread realtime parameters");
-  DEBUG_IN();
-  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-  pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-  send_packets(s);
-  pthread_exit(NULL);
-  DEBUG_OUT();
-  return NULL;
-}
-#endif
-
-
-// Returns dialog state associated with dialog_number.  
-// If no state exists for dialog_number, a new entry is created.
-DialogState *call::get_dialogState(int dialog_number) {
-  perDialogStateMap::iterator dialog_it;
-  dialog_it = per_dialog_state.find(perDialogStateMap::key_type(dialog_number));
-  if (dialog_it == per_dialog_state.end()) {
-    DialogState *d = new DialogState(base_cseq);
-    if (!d) ERROR("Unable to allocate memory for new dialog state");
-    per_dialog_state.insert(pair<perDialogStateMap::key_type,DialogState *>(perDialogStateMap::key_type(dialog_number), d));
-    return d;
-  }
-  
-  return dialog_it->second;
-
-} // get_dialogState
-
-void call::free_dialogState() {
- for(perDialogStateMap::const_iterator it = per_dialog_state.begin(); it != per_dialog_state.end(); ++it) {
-    delete it->second;
-  }
-  per_dialog_state.clear();
-
-  last_dialog_state = 0;
-}
-
-#ifdef PCAPPLAY
-void call::set_audio_from_port(int port){
-  DEBUG("Setting audio port to %d", port);
-  if (media_ip_is_ipv6) {
-    (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = htons(port);
-  } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = htons(port);
-  }
-}
-
-void call::set_video_from_port(int port){
-  DEBUG("Setting video port to %d", port);
-  if (media_ip_is_ipv6) {
-    (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = htons(port);
-  } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = htons(port);
-  }
-}
-#endif
-
-const char * encode_as_needed(const char *str, MessageComponent *comp){
-  const char *result;
-  if(comp->encoding != E_ENCODING_NONE){
-    encode(comp, str, encode_buffer);
-    result = encode_buffer;
-  } else {
-    result = str;
-  }
-  return result;
-}
-
-void encode(struct MessageComponent *comp, const char *src, char *dest){
-  switch(comp->encoding){
-    case E_ENCODING_URI:
-      uri_encode(src,dest);
-      break;
-    //Added for future expansion
-    default:
-      ERROR("Unrecognized encoding type. Trying to encode \"%s\"", src);
-  }
-}
-
-//Taken from http://www.codeguru.com/cpp/cpp/string/conversions/article.php/c12759
-//With modification
-void uri_encode(const char* src, char *dest)
-{
-   const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
-   const int SRC_LEN = strlen(src);
-   const char * const SRC_END = src + SRC_LEN;
-
-   for (; src < SRC_END; ++src)
-   {
-      if (!is_reserved_char(*src))
-         *dest++ = *src;
-      else
-      {
-         // escape this char
-         *dest++ = '%';
-         *dest++ = DEC2HEX[*src >> 4];
-         *dest++ = DEC2HEX[*src & 0xf];
-      }
-   }
-   *dest++ = '\0';
-}
-
-bool is_reserved_char (char c) {
-  switch(c){
-    case '!' :
-    case '#' :
-    case '$' :
-    case '%' :
-    case '&' :
-    case '\'':
-    case '(' :
-    case ')' :
-    case '*' :
-    case '+' :
-    case ',' :
-    case '/' :
-    case ':' :
-    case ';' :
-    case '=' :
-    case '?' :
-    case '@' :
-    case '[' :
-    case ']' :
-      return true;
-    default:
-      return false;
-  }
-}
-
-void setArguments(char* args, char** argv) {
-#ifndef __CYGWIN
-  argv[0] = "sh";
-  argv[1] = "-c";
-#else
-  argv[0] = "cmd.exe";
-  argv[1] = "/c";
-#endif
-  argv[2] = args;
-  argv[3] = NULL;
-}

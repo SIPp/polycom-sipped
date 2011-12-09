@@ -18,8 +18,15 @@
 #ifndef PREPARE_PCAP_H
 #define PREPARE_PCAP_H	1
 #include <pcap.h>
-#include <netinet/in.h>
-#include <netinet/udp.h>
+#include "win32_compatibility.h"
+
+#ifdef WIN32
+# include <winsock2.h>
+# include <ws2tcpip.h>
+#else
+# include <netinet/in.h>
+# include <netinet/udp.h>
+#endif
 #include <time.h>
 
 #if defined(__HPUX) || defined(__DARWIN) || defined(__CYGWIN) || defined(__FreeBSD__)

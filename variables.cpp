@@ -134,13 +134,13 @@ bool CCallVariable::toDouble(double *newValue, char *what)
     }
     *newValue = strtod(M_matchingValue, &p);
     if (!*newValue && !has_leading_zero(M_matchingValue)) {
-      ERROR("Invalid format. Could not convert \"%s\" to a double, while performing %s", M_matchingValue, what);
+      REPORT_ERROR("Invalid format. Could not convert \"%s\" to a double, while performing %s", M_matchingValue, what);
     }
     break;
   case E_VT_STRING:
     *newValue = strtod(M_stringValue, &p);
     if (!*newValue && !has_leading_zero(M_matchingValue)) {
-      ERROR("Invalid format. Could not convert \"%s\" to a double, while performing %s", M_matchingValue, what);
+      REPORT_ERROR("Invalid format. Could not convert \"%s\" to a double, while performing %s", M_matchingValue, what);
     }
     break;
   case E_VT_DOUBLE:
@@ -208,12 +208,12 @@ VariableTable::VariableTable(VariableTable *parent, int size) {
   }
   variableTable = (CCallVariable **)malloc(size * sizeof(CCallVariable *));
   if (!variableTable) {
-    ERROR("Could not allocate variable table!");
+    REPORT_ERROR("Could not allocate variable table!");
   }
   for (int i = 0; i < size; i++) {
     variableTable[i] = new CCallVariable();
     if (variableTable[i] == NULL) {
-      ERROR ("Call variable allocation failed");
+      REPORT_ERROR("Call variable allocation failed");
     }
   }
 }
@@ -237,13 +237,13 @@ VariableTable::VariableTable(AllocVariableTable *src) {
 
   variableTable = (CCallVariable **)malloc(size * sizeof(CCallVariable *));
   if (!variableTable) {
-    ERROR("Could not allocate variable table!");
+    REPORT_ERROR("Could not allocate variable table!");
   }
 
   for (int i = 0; i < size; i++) {
     variableTable[i] = new CCallVariable();
     if (variableTable[i] == NULL) {
-      ERROR ("Call variable allocation failed");
+      REPORT_ERROR("Call variable allocation failed");
     }
   }
 }
@@ -256,13 +256,13 @@ void VariableTable::expand(int size) {
 
   variableTable = (CCallVariable **)realloc(variableTable, size * sizeof(CCallVariable *));
   if (!variableTable) {
-    ERROR("Could not expand variable table!");
+    REPORT_ERROR("Could not expand variable table!");
   }
 
   for (int i = this->size; i < size; i++) {
     variableTable[i] = new CCallVariable();
     if (variableTable[i] == NULL) {
-      ERROR ("Call variable allocation failed");
+      REPORT_ERROR("Call variable allocation failed");
     }
   }
 
@@ -365,10 +365,10 @@ void AllocVariableTable::validate() {
     const char *varName = var_it->first.c_str();
     if (variableReferences[var_it->second] < 2) {
       int varRef = variableReferences[var_it->second];
-      ERROR("Variable $%s is set but never checked, most likely indicating an error. If this was the intended behaviour, you may use the <trim> action to reference the variable a second time.", varName);
+      REPORT_ERROR("Variable $%s is set but never checked, most likely indicating an error. If this was the intended behaviour, you may use the <trim> action to reference the variable a second time.", varName);
     }
     if (strchr(varName, ' ')) {
-      ERROR("Variable name '%s' contains a space, variable names cannot contain spaces", varName);
+      REPORT_ERROR("Variable name '%s' contains a space, variable names cannot contain spaces", varName);
     }
   }
   if (av_parent) {

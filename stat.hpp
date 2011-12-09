@@ -32,7 +32,12 @@
 #define MAX_CHAR_BUFFER_SIZE          1024
 
 #include <ctime> 
-#include <sys/time.h> 
+#ifdef WIN32
+# include <time.h>
+# include <win32_compatibility.h>
+#else
+# include <sys/time.h> 
+#endif
 #include <time.h> 
 #include <iostream>
 #include <fstream>

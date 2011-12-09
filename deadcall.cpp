@@ -40,7 +40,9 @@
 #include <fstream>
 #include <iostream>
 #include <sys/types.h>
-#include <sys/wait.h>
+#ifndef WIN32
+  #include <sys/wait.h>
+#endif
 
 #ifdef PCAPPLAY
 #include "send_packets.h"

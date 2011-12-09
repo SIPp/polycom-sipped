@@ -25,7 +25,11 @@
 #define __SCENARIO__
 
 #include <map>
-#include <sys/socket.h>
+#ifdef WIN32
+  #include <winsock2.h>
+#else
+  #include <sys/socket.h>
+#endif
 #include <string.h>
 #include "actions.hpp"
 #include "variables.hpp"

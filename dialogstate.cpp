@@ -58,10 +58,10 @@ TransactionState &DialogState::get_transaction(const string &name, int msg_index
   else {
     Name_Transaction_Map::iterator txn = transactions.find(name);
     if (txn == transactions.end()) {
-      ERROR("Message %d is attempting to use transaction '%s' prior to it being started with start_txn (transaction not found).", msg_index, name.c_str()); 
+      REPORT_ERROR("Message %d is attempting to use transaction '%s' prior to it being started with start_txn (transaction not found).", msg_index, name.c_str()); 
     } 
     else if (txn->second.getBranch().empty()) {
-      ERROR("Message %d is attempting to use transaction '%s' but aborting because the branch is empty (an invalid SIP message was associated with the start_txn message).", msg_index, name.c_str()); 
+      REPORT_ERROR("Message %d is attempting to use transaction '%s' but aborting because the branch is empty (an invalid SIP message was associated with the start_txn message).", msg_index, name.c_str()); 
     }
     DEBUG("Found %s", txn->second.trace().c_str());
 

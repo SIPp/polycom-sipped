@@ -42,17 +42,26 @@
 #endif /*__LINUX*/
 
 #include <pcap.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <netinet/udp.h>
-#if defined(__DARWIN) || defined(__CYGWIN) || defined(__FreeBSD__)
-#include <netinet/in.h>
+#ifdef WIN32
+# pragma warning (disable: 4003; disable: 4996)
+# include <winsock2.h>
+# include <ws2tcpip.h>
+# include "win32_compatibility.h"
+
+#else
+# include <unistd.h>
+# include <netinet/udp.h>
+# if defined(__DARWIN) || defined(__CYGWIN) || defined(__FreeBSD__)
+#  include <netinet/in.h>
+# endif
+# ifndef __CYGWIN
+#  include <netinet/ip6.h>
+# endif
+# include <arpa/inet.h>
+# include <errno.h>
 #endif
-#ifndef __CYGWIN
-#include <netinet/ip6.h>
-#endif
-#include <arpa/inet.h>
-#include <errno.h>
+
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -117,7 +126,7 @@ void send_packets_cleanup(void *arg)
 int
 send_packets (play_args_t * play_args)
 {
-  int ret, sock, port_diff;
+  int ret, sock;
   pcap_pkt *pkt_index, *pkt_max;
   struct timeval didsleep = { 0, 0 };
   struct timeval start = { 0, 0 };
@@ -127,7 +136,6 @@ send_packets (play_args_t * play_args)
   struct sockaddr_storage *to, *from, to_struct, from_struct;
   struct sockaddr_in6 to6, from6;
   char buffer[PCAP_MAXPACKET];
-  int temp_sum;
   int result = 0;
 
   if(allow_ports_to_change) {
@@ -140,18 +148,13 @@ send_packets (play_args_t * play_args)
     to = &to_struct;
     from = &from_struct;
   }
-#ifndef MSG_DONTWAIT
-  int fd_flags;
-#endif
-
-printf("send_packets():145 - Just entered thread\n");
 
   DEBUG_IN();
 
   if (media_ip_is_ipv6) {
     sock = socket(PF_INET6, SOCK_DGRAM, 0);
     if (sock < 0) {
-      ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
+      REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
     DEBUG("IPv6 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
       ntohs(((struct sockaddr_in6 *)(void *) from )->sin6_port), 
@@ -162,7 +165,7 @@ printf("send_packets():145 - Just entered thread\n");
   else {
     sock = socket(PF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-      ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
+      REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
     DEBUG("IPv4 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
       ntohs(((struct sockaddr_in *)(void *) from )->sin_port), 
@@ -171,29 +174,35 @@ printf("send_packets():145 - Just entered thread\n");
       ((struct sockaddr_in *)(void *) to )->sin_addr.s_addr);
   }
   int sock_opt = 1;
-  if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *)&sock_opt, sizeof (sock_opt)) == -1) {
-    ERROR_NO("setsockopt(sock, SO_REUSEADDR) failed");
+  if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt, sizeof (sock_opt)) == -1) {
+    REPORT_ERROR_NO("setsockopt(sock, SO_REUSEADDR) failed");
   }
 	
   if (!media_ip_is_ipv6) {
     if (bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0){
       char ip[INET_ADDRSTRLEN];
       inet_ntop(AF_INET, &(((struct sockaddr_in *) from)->sin_addr), ip, INET_ADDRSTRLEN);
-      ERROR_NO("Could not bind RTP traffic socket to %s:%hu", ip, ntohs(((struct sockaddr_in *) from)->sin_port));
+      REPORT_ERROR_NO("Could not bind RTP traffic socket to %s:%hu", ip, ntohs(((struct sockaddr_in *) from)->sin_port));
     }
   }
   else {
     if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0){
       char ip[INET6_ADDRSTRLEN];
       inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) from)->sin6_addr), ip, INET_ADDRSTRLEN);
-      ERROR_NO("Could not bind socket to send RTP traffic %s:%hu", ip, ntohs(((struct sockaddr_in6 *)from )->sin6_port));
+      REPORT_ERROR_NO("Could not bind socket to send RTP traffic %s:%hu", ip, ntohs(((struct sockaddr_in6 *)from )->sin6_port));
     }
   }
 
 #ifndef MSG_DONTWAIT
+# ifdef WIN32
+  int iMode = 1;
+  ioctlsocket(sock, FIONBIO, (u_long FAR*) &iMode);
+# else
+  int fd_flags;
   fd_flags = fcntl(sock, F_GETFL , NULL);
   fd_flags |= O_NONBLOCK;
   fcntl(sock, F_SETFL , fd_flags);
+# endif
 #endif
 
   pkt_index = pkts->pkts;
@@ -260,7 +269,6 @@ printf("send_packets():250 - Leaving thread\n");
 void do_sleep (struct timeval *time, struct timeval *last, struct timeval *didsleep, struct timeval *start)
 {
   struct timeval nap, now, delta;
-  struct timespec sleep;
 
   if (gettimeofday (&now, NULL) < 0)
     {
@@ -299,10 +307,14 @@ void do_sleep (struct timeval *time, struct timeval *last, struct timeval *didsl
     {
       timersub (didsleep, &delta, &nap);
 
+#ifdef WIN32
+      usleep(nap.tv_sec*1000000+nap.tv_usec);
+#else
+      struct timespec sleep;
       sleep.tv_sec = nap.tv_sec;
-      sleep.tv_nsec = nap.tv_usec * 1000;	/* convert ms to ns */
-
+      sleep.tv_nsec = nap.tv_usec * 1000;	/* convert us to ns */
       while ((nanosleep (&sleep, &sleep) == -1) && (errno == -EINTR));
+#endif
     }
 }
 

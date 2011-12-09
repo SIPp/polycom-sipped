@@ -180,10 +180,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       if (literalLen) {
         *dest = '\0';
         literal = (char *)realloc(literal, literalLen + 1);
-        if (!literal) { ERROR("Out of memory!"); }
+        if (!literal) { REPORT_ERROR("Out of memory!"); }
 
         MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-        if (!newcomp) { ERROR("Out of memory!"); }
+        if (!newcomp) { REPORT_ERROR("Out of memory!"); }
 
         newcomp->type = E_Message_Literal;
         newcomp->literal = literal;
@@ -200,7 +200,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
 
       /* Now lets determine which keyword we have. */
       MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-      if (!newcomp) { ERROR("Out of memory!"); }
+      if (!newcomp) { REPORT_ERROR("Out of memory!"); }
 
       newcomp->dialog_number = dialog_number;
 
@@ -219,14 +219,14 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           break;
       }
       if (*key == '\n') 
-        ERROR("Cannot have end of line characters in the middle of keywords. Possibly a missing ']' or a duplicate 'CDATA[' section in scenario while parsing '%s'.", current_line);
+        REPORT_ERROR("Cannot have end of line characters in the middle of keywords. Possibly a missing ']' or a duplicate 'CDATA[' section in scenario while parsing '%s'.", current_line);
 
       if (*key != ']') {
         key = NULL;
       }
 
       if((!key) || ((key - src) > KEYWORD_SIZE) || (!(key - src))){
-        ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
+        REPORT_ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
       }
       memcpy(keyword, src,  key - src);
       keyword[key - src] = 0;
@@ -273,7 +273,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           newcomp->type = DialogSpecificKeywords[i].type;
           parse_dialog_number(keyword, newcomp);
           if ((use_txn) && (i <= HighestTransactionSpecificKeywordsIndex) && (newcomp->dialog_number != dialog_number)) {
-            ERROR("Cannot use 'dialog=' attribute in [%s] keyword when also specifying 'use_txn' for the message.\n", keyword);
+            REPORT_ERROR("Cannot use 'dialog=' attribute in [%s] keyword when also specifying 'use_txn' for the message.\n", keyword);
           }
           parse_encoding(keyword, newcomp);
           dialog_keyword = true;
@@ -301,14 +301,14 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         getKeywordParam(keyword, "file=", fileName);
         if (fileName[0] == '\0') {
           if (!default_file) {
-            ERROR("No injection file was specified!\n");
+            REPORT_ERROR("No injection file was specified!\n");
           }
           newcomp->comp_param.field_param.filename = strdup(default_file);
         } else {
           newcomp->comp_param.field_param.filename = strdup(fileName);
         }
         if (inFiles.find(newcomp->comp_param.field_param.filename) == inFiles.end()) {
-          ERROR("Invalid injection file: %s\n", fileName);
+          REPORT_ERROR("Invalid injection file: %s\n", fileName);
         }
 
         char line[KEYWORD_SIZE];
@@ -324,14 +324,14 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         char fileName[KEYWORD_SIZE];
         getKeywordParam(keyword, "name=", fileName);
         if (fileName[0] == '\0') {
-          ERROR("No name specified for 'file' keyword!\n");
+          REPORT_ERROR("No name specified for 'file' keyword!\n");
         }
         /* Turn this into a new message component. */
         newcomp->comp_param.filename = new SendingMessage(msg_scenario, fileName, true, dialog_number);
       } else if(*keyword == '$') {
         newcomp->type = E_Message_Variable;
         if (!msg_scenario) {
-          ERROR("SendingMessage with variable usage outside of scenario!");
+          REPORT_ERROR("SendingMessage with variable usage outside of scenario!");
         }
         newcomp->varId = msg_scenario->get_var(keyword + 1, "Variable keyword");
       } else if(!strncmp(keyword, "fill", strlen("fill"))) {
@@ -348,7 +348,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         newcomp->literal = strdup(filltext);
         newcomp->literalLen = strlen(newcomp->literal);
         if (!msg_scenario) {
-          ERROR("SendingMessage with variable usage outside of scenario!");
+          REPORT_ERROR("SendingMessage with variable usage outside of scenario!");
         }
         newcomp->varId = msg_scenario->get_var(varName, "Fill Variable");
 
@@ -360,7 +360,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         if (is_dialog_number || is_value_only) {
           // if dialog= specified, only copy header portion
           if (use_txn && strstr(keyword, "dialog=")) {
-            ERROR("Cannot use 'dialog=' attribute in [last_] keyword when also specifying 'use_txn' for the message.\n");
+            REPORT_ERROR("Cannot use 'dialog=' attribute in [last_] keyword when also specifying 'use_txn' for the message.\n");
           }
           const char *diagptr = strstr(keyword, "dialog=");
           const char *valueptr = strstr(keyword, "value_only=");
@@ -373,7 +373,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           else if (valueptr){
             index = valueptr;
           }
-          else ERROR("Incorrect formatting of options in \"last_\" header");
+          else REPORT_ERROR("Incorrect formatting of options in \"last_\" header");
           //Back up the pointer to the end of the last_* so we can extract * correctly
           while ((index > keyword) && (*(index-1) == ' ')) index--;
           newcomp->literal = strndup(keyword + strlen("last_"), index - keyword - strlen("last_"));
@@ -390,12 +390,12 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         !strcmp(keyword, "media_port") ||
         !strcmp(keyword, "media_ip") ||
         !strcmp(keyword, "media_ip_type")) {
-          ERROR("The %s keyword requires PCAPPLAY.\n", keyword);
+          REPORT_ERROR("The %s keyword requires PCAPPLAY.\n", keyword);
       }
 #endif
 #ifndef _USE_OPENSSL
       else if(!strcmp(keyword, "authentication")) {
-        ERROR("The %s keyword requires OpenSSL.\n", keyword);
+        REPORT_ERROR("The %s keyword requires OpenSSL.\n", keyword);
       }
 #endif
       else {
@@ -414,7 +414,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           ++i;
         }
         if (!generic[i]) {
-          ERROR("Unsupported keyword '%s' in xml scenario file",
+          REPORT_ERROR("Unsupported keyword '%s' in xml scenario file",
             keyword);
         }
       }
@@ -426,10 +426,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
     *dest++ = '\0';
     literalLen = dest - literal;
     literal = (char *)realloc(literal, literalLen);
-    if (!literal) { ERROR("Out of memory!"); }
+    if (!literal) { REPORT_ERROR("Out of memory!"); }
 
     MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-    if (!newcomp) { ERROR("Out of memory!"); }
+    if (!newcomp) { REPORT_ERROR("Out of memory!"); }
 
     newcomp->type = E_Message_Literal;
     newcomp->literal = literal;
@@ -446,10 +446,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
   }
 
   if (numComponents() < 1) {
-    ERROR("Can not create a message that is empty!");
+    REPORT_ERROR("Can not create a message that is empty!");
   }
   if (getComponent(0)->type != E_Message_Literal) {
-    ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!\n%s\n", osrc);
+    REPORT_ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!\n%s\n", osrc);
   }
 
   char *p = method = strdup(getComponent(0)->literal);
@@ -458,7 +458,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
     p++;
   }
   if (!(q = strchr(method, ' '))) {
-    ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!%s\n", osrc);
+    REPORT_ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!%s\n", osrc);
   }
   *q++ = '\0';
   while (isspace(*q)) { q++; }
@@ -466,10 +466,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
     char *endptr;
     code = strtol(q, &endptr, 10);
     if (*endptr && !isspace(*endptr)) {
-      ERROR("Invalid reply code: %s\n", q);
+      REPORT_ERROR("Invalid reply code: %s\n", q);
     }
     if (code < 100 || code >= 700) {
-      ERROR("Response codes must be in the range of 100-700");
+      REPORT_ERROR("Response codes must be in the range of 100-700");
     }
     response = true;
     ack = false;
@@ -481,7 +481,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       memmove(method, p, strlen(p) + 1);
     }
     method = (char *)realloc(method, strlen(method) + 1);
-    if (!method) { ERROR("Out of memory"); }
+    if (!method) { REPORT_ERROR("Out of memory"); }
     ack = (!strcmp(method, "ACK"));
     cancel = (!strcmp(method, "CANCEL"));
     response = false;
@@ -564,7 +564,7 @@ void SendingMessage::getKeywordParam(char * src, const char * param, char * outp
     } else {
       while (*key) {
         if (((key - src) > KEYWORD_SIZE) || (!(key - src))) {
-          ERROR("Syntax error parsing '%s' parameter", param);
+          REPORT_ERROR("Syntax error parsing '%s' parameter", param);
         } else if (*key == ']' || *key < 33 || *key > 126) {
           break;
         }
@@ -588,7 +588,7 @@ bool SendingMessage::parse_dialog_number(char* src, struct MessageComponent* new
     char *endptr;
     newcomp->dialog_number = strtol(dialogNumber, &endptr, 10);
     if (endptr == dialogNumber)
-      ERROR("Invalid dialog number specified in last_ tag.");
+      REPORT_ERROR("Invalid dialog number specified in last_ tag.");
     return true;
   }
   else return false;
@@ -611,7 +611,7 @@ void SendingMessage::parse_encoding(char* src, struct MessageComponent* newcomp)
     if (!strcasecmp(encoding, "uri"))
       newcomp->encoding = E_ENCODING_URI;
     else
-      ERROR("Encoding type \"%s\" not recognized", encoding);
+      REPORT_ERROR("Encoding type \"%s\" not recognized", encoding);
   } else {
     newcomp->encoding = E_ENCODING_NONE;
   }
@@ -698,7 +698,7 @@ struct MessageComponent *SendingMessage::getComponent(int i) {
 /* This is very simplistic and does not yet allow any arguments, but it is a start. */
 int registerKeyword(char *keyword, customKeyword fxn) {
 	if (keyword_map.find(keyword) != keyword_map.end()) {
-		ERROR("Can not register keyword '%s', already registered!\n", keyword);
+		REPORT_ERROR("Can not register keyword '%s', already registered!\n", keyword);
 	}
 	keyword_map[keyword] = fxn;
 	return 0;

@@ -55,14 +55,14 @@ bool watchdog::run() {
 	last_trigger = clock_tick;
 	WARNING("The major watchdog timer %dms has been tripped (%d), %d trips remaining.", major_threshold, clock_tick - last_fire, major_maxtriggers - major_triggers);
 	if ((this->major_maxtriggers != -1) && (++major_triggers > this->major_maxtriggers)) {
-	  ERROR("The watchdog timer has tripped the major threshold of %dms too many times (%d out of %d allowed) (%d out of %d minor %dms timeouts tripped)\n", major_threshold, major_triggers, major_maxtriggers, minor_threshold, minor_triggers, minor_maxtriggers);
+	  REPORT_ERROR("The watchdog timer has tripped the major threshold of %dms too many times (%d out of %d allowed) (%d out of %d minor %dms timeouts tripped)\n", major_threshold, major_triggers, major_maxtriggers, minor_threshold, minor_triggers, minor_maxtriggers);
 	}
   } else if (last_fire + this->minor_threshold < clock_tick) {
 	last_trigger = clock_tick;
 	CStat::globalStat(CStat::E_WATCHDOG_MINOR);
 	WARNING("The minor watchdog timer %dms has been tripped (%d), %d trips remaining.", minor_threshold, clock_tick - last_fire, minor_maxtriggers - minor_triggers);
 	if ((this->minor_maxtriggers != -1) && (++minor_triggers > this->minor_maxtriggers)) {
-	  ERROR("The watchdog timer has tripped the minor threshold of %dms too many times (%d out of %d allowed) (%d out of %d major %dms timeouts tripped)\n", minor_threshold, minor_triggers, minor_maxtriggers, major_threshold, major_triggers, major_maxtriggers);
+	  REPORT_ERROR("The watchdog timer has tripped the minor threshold of %dms too many times (%d out of %d allowed) (%d out of %d major %dms timeouts tripped)\n", minor_threshold, minor_triggers, minor_maxtriggers, major_threshold, major_triggers, major_maxtriggers);
 	}
   }
 

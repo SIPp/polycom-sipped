@@ -35,7 +35,7 @@ FileContents::FileContents(const char *fileName) {
   int virtualLines = 0;
 
   if (!inFile->good()) {
-    ERROR("Unable to open file %s", fileName);
+    REPORT_ERROR("Unable to open file %s", fileName);
   }
 
   this->fileName = fileName;
@@ -57,7 +57,7 @@ FileContents::FileContents(const char *fileName) {
   } else if (NULL != strstr(line, "USER")) {
       usage = InputFileUser;
   } else {
-      ERROR("Unknown file type (valid values are RANDOM, SEQUENTIAL, and USER) for %s:%s\n", fileName, line);
+      REPORT_ERROR("Unknown file type (valid values are RANDOM, SEQUENTIAL, and USER) for %s:%s\n", fileName, line);
   }
 
   char *useprintf;
@@ -66,16 +66,16 @@ FileContents::FileContents(const char *fileName) {
      * string for printf with the line number. */
     useprintf += strlen("PRINTF");
     if (*useprintf != '=') {
-	ERROR("Invalid file printf specification (requires =) for %s:%s\n", fileName, line);
+	REPORT_ERROR("Invalid file printf specification (requires =) for %s:%s\n", fileName, line);
     }
     useprintf++;
     char *endptr;
     virtualLines = strtoul(useprintf, &endptr, 0);
     if (*endptr && *endptr != '\r' && *endptr != '\n' && *endptr != ',') {
-      ERROR("Invalid file printf specification for (invalid end character '%c') %s:%s\n", *endptr, fileName, line);
+      REPORT_ERROR("Invalid file printf specification for (invalid end character '%c') %s:%s\n", *endptr, fileName, line);
     }
     if (virtualLines == 0) {
-      ERROR("A printf file must have at least one virtual line %s:%s\n", fileName, line);
+      REPORT_ERROR("A printf file must have at least one virtual line %s:%s\n", fileName, line);
     }
     printfFile = true;
   }
@@ -83,26 +83,26 @@ FileContents::FileContents(const char *fileName) {
   if ((useprintf = strstr(line, "PRINTFOFFSET"))) {
     useprintf += strlen("PRINTFOFFSET");
     if (*useprintf != '=') {
-	ERROR("Invalid file PRINTFOFFSET specification (requires =) for %s:%s\n", fileName, line);
+	REPORT_ERROR("Invalid file PRINTFOFFSET specification (requires =) for %s:%s\n", fileName, line);
     }
     useprintf++;
     char *endptr;
     printfOffset = strtoul(useprintf, &endptr, 0);
     if (*endptr && *endptr != '\n' && *endptr != ',') {
-      ERROR("Invalid PRINTFOFFSET specification for (invalid end character '%c') %s:%s\n", *endptr, fileName, line);
+      REPORT_ERROR("Invalid PRINTFOFFSET specification for (invalid end character '%c') %s:%s\n", *endptr, fileName, line);
     }
   }
 
   if ((useprintf = strstr(line, "PRINTFMULTIPLE"))) {
     useprintf += strlen("PRINTFMULTIPLE");
     if (*useprintf != '=') {
-	ERROR("Invalid PRINTFMULTIPLE specification (requires =) for %s:%s\n", fileName, line);
+	REPORT_ERROR("Invalid PRINTFMULTIPLE specification (requires =) for %s:%s\n", fileName, line);
     }
     useprintf++;
     char *endptr;
     printfMultiple = strtoul(useprintf, &endptr, 0);
     if (*endptr && *endptr != '\n' && *endptr != ',') {
-      ERROR("Invalid PRINTFOFFSET specification for (invalid end character '%c') %s:%s\n", *endptr, fileName, line);
+      REPORT_ERROR("Invalid PRINTFOFFSET specification for (invalid end character '%c') %s:%s\n", *endptr, fileName, line);
     }
   }
 
@@ -120,7 +120,7 @@ FileContents::FileContents(const char *fileName) {
   }
 
   if (realLinesInFile == 0) {
-    ERROR("Input file has zero lines: %s\n", fileName);
+    REPORT_ERROR("Input file has zero lines: %s\n", fileName);
   }
 
   if (printfFile) {
@@ -207,17 +207,17 @@ int FileContents::getField(int lineNum, int field, char *dest, int len) {
 	    i++;
 	    while (s[i] != 'd') {
 	      if (i == l) {
-		ERROR("Invalid printf injection field (ran off end of line): %s", s);
+		REPORT_ERROR("Invalid printf injection field (ran off end of line): %s", s);
 	      }
 	      if (!(isdigit(s[i]) || s[i] == '.' || s[i] == '-')) {
-		ERROR("Invalid printf injection field (only decimal values allowed '%c'): %s", s[i], s);
+		REPORT_ERROR("Invalid printf injection field (only decimal values allowed '%c'): %s", s[i], s);
 	      }
 	      i++;
 	    }
 	    assert(s[i] == 'd');
 	    char *tmp = (char *)malloc(s + i + 2 - format);
 	    if (!tmp) {
-	      ERROR("Out of memory!\n");
+	      REPORT_ERROR("Out of memory!\n");
 	    }
             memcpy(tmp, format, s + i + 1 - format);
 	    tmp[s + i + 1 - format] = '\0';
@@ -257,11 +257,11 @@ int FileContents::nextLine(int userId) {
 	return -1;
       }
       if ((userId  - 1) >= numLinesInFile) {
-	ERROR("%s has only %d lines, yet user %d was requested.", fileName, numLinesInFile, userId);
+	REPORT_ERROR("%s has only %d lines, yet user %d was requested.", fileName, numLinesInFile, userId);
       }
       return userId - 1;
     default:
-      ERROR("Internal error: unknown file usage mode!");
+      REPORT_ERROR("Internal error: unknown file usage mode!");
       return -1;
   }
 }
@@ -290,10 +290,10 @@ void FileContents::index(int field) {
 
 int FileContents::lookup(char *key) {
   if (indexField == -1) {
-    ERROR("Invalid Index File: %s", fileName);
+    REPORT_ERROR("Invalid Index File: %s", fileName);
   }
   if (!indexMap) {
-    ERROR("Invalid Index File: %s", fileName);
+    REPORT_ERROR("Invalid Index File: %s", fileName);
   }
 
   str_int_map::iterator index_it = indexMap->find(key);
@@ -306,7 +306,7 @@ int FileContents::lookup(char *key) {
 
 void FileContents::insert(char *value) {
   if (printfFile) {
-    ERROR("Can not insert or replace into a printf file: %s", fileName);
+    REPORT_ERROR("Can not insert or replace into a printf file: %s", fileName);
   }
   fileLines.push_back(value);
   realLinesInFile++;
@@ -322,10 +322,10 @@ void FileContents::insert(char *value) {
 
 void FileContents::replace(int line, char *value) {
   if (printfFile) {
-    ERROR("Can not insert or replace into a printf file: %s", fileName);
+    REPORT_ERROR("Can not insert or replace into a printf file: %s", fileName);
   }
   if (line >= realLinesInFile || line < 0) {
-    ERROR("Invalid line number (%d) for file: %s (%d lines)", line, fileName, realLinesInFile);
+    REPORT_ERROR("Invalid line number (%d) for file: %s (%d lines)", line, fileName, realLinesInFile);
   }
   deIndex(line);
   fileLines[line] = value;

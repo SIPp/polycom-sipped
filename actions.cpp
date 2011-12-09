@@ -84,7 +84,7 @@ bool CAction::compare(VariableTable *variableTable) {
     case E_C_LEQ:
       return lhs <= rhs;
     default:
-      ERROR("Internal error: Invalid comparison type %d", M_comp);
+      REPORT_ERROR("Internal error: Invalid comparison type %d", M_comp);
       return false; /* Shut up warning. */
   }
 }
@@ -290,13 +290,13 @@ void CAction::setRegExp(char *P_value) {
   {
     char buffer[MAX_HEADER_LEN];
     regerror(errorCode, &M_internalRegExp, buffer, sizeof(buffer));
-    ERROR("recomp error : regular expression '%s' - error '%s'\n", M_regularExpression, buffer);
+    REPORT_ERROR("recomp error : regular expression '%s' - error '%s'\n", M_regularExpression, buffer);
   }
 }
 
 char *CAction::getRegularExpression() {
   if (!M_regExpSet) {
-    ERROR("Trying to get a regular expression for an action that does not have one!");
+    REPORT_ERROR("Trying to get a regular expression for an action that does not have one!");
   }
   return M_regularExpression;
 }
@@ -309,11 +309,11 @@ int CAction::executeRegExp(char* P_string, VariableTable *P_callVarTable)
   char* result = NULL ;
 
   if (!M_regExpSet) {
-    ERROR("Trying to perform regular expression match on action that does not have one!");
+    REPORT_ERROR("Trying to perform regular expression match on action that does not have one!");
   }
 
   if (getNbSubVarId() > 9) {
-    ERROR("You can only have nine sub expressions!");
+    REPORT_ERROR("You can only have nine sub expressions!");
   }
 
   memset((void*)pmatch, 0, sizeof(regmatch_t)*10);
@@ -388,10 +388,10 @@ void CAction::setPcapArgs (char*        P_value)
     M_pcapArgs = (pcap_pkts *) malloc(sizeof(*M_pcapArgs));
     if (parse_play_args(P_value, M_pcapArgs) == -1)
     {
-      ERROR("Play pcap error");
+      REPORT_ERROR("Play pcap error");
     }
     if (access(M_pcapArgs->file, F_OK)) {
-      ERROR("Cannot read file %s\n", M_pcapArgs->file);
+      REPORT_ERROR("Cannot read file %s\n", M_pcapArgs->file);
     }
   }
 }
@@ -505,7 +505,7 @@ void CActions::setAction(CAction *P_action)
 {
   CAction **newActions = new CAction*[M_nbAction + 1];
   if (!newActions) {
-    ERROR("Could not allocate new action list.");
+    REPORT_ERROR("Could not allocate new action list.");
   }
   for (int i = 0; i < M_nbAction; i++) {
 	newActions[i] = M_actionList[i];

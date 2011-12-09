@@ -41,7 +41,13 @@ locking_function ( int mode, int n, const char *file, int line)
 
 unsigned long id_function(void)
 {
+#ifdef WIN32
+    return GetCurrentThreadId();
+#elif _POSIX_THREADS
     return ((unsigned long)THREAD_ID);
+#else
+# error "sslthreadsafe.cpp:id_function() does not know how to convert thread ID to an unsigned long"
+#endif
 }
 
 int

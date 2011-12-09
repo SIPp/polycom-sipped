@@ -141,10 +141,10 @@ message::~message()
 const string &message::checkTransactionName(const string &txnName) {
   /* Check the name's validity. */
   if (txnName.empty()) {
-    ERROR("Transaction names may not be empty.\n");
+    REPORT_ERROR("Transaction names may not be empty.\n");
   }
   if (strcspn(txnName.c_str(), "$,") != strlen(txnName.c_str())) {
-    ERROR("Transaction names may not contain $ or , ('%s'\n", txnName.c_str());
+    REPORT_ERROR("Transaction names may not contain $ or , ('%s'\n", txnName.c_str());
   }
   return txnName;
 }
@@ -170,7 +170,7 @@ long get_long(const char *ptr, const char *what) {
 
   ret = strtol(ptr, &endptr, 0);
   if (*endptr) {
-    ERROR("%s, \"%s\" is not a valid integer!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" is not a valid integer!\n", what, ptr);
   }
   return ret;
 }
@@ -178,10 +178,13 @@ long get_long(const char *ptr, const char *what) {
 unsigned long long get_long_long(const char *ptr, const char *what) {
   char *endptr;
   unsigned long long ret;
-
+#ifdef WIN32
+  ret = _strtoui64(ptr, &endptr, 0);
+#else
   ret = strtoull(ptr, &endptr, 0);
+#endif
   if (*endptr) {
-    ERROR("%s, \"%s\" is not a valid integer!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" is not a valid integer!\n", what, ptr);
   }
   return ret;
 }
@@ -198,7 +201,7 @@ long get_time(const char *ptr, const char *what, int multiplier) {
   int i;
 
   if (!isdigit(*ptr)) {
-    ERROR("%s, \"%s\" is not a valid time!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" is not a valid time!\n", what, ptr);
   }
 
   for (i = 0, p = ptr; *p; p++) {
@@ -208,12 +211,12 @@ long get_time(const char *ptr, const char *what, int multiplier) {
   }
 
   if (i == 1) { /* mm:ss */
-    ERROR("%s, \"%s\" mm:ss not implemented yet!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" mm:ss not implemented yet!\n", what, ptr);
   }
   else if (i == 2) { /* hh:mm:ss */
-    ERROR("%s, \"%s\" hh:mm:ss not implemented yet!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" hh:mm:ss not implemented yet!\n", what, ptr);
   } else if (i != 0) {
-    ERROR("%s, \"%s\" is not a valid time!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" is not a valid time!\n", what, ptr);
   }
 
   dret = strtod(ptr, &endptr);
@@ -227,7 +230,7 @@ long get_time(const char *ptr, const char *what, int multiplier) {
     } else if (!strcmp(endptr, "h")) { /* Hours. */
 	ret = (long)(dret * 60 * 60 * 1000);
     } else {
-      ERROR("%s, \"%s\" is not a valid time!\n", what, ptr);
+      REPORT_ERROR("%s, \"%s\" is not a valid time!\n", what, ptr);
     }
   } else {
     ret = (long)(dret * multiplier);
@@ -241,7 +244,7 @@ double get_double(const char *ptr, const char *what) {
 
   ret = strtod(ptr, &endptr);
   if (*endptr) {
-    ERROR("%s, \"%s\" is not a floating point number!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" is not a floating point number!\n", what, ptr);
   }
   return ret;
 }
@@ -250,7 +253,7 @@ char * xp_get_string(const char *name, const char *what) {
   char *ptr;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter", what, name);
+    REPORT_ERROR("%s is missing the required '%s' parameter", what, name);
   }
 
   return strdup(ptr);
@@ -262,7 +265,7 @@ double xp_get_double(const char *name, const char *what) {
   double val;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter", what, name);
+    REPORT_ERROR("%s is missing the required '%s' parameter", what, name);
   }
   helptext = (char *)malloc(100 + strlen(name) + strlen(what));
   sprintf(helptext, "%s '%s' parameter", what, name);
@@ -285,7 +288,7 @@ long xp_get_long(const char *name, const char *what) {
   long val;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter", what, name);
+    REPORT_ERROR("%s is missing the required '%s' parameter", what, name);
   }
   helptext = (char *)malloc(100 + strlen(name) + strlen(what));
   sprintf(helptext, "%s '%s' parameter", what, name);
@@ -308,7 +311,7 @@ long xp_get_long_only_if_no_call_id_check(const char *name, const char *what, lo
     return defval;
   }
   if ((!no_call_id_check) && (result)) {
-    ERROR("Can not use 'dialog' parameter without -mc option");
+    REPORT_ERROR("Can not use 'dialog' parameter without -mc option");
   }
   return xp_get_long(name, what);
 }
@@ -320,7 +323,7 @@ double xp_get_bool(const char *name, const char *what) {
   bool val;
 
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' parameter", what, name);
+    REPORT_ERROR("%s is missing the required '%s' parameter", what, name);
   }
   helptext = (char *)malloc(100 + strlen(name) + strlen(what));
   sprintf(helptext, "%s '%s' parameter", what, name);
@@ -344,10 +347,10 @@ int scenario::find_var(const char *varName, const char *what) {
 int scenario::get_var(const char *varName, const char *what) {
   /* Check the name's validity. */
   if (varName[0] == '\0') {
-    ERROR("Transaction names may not be empty for %s\n", what);
+    REPORT_ERROR("Transaction names may not be empty for %s\n", what);
   }
   if (strcspn(varName, "$,") != strlen(varName)) {
-    ERROR("Transaction names may not contain $ or , for %s\n", what);
+    REPORT_ERROR("Transaction names may not contain $ or , for %s\n", what);
   }
 
   return allocVars->find(varName, true);
@@ -356,7 +359,7 @@ int scenario::get_var(const char *varName, const char *what) {
 int scenario::xp_get_var(const char *name, const char *what) {
   char *ptr;
   if (!(ptr = xp_get_value(name))) {
-    ERROR("%s is missing the required '%s' variable parameter", what, name);
+    REPORT_ERROR("%s is missing the required '%s' variable parameter", what, name);
   }
 
   return get_var(ptr, what);
@@ -376,7 +379,7 @@ int xp_get_optional(const char *name, const char *what) {
   } else if(!strcmp(ptr, "false")) {
     return OPTIONAL_FALSE;
   } else {
-    ERROR("Could not understand optional value for %s: %s", what, ptr);
+    REPORT_ERROR("Could not understand optional value for %s: %s", what, ptr);
   }
 
   return OPTIONAL_FALSE;
@@ -406,7 +409,7 @@ bool get_bool(const char *ptr, const char *what) {
 
   ret = strtol(ptr, &endptr, 0);
   if (*endptr) {
-    ERROR("%s, \"%s\" is not a valid boolean!\n", what, ptr);
+    REPORT_ERROR("%s, \"%s\" is not a valid boolean!\n", what, ptr);
   }
   return ret ? true : false;
 }
@@ -490,10 +493,10 @@ int scenario::get_rtd(const char *ptr, bool start) {
 int scenario::get_counter(const char *ptr, const char *what) {
   /* Check the name's validity. */
   if (ptr[0] == '\0') {
-    ERROR("Counter names names may not be empty for %s\n", what);
+    REPORT_ERROR("Counter names names may not be empty for %s\n", what);
   }
   if (strcspn(ptr, "$,") != strlen(ptr)) {
-    ERROR("Counter names may not contain $ or , for %s\n", what);
+    REPORT_ERROR("Counter names may not contain $ or , for %s\n", what);
   }
 
   return stats->findCounter(ptr, true);
@@ -512,14 +515,14 @@ void scenario::apply_labels(msgvec v, str_int_map labels) {
     if (v[i]->nextLabel) {
       str_int_map::iterator label_it = labels.find(v[i]->nextLabel);
       if (label_it == labels.end()) {
-	ERROR("The label '%s' was not defined (index %d, next attribute)\n", v[i]->nextLabel, i);
+	REPORT_ERROR("The label '%s' was not defined (index %d, next attribute)\n", v[i]->nextLabel, i);
       }
       v[i]->next = label_it->second;
     }
     if (v[i]->onTimeoutLabel) {
       str_int_map::iterator label_it = labels.find(v[i]->onTimeoutLabel);
       if (label_it == labels.end()) {
-	ERROR("The label '%s' was not defined (index %d, ontimeout attribute)\n", v[i]->onTimeoutLabel, i);
+	REPORT_ERROR("The label '%s' was not defined (index %d, ontimeout attribute)\n", v[i]->onTimeoutLabel, i);
       }
       v[i]->on_timeout = label_it->second;
     }
@@ -543,7 +546,7 @@ char *clean_cdata(char *ptr, int *removed_crlf = NULL) {
   while((*ptr == ' ') || (*ptr == '\t') || (*ptr == '\n')) ptr++;
 
   msg = (char *) malloc(strlen(ptr) + 3);
-  if(!msg) { ERROR("Memory Overflow"); }
+  if(!msg) { REPORT_ERROR("Memory Overflow"); }
   strcpy(msg, ptr);
 
   ptr = msg + strlen(msg);
@@ -564,7 +567,7 @@ char *clean_cdata(char *ptr, int *removed_crlf = NULL) {
   }
 
   if(ptr == msg) {
-    ERROR("Empty cdata in xml scenario file");
+    REPORT_ERROR("Empty cdata in xml scenario file");
   }
 
   // remove whitespace on either side of \n
@@ -598,7 +601,7 @@ char *clean_cdata(char *ptr, int *removed_crlf = NULL) {
 
 void scenario::checkOptionalRecv(char *elem, unsigned int scenario_file_cursor) {
   if (last_recv_optional) {
-    ERROR("<recv> before <%s> sequence without a mandatory message. Please remove one 'optional=true' (element %d)", elem, scenario_file_cursor);
+    REPORT_ERROR("<recv> before <%s> sequence without a mandatory message. Please remove one 'optional=true' (element %d)", elem, scenario_file_cursor);
   }
   last_recv_optional = false;
 }
@@ -616,13 +619,13 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
 
   if(filename) {
     if(!xp_set_xml_buffer_from_file(filename, dumpxml)) {
-      ERROR("Unable to open or parse '%s' xml scenario file", filename);
+      REPORT_ERROR("Unable to open or parse '%s' xml scenario file", filename);
     }
     scenario_path = strdup(filename);
     reduce_to_path(scenario_path);
   } else {
     if(!xp_set_xml_buffer_from_string(default_scenario[deflt], dumpxml)) {
-      ERROR("Unable to load default xml scenario file");
+      REPORT_ERROR("Unable to load default xml scenario file");
     }
   }
 
@@ -633,10 +636,10 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
 
   elem = xp_open_element_skip_control(0, 0);
   if (!elem) {
-    ERROR("No element in xml scenario file");
+    REPORT_ERROR("No element in xml scenario file");
   }
   if(strcmp("scenario", elem)) {
-    ERROR("'scenario' section in xml scenario file must be first after <?xml> version and <!DOCTYPE>");
+    REPORT_ERROR("'scenario' section in xml scenario file must be first after <?xml> version and <!DOCTYPE>");
   }
 
   if(char *ptr = xp_get_value((char *)"name")) {
@@ -696,7 +699,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
       for (int i = 0; i < currentNbVarNames; i++) {
         int id = allocVars->find(currentTabVarName[i], false);
         if (id == -1) {
-          ERROR("Could not reference non-existant variable '%s'", currentTabVarName[i]);
+          REPORT_ERROR("Could not reference non-existant variable '%s'", currentTabVarName[i]);
         }
       }
       freeStringTable(currentTabVarName, currentNbVarNames);
@@ -704,7 +707,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
     } else if(!strcmp(elem, "DefaultMessage")) {
       char *id = xp_get_string("id", "DefaultMessage");
       if(!(ptr = xp_get_cdata())) {
-        ERROR("No CDATA in 'send' section of xml scenario file");
+        REPORT_ERROR("No CDATA in 'send' section of xml scenario file");
       }
       char *msg = clean_cdata(ptr);
       set_default_message(id, msg);
@@ -713,7 +716,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
     } else if(!strcmp(elem, "label")) {
       ptr = xp_get_string("id", "label");
       if (labelMap.find(ptr) != labelMap.end()) {
-        ERROR("The label name '%s' is used twice", ptr);
+        REPORT_ERROR("The label name '%s' is used twice", ptr);
       }
       labelMap[ptr] = messages.size();
       free(ptr);
@@ -732,11 +735,11 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           /* Add an init label. */
           ptr = xp_get_value((char *)"id");
           if (initLabelMap.find(ptr) != initLabelMap.end()) {
-            ERROR("The label name '%s' is used twice", ptr);
+            REPORT_ERROR("The label name '%s' is used twice", ptr);
           }
           initLabelMap[ptr] = initmessages.size();
         } else {
-          ERROR("Invalid element in an init stanza: '%s'", initelem);
+          REPORT_ERROR("Invalid element in an init stanza: '%s'", initelem);
         }
         xp_close_element();
       }
@@ -745,7 +748,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         found_scenario_tag = true; // don't want to jump to </scenario> right away.
     } else { /** Message Case */
       if (found_timewait) {
-        ERROR("<timewait> can only be the last message in a scenario!\n");
+        REPORT_ERROR("<timewait> can only be the last message in a scenario!\n");
       }
       message *curmsg = new message(messages.size(), name ? name : "unknown scenario");
       messages.push_back(curmsg);
@@ -755,7 +758,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         curmsg->M_type = MSG_TYPE_SEND;
         /* Sent messages descriptions */
         if(!(ptr = xp_get_cdata())) {
-          ERROR("No CDATA in 'send' section of xml scenario file");
+          REPORT_ERROR("No CDATA in 'send' section of xml scenario file");
         }
 
         int removed_clrf = 0;
@@ -791,20 +794,20 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         // While you can simply use use_txn rather than ack_txn and response_txn, you may still use the more
         // specific forms, but only with their respective message types.
         if ((xp_get_value("ack_txn")) && (!curmsg->send_scheme->isAck())) {
-          ERROR("Cannot use ack_txn for non-ACK packet");
+          REPORT_ERROR("Cannot use ack_txn for non-ACK packet");
         }
 
          if ((xp_get_value("response_txn")) && (!curmsg->send_scheme->isResponse())) {
-          ERROR("response_txn can only be used with response packets");
+          REPORT_ERROR("response_txn can only be used with response packets");
         }
 
         // If this is a request we are sending, then store our transaction/method matching information.
         if (!curmsg->send_scheme->isResponse()) {
           if ((ptr = xp_get_value("start_txn"))) {
             if (curmsg->send_scheme->isAck()) 
-              ERROR("An ACK message can not start a transaction. Use use_txn or ack_txn instead to re-use branch and cseq values (even though 2xx-ACK is technically a new SIP transaction)");
+              REPORT_ERROR("An ACK message can not start a transaction. Use use_txn or ack_txn instead to re-use branch and cseq values (even though 2xx-ACK is technically a new SIP transaction)");
             if (curmsg->send_scheme->isCancel()) 
-              ERROR("Cannot use start_txn with CANCEL. Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction)");            
+              REPORT_ERROR("Cannot use start_txn with CANCEL. Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction)");            
             curmsg->startTransaction(ptr);
           } else if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("ack_txn"))) {
             curmsg->useTransaction(ptr);
@@ -814,7 +817,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
             char *method = curmsg->send_scheme->getMethod(); 
             char *new_method_list = (char *)realloc(method_list, len + strlen(method) + 1);
             if (!new_method_list) {
-              ERROR_NO("Out of memory allocating method_list!");
+              REPORT_ERROR_NO("Out of memory allocating method_list!");
             }
             method_list = new_method_list;
             strcpy(method_list + len, method);
@@ -824,7 +827,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("response_txn"))) {
             curmsg->useTransaction(ptr);
           } else if ((ptr = xp_get_value("start_txn"))) {
-            ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.");
+            ("Responses can not start a transaction");
+            REPORT_ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.");
           } 
         } // else
 
@@ -845,7 +849,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("response_txn"))) {
             curmsg->useTransaction(ptr);
           } else if ((xp_get_value("start_txn"))) {
-            ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.");
+            REPORT_ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.");
           } 
         } // response
 
@@ -853,10 +857,10 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           curmsg -> recv_request = strdup(ptr);
 
           if ((xp_get_value("ack_txn")) && (strcmp(curmsg->recv_request, "ACK"))) {
-            ERROR("Cannot use ack_txn for non-ACK packet. Use use_txn or start_txn instead");
+            REPORT_ERROR("Cannot use ack_txn for non-ACK packet. Use use_txn or start_txn instead");
           }
           if ((ptr = xp_get_value("response_txn"))) {
-            ERROR("response_txn can not be used to receive a request.  Use use_txn or start_txn instead");
+            REPORT_ERROR("response_txn can not be used to receive a request.  Use use_txn or start_txn instead");
           }
           if ((ptr = xp_get_value("start_txn"))) {
             // mark as start so values are stored when message is received
@@ -873,7 +877,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         last_recv_optional = curmsg->optional;
         curmsg->advance_state = xp_get_bool("advance_state", "recv", true);
         if (!curmsg->advance_state && curmsg->optional == OPTIONAL_FALSE) {
-          ERROR("advance_state is allowed only for optional messages (index = %d)\n", messages.size() - 1);
+          REPORT_ERROR("advance_state is allowed only for optional messages (index = %d)\n", messages.size() - 1);
         }
 
         if (0 != (ptr = xp_get_value((char *)"regexp_match"))) {
@@ -897,7 +901,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           curmsg -> bShouldAuthenticate = temp;
 #else
           if (temp) {
-            ERROR("Authentication requires OpenSSL support!");
+            REPORT_ERROR("Authentication requires OpenSSL support!");
           }
 #endif
         }
@@ -926,7 +930,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
             distribution->timeDescr(desc, sizeof(desc));
             time_string(pause_duration, percentile, sizeof(percentile));
 
-            ERROR("The distribution %s has a 99th percentile of %s, which is larger than INT_MAX.  You should chose different parameters", desc, percentile);
+            REPORT_ERROR("The distribution %s has a 99th percentile of %s, which is larger than INT_MAX.  You should chose different parameters", desc, percentile);
           }
 
           curmsg->pause_distribution = distribution;
@@ -953,7 +957,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         if((ptr = xp_get_value((char *)"src"))) {
           curmsg->peer_src = strdup(ptr);
         } else if (extendedTwinSippMode) {
-          ERROR("You must specify a 'src' for recvCmd when using extended 3pcc mode!");
+          REPORT_ERROR("You must specify a 'src' for recvCmd when using extended 3pcc mode!");
         }
       } else if(!strcmp(elem, "sendCmd")) {
         checkOptionalRecv(elem, scenario_file_cursor);
@@ -978,11 +982,11 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
             peers[std::string(peer)] = infos; 
           }
         } else if (extendedTwinSippMode) {
-          ERROR("You must specify a 'dest' for sendCmd with extended 3pcc mode!");
+          REPORT_ERROR("You must specify a 'dest' for sendCmd with extended 3pcc mode!");
         }
 
         if(!(ptr = xp_get_cdata())) {
-          ERROR("No CDATA in 'sendCmd' section of xml scenario file");
+          REPORT_ERROR("No CDATA in 'sendCmd' section of xml scenario file");
         }
         char *msg = clean_cdata(ptr);
 
@@ -990,7 +994,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         free(msg);
       }
       else {
-        ERROR("Unknown element '%s' in xml scenario file", elem);
+        REPORT_ERROR("Unknown element '%s' in xml scenario file", elem);
       }
 
       getCommonAttributes(curmsg);
@@ -1024,7 +1028,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
   validate_variable_usage();
 
   if (messages.size() == 0) {
-    ERROR("Did not find any messages inside of scenario!");
+    REPORT_ERROR("Did not find any messages inside of scenario!");
   }
 }//scenairo::scenario
 
@@ -1081,7 +1085,7 @@ CSample *parse_distribution(bool oldstyle = false) {
 
   if(!(distname = xp_get_value("distribution"))) {
     if (!oldstyle) {
-      ERROR("statistically distributed actions or pauses requires 'distribution' parameter");
+      REPORT_ERROR("statistically distributed actions or pauses requires 'distribution' parameter");
     }
     if ((ptr = xp_get_value("normal"))) {
 	distname = "normal";
@@ -1155,10 +1159,10 @@ CSample *parse_distribution(bool oldstyle = false) {
       || !strcmp(distname, "gamma")
       || !strcmp(distname, "negbin")
       || !strcmp(distname, "weibull")) {
-    ERROR("The distribution '%s' is only available with GSL", distname);
+    REPORT_ERROR("The distribution '%s' is only available with GSL", distname);
 #endif
   } else {
-    ERROR("Unknown distribution: %s\n", ptr);
+    REPORT_ERROR("Unknown distribution: %s\n", ptr);
   }
 
   return distribution;
@@ -1190,13 +1194,13 @@ void parse_slave_cfg()
               peer_addrs[std::string(temp_peer)] = peer_host;
              }
          }else {
-             ERROR("Cannot allocate memory!\n");
+             REPORT_ERROR("Cannot allocate memory!\n");
            }
        }
      }
      fclose(f);
    }else{
-     ERROR("Can not open slave_cfg file %s\n", slave_cfg_file);
+     REPORT_ERROR("Can not open slave_cfg file %s\n", slave_cfg_file);
      }
 
 }
@@ -1218,7 +1222,7 @@ void scenario::computeSippMode()
 
   if (force_client_mode) {
     if (force_server_mode) {
-      ERROR("Cannot have both force client mode, and force server mode enabled");
+      REPORT_ERROR("Cannot have both force client mode, and force server mode enabled");
     }
     sendMode = MODE_CLIENT;
     creationMode = MODE_CLIENT;
@@ -1298,10 +1302,10 @@ void scenario::computeSippMode()
           }
         }
         if((thirdPartyMode == MODE_MASTER_PASSIVE || thirdPartyMode == MODE_MASTER) && !master_name){
-          ERROR("Inconsistency between command line and scenario: master scenario but -master option not set\n");
+          REPORT_ERROR("Inconsistency between command line and scenario: master scenario but -master option not set\n");
         }
         if(!twinSippMode && !extendedTwinSippMode)
-          ERROR("sendCmd message found in scenario but no twin sipp"
+          REPORT_ERROR("sendCmd message found in scenario but no twin sipp"
           " address has been passed! Use -3pcc option or 3pcc extended mode.\n");
       }
       break;
@@ -1318,13 +1322,13 @@ void scenario::computeSippMode()
         } else if(extendedTwinSippMode){
           thirdPartyMode = MODE_SLAVE;
           if(!slave_number) {
-            ERROR("Inconsistency between command line and scenario: slave scenario but -slave option not set\n");
+            REPORT_ERROR("Inconsistency between command line and scenario: slave scenario but -slave option not set\n");
           }else{
             thirdPartyMode = MODE_SLAVE;
           }
         }
         if(!twinSippMode && !extendedTwinSippMode)
-          ERROR("recvCmd message found in scenario but no "
+          REPORT_ERROR("recvCmd message found in scenario but no "
           "twin sipp address has been passed! Use "
           "-3pcc option\n");
       }
@@ -1334,9 +1338,9 @@ void scenario::computeSippMode()
     }
   }
   if(creationMode == -1)
-    ERROR("Unable to determine creation mode of the tool (server, client)\n");
+    REPORT_ERROR("Unable to determine creation mode of the tool (server, client)\n");
   if(sendMode == -1)
-    ERROR("Unable to determine send mode of the tool (server, client)\n");
+    REPORT_ERROR("Unable to determine send mode of the tool (server, client)\n");
   DEBUG_OUT("sendMode = %d, creationMode = %s (%d)", sendMode, creationMode == MODE_CLIENT ? "MODE_CLIENT" : "MODE_SERVER", creationMode);
 }
 
@@ -1344,15 +1348,15 @@ void scenario::handle_rhs(CAction *tmpAction, const char *what) {
   if (xp_get_value("value")) {
     tmpAction->setDoubleValue(xp_get_double("value", what));
     if (xp_get_value("variable")) {
-      ERROR("Value and variable are mutually exclusive for %s action!", what);
+      REPORT_ERROR("Value and variable are mutually exclusive for %s action!", what);
     }
   } else if (xp_get_value("variable")) {
     tmpAction->setVarInId(xp_get_var("variable", what));
     if (xp_get_value("value")) {
-      ERROR("Value and variable are mutually exclusive for %s action!", what);
+      REPORT_ERROR("Value and variable are mutually exclusive for %s action!", what);
     }
   } else {
-    ERROR("No value or variable defined for %s action!", what);
+    REPORT_ERROR("No value or variable defined for %s action!", what);
   }
 }
 
@@ -1405,7 +1409,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
         } else if (!strcmp(ptr, (char *)"hdr")) {
           ptr = xp_get_value((char *)"header");
           if (!ptr || !strlen(ptr)) {
-            ERROR("search_in=\"hdr\" requires header field");
+            REPORT_ERROR("search_in=\"hdr\" requires header field");
           }
           tmpAction->setLookingPlace(CAction::E_LP_HDR);
           tmpAction->setLookingChar(ptr);
@@ -1416,7 +1420,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
             tmpAction->setOccurence (atol(ptr));
           }
         } else {
-          ERROR("Unknown search_in value %s", ptr);
+          REPORT_ERROR("Unknown search_in value %s", ptr);
         }
       } else {
         tmpAction->setLookingPlace(CAction::E_LP_MSG);
@@ -1424,7 +1428,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       } // end if-else search_in
 
       if (!(ptr = xp_get_value((char *) "assign_to"))) {
-        ERROR("assign_to value is missing");
+        REPORT_ERROR("assign_to value is missing");
       }
 
       createStringTable(ptr, &currentTabVarName, &currentNbVarNames);
@@ -1472,11 +1476,11 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_GETTIMEOFDAY);
 
       if (!(ptr = xp_get_value((char *) "assign_to"))) {
-        ERROR("assign_to value is missing");
+        REPORT_ERROR("assign_to value is missing");
       }
       createStringTable(ptr, &currentTabVarName, &currentNbVarNames);
       if (currentNbVarNames != 2 ) {
-        ERROR("The gettimeofday action requires two output variables!");
+        REPORT_ERROR("The gettimeofday action requires two output variables!");
       }
       tmpAction->setNbSubVarId(1);
 
@@ -1509,7 +1513,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       handle_arithmetic(tmpAction, "divide");
       if (tmpAction->getVarInId() == 0) {
         if (tmpAction->getDoubleValue() == 0.0) {
-          ERROR("divide actions can not have a value of zero!");
+          REPORT_ERROR("divide actions can not have a value of zero!");
         }
       }
     } else if(!strcmp(actionElem, "sample")) {
@@ -1530,7 +1534,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       if (xp_get_value("value")) {
         tmpAction->setDoubleValue(xp_get_double("value", "test"));
         if (xp_get_value("variable2")) {
-          ERROR("Can not have both a value and a variable2 for test!");
+          REPORT_ERROR("Can not have both a value and a variable2 for test!");
         }
       } else {
         tmpAction->setVarIn2Id(xp_get_var("variable2", "test"));
@@ -1550,7 +1554,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       } else if (!strcmp(ptr, "less_than_equal")) {
         tmpAction->setComparator(CAction::E_C_LEQ);
       } else {
-        ERROR("Invalid 'compare' parameter: %s", ptr);
+        REPORT_ERROR("Invalid 'compare' parameter: %s", ptr);
       }
       parseCheckIt(tmpAction, assignTo, "test");
       free(ptr);
@@ -1564,7 +1568,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       tmpAction->setMessage(xp_get_string("password", "verifyauth"), 1);
       tmpAction->setActionType(CAction::E_AT_VERIFY_AUTH);
 #else
-      ERROR("The verifyauth action requires OpenSSL support");
+      REPORT_ERROR("The verifyauth action requires OpenSSL support");
 #endif
     } else if(!strcmp(actionElem, "lookup")) {
       tmpAction->setVarId(xp_get_var("assign_to", "lookup"));
@@ -1594,7 +1598,7 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
       if (xp_get_value("value")) {
         tmpAction->setStringValue(xp_get_string("value", "strcmp"));
         if (xp_get_value("variable2")) {
-          ERROR("Can not have both a value and a variable2 for strcmp!");
+          REPORT_ERROR("Can not have both a value and a variable2 for strcmp!");
         }
       } else {
         tmpAction->setVarIn2Id(xp_get_var("variable2", "strcmp"));
@@ -1656,15 +1660,15 @@ void scenario::parseAction(CActions *actions, int dialog_number) {
         hasMedia = 1;
 #else
       } else if ((ptr = xp_get_value((char *) "play_pcap_audio"))) {
-        ERROR("play_pcap_audio requires pcap support! Please recompile SIPp");
+        REPORT_ERROR("play_pcap_audio requires pcap support! Please recompile SIPp");
       } else if ((ptr = xp_get_value((char *) "play_pcap_video"))) {
-        ERROR("play_pcap_video requires pcap support! Please recompile SIPp");
+        REPORT_ERROR("play_pcap_video requires pcap support! Please recompile SIPp");
 #endif
       } else {
-        ERROR("illegal <exec> in the scenario\n");
+        REPORT_ERROR("illegal <exec> in the scenario\n");
       }
     } else {
-      ERROR("Unknown action: %s", actionElem);
+      REPORT_ERROR("Unknown action: %s", actionElem);
     }
 
     /* If the action was not well-formed, there should have already been an
@@ -1691,7 +1695,7 @@ void scenario::getActionForThisMessage(message *message)
 
   /* We actually have an action element. */
   if(message->M_actions != NULL) {
-    ERROR("Duplicate action for %s index %d", message->desc, message->index);
+    REPORT_ERROR("Duplicate action for %s index %d", message->desc, message->index);
   }
   message->M_actions = new CActions();
 
@@ -1709,7 +1713,7 @@ void scenario::getBookKeeping(message *message) {
     if (message -> stop_rtd) {
       message-> repeat_rtd = get_bool(ptr, "repeat_rtd");
     } else {
-      ERROR("There is a repeat_rtd element without an rtd element");
+      REPORT_ERROR("There is a repeat_rtd element without an rtd element");
     }
   }
 
@@ -1750,7 +1754,7 @@ void scenario::getCommonAttributes(message *message) {
 
   if ((ptr = xp_get_value((char *)"next"))) {
     if (found_timewait) {
-      ERROR("next labels are not allowed in <timewait> elements");
+      REPORT_ERROR("next labels are not allowed in <timewait> elements");
     }
     message -> nextLabel = strdup(ptr);
     message -> test = xp_get_var("test", "test variable", -1);
@@ -1758,7 +1762,7 @@ void scenario::getCommonAttributes(message *message) {
       float chance = get_double(ptr,"chance");
       /* probability of branch to next */
       if (( chance < 0.0 ) || (chance > 1.0 )) {
-	ERROR("Chance %s not in range [0..1]", ptr);
+	REPORT_ERROR("Chance %s not in range [0..1]", ptr);
       }
       message -> chance = (int)((1.0-chance)*RAND_MAX);
     }
@@ -1769,7 +1773,7 @@ void scenario::getCommonAttributes(message *message) {
 
   if ((ptr = xp_get_value((char *)"ontimeout"))) {
     if (found_timewait) {
-      ERROR("ontimeout labels are not allowed in <timewait> elements");
+      REPORT_ERROR("ontimeout labels are not allowed in <timewait> elements");
     }
     message -> onTimeoutLabel = strdup(ptr);
   }
@@ -1782,7 +1786,7 @@ void parseMediaPortOffset(char* ptr, CAction* action) {
     action->setMediaPortOffset(offset);
   } else {
     // some error (if the offset is specified without a + or - default to positive)
-    ERROR("Incorrectly formatted offset '%s'. Offset should be specified as +/- and then a whole number (ie +5 or -10)", ptr) ;
+    REPORT_ERROR("Incorrectly formatted offset '%s'. Offset should be specified as +/- and then a whole number (ie +5 or -10)", ptr) ;
   }
 }
 #endif
@@ -1796,7 +1800,7 @@ void scenario::parseCheckIt(CAction* action, char* varName, char* what) {
       if(varName) get_var(varName, what); // bump usage count
     }
     if (xp_get_value("check_it_inverse")) {
-      ERROR("Can not have both check_it and check_it_inverse in %s", what);
+      REPORT_ERROR("Can not have both check_it and check_it_inverse in %s", what);
     }
   } else if (xp_get_bool("check_it_inverse", what, false)) {
     action->setCheckItInverse(true);
@@ -1985,7 +1989,7 @@ int find_scenario(const char *scenario) {
     }
   }
 
-  ERROR("Invalid default scenario name '%s'.\n", scenario);
+  REPORT_ERROR("Invalid default scenario name '%s'.\n", scenario);
   return -1;
 }
 

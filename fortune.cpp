@@ -31,12 +31,12 @@ int fortune(call *call, MessageComponent *comp, char *buf, int len) {
   DEBUG_IN();
 
 	if (pipe(pipes) == -1) {
-		ERROR("Could not create pipes!\n");
+		REPORT_ERROR("Could not create pipes!\n");
 	}
 
 	switch (fork()) {
 	case -1:
-		ERROR("Fork failed: %s\n", strerror(errno));
+		REPORT_ERROR("Fork failed: %s\n", strerror(errno));
 	case 0:
 		/* We are the child. */
 		close(pipes[0]);

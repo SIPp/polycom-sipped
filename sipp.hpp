@@ -27,18 +27,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#ifdef WIN32
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #include <time.h>
+  #include <windows.h>
+
+  #include "win32_compatibility.h"
+#else
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <netinet/tcp.h>
+  #include <sys/time.h>
+  #include <sys/poll.h>
+  #include <sys/resource.h>
+  #include <unistd.h>
+  #include <arpa/inet.h>
+  #include <netdb.h>
+#endif
+
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/time.h>
-#include <sys/poll.h>
-#include <sys/resource.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <arpa/inet.h>
 #include <errno.h>
-#include <netdb.h>
 #include <ctype.h>
 #include <signal.h>
 #include <time.h>
@@ -49,7 +59,9 @@
 #include <set>
 #include <math.h>
 #ifndef __SUNOS
-#include <curses.h>
+#ifndef WIN32
+  #include <curses.h>
+#endif
 #else
 #include <stdarg.h>
 #endif
@@ -80,6 +92,11 @@
 #include "sslcommon.h" 
 #endif
 
+#ifdef WIN32
+  #pragma warning (disable: 4003; disable: 4996)
+#else
+  #define SocketError() errno
+#endif
 
 #ifndef __CYGWIN
 #ifndef FD_SETSIZE
@@ -146,7 +163,9 @@
 #define MAX_SCHED_LOOPS_PER_CYCLE  1000
 #define NB_UPDATE_PER_CYCLE        1
 
-#define MAX_PATH                   250
+#ifndef WIN32
+  #define MAX_PATH                   250
+#endif
 
 #define MAX_PEER_SIZE              4096  /* 3pcc extended mode: max size of peer names */
 #define MAX_LOCAL_TWIN_SOCKETS     10    /*3pcc extended mode:max number of peers from which 
@@ -388,7 +407,6 @@ extern unsigned long watchdog_reset		  _DEFVAL(600000);
 extern  int maxDynamicId    _DEFVAL(12000);  // max value for dynamicId; this value is reached 
 extern  int startDynamicId  _DEFVAL(10000);  // offset for first dynamicId  FIXME:in CmdLine
 extern  int stepDynamicId   _DEFVAL(4);      // step of increment for dynamicId
-
 
 
 #define GET_TIME(clock)       \

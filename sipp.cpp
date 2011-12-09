@@ -41,8 +41,10 @@
 #include "sipp.hpp"
 #include "assert.h"
 #include <string.h>
-
-void sipp_usleep(unsigned long usec);
+#ifdef WIN32
+# include <io.h>
+# include <process.h>
+#endif
 
 void rotate_messagef();
 void rotate_calldebugf();
@@ -75,8 +77,8 @@ bool do_hide = true;
 bool show_index = false;
 
 static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd, int accepting);
-struct sipp_socket *ctrl_socket = NULL;
-struct sipp_socket *stdin_socket = NULL;
+struct sipp_socket *ctrl_socket = NULL;  // ctrl_socket is network socket for remote control of SIPp
+struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket for use in SIPp poll loop 
 
 int command_mode = 0;
 char *command_buffer = NULL;
@@ -496,7 +498,7 @@ int sip_tls_load_crls( SSL_CTX *ctx , char *crlfile)
   X509_STORE_set_flags( store,X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 #else
 #warning This version of OpenSSL (<0.9.7) cannot handle CRL files in capath
-  ERROR("This version of OpenSSL (<0.9.7) cannot handle CRL files in capath");
+  REPORT_ERROR("This version of OpenSSL (<0.9.7) cannot handle CRL files in capath");
 #endif
 
   return (1);
@@ -507,14 +509,14 @@ static ssl_init_status FI_init_ssl_context (void)
 {
   sip_trp_ssl_ctx = SSL_CTX_new( TLSv1_method() ); 
   if ( sip_trp_ssl_ctx == NULL ) {
-    ERROR("FI_init_ssl_context: SSL_CTX_new with TLSv1_method failed");
+    REPORT_ERROR("FI_init_ssl_context: SSL_CTX_new with TLSv1_method failed");
     return SSL_INIT_ERROR;
   }
 
   sip_trp_ssl_ctx_client = SSL_CTX_new( TLSv1_method() );
   if ( sip_trp_ssl_ctx_client == NULL)
   {
-    ERROR("FI_init_ssl_context: SSL_CTX_new with TLSv1_method failed");
+    REPORT_ERROR("FI_init_ssl_context: SSL_CTX_new with TLSv1_method failed");
     return SSL_INIT_ERROR;
   }
 
@@ -525,12 +527,12 @@ static ssl_init_status FI_init_ssl_context (void)
   /*  CRL load from application specified only if specified on the command line */
   if (strlen(tls_crl_name) != 0) {
     if(sip_tls_load_crls(sip_trp_ssl_ctx,tls_crl_name) == -1) {
-      ERROR("FI_init_ssl_context: Unable to load CRL file (%s)", tls_crl_name);
+      REPORT_ERROR("FI_init_ssl_context: Unable to load CRL file (%s)", tls_crl_name);
       return SSL_INIT_ERROR;
     }
 
     if(sip_tls_load_crls(sip_trp_ssl_ctx_client,tls_crl_name) == -1) {
-      ERROR("FI_init_ssl_context: Unable to load CRL (client) file (%s)", tls_crl_name);
+      REPORT_ERROR("FI_init_ssl_context: Unable to load CRL (client) file (%s)", tls_crl_name);
       return SSL_INIT_ERROR;
     }
     /* The following call forces to process the certificates with the */
@@ -564,24 +566,24 @@ static ssl_init_status FI_init_ssl_context (void)
 
   if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx, tls_cert_name, SSL_FILETYPE_PEM ) != 1
        && SSL_CTX_use_certificate_file(sip_trp_ssl_ctx, alt_path_cert, SSL_FILETYPE_PEM ) != 1) {
-    ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file failed");
+    REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file failed");
     return SSL_INIT_ERROR;
   }
 
   if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client, tls_cert_name, SSL_FILETYPE_PEM ) != 1
        && SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client, alt_path_cert, SSL_FILETYPE_PEM ) != 1) {
-    ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file (client) failed");
+    REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file (client) failed");
     return SSL_INIT_ERROR;
   }
   if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx, tls_key_name, SSL_FILETYPE_PEM ) != 1
        && SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx, alt_path_key, SSL_FILETYPE_PEM ) != 1) {
-    ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file failed");
+    REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file failed");
     return SSL_INIT_ERROR;
   }
 
   if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client, tls_key_name, SSL_FILETYPE_PEM ) != 1
        && SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client, alt_path_key, SSL_FILETYPE_PEM ) != 1 ) {
-    ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file (client) failed");
+    REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file (client) failed");
     return SSL_INIT_ERROR;
   }
 
@@ -615,18 +617,30 @@ int send_nowait(int s, const void *msg, int len, int flags)
 #if defined(MSG_DONTWAIT) && !defined(__SUNOS)
   return send(s, msg, len, flags | MSG_DONTWAIT);
 #else
+
+// ********
+// TESTME  this reads the existing value, but windows doesn't really support this with ioctlsocket.  Is this ok? 
+
+# ifdef WIN32
+  int iMode = 1;
+  ioctlsocket(s, FIONBIO, (u_long FAR*) &iMode);
+# else
   int fd_flags = fcntl(s, F_GETFL , NULL);
   int initial_fd_flags;
-  int rc;
 
   initial_fd_flags = fd_flags;
   //  fd_flags &= ~O_ACCMODE; // Remove the access mode from the value
   fd_flags |= O_NONBLOCK;
   fcntl(s, F_SETFL , fd_flags);
-  
-  rc = send(s, msg, len, flags);
+# endif  
+  int rc = send(s, (const char *)msg, len, flags);
 
+# ifdef WIN32
+  iMode = 0; // We really should be setting back to previous mode rather than resetting entirely.
+  ioctlsocket(s, FIONBIO, (u_long FAR*) &iMode);
+# else
   fcntl(s, F_SETFL , initial_fd_flags);
+# endif
 
   return rc;
 #endif 
@@ -1129,7 +1143,7 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
           "");
       }
       else {
-        ERROR("Scenario command not implemented in display\n");
+        REPORT_ERROR("Scenario command not implemented in display\n");
       }
 
       if(lose_packets && (curmsg -> nb_lost) && (!diagram_only)) {
@@ -1265,7 +1279,7 @@ void print_count_file(FILE *f, int header) {
 	fprintf(f, "%lu%s", curmsg->M_nbCmdSent, stat_delimiter);
       }
     } else {
-      ERROR("Unknown count file message type:");
+      REPORT_ERROR("Unknown count file message type:");
     }
   }
   fprintf(f, "\n");
@@ -1323,7 +1337,7 @@ void print_bottom_line(FILE *f, int last)
 	fprintf(f,"------ [+|-|*|/]: Adjust rate ---- [q]: Soft exit ---- [p]: Pause traffic -----" SIPP_ENDL);
 	break;
       default:
-	ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
+	REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
       }
     } else {
       assert(creationMode == MODE_SERVER);
@@ -1344,7 +1358,7 @@ void print_bottom_line(FILE *f, int last)
         fprintf(f,"------------------------------ Sipp Server Mode -------------------------------" SIPP_ENDL);
 	break;
       default:
-	ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
+	REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
       }
     }
   }
@@ -1883,7 +1897,7 @@ bool process_command(char *command) {
 int handle_ctrl_socket() {
   unsigned char bufrcv [SIPP_MAX_MSG_SIZE];
 
-  int ret = recv(ctrl_socket->ss_fd,bufrcv,sizeof(bufrcv) - 1,0);
+  int ret = recv(ctrl_socket->ss_fd,(char *) &bufrcv,sizeof(bufrcv) - 1,0);
   if (ret <= 0) {
     return ret;
   }
@@ -1892,7 +1906,7 @@ int handle_ctrl_socket() {
     /* No 'c', but we need one for '\0'. */
     char *command = (char *)malloc(ret);
     if (!command) {
-      ERROR("Out of memory allocated command buffer.");
+      REPORT_ERROR("Out of memory allocated command buffer.");
     }
     memcpy(command, bufrcv + 1, ret - 1);
     command[ret - 1] = '\0';
@@ -1911,7 +1925,7 @@ void setup_ctrl_socket() {
 
   int sock = socket(AF_INET,SOCK_DGRAM,0);
   if (sock == -1) {
-    ERROR_NO("Unable to create remote control socket!");
+    REPORT_ERROR_NO("Unable to create remote control socket!");
   }
 
   if (control_port) {
@@ -1936,7 +1950,7 @@ void setup_ctrl_socket() {
     hints.ai_family = PF_UNSPEC;
 
     if (getaddrinfo(control_ip, NULL, &hints, &addrinfo) != 0) {
-      ERROR("Unknown control address '%s'.\n"
+      REPORT_ERROR("Unknown control address '%s'.\n"
 	  "Use 'sipp -h' for details", control_ip);
     }
 
@@ -1959,7 +1973,7 @@ void setup_ctrl_socket() {
 
   if (try_counter == 0) {
     if (control_port) {
-      ERROR_NO("Unable to bind remote control socket to UDP port %d",
+      REPORT_ERROR_NO("Unable to bind remote control socket to UDP port %d",
                   control_port);
     } else {
       WARNING("Unable to bind remote control socket (tried UDP ports %d-%d): %s",
@@ -1970,7 +1984,7 @@ void setup_ctrl_socket() {
 
   ctrl_socket = sipp_allocate_socket(0, T_UDP, sock, 0);
   if (!ctrl_socket) {
-    ERROR_NO("Could not setup control socket!\n");
+    REPORT_ERROR_NO("Could not setup control socket!\n");
   }
 }
 
@@ -1978,7 +1992,7 @@ void setup_stdin_socket() {
   fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
   stdin_socket = sipp_allocate_socket(0, T_UDP, fileno(stdin), 0);
   if (!stdin_socket) {
-    ERROR_NO("Could not setup keyboard (stdin) socket!\n");
+    REPORT_ERROR_NO("Could not setup keyboard (stdin) socket!\n");
   }
 }
 
@@ -2018,7 +2032,7 @@ void handle_stdin_socket() {
 	int command_len = strlen(command_buffer);
 	char * new_command_buffer = (char *)realloc(command_buffer, command_len + 2);
   if (!new_command_buffer) {
-    ERROR("Unable to allocate command buffer of size %d", command_len + 2);
+    REPORT_ERROR("Unable to allocate command buffer of size %d", command_len + 2);
   }
   command_buffer = new_command_buffer;
 	command_buffer[command_len++] = c;
@@ -2030,7 +2044,7 @@ void handle_stdin_socket() {
       command_mode = 1;
       char * new_command_buffer = (char *)realloc(command_buffer, 1);
       if (!new_command_buffer) {
-        ERROR("Unable to allocate command buffer of size %d", 1);
+        REPORT_ERROR("Unable to allocate command buffer of size %d", 1);
       }
       command_buffer = new_command_buffer;
       command_buffer[0] = '\0';
@@ -2061,13 +2075,13 @@ char * get_to_or_from_tag(char *msg, bool toHeader)
     hdr = strcasestr(msg, "\r\nTo:");
     if(!hdr) hdr = strstr(msg, "\r\nt:");
     if(!hdr) {
-      ERROR("No valid To: header in reply");
+      REPORT_ERROR("No valid To: header in reply");
     }
   } else {
     hdr = strcasestr(msg, "\r\nFrom:");
     if(!hdr) hdr = strstr(msg, "\r\nf:");
     if(!hdr) {
-      ERROR("No valid From: header in message");
+      REPORT_ERROR("No valid From: header in message");
     }
   }
   
@@ -2103,7 +2117,7 @@ char * get_to_or_from_tag(char *msg, bool toHeader)
   ptr = strchr(ptr, '='); 
   
   if(!ptr) {
-    ERROR("Invalid tag param in header");
+    REPORT_ERROR("Invalid tag param in header");
   }
 
   ptr ++;
@@ -2325,13 +2339,13 @@ struct socketbuf *alloc_socketbuf(char *buffer, size_t size, int copy, struct so
 
   socketbuf = (struct socketbuf *)malloc(sizeof(struct socketbuf));
   if (!socketbuf) {
-	ERROR("Could not allocate socket buffer!\n");
+	REPORT_ERROR("Could not allocate socket buffer!\n");
   }
   memset(socketbuf, 0, sizeof(struct socketbuf));
   if (copy) {
     socketbuf->buf = (char *)malloc(size);
     if (!socketbuf->buf) {
-      ERROR("Could not allocate socket buffer data!\n");
+      REPORT_ERROR("Could not allocate socket buffer data!\n");
     }
     memcpy(socketbuf->buf, buffer, size);
   } else {
@@ -2398,7 +2412,7 @@ size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
 
     default:
     case COMP_KO:
-      ERROR("Compression pluggin error");
+      REPORT_ERROR("Compression pluggin error");
       return 0;
     }
   }
@@ -2415,18 +2429,18 @@ void sipp_customize_socket(struct sipp_socket *socket)
   if (socket->ss_transport == T_TCP || socket->ss_transport == T_TLS ) {
     int sock_opt = 1;
 
-    if (setsockopt(socket->ss_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&sock_opt,
+    if (setsockopt(socket->ss_fd, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt,
                    sizeof (sock_opt)) == -1) {
-      ERROR_NO("setsockopt(SO_REUSEADDR) failed");
+      REPORT_ERROR_NO("setsockopt(SO_REUSEADDR) failed");
     }
 
 #ifndef SOL_TCP
 #define SOL_TCP 6
 #endif
-    if (setsockopt(socket->ss_fd, SOL_TCP, TCP_NODELAY, (void *)&sock_opt,
+    if (setsockopt(socket->ss_fd, SOL_TCP, TCP_NODELAY, SETSOCKOPT_TYPE &sock_opt,
                     sizeof (sock_opt)) == -1) {
       {
-        ERROR_NO("setsockopt(TCP_NODELAY) failed");
+        REPORT_ERROR_NO("setsockopt(TCP_NODELAY) failed");
       }
     }
 
@@ -2436,8 +2450,8 @@ void sipp_customize_socket(struct sipp_socket *socket)
       linger.l_onoff = 1;
       linger.l_linger = 1;
       if (setsockopt (socket->ss_fd, SOL_SOCKET, SO_LINGER,
-                      &linger, sizeof (linger)) < 0) {
-        ERROR_NO("Unable to set SO_LINGER option");
+                      SETSOCKOPT_TYPE &linger, sizeof (linger)) < 0) {
+        REPORT_ERROR_NO("Unable to set SO_LINGER option");
       }
     }
   }
@@ -2446,18 +2460,18 @@ void sipp_customize_socket(struct sipp_socket *socket)
   if(setsockopt(socket->ss_fd,
                 SOL_SOCKET,
                 SO_SNDBUF,
-                &buffsize,
+                SETSOCKOPT_TYPE &buffsize,
                 sizeof(buffsize))) {
-    ERROR_NO("Unable to set socket sndbuf");
+    REPORT_ERROR_NO("Unable to set socket sndbuf");
   }
 
   buffsize = buff_size;
   if(setsockopt(socket->ss_fd,
                 SOL_SOCKET,
                 SO_RCVBUF,
-                &buffsize,
+                SETSOCKOPT_TYPE &buffsize,
                 sizeof(buffsize))) {
-    ERROR_NO("Unable to set socket rcvbuf");
+    REPORT_ERROR_NO("Unable to set socket rcvbuf");
   }
   DEBUG_OUT();
 }
@@ -2499,7 +2513,7 @@ static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, 
         if(comp_compress(&socket->ss_comp_state,
           comp_msg,
           (unsigned int *) &len) != COMP_OK) {
-            ERROR("Compression pluggin error");
+            REPORT_ERROR("Compression pluggin error");
         }
         buffer = (char *)comp_msg;
 
@@ -2511,7 +2525,7 @@ static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, 
 
       break;
     default:
-      ERROR("Internal error, unknown transport type %d\n", socket->ss_transport);
+      REPORT_ERROR("Internal error, unknown transport type %d\n", socket->ss_transport);
   }
 
   DEBUG_OUT("return %d", rc);
@@ -2561,7 +2575,7 @@ static int write_error(struct sipp_socket *socket, int ret) {
       WARNING("Broken pipe on TCP connection, remote peer "
 	  "probably closed the socket");
     } else {
-      ERROR("Broken pipe on TCP connection, remote peer "
+      REPORT_ERROR("Broken pipe on TCP connection, remote peer "
 	  "probably closed the socket");
     }
     return -1;
@@ -2642,7 +2656,7 @@ static int read_error(struct sipp_socket *socket, int ret) {
     if (reconnect_allowed()) {
       WARNING("Error on TCP connection, remote peer probably closed the socket: %s", errstring);
     } else {
-      ERROR("Error on TCP connection, remote peer probably closed the socket: %s", errstring);
+      REPORT_ERROR("Error on TCP connection, remote peer probably closed the socket: %s", errstring);
     }
     return -1;
   }
@@ -2811,7 +2825,7 @@ void merge_socketbufs(struct socketbuf *socketbuf) {
   }
 
   if (next->offset) {
-    ERROR("Internal error: can not merge a socketbuf with a non-zero offset.");
+    REPORT_ERROR("Internal error: can not merge a socketbuf with a non-zero offset.");
   }
 
   if (socketbuf->offset) {
@@ -2824,7 +2838,7 @@ void merge_socketbufs(struct socketbuf *socketbuf) {
 
   newbuf = (char *)realloc(socketbuf->buf, newsize);
   if (!newbuf) {
-    ERROR("Could not allocate memory to merge socket buffers!");
+    REPORT_ERROR("Could not allocate memory to merge socket buffers!");
   }
   memcpy(newbuf + socketbuf->len, next->buf, next->len);
   socketbuf->buf = newbuf;
@@ -2963,7 +2977,7 @@ static int empty_socket(struct sipp_socket *socket) {
 
   buffer = (char *)malloc(readsize);
   if (!buffer) {
-    ERROR("Could not allocate memory for read!");
+    REPORT_ERROR("Could not allocate memory for read!");
   }
   socketbuf = alloc_socketbuf(buffer, readsize, NO_COPY, NULL);
 
@@ -2977,7 +2991,7 @@ static int empty_socket(struct sipp_socket *socket) {
       ret = SSL_read(socket->ss_ssl, buffer, readsize);
       /* XXX: Check for clean shutdown. */
 #else
-      ERROR("TLS support is not enabled!");
+      REPORT_ERROR("TLS support is not enabled!");
 #endif
       break;
   }
@@ -3022,7 +3036,7 @@ void sipp_socket_invalidate(struct sipp_socket *socket) {
   socket->ss_fd = -1;
 
   if((pollidx = socket->ss_pollidx) >= pollnfds) {
-    ERROR("Pollset error: index %d is greater than number of fds %d!", pollidx, pollnfds);
+    REPORT_ERROR("Pollset error: index %d is greater than number of fds %d!", pollidx, pollnfds);
   }
 
   socket->ss_invalid = true;
@@ -3062,7 +3076,7 @@ static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, s
   if (!socket->ss_msglen)
     return 0;
   if (socket->ss_msglen > len)
-    ERROR("There is a message waiting in sockfd(%d) that is bigger (%d bytes) than the read size.",
+    REPORT_ERROR("There is a message waiting in sockfd(%d) that is bigger (%d bytes) than the read size.",
            socket->ss_fd, socket->ss_msglen);
 
   len = socket->ss_msglen;
@@ -3147,7 +3161,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
       main_scenario->stats->computeStat(CStat::E_CREATE_OUTGOING_CALL);
       call *new_ptr = new call(call_id, is_ipv6, 0, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
       if (!new_ptr) {
-	      ERROR("Out of memory allocating a call!");
+	      REPORT_ERROR("Out of memory allocating a call!");
       }
 
       outbound_congestion = false;
@@ -3188,7 +3202,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
       main_scenario->stats->computeStat(CStat::E_CREATE_INCOMING_CALL);
       listener_ptr = new call(call_id, socket, use_remote_sending_addr ? &remote_sending_sockaddr : src);
       if (!listener_ptr) {
-	ERROR("Out of memory allocating a call!");
+	REPORT_ERROR("Out of memory allocating a call!");
       }
     }
     else // mode != from SERVER and 3PCC Controller B
@@ -3203,7 +3217,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
 	  /* This should have the real address that the message came from. */
 	  call *call_ptr = new call(ooc_scenario, socket, use_remote_sending_addr ? &remote_sending_sockaddr : src, call_id, 0 /* no user. */, socket->ss_ipv6, true, false);
 	  if (!call_ptr) {
-	    ERROR("Out of memory allocating a call!");
+	    REPORT_ERROR("Out of memory allocating a call!");
 	  }
 	  CStat::globalStat(CStat::E_AUTO_ANSWERED);
 	  call_ptr->process_incoming(msg, src);
@@ -3305,7 +3319,7 @@ void pollset_process(int wait)
       if ((transport == T_TCP || transport == T_TLS) && sock == main_socket) {
 	struct sipp_socket *new_sock = sipp_accept_socket(sock);
 	if (!new_sock) {
-	  ERROR_NO("Accepting new TCP connection.\n");
+	  REPORT_ERROR_NO("Accepting new TCP connection.\n");
 	}
       } else if (sock == ctrl_socket) {
 	handle_ctrl_socket();
@@ -3315,7 +3329,7 @@ void pollset_process(int wait)
 	if (thirdPartyMode == MODE_3PCC_CONTROLLER_B) {
 	  twinSippSocket = sipp_accept_socket(sock);
 	  if (!twinSippMode) {
-	    ERROR_NO("Accepting new TCP connection on Twin SIPp Socket.\n");
+	    REPORT_ERROR_NO("Accepting new TCP connection on Twin SIPp Socket.\n");
 	  }
 	  twinSippSocket->ss_control = 1;
 	} else {
@@ -3323,7 +3337,7 @@ void pollset_process(int wait)
 	    which will be used for reading the infos sent by this remote
 	    twin sipp instance (slave or master) */
 	  if(local_nb == MAX_LOCAL_TWIN_SOCKETS) {
-	    ERROR("Max number of twin instances reached\n");
+	    REPORT_ERROR("Max number of twin instances reached\n");
 	  }
 
 	  struct sipp_socket *localSocket = sipp_accept_socket(sock);
@@ -3385,13 +3399,14 @@ void pollset_process(int wait)
 
 void timeout_alarm(int param){
   if (timeout_error) {
-    ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
+    REPORT_ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
   }
   quitting = 1;
   timeout_exit = true;
 }
 
 /* Send loop & trafic generation*/
+/* This is called directoy by main() and runs until SIPp quits */
 
 void traffic_thread()
 {
@@ -3425,12 +3440,12 @@ void traffic_thread()
          /* If the -trace_screen option has not been set, */
          /* create the file at this occasion              */
          screenf = fopen(L_file_name, "a");
-	 if (!screenf) {
+	       if (!screenf) {
             WARNING("Unable to create '%s'", L_file_name);
          }
-	 print_screens();
-	 fclose(screenf);
-	 screenf = 0;
+	       print_screens();
+	       fclose(screenf);
+	       screenf = 0;
        }
 
        if(dumpInRtt) {
@@ -3441,33 +3456,33 @@ void traffic_thread()
     }
 
     while (sockets_pending_reset.begin() != sockets_pending_reset.end()) {
-	reset_connection(*(sockets_pending_reset.begin()));
-	sockets_pending_reset.erase(sockets_pending_reset.begin());
+	    reset_connection(*(sockets_pending_reset.begin()));
+	    sockets_pending_reset.erase(sockets_pending_reset.begin());
     }
 
     if (((main_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + main_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated)) >= stop_after) && !quitting) {
         DEBUG("Setting quitting to 1, since Incoming Calls: %d plus Outgoing Calls: %d is greater than stop_after: %d", main_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated), main_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated), stop_after);
-	quitting = 1;
+	      quitting = 1;
     }
     if (quitting) {
       if (quitting > 11) {
         /* Force exit: abort all calls */
-	abort_all_tasks();
+	      abort_all_tasks();
       }
       /* Quitting and no more openned calls, close all */
       if(!main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)) {
         /* We can have calls that do not count towards our open-call count (e.g., dead calls). */
-	abort_all_tasks();
+	      abort_all_tasks();
 
-	for (int i = 0; i < pollnfds; i++) {
-	  sipp_close_socket(sockets[i]);
-	}
+	      for (int i = 0; i < pollnfds; i++) {
+	        sipp_close_socket(sockets[i]);
+	      }
 
-	screentask::report(true);
-	stattask::report();
-	if (screenf) {
-	  print_screens();
-	}
+	      screentask::report(true);
+	      stattask::report();
+	      if (screenf) {
+	        print_screens();
+	      }
         if (q_pressed) {
           WARNING("Ending test because q was pressed by user");
           screen_exit(EXIT_TEST_MANUALLY_STOPPED);
@@ -3503,22 +3518,22 @@ void traffic_thread()
     /* Workaround hpux problem with iterators. Deleting the
      * current object when iterating breaks the iterator and
      * leads to iterate again on the destroyed (deleted)
-     * object. Thus, we have to wait ont step befere actual
+     * object. Thus, we have to wait one step befere actual
      * deletion of the object*/
     task * last = NULL;
 
     task_list::iterator iter;
     for(iter = running_tasks->begin(); iter != running_tasks->end(); iter++) {
       if(last) {
-	last -> run();
-	if (sockets_pending_reset.begin() != sockets_pending_reset.end()) {
-	  last = NULL;
-	  break;
-	}
+	      last -> run();
+	      if (sockets_pending_reset.begin() != sockets_pending_reset.end()) {
+	        last = NULL;
+	        break;
+	      }
       }
       last = *iter;
       if (--loops <= 0) {
-	break;
+	      break;
       }
     }
     if(last) {
@@ -3600,7 +3615,7 @@ char *wrap(const char *in, int offset, int size) {
   int indent = 0;
 
   if (!out) {
-    ERROR_NO("malloc");
+    REPORT_ERROR_NO("malloc");
   }
 
   for (i = j = 0; i < l; i++) {
@@ -3608,7 +3623,7 @@ char *wrap(const char *in, int offset, int size) {
     if (in[i] == '\n') {
       char * new_out = (char *)realloc(out, alloced += offset);
       if (!new_out) {
-        ERROR_NO("Unable to allocate memory in wrap().");
+        REPORT_ERROR_NO("Unable to allocate memory in wrap().");
       }
       out = new_out;
       pos = 0;
@@ -3636,7 +3651,7 @@ char *wrap(const char *in, int offset, int size) {
         out[j++] = '\n';
         char * new_out = (char *)realloc(out, alloced += useoffset);
         if (!new_out) {
-          ERROR_NO("Unable to allocate memory in wrap().");
+          REPORT_ERROR_NO("Unable to allocate memory in wrap().");
         }
         out = new_out;
         for (k = 0; k < useoffset; k++) {
@@ -3659,7 +3674,7 @@ char *wrap(const char *in, int offset, int size) {
         k++;
         char * new_out = (char *)realloc(out, alloced += useoffset);
         if (!new_out) {
-          ERROR_NO("Unable to allocate memory in wrap().");
+          REPORT_ERROR_NO("Unable to allocate memory in wrap().");
         }
         out = new_out;
         for (m = 0; m < useoffset; m++) {
@@ -3895,7 +3910,7 @@ static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, in
 
   ret = (struct sipp_socket *)malloc(sizeof(struct sipp_socket));
   if (!ret) {
-    ERROR("Could not allocate a sipp_socket structure.");
+    REPORT_ERROR("Could not allocate a sipp_socket structure.");
   }
   memset(ret, 0, sizeof(struct sipp_socket));
 
@@ -3916,11 +3931,11 @@ static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, in
 
   if ( transport == T_TLS ) {
     if ((ret->ss_bio = BIO_new_socket(fd,BIO_NOCLOSE)) == NULL) {
-      ERROR("Unable to create BIO object:Problem with BIO_new_socket()\n");
+      REPORT_ERROR("Unable to create BIO object:Problem with BIO_new_socket()\n");
     }
 
     if (!(ret->ss_ssl = SSL_new(accepting ? sip_trp_ssl_ctx : sip_trp_ssl_ctx_client))) {
-      ERROR("Unable to create SSL object : Problem with SSL_new() \n");
+      REPORT_ERROR("Unable to create SSL object : Problem with SSL_new() \n");
     }
 
     SSL_set_bio(ret->ss_ssl,ret->ss_bio,ret->ss_bio);
@@ -3940,7 +3955,7 @@ static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, in
   pollfiles[ret->ss_pollidx].events  = POLLIN | POLLERR;
   pollfiles[ret->ss_pollidx].revents = 0;
 
-  DEBUG_OUT("return %d", ret);
+  DEBUG_OUT("return code %d", ret);
   return ret;
 }
 
@@ -3958,7 +3973,7 @@ int socket_fd(bool use_ipv6, int transport) {
       break;
     case T_TLS:
 #ifndef _USE_OPENSSL
-      ERROR("You do not have TLS support enabled!\n");
+      REPORT_ERROR("You do not have TLS support enabled!\n");
 #endif
     case T_TCP:
       socket_type = SOCK_STREAM;
@@ -3966,7 +3981,7 @@ int socket_fd(bool use_ipv6, int transport) {
   }
 
   if((fd = socket(use_ipv6 ? AF_INET6 : AF_INET, socket_type, 0))== -1) {
-    ERROR("Unable to get a %s socket (3)", TRANSPORT_TO_STRING(transport));
+    REPORT_ERROR("Unable to get a %s socket (3)", TRANSPORT_TO_STRING(transport));
   }
 
   DEBUG_OUT("socket fd = %d", fd);
@@ -4002,7 +4017,7 @@ struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
   ret  = sipp_allocate_socket(use_ipv6, transport, fd);
   if (!ret) {
     close(fd);
-    ERROR("Could not allocate new socket structure!");
+    REPORT_ERROR("Could not allocate new socket structure!");
   }
   DEBUG_OUT();
   return ret;
@@ -4039,7 +4054,7 @@ struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *exi
     }
     while (next_socket != first);
     if (next_socket == first) {
-      ERROR("Could not find an existing call socket to re-use!");
+      REPORT_ERROR("Could not find an existing call socket to re-use!");
     }
   } else {
     sock = new_sipp_socket(use_ipv6, transport);
@@ -4057,7 +4072,7 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
   sipp_socklen_t addrlen = sizeof(remote_sockaddr);
 
   if((fd = accept(accept_socket->ss_fd, (struct sockaddr *)&remote_sockaddr, &addrlen))== -1) {
-    ERROR("Unable to accept on a %s socket: %s", TRANSPORT_TO_STRING(transport), strerror(errno));
+    REPORT_ERROR("Unable to accept on a %s socket: %s", TRANSPORT_TO_STRING(transport), strerror(errno));
   }
 
 #if defined(__SUNOS)
@@ -4085,7 +4100,7 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
   ret  = sipp_allocate_socket(accept_socket->ss_ipv6, accept_socket->ss_transport, fd, 1);
   if (!ret) {
     close(fd);
-    ERROR_NO("Could not allocate new socket!");
+    REPORT_ERROR_NO("Could not allocate new socket!");
   }
 
   memcpy(&ret->ss_remote_sockaddr, &remote_sockaddr, sizeof(ret->ss_remote_sockaddr));
@@ -4097,10 +4112,10 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
 #ifdef _USE_OPENSSL
     int err;
     if ((err = SSL_accept(ret->ss_ssl)) < 0) {
-      ERROR("Error in SSL_accept: %s\n", sip_tls_error_string(accept_socket->ss_ssl, err));
+      REPORT_ERROR("Error in SSL_accept: %s\n", sip_tls_error_string(accept_socket->ss_ssl, err));
     }
 #else
-    ERROR("You need to compile SIPp with TLS support");
+    REPORT_ERROR("You need to compile SIPp with TLS support");
 #endif
   }
 
@@ -4166,10 +4181,10 @@ int sipp_do_connect_socket(struct sipp_socket *socket) {
 #ifdef _USE_OPENSSL
     int err;
     if ((err = SSL_connect(socket->ss_ssl)) < 0) {
-      ERROR("Error in SSL connection: %s\n", sip_tls_error_string(socket->ss_ssl, err));
+      REPORT_ERROR("Error in SSL connection: %s\n", sip_tls_error_string(socket->ss_ssl, err));
     }
 #else
-    ERROR("You need to compile SIPp with TLS support");
+    REPORT_ERROR("You need to compile SIPp with TLS support");
 #endif
   }
 
@@ -4187,7 +4202,7 @@ int sipp_reconnect_socket(struct sipp_socket *socket) {
 
   socket->ss_fd = socket_fd(socket->ss_ipv6, socket->ss_transport);
   if (socket->ss_fd == -1) {
-    ERROR_NO("Could not obtain new socket: ");
+    REPORT_ERROR_NO("Could not obtain new socket: ");
   }
 
   if (socket->ss_invalid) {
@@ -4196,11 +4211,11 @@ int sipp_reconnect_socket(struct sipp_socket *socket) {
 
     if ( transport == T_TLS ) {
       if ((socket->ss_bio = BIO_new_socket(socket->ss_fd,BIO_NOCLOSE)) == NULL) {
-	ERROR("Unable to create BIO object:Problem with BIO_new_socket()\n");
+	REPORT_ERROR("Unable to create BIO object:Problem with BIO_new_socket()\n");
       }
 
       if (!(socket->ss_ssl = SSL_new(sip_trp_ssl_ctx_client))) {
-	ERROR("Unable to create SSL object : Problem with SSL_new() \n");
+	REPORT_ERROR("Unable to create SSL object : Problem with SSL_new() \n");
       }
 
       SSL_set_bio(socket->ss_ssl,socket->ss_bio,socket->ss_bio);
@@ -4239,6 +4254,7 @@ int main(int argc, char *argv[])
     help();
     exit(EXIT_OTHER);
   }
+#ifndef WIN32
   {
     /* Ignore the SIGPIPE signal */
     struct sigaction action_pipe;
@@ -4247,9 +4263,9 @@ int main(int argc, char *argv[])
     sigaction(SIGPIPE, &action_pipe, NULL);
 
     /* The Window Size change Signal is also useless, and causes failures. */
-#ifdef SIGWINCH
+# ifdef SIGWINCH
     sigaction(SIGWINCH, &action_pipe, NULL);
-#endif
+# endif
 
     /* sig usr1 management */
     struct sigaction action_usr1;
@@ -4263,7 +4279,7 @@ int main(int argc, char *argv[])
     action_usr2.sa_handler = sipp_sigusr2;
     sigaction(SIGUSR2, &action_usr2, NULL);
   }
-
+#endif // ifndef WIN32
   screen_set_exename((char *)"sipp");
   
   pid = getpid();
@@ -4284,7 +4300,7 @@ int main(int argc, char *argv[])
 
   /* Command line parsing */
   /* Verify that value associated with argument exists (is not another argument) */
-#define REQUIRE_ARG() if((++argi) >= argc || (argv[argi])[0] == '-') { ERROR("Missing argument for param '%s'.\n" \
+#define REQUIRE_ARG() if((++argi) >= argc || (argv[argi])[0] == '-') { REPORT_ERROR("Missing argument for param '%s'.\n" \
 				     "Use 'sipp -h' for details",  argv[argi - 1]); }
 #define CHECK_PASS() if (option->pass != pass) { break; }
 
@@ -4299,7 +4315,7 @@ int main(int argc, char *argv[])
 	  continue;
 	}
 	help();
-	ERROR("Invalid argument: '%s'.\n"
+	REPORT_ERROR("Invalid argument: '%s'.\n"
 	    "Use 'sipp -h' for details", argv[argi]);
       }
 
@@ -4423,12 +4439,12 @@ int main(int argc, char *argv[])
 	    int field;
 
 	    if (inFiles.find(fileName) == inFiles.end()) {
-	      ERROR("Could not find file for -infindex: %s", argv[argi - 1]);
+	      REPORT_ERROR("Could not find file for -infindex: %s", argv[argi - 1]);
 	    }
 
 	    field = strtoul(argv[argi], &endptr, 0);
 	    if (*endptr) {
-	      ERROR("Invalid field specification for -infindex: %s", argv[argi]);
+	      REPORT_ERROR("Invalid field specification for -infindex: %s", argv[argi]);
 	    }
 
 	    inFiles[fileName]->index(field);
@@ -4447,7 +4463,7 @@ int main(int argc, char *argv[])
 	  CHECK_PASS();
 
 	  if (strlen(argv[argi]) != 2) {
-	    ERROR("Invalid argument for -t param : '%s'.\n"
+	    REPORT_ERROR("Invalid argument for -t param : '%s'.\n"
 		"Use 'sipp -h' for details",  argv[argi]);
 	  }
 
@@ -4472,12 +4488,12 @@ int main(int argc, char *argv[])
                 remote_port = 5061;
               }
 #else
-	      ERROR("To use a TLS transport you must compile SIPp with OpenSSL");
+	      REPORT_ERROR("To use a TLS transport you must compile SIPp with OpenSSL");
 #endif
 	      break;
 	    case 'c':
 	      if(strlen(comp_error)) {
-		ERROR("No " COMP_PLUGGIN " pluggin available:\n%s", comp_error);
+		REPORT_ERROR("No " COMP_PLUGGIN " pluggin available:\n%s", comp_error);
 	      }
 	      transport = T_UDP;
 	      compression = 1;
@@ -4499,12 +4515,12 @@ int main(int argc, char *argv[])
 	  }
 
 	  if (peripsocket && transport != T_UDP) {
-	    ERROR("You can only use a perip socket with UDP!\n");
+	    REPORT_ERROR("You can only use a perip socket with UDP!\n");
 	  }
 	  break;
 	case SIPP_OPTION_NEED_SSL:
 	  CHECK_PASS();
-	  ERROR("OpenSSL is required for the %s option.", argv[argi]);
+	  REPORT_ERROR("OpenSSL is required for the %s option.", argv[argi]);
 	  break;
 	case SIPP_OPTION_MAX_SOCKET:
 	  REQUIRE_ARG();
@@ -4533,10 +4549,10 @@ int main(int argc, char *argv[])
 	  REQUIRE_ARG();
 	  CHECK_PASS();
 	  if (users >= 0) {
-	    ERROR("Can not set open call limit (-l) when -users is specified.");
+	    REPORT_ERROR("Can not set open call limit (-l) when -users is specified.");
 	  }
 	  if (no_call_id_check) {
-	    ERROR("Can not set open call limit (-l) when -mc is specified.");
+	    REPORT_ERROR("Can not set open call limit (-l) when -mc is specified.");
 	  }
 	  open_calls_allowed = get_long(argv[argi], argv[argi - 1]);
 	  open_calls_user_setting = 1;
@@ -4567,7 +4583,7 @@ int main(int argc, char *argv[])
 	  CHECK_PASS();
 
 	  if (generic_count+1 >= sizeof(generic)/sizeof(generic[0])) {
-	    ERROR("Too many generic parameters %d",generic_count+1);
+	    REPORT_ERROR("Too many generic parameters %d",generic_count+1);
 	  }
 	  generic[generic_count++] = &argv[argi - 1];
 	  generic[generic_count] = NULL;
@@ -4581,17 +4597,17 @@ int main(int argc, char *argv[])
 	    int varId = globalVariables->find(argv[argi  - 1], false);
 	    if (varId == -1) {
 		globalVariables->dump();
-		ERROR("Can not set the global variable %s, because it does not exist.", argv[argi - 1]);
+		REPORT_ERROR("Can not set the global variable %s, because it does not exist.", argv[argi - 1]);
 	    }
 	    globalVariables->getVar(varId)->setString(strdup(argv[argi]));
 	  }
 	  break;
 	case SIPP_OPTION_3PCC:
 	  if(slave_masterSet){
-	    ERROR("-3PCC option is not compatible with -master and -slave options\n");
+	    REPORT_ERROR("-3PCC option is not compatible with -master and -slave options\n");
 	  }
 	  if(extendedTwinSippMode){
-	    ERROR("-3pcc and -slave_cfg options are not compatible\n");
+	    REPORT_ERROR("-3pcc and -slave_cfg options are not compatible\n");
 	  } 
 	  REQUIRE_ARG();
 	  CHECK_PASS();
@@ -4620,7 +4636,7 @@ int main(int argc, char *argv[])
 	    fprintf(stdout, "%s", default_scenario[i]);
 	    exit(EXIT_OTHER);
 	  } else {
-	    ERROR("Internal error, I don't recognize %s as a scenario option\n", argv[argi] - 1);
+	    REPORT_ERROR("Internal error, I don't recognize %s as a scenario option\n", argv[argi] - 1);
 	  }
 	  break;
 	case SIPP_OPTION_OOC_SCENARIO:
@@ -4632,14 +4648,14 @@ int main(int argc, char *argv[])
 	    int i = find_scenario(argv[argi]);
 	    ooc_scenario = new scenario(0, i, 0);
 	  } else {
-	    ERROR("Internal error, I don't recognize %s as a scenario option\n", argv[argi] - 1);
+	    REPORT_ERROR("Internal error, I don't recognize %s as a scenario option\n", argv[argi] - 1);
 	  }
 	  break;
 	case SIPP_OPTION_SLAVE_CFG: 
 	  REQUIRE_ARG();
 	  CHECK_PASS();
 	  if(twinSippMode){
-	    ERROR("-slave_cfg and -3pcc options are not compatible\n");
+	    REPORT_ERROR("-slave_cfg and -3pcc options are not compatible\n");
 	  }
 	  extendedTwinSippMode = true;
 	  slave_cfg_file = new char [strlen(argv[argi])+1] ;
@@ -4650,10 +4666,10 @@ int main(int argc, char *argv[])
 	  REQUIRE_ARG();
 	  CHECK_PASS();
 	  if(slave_masterSet){
-	    ERROR("-slave and -master options are not compatible\n");
+	    REPORT_ERROR("-slave and -master options are not compatible\n");
 	  }
 	  if(twinSippMode){
-	    ERROR("-master and -slave options are not compatible with -3PCC option\n");
+	    REPORT_ERROR("-master and -slave options are not compatible with -3PCC option\n");
 	  }
 	  *((char **)option->data) = argv[argi];
 	  slave_masterSet = true;
@@ -4685,7 +4701,7 @@ int main(int argc, char *argv[])
 		NULL,
 		&hints,
 		&local_addr) != 0) {
-	    ERROR("Unknown remote host '%s'.\n"
+	    REPORT_ERROR("Unknown remote host '%s'.\n"
 		"Use 'sipp -h' for details", remote_s_address);
 	  }
 
@@ -4714,7 +4730,7 @@ int main(int argc, char *argv[])
 	  } else if (!strcmp(argv[argi], "loose")) {
 	    *((int *)option->data) = RTCHECK_LOOSE;
 	  } else {
-	    ERROR("Unknown retransmission detection method: %s\n", argv[argi]);
+	    REPORT_ERROR("Unknown retransmission detection method: %s\n", argv[argi]);
 	  }
 	  break;
 	case SIPP_OPTION_TDMMAP: {
@@ -4732,7 +4748,7 @@ int main(int argc, char *argv[])
 	    tdm_map_c = i7 - i6;
 	    tdm_map_z = i6;
 	  } else {
-	    ERROR("Parameter -tdmmap must be of form {%%d-%%d}{%%d}{%%d-%%d}{%%d-%%d}");
+	    REPORT_ERROR("Parameter -tdmmap must be of form {%%d-%%d}{%%d}{%%d-%%d}{%%d-%%d}");
 	  }
 	  break;
 	}
@@ -4769,7 +4785,7 @@ int main(int argc, char *argv[])
 		  } else if (!strcmp(p, "pingreply")) {
 		    mask = DEFAULT_BEHAVIOR_PINGREPLY;
 		  } else {
-		    ERROR("Unknown default behavior: '%s'\n", token);
+		    REPORT_ERROR("Unknown default behavior: '%s'\n", token);
 		  }
 		  switch(mode) {
 		    case 0:
@@ -4812,39 +4828,39 @@ int main(int argc, char *argv[])
 
 	    handle = dlopen(argv[argi], RTLD_NOW);
 	    if (!handle) {
-	      ERROR("Could not open plugin %s: %s", argv[argi], dlerror());
+	      REPORT_ERROR("Could not open plugin %s: %s", argv[argi], dlerror());
 	    }
 
 	    init = (int (*)())dlsym(handle, "init");
 	    if((error = (char *) dlerror())) {
-	      ERROR("Could not locate init function in %s: %s", argv[argi], dlerror());
+	      REPORT_ERROR("Could not locate init function in %s: %s", argv[argi], dlerror());
 	    }
 
 	    ret = init();
 	    if (ret != 0) {
-	      ERROR("Plugin %s initialization failed.", argv[argi]);
+	      REPORT_ERROR("Plugin %s initialization failed.", argv[argi]);
 	    }
 	  }
 	  break;
 	default:
-	  ERROR("Internal error: I don't recognize the option type for %s\n", argv[argi]);
+	  REPORT_ERROR("Internal error: I don't recognize the option type for %s\n", argv[argi]);
       }
     }
   }
 
   if((extendedTwinSippMode && !slave_masterSet) || (!extendedTwinSippMode && slave_masterSet)){
-    ERROR("-slave_cfg option must be used with -slave or -master option\n");
+    REPORT_ERROR("-slave_cfg option must be used with -slave or -master option\n");
   }
 
   if (peripsocket) {
     if (!ip_file) {
-      ERROR("You must use the -inf option when using -t ui.\n"
+      REPORT_ERROR("You must use the -inf option when using -t ui.\n"
                "Use 'sipp -h' for details");
     }
   }
 
   if (ringbuffer_size && max_log_size) {
-    ERROR("Ring Buffer options and maximum log size are mutually exclusive.");
+    REPORT_ERROR("Ring Buffer options and maximum log size are mutually exclusive.");
   }
 
   if (global_lost) {
@@ -4852,7 +4868,7 @@ int main(int argc, char *argv[])
   }
 
   if (default_scenario_to_use == -2) {
-    ERROR("You must specify a scenario (for example with -sf or -sn parameters)");
+    REPORT_ERROR("You must specify a scenario (for example with -sf or -sn parameters)");
   }
 
   /* trace file setting */
@@ -4865,7 +4881,7 @@ int main(int argc, char *argv[])
 #ifdef _USE_OPENSSL
     if ((transport == T_TLS) && (FI_init_ssl_context() != SSL_INIT_NORMAL))
     {
-      ERROR("FI_init_ssl_context() failed");
+      REPORT_ERROR("FI_init_ssl_context() failed");
     }
 #endif
 
@@ -4908,7 +4924,7 @@ int main(int argc, char *argv[])
     sprintf (L_file_name, "%s_%d_screen.log", scenario_file, getpid());
     screenf = fopen(L_file_name, "w");
     if(!screenf) {
-      ERROR("Unable to create '%s'", L_file_name);
+      REPORT_ERROR("Unable to create '%s'", L_file_name);
     }
   setvbuf(screenf, (char *)NULL, _IONBF, 0);
   }
@@ -4916,7 +4932,7 @@ int main(int argc, char *argv[])
   //check if no_call_id_check is enabled with call limit 1
   //this feature can run just with 1 active call
   if (no_call_id_check == true && open_calls_allowed > 1) {
-      ERROR("-mc is only allowed with -l 1, meaning just one call can be active.");
+      REPORT_ERROR("-mc is only allowed with -l 1, meaning just one call can be active.");
   }
 
    // TODO: finish the -trace_timeout option implementation    
@@ -4926,7 +4942,7 @@ int main(int argc, char *argv[])
     sprintf (L_file_name, "%s_%d_timeout.log", scenario_file, getpid());
     timeoutf = fopen(L_file_name, "w");
     if(!timeoutf) {
-      ERROR("Unable to create '%s'", L_file_name);
+      REPORT_ERROR("Unable to create '%s'", L_file_name);
     }
   } */
 
@@ -4935,7 +4951,7 @@ int main(int argc, char *argv[])
     sprintf (L_file_name, "%s_%d_counts.csv", scenario_file, getpid());
     countf = fopen(L_file_name, "w");
     if(!countf) {
-      ERROR("Unable to create '%s'", L_file_name);
+      REPORT_ERROR("Unable to create '%s'", L_file_name);
     }
     print_count_file(countf, 1);
   }
@@ -4949,20 +4965,22 @@ int main(int argc, char *argv[])
      L_maxSocketPresent = 1;
   }
 
-  /* Initialization:  boost open file limit to the max (AgM)*/
+#ifndef WIN32
+  // Initialization:  boost open file limit to the max (AgM) [non-Windows only]
+
   if (!skip_rlimit) {
     struct rlimit rlimit;
 
     if (getrlimit (RLIMIT_NOFILE, &rlimit) < 0) {
-      ERROR_NO("getrlimit error");
+      REPORT_ERROR_NO("getrlimit error");
     }
 
     if (rlimit.rlim_max >
-#ifndef __CYGWIN
+# ifndef __CYGWIN
        ((L_maxSocketPresent) ?  (unsigned int)max_multi_socket : FD_SETSIZE)
-#else
+# else
        FD_SETSIZE
-#endif
+# endif
        ) {
       if (!no_call_id_check) {
         WARNING("Warning: open file limit > FD_SETSIZE; "
@@ -4970,20 +4988,20 @@ int main(int argc, char *argv[])
                FD_SETSIZE);
       }
       rlimit.rlim_max =
-#ifndef __CYGWIN
+# ifndef __CYGWIN
           (L_maxSocketPresent) ?  (unsigned int)max_multi_socket+min_socket : FD_SETSIZE ;
-#else
+# else
 
 	  FD_SETSIZE;
-#endif
+# endif
     }
 
     rlimit.rlim_cur = rlimit.rlim_max;
     if (setrlimit (RLIMIT_NOFILE, &rlimit) < 0) {
-      ERROR("Unable to increase the open file limit to FD_SETSIZE = %d",
-               FD_SETSIZE);
+      REPORT_ERROR("Unable to increase the open file limit to FD_SETSIZE = %d", FD_SETSIZE);
     }
   }
+#endif // ifndef WIN32
 
   DEBUG("Configuration complete, initializing...");
 
@@ -5044,36 +5062,40 @@ int main(int argc, char *argv[])
 
   /* checking if we need to launch the tool in background mode */ 
   if(backgroundMode == true)
+  {
+#ifdef WIN32
+    REPORT_ERROR("Background mode not supported on Win32.\n");
+#else
+    DEBUG("Entering background mode (forking)");
+    pid_t l_pid;
+    switch(l_pid = fork())
     {
-      DEBUG("Entering background mode (forking)");
-      pid_t l_pid;
-      switch(l_pid = fork())
-        {
-        case -1:
-          // error when forking !
-          ERROR_NO("Forking error");
-          exit(EXIT_SYSTEM_ERROR);
-        case 0:
-          // child process - poursuing the execution
-	  // close all of our file descriptors
-	  {
-	    int nullfd = open("/dev/null", O_RDWR);
+    case -1:
+      // error when forking !
+      REPORT_ERROR_NO("Forking error");
+      exit(EXIT_SYSTEM_ERROR);
+    case 0:
+      // child process - poursuing the execution
+      // close all of our file descriptors
+      {
+        int nullfd = open("/dev/null", O_RDWR);
 
-	    dup2(nullfd, fileno(stdin));
-	    dup2(nullfd, fileno(stdout));
-	    dup2(nullfd, fileno(stderr));
+        dup2(nullfd, fileno(stdin));
+        dup2(nullfd, fileno(stdout));
+        dup2(nullfd, fileno(stderr));
 
-	    close(nullfd);
-	  }
-          break;
-        default:
-          // parent process - killing the parent - the child get the parent pid
-          printf("Background mode - PID=[%d]\n", l_pid);
-          exit(EXIT_OTHER);
-        }
+        close(nullfd);
+      }
+      break;
+    default:
+      // parent process - killing the parent - the child get the parent pid
+      printf("Background mode - PID=[%d]\n", l_pid);
+      exit(EXIT_OTHER);
     }
-
-    sipp_usleep(sleeptime * 1000);
+#endif
+    }
+   
+    usleep(sleeptime * 1000);
 
   /* Create the statistics reporting task. */
   stattask::initialize();
@@ -5120,7 +5142,7 @@ int main(int argc, char *argv[])
                   NULL,
                   &hints,
                   &local_addr) != 0) {
-    ERROR("Unknown RTP address '%s'.\n"
+    REPORT_ERROR("Unknown RTP address '%s'.\n"
              "Use 'sipp -h' for details", media_ip);
   }
   
@@ -5151,11 +5173,11 @@ int main(int argc, char *argv[])
                               SOCK_DGRAM, 0)) == -1) {
       char msg[512];
       sprintf(msg, "Unable to get the audio RTP socket (IP=%s, port=%d)", media_ip, media_port);
-      ERROR_NO(msg);
+      REPORT_ERROR_NO(msg);
     }
     int sock_opt = 1;
-    if (setsockopt(media_socket, SOL_SOCKET, SO_REUSEADDR, (void *)&sock_opt, sizeof (sock_opt)) == -1) {
-      ERROR_NO("setsockopt(media_socket, SO_REUSEADDR) failed");
+    if (setsockopt(media_socket, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt, sizeof (sock_opt)) == -1) {
+      REPORT_ERROR_NO("setsockopt(media_socket, SO_REUSEADDR) failed");
     }
 
     /* create a second socket for video */
@@ -5163,10 +5185,10 @@ int main(int argc, char *argv[])
                                     SOCK_DGRAM, 0)) == -1) {
       char msg[512];
       sprintf(msg, "Unable to get the video RTP socket (IP=%s, port=%d)", media_ip, media_port+2);
-      ERROR_NO(msg);
+      REPORT_ERROR_NO(msg);
     }
-    if (setsockopt(media_socket_video, SOL_SOCKET, SO_REUSEADDR, (void *)&sock_opt, sizeof (sock_opt)) == -1) {
-      ERROR_NO("setsockopt(media_socket_video, SO_REUSEADDR) failed");
+    if (setsockopt(media_socket_video, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt, sizeof (sock_opt)) == -1) {
+      REPORT_ERROR_NO("setsockopt(media_socket_video, SO_REUSEADDR) failed");
     }
 
     int try_counter;
@@ -5196,7 +5218,7 @@ int main(int argc, char *argv[])
     if (try_counter >= max_tries) {
       char msg[512];
       sprintf(msg, "Unable to bind audio RTP socket (IP=%s, port=%d)", media_ip, media_port);
-      ERROR_NO(msg);
+      REPORT_ERROR_NO(msg);
     }
     DEBUG("Bound audio socket %s:%hu, after %d attempts", media_ip, media_port, try_counter);
 
@@ -5221,7 +5243,7 @@ int main(int argc, char *argv[])
             SOCK_ADDR_SIZE(&media_sockaddr))) {
       char msg[512];
       sprintf(msg, "Unable to bind video RTP socket (IP=%s, port=%d)", media_ip, media_port+2);
-      ERROR_NO(msg);
+      REPORT_ERROR_NO(msg);
     }
     DEBUG("Bound video socket %s:%hu", media_ip, media_port+2);
     /* Second socket bound */
@@ -5240,7 +5262,7 @@ int main(int argc, char *argv[])
          (void *(*)(void *)) rtp_echo_thread,
          (void*)&media_socket) 
         == -1) {
-      ERROR_NO("Unable to create RTP echo thread");
+      REPORT_ERROR_NO("Unable to create RTP echo thread");
     }
   }
 
@@ -5254,7 +5276,7 @@ int main(int argc, char *argv[])
          (void *(*)(void *)) rtp_echo_thread,
          (void*)&media_socket_video) 
         == -1) {
-      ERROR_NO("Unable to create second RTP echo thread");
+      REPORT_ERROR_NO("Unable to create second RTP echo thread");
       }
     }
 
@@ -5267,13 +5289,6 @@ int main(int argc, char *argv[])
 
 }
 
-void sipp_usleep(unsigned long usec) {
-	if (usec >= 1000000) {
-		sleep(usec / 1000000);
-	}
-	usec %= 1000000;
-	usleep(usec);
-}
 
 bool reconnect_allowed() {
   if (reset_number == -1) {
@@ -5285,7 +5300,7 @@ bool reconnect_allowed() {
 void reset_connection(struct sipp_socket *socket) {
   DEBUG_IN();
   if (!reconnect_allowed()) {
-      ERROR_NO("Max number of reconnections reached");
+      REPORT_ERROR_NO("Max number of reconnections reached");
     }
 
   if (reset_number != -1) {
@@ -5331,7 +5346,7 @@ void close_calls(struct sipp_socket *socket) {
 int determine_remote_ip() {
   if(!strlen(remote_host)) {
     if((sendMode != MODE_SERVER)) {
-      ERROR("Missing remote host parameter. This scenario requires it.  \nCommon reasons are that the first message is a sent by SIPp or that a NOP statement precedes the <recv> and you specified the -mc option");
+      REPORT_ERROR("Missing remote host parameter. This scenario requires it.  \nCommon reasons are that the first message is a sent by SIPp or that a NOP statement precedes the <recv> and you specified the -mc option");
     }
   } else {
     int temp_remote_port;
@@ -5356,7 +5371,7 @@ int determine_remote_ip() {
         NULL,
         &hints,
         &local_addr) != 0) {
-          ERROR("Unknown remote host '%s'.\n"
+          REPORT_ERROR("Unknown remote host '%s'.\n"
             "Use 'sipp -h' for details", remote_host);
       }
 
@@ -5386,7 +5401,7 @@ int determine_remote_ip() {
 
 int determine_local_ip() {
   if(gethostname(hostname,64) != 0) {
-    ERROR_NO("Can't get local hostname in 'gethostname(hostname,64)'");
+    REPORT_ERROR_NO("Can't get local hostname in 'gethostname(hostname,64)'");
   }
   
   {
@@ -5406,7 +5421,7 @@ int determine_local_ip() {
 
     /* Resolving local IP */
     if (getaddrinfo(local_host, NULL, &hints, &local_addr) != 0) {
-      ERROR("Can't get local IP address in getaddrinfo, local_host='%s', local_ip='%s'",
+      REPORT_ERROR("Can't get local IP address in getaddrinfo, local_host='%s', local_ip='%s'",
 	  local_host,
 	  local_ip);
     }
@@ -5448,7 +5463,7 @@ int open_connections() {
 
   /* Creating and binding the local socket */
   if ((main_socket = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
-    ERROR_NO("Unable to get the local socket");
+    REPORT_ERROR_NO("Unable to get the local socket");
   }
 
   sipp_customize_socket(main_socket);
@@ -5479,7 +5494,7 @@ int open_connections() {
 		NULL,
 		&hints,
 		&local_addr) != 0) {
-	    ERROR("Unknown host '%s'.\n"
+	    REPORT_ERROR("Unknown host '%s'.\n"
 		"Use 'sipp -h' for details", peripaddr);
 	  }
 	} else {
@@ -5487,7 +5502,7 @@ int open_connections() {
 		NULL,
 		&hints,
 		&local_addr) != 0) {
-	    ERROR("Unknown host '%s'.\n"
+	    REPORT_ERROR("Unknown host '%s'.\n"
 		"Use 'sipp -h' for details", peripaddr);
 	  }
 	}
@@ -5531,7 +5546,7 @@ int open_connections() {
                          NULL,
                          &hints,
                          &local_addr) != 0) {
-           ERROR("Unknown host '%s'.\n"
+           REPORT_ERROR("Unknown host '%s'.\n"
                     "Use 'sipp -h' for details", peripaddr);
         }
       } else {
@@ -5539,7 +5554,7 @@ int open_connections() {
                         NULL,
                         &hints,
                         &local_addr) != 0) {
-           ERROR("Unknown host '%s'.\n"
+           REPORT_ERROR("Unknown host '%s'.\n"
                    "Use 'sipp -h' for details", peripaddr);
         }
       }
@@ -5559,10 +5574,10 @@ int open_connections() {
     }
     if(sipp_bind_socket(main_socket, &local_sockaddr, &local_port)) {
       if (local_ip_is_ipv6) {
-        ERROR_NO("Unable to bind main socket to IPv6 address, port %d. This may be caused by an incorrectly specified local IP ", user_port);
+        REPORT_ERROR_NO("Unable to bind main socket to IPv6 address, port %d. This may be caused by an incorrectly specified local IP ", user_port);
       }
       else {
-        ERROR_NO("Unable to bind main socket to %s:%d. Make sure that the local IP (as specified with -i) is actually an IP address on your computer", inet_ntoa(((struct sockaddr_in *) &local_sockaddr)->sin_addr), user_port);
+        REPORT_ERROR_NO("Unable to bind main socket to %s:%d. Make sure that the local IP (as specified with -i) is actually an IP address on your computer", inet_ntoa(((struct sockaddr_in *) &local_sockaddr)->sin_addr), user_port);
       }
     }
   }
@@ -5592,14 +5607,14 @@ int open_connections() {
 
       if (j == map_perip_fd.end()) {
         if((sock = new_sipp_socket(is_ipv6, transport)) == NULL) {
-          ERROR_NO("Unable to get server socket");
+          REPORT_ERROR_NO("Unable to get server socket");
         }
 
         if (getaddrinfo(peripaddr,
                         NULL,
                         &hints,
                         &local_addr) != 0) {
-            ERROR("Unknown remote host '%s'.\n"
+            REPORT_ERROR("Unknown remote host '%s'.\n"
                      "Use 'sipp -h' for details", peripaddr);
           }
 
@@ -5619,7 +5634,7 @@ int open_connections() {
 
         sipp_customize_socket(sock);
         if(sipp_bind_socket(sock, &server_sockaddr, NULL)) {
-          ERROR_NO("Unable to bind server socket");
+          REPORT_ERROR_NO("Unable to bind server socket");
         }
 
         map_perip_fd[peripaddr] = sock;
@@ -5630,7 +5645,7 @@ int open_connections() {
   if((!multisocket) && (transport == T_TCP || transport == T_TLS) &&
    (sendMode != MODE_SERVER)) {
     if((tcp_multiplex = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
-      ERROR_NO("Unable to get a TCP socket");
+      REPORT_ERROR_NO("Unable to get a TCP socket");
     }
 
     /* OJA FIXME: is it correct? */
@@ -5647,10 +5662,10 @@ int open_connections() {
       } else {
         if(errno == EINVAL){
           /* This occurs sometime on HPUX but is not a true INVAL */
-          ERROR_NO("Unable to connect a TCP socket, remote peer error.\n"
+          REPORT_ERROR_NO("Unable to connect a TCP socket, remote peer error.\n"
                 "Use 'sipp -h' for details");
         } else {
-          ERROR_NO("Unable to connect a TCP socket.\n"
+          REPORT_ERROR_NO("Unable to connect a TCP socket.\n"
                  "Use 'sipp -h' for details");
         }
       }
@@ -5662,7 +5677,7 @@ int open_connections() {
 
   if(transport == T_TCP || transport == T_TLS) {
     if(listen(main_socket->ss_fd, 100)) {
-      ERROR_NO("Unable to listen main socket");
+      REPORT_ERROR_NO("Unable to listen main socket");
     }
   }
 
@@ -5673,7 +5688,7 @@ int open_connections() {
     }else if(thirdPartyMode == MODE_3PCC_CONTROLLER_B){
       connect_local_twin_socket(twinSippHost);
     }else{
-      ERROR("TwinSipp Mode enabled but thirdPartyMode is different "
+      REPORT_ERROR("TwinSipp Mode enabled but thirdPartyMode is different "
               "from 3PCC_CONTROLLER_B and 3PCC_CONTROLLER_A\n");
     }
   }else if (extendedTwinSippMode){
@@ -5687,14 +5702,14 @@ int open_connections() {
      get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
      connect_local_twin_socket(twinSippHost);
    }else{
-      ERROR("extendedTwinSipp Mode enabled but thirdPartyMode is different "
+      REPORT_ERROR("extendedTwinSipp Mode enabled but thirdPartyMode is different "
             "from MASTER and SLAVE\n");
    }
   }
 
   //casting remote_sockaddr as int* and derefrencing to get first byte. If it is null, no IP has been specified.
   if(*(int*)&remote_sockaddr && no_call_id_check && main_socket->ss_transport == T_UDP) { 
-    if(sipp_connect_socket(main_socket, &remote_sockaddr)) ERROR("Could not connect socket to remote address. Check to make sure the remote IP is valid.");
+    if(sipp_connect_socket(main_socket, &remote_sockaddr)) REPORT_ERROR("Could not connect socket to remote address. Check to make sure the remote IP is valid.");
   }
 
   return status;
@@ -5717,7 +5732,7 @@ void connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *pe
                       &hints,
                       &local_addr) != 0) {
 
-ERROR("Unknown peer host '%s'.\n"
+REPORT_ERROR("Unknown peer host '%s'.\n"
                        "Use 'sipp -h' for details", peer_host);
             }
 
@@ -5738,7 +5753,7 @@ ERROR("Unknown peer host '%s'.\n"
       }
       strcpy(peer_ip, get_inet_address(peer_sockaddr));
       if((*peer_socket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-        ERROR_NO("Unable to get a twin sipp TCP socket");
+        REPORT_ERROR_NO("Unable to get a twin sipp TCP socket");
       }
 
       /* Mark this as a control socket. */
@@ -5747,11 +5762,11 @@ ERROR("Unknown peer host '%s'.\n"
       if(sipp_connect_socket(*peer_socket, peer_sockaddr)) {
 	if(errno == EINVAL) {
 	  /* This occurs sometime on HPUX but is not a true INVAL */
-	  ERROR_NO("Unable to connect a twin sipp TCP socket\n "
+	  REPORT_ERROR_NO("Unable to connect a twin sipp TCP socket\n "
 	      ", remote peer error.\n"
 	      "Use 'sipp -h' for details");
 	} else {
-	  ERROR_NO("Unable to connect a twin sipp socket "
+	  REPORT_ERROR_NO("Unable to connect a twin sipp socket "
 	      "\n"
 	      "Use 'sipp -h' for details");
 	}
@@ -5772,7 +5787,7 @@ struct sipp_socket **get_peer_socket(char * peer)
       return peer_socket;
      }
      else {
-       ERROR("get_peer_socket: Peer %s not found\n", peer);
+       REPORT_ERROR("get_peer_socket: Peer %s not found\n", peer);
     }
    return NULL;
 }
@@ -5787,7 +5802,7 @@ char * get_peer_addr(char * peer)
        return addr;
        }
      else{
-       ERROR("get_peer_addr: Peer %s not found\n", peer);
+       REPORT_ERROR("get_peer_addr: Peer %s not found\n", peer);
        }
    return NULL;
 }
@@ -5819,7 +5834,7 @@ void connect_local_twin_socket(char * twinSippHost)
                            NULL,
                            &hints,
                            &local_addr) != 0) {
-               ERROR("Unknown twin host '%s'.\n"
+               REPORT_ERROR("Unknown twin host '%s'.\n"
                         "Use 'sipp -h' for details", twinSippHost);
                 }
              memcpy(&twinSipp_sockaddr,
@@ -5838,7 +5853,7 @@ void connect_local_twin_socket(char * twinSippHost)
              strcpy(twinSippIp, get_inet_address(&twinSipp_sockaddr));
 
              if((localTwinSippSocket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-               ERROR_NO("Unable to get a listener TCP socket ");
+               REPORT_ERROR_NO("Unable to get a listener TCP socket ");
              }
 
            memset(&localTwin_sockaddr, 0, sizeof(struct sockaddr_storage));
@@ -5855,15 +5870,15 @@ void connect_local_twin_socket(char * twinSippHost)
            // add socket option to allow the use of it without the TCP timeout
            // This allows to re-start the controller B (or slave) without timeout after its exit
            int reuse = 1;
-           setsockopt(localTwinSippSocket->ss_fd,SOL_SOCKET,SO_REUSEADDR,(int *)&reuse,sizeof(reuse));
+           setsockopt(localTwinSippSocket->ss_fd,SOL_SOCKET,SO_REUSEADDR,SETSOCKOPT_TYPE &reuse,sizeof(reuse));
            sipp_customize_socket(localTwinSippSocket);
 
 	   if(sipp_bind_socket(localTwinSippSocket, &localTwin_sockaddr, 0)) {
-	     ERROR_NO("Unable to bind twin sipp socket ");
+	     REPORT_ERROR_NO("Unable to bind twin sipp socket ");
 	   }
 
 	   if(listen(localTwinSippSocket->ss_fd, 100)) {
-	     ERROR_NO("Unable to listen twin sipp socket in ");
+	     REPORT_ERROR_NO("Unable to listen twin sipp socket in ");
 	   }
 }
 
@@ -5984,7 +5999,7 @@ int rotatef(struct logfile_info *lfi) {
   }
   if(lfi->check && !lfi->fptr) {
     /* We can not use the error functions from this function, as we may be rotating the error log itself! */
-    ERROR("Unable to open/create '%s'", lfi->file_name);
+    REPORT_ERROR("Unable to open/create '%s'", lfi->file_name);
   }
   return (lfi->fptr != 0);
 }

@@ -30,6 +30,9 @@
 #include "sipp.hpp"
 #include "scenario.hpp"
 #include "screen.hpp"
+#ifdef WIN32
+# include <win32_compatibility.h>
+#endif
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -467,7 +470,7 @@ void CStat::setRepartitionCallLength(char * P_listeStr)
                     &M_CallLengthRepartition, 
                     &M_SizeOfCallLengthRepartition);
   } else {
-    ERROR("Could not create table for call length repartition '%s'\n", P_listeStr);
+    REPORT_ERROR("Could not create table for call length repartition '%s'\n", P_listeStr);
   }
   delete [] listeInteger;
   listeInteger = NULL;
@@ -486,7 +489,7 @@ void CStat::setRepartitionResponseTime (char * P_listeStr)
 	  &M_ResponseTimeRepartition[i],
 	  &M_SizeOfResponseTimeRepartition);
     } else {
-      ERROR("Could not create table for response time repartition '%s'\n", P_listeStr);
+      REPORT_ERROR("Could not create table for response time repartition '%s'\n", P_listeStr);
     }
     delete [] listeInteger;
     listeInteger = NULL;
@@ -732,7 +735,7 @@ int CStat::computeStat (E_Action P_action)
       break;
      
     default :
-      ERROR("CStat::ComputeStat() - Unrecognized Action %d\n", P_action);
+      REPORT_ERROR("CStat::ComputeStat() - Unrecognized Action %d\n", P_action);
       return (-1);
     } /* end switch */
   return (0);
@@ -784,7 +787,7 @@ int CStat::globalStat (E_Action P_action) {
       M_G_counters [CPT_G_PL_AutoAnswered - E_NB_COUNTER - 1]++;
       break;
     default :
-      ERROR("CStat::ComputeStat() - Unrecognized Action %d\n", P_action);
+      REPORT_ERROR("CStat::ComputeStat() - Unrecognized Action %d\n", P_action);
       return (-1);
     } /* end switch */
   return (0);
@@ -920,7 +923,7 @@ int CStat::findCounter(const char *counter, bool alloc) {
 
   unsigned long long * new_genericCounters = (unsigned long long *)realloc(M_genericCounters, sizeof(unsigned long long) * GENERIC_TYPES * M_genericMap.size());
   if (!new_genericCounters) {
-    ERROR("Could not allocate generic counters!\n");
+    REPORT_ERROR("Could not allocate generic counters!\n");
   }
   M_genericCounters = new_genericCounters;
   M_genericCounters[(ret - 1) * GENERIC_TYPES + GENERIC_C] = 0;
@@ -949,7 +952,7 @@ int CStat::findRtd(const char *name, bool start) {
 
   unsigned long long * new_rtdInfo = (unsigned long long *)realloc(M_rtdInfo, sizeof(unsigned long long) * RTD_TYPES * GENERIC_TYPES * M_rtdMap.size());
   if (!new_rtdInfo) {
-    ERROR("Could not allocate RTD info!\n");
+    REPORT_ERROR("Could not allocate RTD info!\n");
   }
   M_rtdInfo = new_rtdInfo;
   M_rtdInfo[((ret - 1) * RTD_TYPES * GENERIC_TYPES) + (GENERIC_C * RTD_TYPES) +  RTD_COUNT] = 0;
@@ -966,7 +969,7 @@ int CStat::findRtd(const char *name, bool start) {
 
   M_ResponseTimeRepartition = (T_dynamicalRepartition **)realloc(M_ResponseTimeRepartition, sizeof(T_dynamicalRepartition *) * M_rtdMap.size());
   if (!M_ResponseTimeRepartition) {
-    ERROR("Could not allocate RTD info!\n");
+    REPORT_ERROR("Could not allocate RTD info!\n");
   }
   M_ResponseTimeRepartition[ret - 1] = NULL;
 
@@ -987,7 +990,7 @@ void CStat::validateRtds() {
   for (str_int_map::iterator it = rtd_started.begin(); it != rtd_started.end(); it++) {
     str_int_map::iterator stopit = rtd_stopped.find(it->first);
     if (stopit == rtd_stopped.end() || !stopit->second) {
-      ERROR("You have started Response Time Duration %s, but have never stopped it!", it->first.c_str());
+      REPORT_ERROR("You have started Response Time Duration %s, but have never stopped it!", it->first.c_str());
     }
   }
 }
@@ -1041,7 +1044,7 @@ int CStat::computeStat (E_Action P_action,
       break;
 
     default :
-      ERROR("CStat::ComputeStat() - Unrecognized Action %d\n", P_action);
+      REPORT_ERROR("CStat::ComputeStat() - Unrecognized Action %d\n", P_action);
       return (-1);
     } /* end switch */
   return (0);
@@ -1120,7 +1123,7 @@ char* CStat::sRepartitionHeader(T_dynamicalRepartition * tabRepartition,
     {
       char * new_repartitionHeader = (char *)realloc(repartitionHeader, strlen(P_repartitionName) + dlen + 1);
       if (!new_repartitionHeader) {
-        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(P_repartitionName) + dlen + 1);
+        REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(P_repartitionName) + dlen + 1);
       }
       repartitionHeader = new_repartitionHeader;
       sprintf(repartitionHeader, "%s%s", P_repartitionName, stat_delimiter);
@@ -1129,7 +1132,7 @@ char* CStat::sRepartitionHeader(T_dynamicalRepartition * tabRepartition,
           sprintf(buffer, "<%d%s", tabRepartition[i].borderMax, stat_delimiter);
 	        char *new_repartitionHeader = (char *)realloc(repartitionHeader, strlen(repartitionHeader) + strlen(buffer) + 1);
           if (!new_repartitionHeader) {
-            ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(repartitionHeader) + strlen(buffer) + 1);
+            REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(repartitionHeader) + strlen(buffer) + 1);
           }
           repartitionHeader = new_repartitionHeader;
           strcat(repartitionHeader, buffer);
@@ -1137,7 +1140,7 @@ char* CStat::sRepartitionHeader(T_dynamicalRepartition * tabRepartition,
       sprintf(buffer, ">=%d%s", tabRepartition[sizeOfTab-1].borderMax, stat_delimiter);
       new_repartitionHeader = (char *)realloc(repartitionHeader, strlen(repartitionHeader) + strlen(buffer) + 1);
       if (!new_repartitionHeader) {
-        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(repartitionHeader) + strlen(buffer) + 1);
+        REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", strlen(repartitionHeader) + strlen(buffer) + 1);
       }
       repartitionHeader = new_repartitionHeader;
       strcat(repartitionHeader, buffer);
@@ -1146,7 +1149,7 @@ char* CStat::sRepartitionHeader(T_dynamicalRepartition * tabRepartition,
     {
       char *new_repartitionHeader = (char *)realloc(repartitionHeader, 2);
       if (!new_repartitionHeader) {
-        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", 2);
+        REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition header (%d bytes)", 2);
       }
       repartitionHeader = new_repartitionHeader;
       strcpy(repartitionHeader, "");
@@ -1167,7 +1170,7 @@ char* CStat::sRepartitionInfo(T_dynamicalRepartition * tabRepartition,
       // if a repartition is present, this field match the repartition name
       char *new_repartitionInfo = (char *)realloc(repartitionInfo, dlen + 1);
       if (!new_repartitionInfo) {
-        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", dlen+1);
+        REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", dlen+1);
       }
       repartitionInfo = new_repartitionInfo;
       sprintf(repartitionInfo, stat_delimiter);
@@ -1176,7 +1179,7 @@ char* CStat::sRepartitionInfo(T_dynamicalRepartition * tabRepartition,
           sprintf(buffer, "%lu%s", tabRepartition[i].nbInThisBorder, stat_delimiter);
 	        char *new_repartitionInfo = (char *)realloc(repartitionInfo, strlen(repartitionInfo) + strlen(buffer) + 1);
           if (!new_repartitionInfo) {
-            ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", strlen(buffer)+1);
+            REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", strlen(buffer)+1);
           }
           repartitionInfo = new_repartitionInfo;
           strcat(repartitionInfo, buffer);
@@ -1184,7 +1187,7 @@ char* CStat::sRepartitionInfo(T_dynamicalRepartition * tabRepartition,
       sprintf(buffer, "%lu%s", tabRepartition[sizeOfTab-1].nbInThisBorder, stat_delimiter);
       new_repartitionInfo = (char *)realloc(repartitionInfo, strlen(repartitionInfo) + strlen(buffer) + 1);
       if (!new_repartitionInfo) {
-        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", strlen(buffer)+1);
+        REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", strlen(buffer)+1);
       }
       repartitionInfo = new_repartitionInfo;
       strcat(repartitionInfo, buffer);
@@ -1193,7 +1196,7 @@ char* CStat::sRepartitionInfo(T_dynamicalRepartition * tabRepartition,
     {
       char *new_repartitionInfo = (char *)realloc(repartitionInfo, 2);
       if (!new_repartitionInfo) {
-        ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", 2);
+        REPORT_ERROR("CStat::sRepartitionInfo - unable to allocate memory for repartition info (%d bytes)", 2);
       }
       repartitionInfo = new_repartitionInfo;
       repartitionInfo[0] = '\0';
@@ -1907,7 +1910,7 @@ gsl_rng *gsl_init() {
   gsl_rng_env_setup();
   rng = gsl_rng_alloc(gsl_rng_default);
   if (!rng) {
-    ERROR("Could not initialize GSL random number generator.\n");
+    REPORT_ERROR("Could not initialize GSL random number generator.\n");
   }
 
   return rng;
