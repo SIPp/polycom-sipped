@@ -43,11 +43,11 @@
 
 #include <pcap.h>
 #include <stdlib.h>
+# include "win32_compatibility.h"
 #ifdef WIN32
 # pragma warning (disable: 4003; disable: 4996)
 # include <winsock2.h>
 # include <ws2tcpip.h>
-# include "win32_compatibility.h"
 
 #else
 # include <unistd.h>

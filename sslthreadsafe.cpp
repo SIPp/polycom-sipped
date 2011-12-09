@@ -43,10 +43,8 @@ unsigned long id_function(void)
 {
 #ifdef WIN32
     return GetCurrentThreadId();
-#elif _POSIX_THREADS
-    return ((unsigned long)THREAD_ID);
 #else
-# error "sslthreadsafe.cpp:id_function() does not know how to convert thread ID to an unsigned long"
+    return ((unsigned long)THREAD_ID);
 #endif
 }
 
