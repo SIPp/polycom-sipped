@@ -32,7 +32,7 @@
   #include <process.h>
 #else
   #include <sys/socket.h>
-  #ifdef CYGWIN
+  #ifdef __CYGWIN
     #include <stdio.h>
     #include <process.h>
   #else
