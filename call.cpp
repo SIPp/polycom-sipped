@@ -4453,3 +4453,389 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
   return(call::E_AR_NO_ERROR);
 }
 
+void call::extractSubMessage(char * msg, char * matchingString, char* result, bool case_indep, int occurrence, bool headers) {
+
+ char *ptr, *ptr1;
+  int sizeOf;
+  int i = 0;
+ int len = strlen(matchingString);
+ char mat1 = tolower(*matchingString);
+ char mat2 = toupper(*matchingString);
+
+ ptr = msg;
+ while (*ptr) { 
+   if (!case_indep) {
+     ptr = strstr(ptr, matchingString);
+     if (ptr == NULL) break;
+     if (headers == true && ptr != msg && *(ptr-1) != '\n') {
+       ++ptr;
+       continue; 
+     }
+   } else {
+     if (headers) {
+       if (ptr != msg) {
+         ptr = strchr(ptr, '\n');
+         if (ptr == NULL) break;
+         ++ptr;
+         if (*ptr == 0) break;
+       }
+     } else {
+       ptr1 = strchr(ptr, mat1);
+       ptr = strchr(ptr, mat2);
+       if (ptr == NULL) {
+         if (ptr1 == NULL) break;
+         ptr = ptr1;
+       } else {
+         if (ptr1 != NULL && ptr1 < ptr) ptr = ptr1; 
+       }
+     }
+     if (strncasecmp(ptr, matchingString, len) != 0) {
+       ++ptr;
+       continue;
+     }
+   }
+   // here with ptr pointing to a matching string
+   if (occurrence <= 1) break; 
+   --occurrence;
+   ++ptr;
+ }
+
+ if(ptr != NULL && *ptr != 0) {
+   strncpy(result, ptr+len, MAX_SUB_MESSAGE_LENGTH);
+    sizeOf = strlen(result);
+    if(sizeOf >= MAX_SUB_MESSAGE_LENGTH)  
+      sizeOf = MAX_SUB_MESSAGE_LENGTH-1;
+    while((i<sizeOf) && (result[i] != '\n') && (result[i] != '\r'))
+      i++;
+    result[i] = '\0';
+  } else {
+    result[0] = '\0';
+  }
+}
+
+void call::getFieldFromInputFile(const char *fileName, int field, SendingMessage *lineMsg, char*& dest)
+{
+  if (inFiles.find(fileName) == inFiles.end()) {
+    REPORT_ERROR("Invalid injection file: %s", fileName);
+  }
+  int line = (*m_lineNumber)[fileName];
+  if (lineMsg) {
+	char lineBuffer[20];
+	char *endptr;
+	createSendingMessage(lineMsg, -2, lineBuffer, sizeof(lineBuffer));
+	line = (int) strtod(lineBuffer, &endptr);
+	if (*endptr != 0) {
+	  REPORT_ERROR("Invalid line number generated: '%s'", lineBuffer);
+	}
+	if (line > inFiles[fileName]->numLines()) {
+	  line = -1;
+	}
+  }
+  if (line < 0) {
+    return;
+  }
+  dest += inFiles[fileName]->getField(line, field, dest, SIPP_MAX_MSG_SIZE);
+}
+
+call::T_AutoMode call::checkAutomaticResponseMode(char * P_recv) {
+  if (strcmp(P_recv, "BYE")==0) {
+    return E_AM_UNEXP_BYE;
+  } else if (strcmp(P_recv, "CANCEL") == 0) {
+    return E_AM_UNEXP_CANCEL;
+  } else if (strcmp(P_recv, "PING") == 0) {
+    return E_AM_PING;
+  } else if (((strcmp(P_recv, "INFO") == 0) || (strcmp(P_recv, "NOTIFY") == 0) || (strcmp(P_recv, "UPDATE") == 0)) 
+               && (auto_answer == true)){
+    return E_AM_AA;
+  } else if ((strcmp(P_recv, "REGISTER") == 0)
+               && (auto_answer == true)){
+    return E_AM_AA_REGISTER;
+  } else {
+    return E_AM_DEFAULT;
+  }
+}
+
+// update the dialog state's last_recv_msg and
+// store globally for retransmission and auto-responder
+// index of -1 does not update per-transaction state
+// so potentially storing 4 copies of msg: default and specified dialog structure 
+// in default & specfied transactions
+// If no transaction and no dialog specified, only stored once (same as original sipp)
+void call::setLastMsg(const string &msg, int dialog_number, int message_index) {
+  DEBUG_IN("dialog_number = %d Message Length = %d", dialog_number, msg.length());
+  string name("");
+  if (message_index >= 0)
+    name = call_scenario->messages[message_index]->getTransactionName();
+
+  // update default state for non-dialog-specified messages
+  DialogState *ds = get_dialogState(-1);
+  ds->setLastReceivedMessage(msg, "", message_index);
+
+  // update per-dialog state too if a dialog or transaction is specified
+  if (dialog_number != -1 || !name.empty()) {
+    DEBUG("Setting per-dialog transaction state for dialog_number %d, transaction '%s'", dialog_number, name.c_str());
+    ds = get_dialogState(dialog_number);
+    ds->setLastReceivedMessage(msg, name, message_index);
+  }
+}
+
+
+bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
+{
+  int res;
+
+  switch (P_case) {
+  case E_AM_UNEXP_BYE: // response for an unexpected BYE
+    // usage of last_ keywords
+    setLastMsg(P_recv);
+
+    // The BYE is unexpected, count it
+    call_scenario->messages[msg_index] -> nb_unexp++;
+    if (default_behaviors & DEFAULT_BEHAVIOR_ABORTUNEXP) {
+      WARNING("Aborting call on an unexpected BYE for call: %s", (id==NULL)?"none":id);
+      if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
+	      sendBuffer(createSendingMessage(get_default_message("200"), -1));
+      }
+
+      // if twin socket call => reset the other part here
+      if (twinSippSocket && (msg_index > 0)) {
+	      res = sendCmdBuffer(createSendingMessage(get_default_message("3pcc_abort"), -1));
+      }
+      computeStat(CStat::E_CALL_FAILED);
+      computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
+      delete this;
+    } else {
+      WARNING("Continuing call on an unexpected BYE for call: %s", (id==NULL)?"none":id);
+    }
+    break ;
+
+  case E_AM_UNEXP_CANCEL: // response for an unexpected cancel
+    // usage of last_ keywords
+    setLastMsg(P_recv);
+
+    // The CANCEL is unexpected, count it
+    call_scenario->messages[msg_index] -> nb_unexp++;
+    if (default_behaviors & DEFAULT_BEHAVIOR_ABORTUNEXP) {
+      WARNING("Aborting call on an unexpected CANCEL for call: %s", (id==NULL)?"none":id);
+      if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
+        sendBuffer(createSendingMessage(get_default_message("200"), -1));
+      }
+
+      // if twin socket call => reset the other part here 
+      if (twinSippSocket && (msg_index > 0)) {
+        res = sendCmdBuffer
+        (createSendingMessage(get_default_message("3pcc_abort"), -1));
+      }
+
+      computeStat(CStat::E_CALL_FAILED);
+      computeStat(CStat::E_FAILED_UNEXPECTED_MSG);
+      delete this;
+    } else {
+      WARNING("Continuing call on unexpected CANCEL for call: %s", (id==NULL)?"none":id);
+    }
+    break;
+
+  case E_AM_PING: // response for a random ping
+    // usage of last_ keywords
+    setLastMsg(P_recv);
+
+   if (default_behaviors & DEFAULT_BEHAVIOR_PINGREPLY) {
+    WARNING("Automatic response mode for an unexpected PING for call: %s", (id==NULL)?"none":id);
+    sendBuffer(createSendingMessage(get_default_message("200"), -1));
+    // Note: the call ends here but it is not marked as bad. PING is a 
+    //       normal message.
+    // if twin socket call => reset the other part here 
+    if (twinSippSocket && (msg_index > 0)) {
+      res = sendCmdBuffer(createSendingMessage(get_default_message("3pcc_abort"), -1));
+    }
+
+    CStat::globalStat(CStat::E_AUTO_ANSWERED);
+    delete this;
+    } else {
+      WARNING("Do not answer on an unexpected PING for call: %s", (id==NULL)?"none":id);
+    }
+    break ;
+
+  case E_AM_AA:          // response for a random INFO, UPDATE or NOTIFY
+  case E_AM_AA_REGISTER: // response for a random REGISTER
+  {
+    // store previous last msg if msg is REGISTER, INFO, UPDATE or NOTIFY
+    // so we can restore last_recv_msg to previous one after sending ok
+    DEBUG("Automatic response mode for unexpected REGISTER, INFO, UPDATE, or NOTIFY");
+    string old_last_recv_msg = getDefaultLastReceivedMessage();
+    // usage of last_ keywords (note get_last_header) inserts 0's into header.
+    setLastMsg(P_recv);
+
+    if (P_case == E_AM_AA)
+      sendBuffer(createSendingMessage(get_default_message("200"), -1));
+    else {
+      sendBuffer(createSendingMessage(get_default_message("200register"), -1));
+    }
+
+    // restore previous last msg
+    setLastMsg(old_last_recv_msg);
+
+    CStat::globalStat(CStat::E_AUTO_ANSWERED);
+    message *curmsg = call_scenario->messages[msg_index];
+    curmsg->nb_unexp++;
+    MESSAGE("Unexpected REGISTER, INFO, UPDATE, or NOTIFY message recieved. Automatic response generated.");
+    return true;
+    break;
+  }
+  default:
+    REPORT_ERROR("Internal error for automaticResponseMode - mode %d is not implemented!", P_case);
+    break ;
+  }
+
+  return false;
+}
+
+#ifdef PCAPPLAY
+void *send_wrapper(void *arg)
+{
+  play_args_t *s = (play_args_t *) arg;
+  //struct sched_param param;
+  //int ret;
+  //param.sched_priority = 10;
+  //ret = pthread_setschedparam(pthread_self(), SCHED_RR, &param);
+  //if(ret)
+  //  REPORT_ERROR("Can't set RTP play thread realtime parameters");
+  DEBUG_IN();
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+  send_packets(s);
+  pthread_exit(NULL);
+  DEBUG_OUT();
+  return NULL;
+}
+#endif
+
+
+// Returns dialog state associated with dialog_number.  
+// If no state exists for dialog_number, a new entry is created.
+DialogState *call::get_dialogState(int dialog_number) {
+  perDialogStateMap::iterator dialog_it;
+  dialog_it = per_dialog_state.find(perDialogStateMap::key_type(dialog_number));
+  if (dialog_it == per_dialog_state.end()) {
+    DialogState *d = new DialogState(base_cseq);
+    if (!d) REPORT_ERROR("Unable to allocate memory for new dialog state");
+    per_dialog_state.insert(pair<perDialogStateMap::key_type,DialogState *>(perDialogStateMap::key_type(dialog_number), d));
+    return d;
+  }
+  
+  return dialog_it->second;
+
+} // get_dialogState
+
+void call::free_dialogState() {
+ for(perDialogStateMap::const_iterator it = per_dialog_state.begin(); it != per_dialog_state.end(); ++it) {
+    delete it->second;
+  }
+  per_dialog_state.clear();
+
+  last_dialog_state = 0;
+}
+
+#ifdef PCAPPLAY
+void call::set_audio_from_port(int port){
+  DEBUG("Setting audio port to %d", port);
+  if (media_ip_is_ipv6) {
+    (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = htons(port);
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = htons(port);
+  }
+}
+
+void call::set_video_from_port(int port){
+  DEBUG("Setting video port to %d", port);
+  if (media_ip_is_ipv6) {
+    (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = htons(port);
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = htons(port);
+  }
+}
+#endif
+
+const char * encode_as_needed(const char *str, MessageComponent *comp){
+  const char *result;
+  if(comp->encoding != E_ENCODING_NONE){
+    encode(comp, str, encode_buffer);
+    result = encode_buffer;
+  } else {
+    result = str;
+  }
+  return result;
+}
+
+void encode(struct MessageComponent *comp, const char *src, char *dest){
+  switch(comp->encoding){
+    case E_ENCODING_URI:
+      uri_encode(src,dest);
+      break;
+    //Added for future expansion
+    default:
+      REPORT_ERROR("Unrecognized encoding type. Trying to encode \"%s\"", src);
+  }
+}
+
+//Taken from http://www.codeguru.com/cpp/cpp/string/conversions/article.php/c12759
+//With modification
+void uri_encode(const char* src, char *dest)
+{
+   const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
+   const int SRC_LEN = strlen(src);
+   const char * const SRC_END = src + SRC_LEN;
+
+   for (; src < SRC_END; ++src)
+   {
+      if (!is_reserved_char(*src))
+         *dest++ = *src;
+      else
+      {
+         // escape this char
+         *dest++ = '%';
+         *dest++ = DEC2HEX[*src >> 4];
+         *dest++ = DEC2HEX[*src & 0xf];
+      }
+   }
+   *dest++ = '\0';
+}
+
+bool is_reserved_char (char c) {
+  switch(c){
+    case '!' :
+    case '#' :
+    case '$' :
+    case '%' :
+    case '&' :
+    case '\'':
+    case '(' :
+    case ')' :
+    case '*' :
+    case '+' :
+    case ',' :
+    case '/' :
+    case ':' :
+    case ';' :
+    case '=' :
+    case '?' :
+    case '@' :
+    case '[' :
+    case ']' :
+      return true;
+    default:
+      return false;
+  }
+}
+
+void setArguments(char* args, char** argv) {
+#ifndef __CYGWIN
+  argv[0] = "sh";
+  argv[1] = "-c";
+#else
+  argv[0] = "cmd.exe";
+  argv[1] = "/c";
+#endif
+  argv[2] = args;
+  argv[3] = NULL;
+}
