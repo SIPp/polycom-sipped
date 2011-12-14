@@ -40,6 +40,7 @@
 #include <fstream>
 #include <iostream>
 #include <sys/types.h>
+#include <assert.h>
 #ifndef WIN32
   #include <sys/wait.h>
 #endif
@@ -49,7 +50,7 @@
 #endif
 #include "sipp.hpp"
 #include "deadcall.hpp"
-#include "assert.h"
+#include "logging.hpp"
 
 deadcall::deadcall(char *id, const char *reason) : listener(id, true) {
   this->expiration = clock_tick + deadcall_wait;

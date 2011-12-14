@@ -29,7 +29,8 @@
 #define __LOGGING__
 
 #include <stdio.h>
-#include <windows.h>
+#include <time.h>
+#include "win32_compatibility.hpp"
 
 void set_logging_scenario_file_name(char *name);
 

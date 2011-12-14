@@ -34,6 +34,11 @@
 #include <assert.h>
 #include <time.h>
 
+#ifndef WIN32
+# include <sys/time.h>
+# include <unistd.h>
+# include <signal.h>
+#endif
 
 
 // Variables set by configuration parameters 

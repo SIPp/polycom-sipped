@@ -31,7 +31,7 @@ OUTPUT=sipp
 # C & C++ object files to be built
 OBJ= xp_parser.o message.o scenario.o screen.o call.o transactionstate.o dialogstate.o \
      comp.o sipp.o stat.o actions.o variables.o infile.o deadcall.o task.o socketowner.o \
-     listener.o opentask.o reporttask.o watchdog.o 
+     listener.o opentask.o reporttask.o watchdog.o logging.o 
 
 # Libraries directories
 LIBDIR_linux=
@@ -235,18 +235,15 @@ install: all
 	
 
 # Files types rules
-.SUFFIXES: .o .cpp .c .h .hpp
+.SUFFIXES: .o .cpp .hpp
 
-*.o: *.h *.hpp
+*.o: *.hpp
 
 .C.o:
 	$(CPP) $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c -o $*.o $<
 
 .cpp.o:
 	$(CPP) $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c -o $*.o $<
-
-.c.o:
-	$(CC) $(CFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c -o $*.o $<
 
 fortune.so: fortune.cpp
 	g++ -fPIC $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c -o fortune.o $<
