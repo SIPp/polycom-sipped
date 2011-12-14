@@ -28,7 +28,7 @@
 class CSample;
 
 #ifdef PCAPPLAY
-#include "prepare_pcap.h"
+#include "prepare_pcap.hpp"
 #endif
 
 #define MAX_ACTION_MESSAGE 3

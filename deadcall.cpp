@@ -45,7 +45,7 @@
 #endif
 
 #ifdef PCAPPLAY
-#include "send_packets.h"
+#include "send_packets.hpp"
 #endif
 #include "sipp.hpp"
 #include "deadcall.hpp"

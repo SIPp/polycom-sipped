@@ -34,7 +34,7 @@
 #include <ctime> 
 #ifdef WIN32
 # include <time.h>
-# include <win32_compatibility.h>
+# include "win32_compatibility.hpp"
 #else
 # include <sys/time.h> 
 #endif

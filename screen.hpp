@@ -27,6 +27,7 @@
 #define __SCREEN_H__
 
 #include <stdio.h>
+#include "logging.hpp"
 
 #ifndef WIN32
   void REPORT_ERROR(const char *fmt, ...) __attribute__ ((noreturn));
@@ -37,13 +38,18 @@ void WARNING(const char *fmt, ...);
 void REPORT_ERROR_NO(const char *fmt, ...);
 void WARNING_NO(const char *fmt, ...);
 void MESSAGE(const char *fmt, ...);
-int _DEBUG_LOG(const char *fmt, ...);
-int _TRACE_MSG(const char *fmt, ...);
-int _TRACE_CALLDEBUG(const char *fmt, ...);
-int _TRACE_SHORTMSG(const char *fmt, ...);
-int _LOG_MSG(const char *fmt, ...);
+
+// _TRACE_EXEC defined here to as it has dependencies that don't belong in logging.
 int _TRACE_EXEC(const char *fmt, ...);
 
+#define TRACE_EXEC(x, ...)  { _TRACE_EXEC(x, ##__VA_ARGS__); _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
+
+void screen_set_exename(char * exe_name);
+void screen_init(void (*exit_handler)());
+void screen_clear();
+int  screen_readkey();
+void screen_exit(int rc);
+void screen_sigusr1(int /* not used */);
 
 #define EXIT_TEST_OK               0
 #define EXIT_TEST_FAILED           1
@@ -58,23 +64,6 @@ int _TRACE_EXEC(const char *fmt, ...);
 #define EXIT_ARGUMENT_ERROR        -4
 
 #define MAX_ERROR_SIZE            1024
-
-#define DEBUG(x, ...) _DEBUG_LOG("%s() in %s:%d - " x "\n",  __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__)
-#define DEBUG_IN(x, ...) DEBUG("(Entered) - " x, ##__VA_ARGS__)
-#define DEBUG_OUT(x, ...) DEBUG("(Leaving) - " x, ##__VA_ARGS__)
-
-#define TRACE_MSG(x, ...)       { _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define TRACE_CALLDEBUG(x, ...) { _TRACE_CALLDEBUG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define TRACE_SHORTMSG(x, ...)  { _TRACE_SHORTMSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define LOG_MSG(x, ...)         { _LOG_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-#define TRACE_EXEC(x, ...)  { _TRACE_EXEC(x, ##__VA_ARGS__); _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
-
-void screen_set_exename(char * exe_name);
-void screen_init(void (*exit_handler)());
-void screen_clear();
-int  screen_readkey();
-void screen_exit(int rc);
-void screen_sigusr1(int /* not used */);
 
 #endif // __SCREEN_H__
 

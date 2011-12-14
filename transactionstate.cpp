@@ -28,7 +28,7 @@
 
 
 TransactionState::TransactionState(const string &name) : name(name), branch(""), lastReceivedMessage(""), 
-                                   cseq(0), cseqMethod(""), client(false), transactionResponseHash(0), ackIndex(0)
+                                   cseq(0), cseqMethod(""), client(false), lastResponseCode(0), transactionResponseHash(0), ackIndex(0)
 { 
   DEBUG_IN();
 }
@@ -55,8 +55,9 @@ void TransactionState::start(bool pIsClient, const string &pBranch, int pCseq, c
 string TransactionState::trace() const {
   std::stringstream ss;
   ss << (client ? "Client" : "Server") << " Transaction '" << name << 
-                          "': branch='" << branch << "'; cseq: " << cseq << " " << cseqMethod << 
-                          " ; ackIndex= " << ackIndex << "; lastReceivedMessage: " << lastReceivedMessage.length();
+                          "': branch:'" << branch << "'; cseq: " << cseq << " " << cseqMethod << 
+                          " ; lastResponseCode: " << lastResponseCode << "; transactionResponseHash: " << transactionResponseHash <<
+                          " ; ackIndex: " << ackIndex << "; lastReceivedMessage: " << lastReceivedMessage.length();
   return ss.str();
 }
 

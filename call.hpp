@@ -46,10 +46,10 @@
 #include "transactionstate.hpp"
 #include "dialogstate.hpp"
 #ifdef _USE_OPENSSL
-#include "sslcommon.h"
+#include "sslcommon.hpp"
 #endif
 #ifdef PCAPPLAY
-#include "send_packets.h"
+#include "send_packets.hpp"
 #endif
 
 #ifndef MAX

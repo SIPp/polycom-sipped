@@ -46,12 +46,7 @@
 # include <process.h>
 #endif
 
-void rotate_messagef();
-void rotate_calldebugf();
-void rotate_shortmessagef();
-void rotate_logfile();
-void rotate_debugf();
-void rotate_execf();
+#include "logging.hpp"
 
 #ifdef _USE_OPENSSL
 SSL_CTX  *sip_trp_ssl_ctx = NULL; /* For SSL cserver context */
@@ -4621,6 +4616,7 @@ int main(int argc, char *argv[])
     if (!strcmp(argv[argi - 1], "-sf")) {
       scenario_file = new char [strlen(argv[argi])+1] ;
       sprintf(scenario_file,"%s", argv[argi]);
+      set_logging_scenario_file_name(scenario_file);
       if (useLogf == 1) {
         rotate_logfile();
       }
@@ -4629,6 +4625,7 @@ int main(int argc, char *argv[])
       int i = find_scenario(argv[argi]);
 
       scenario_file = new char [strlen(argv[argi])+1] ;
+      set_logging_scenario_file_name(scenario_file);
       sprintf(scenario_file,"%s", argv[argi]);
       default_scenario_to_use = i;
 	  } else if (!strcmp(argv[argi - 1], "-sd")) {
@@ -4875,6 +4872,7 @@ int main(int argc, char *argv[])
   if (scenario_file == NULL) {
     scenario_file = new char [ 5 ] ;
     sprintf(scenario_file, "%s", "sipp");
+    set_logging_scenario_file_name(scenario_file);
   }
 
 
@@ -5019,7 +5017,10 @@ int main(int argc, char *argv[])
   if(!main_scenario) {
     main_scenario = new scenario(0, 0, dump_xml);
     main_scenario->stats->setFileName((char*)"uac", (char*)".csv");
+    scenario_file = new char [5];
+DEBUG("Creating scenario_file as not certain this was correct before");
     sprintf(scenario_file,"uac");
+    set_logging_scenario_file_name(scenario_file);
   }
   if(!ooc_scenario) {
     ooc_scenario = new scenario(0, find_scenario("ooc_default"), 0);
@@ -5944,97 +5945,6 @@ char *jump_over_timestamp(char *src) {
     tmp++;
   }
   return tmp;
-}
-
-// return true if log file opened, false if not.
-int rotatef(struct logfile_info *lfi) {
-  char L_rotate_file_name [MAX_PATH];
-
-  if (!lfi->fixedname) {
-    sprintf (lfi->file_name, "%s_%d_%s.log", scenario_file, getpid(), lfi->name);
-  }
-
-  if (ringbuffer_files > 0) {
-    if (!lfi->ftimes) {
-      lfi->ftimes = (struct logfile_id *)calloc(ringbuffer_files, sizeof(struct logfile_id));
-    }
-    /* We need to rotate away an existing file. */
-    if (lfi->nfiles == ringbuffer_files) {
-      if ((lfi->ftimes)[0].n) {
-        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.%d.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[0].start, (lfi->ftimes)[0].n);
-      } else {
-        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[0].start);
-      }
-      unlink(L_rotate_file_name);
-      lfi->nfiles--;
-      memmove(lfi->ftimes, &((lfi->ftimes)[1]), sizeof(struct logfile_id) * (lfi->nfiles));
-    }
-    if (lfi->starttime) {
-      (lfi->ftimes)[lfi->nfiles].start = lfi->starttime;
-      (lfi->ftimes)[lfi->nfiles].n = 0;
-      /* If we have the same time, then we need to append an identifier. */
-      if (lfi->nfiles && ((lfi->ftimes)[lfi->nfiles].start == (lfi->ftimes)[lfi->nfiles - 1].start)) {
-        (lfi->ftimes)[lfi->nfiles].n = (lfi->ftimes)[lfi->nfiles - 1].n + 1;
-      }
-      if ((lfi->ftimes)[lfi->nfiles].n) {
-        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.%d.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[lfi->nfiles].start, (lfi->ftimes)[lfi->nfiles].n);
-      } else {
-        sprintf(L_rotate_file_name, "%s_%d_%s_%lu.log", scenario_file, getpid(), lfi->name, (lfi->ftimes)[lfi->nfiles].start);
-      }
-      lfi->nfiles++;
-      fflush(lfi->fptr);
-      fclose(lfi->fptr);
-      lfi->fptr = NULL;
-      rename(lfi->file_name, L_rotate_file_name);
-    }
-  }
-
-  time(&lfi->starttime);
-  if (lfi->overwrite) {
-    lfi->fptr = fopen(lfi->file_name, "w");
-  } else {
-    lfi->fptr = fopen(lfi->file_name, "a");
-    if (lfi->fptr) 
-      lfi->overwrite = true; // only set 'overwrite' if open was successful.
-  }
-  if(lfi->check && !lfi->fptr) {
-    /* We can not use the error functions from this function, as we may be rotating the error log itself! */
-    REPORT_ERROR("Unable to open/create '%s'", lfi->file_name);
-  }
-  return (lfi->fptr != 0);
-}
-
-void rotate_calldebugf() {
-  rotatef(&calldebug_lfi);
-}
-
-void rotate_messagef() {
-  rotatef(&message_lfi);
-}
-
-
-void rotate_shortmessagef() {
-  rotatef(&shortmessage_lfi);
-}
-
-
-void rotate_logfile() {
-  rotatef(&log_lfi);
-}
-
-void rotate_errorf() {
-  rotatef(&error_lfi);
-  strcpy(screen_logfile, error_lfi.file_name);
-}
-
-void rotate_debugf() {
-  rotatef(&debug_lfi);
-  setvbuf(debug_lfi.fptr, (char *)NULL, _IONBF, 0);
-}
-
-void rotate_execf() {
-  rotatef(&exec_lfi);
-  setvbuf(exec_lfi.fptr, (char *)NULL, _IONBF, 0);
 }
 
 void generate_alt_path(char * path, const char * name) {

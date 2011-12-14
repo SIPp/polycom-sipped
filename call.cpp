@@ -51,12 +51,13 @@
 #endif
 
 #ifdef PCAPPLAY
-#include "send_packets.h"
+#include "send_packets.hpp"
 #endif
 #include "sipp.hpp"
 #include "call.hpp"
 #include "deadcall.hpp"
 #include "assert.h"
+#include "logging.hpp"
 
 #define callDebug(x, ...) do { if (useDebugf) { DEBUG(x, ##__VA_ARGS__); } if (useCallDebugf) { _callDebug(x, ##__VA_ARGS__ ); } } while (0)
 

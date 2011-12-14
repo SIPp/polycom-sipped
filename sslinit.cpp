@@ -18,7 +18,7 @@
  */
 
 #define SSL_MAIN
-#include "sslcommon.h"
+#include "sslcommon.hpp"
 
 int init_OpenSSL(void) {
   if (!Thread_setup() || !SSL_library_init() ) {

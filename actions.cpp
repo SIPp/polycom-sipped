@@ -24,7 +24,7 @@
 #include "sipp.hpp"
 #include <assert.h>
 #ifdef PCAPPLAY
-#include "prepare_pcap.h"
+#include "prepare_pcap.hpp"
 #endif
 
 static const char* strIntCmd(CAction::T_IntCmdType type)

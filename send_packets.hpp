@@ -45,7 +45,7 @@
   #include <netinet/in.h>
 #endif
 
-#include "prepare_pcap.h"
+#include "prepare_pcap.hpp"
 
 inline void timerdiv (struct timeval *tvp, float div);
 inline void float2timer (float time, struct timeval *tvp);

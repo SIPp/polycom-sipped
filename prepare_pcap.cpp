@@ -20,7 +20,7 @@
 #ifdef WIN32
 # include <winsock2.h>
 # include <ws2tcpip.h>
-# include "win32_compatibility.h"
+# include "win32_compatibility.hpp"
 #else
 # include <netinet/in.h>
 # include <netinet/udp.h>
@@ -34,8 +34,9 @@
 #endif
 #include <string.h>
 
-#include "prepare_pcap.h"
+#include "prepare_pcap.hpp"
 #include "screen.hpp"
+#include "logging.hpp"
 
 /* We define our own structures for Ethernet Header and IPv6 Header as they are not available on CYGWIN.
  * We only need the fields, which are necessary to determine the type of the next header.
@@ -265,6 +266,8 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
   return 0;
 }
 
+/*
+FIXME: this is broken, and never used 
 void free_pkts(pcap_pkts *pkts) {
   pcap_pkt *pkt_index;
   while (pkt_index < pkts->max) {
@@ -272,3 +275,4 @@ void free_pkts(pcap_pkts *pkts) {
   }
   free(pkts->pkts);
 }
+*/

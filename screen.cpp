@@ -23,6 +23,7 @@
 
 #include "stat.hpp"
 #include "sipp.hpp"
+#include "logging.hpp"
 
 #include <curses.h>
 
@@ -261,7 +262,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     snprintf(tmp, MAX_ERROR_SIZE, ", errno = %d (%s)", error,  strerror(error));
     char *new_msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
     if (!new_msg) {
-      REPORT_ERROR("Could not realloc memory for the error message!");
+      fprintf(stderr, "Could not realloc memory for the error message!");
+      assert(0);
     }
     msg = new_msg;
     strcat(msg, tmp);
@@ -277,7 +279,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
         screen_exename, screen_logfile, strerror(errno));
       char * new_msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
       if (!new_msg) {
-        REPORT_ERROR("Could not realloc memory for the error message!");
+        fprintf(stderr, "Could not realloc memory for the error message!");
+        assert(0);
       }
       msg = new_msg;
       strcat(msg, tmp);
@@ -334,6 +337,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
   }
 }
 
+
 void REPORT_ERROR(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -370,81 +374,6 @@ void MESSAGE(const char *fmt, ...) {
   va_end(ap);
 }
 
-int _trace (struct logfile_info *lfi, const char *fmt, va_list ap) {
-  int ret = 0;
-  if(lfi->fptr) {
-    ret = vfprintf(lfi->fptr, fmt, ap);
-    fflush(lfi->fptr);
-
-    lfi->count += ret;
-
-    if (max_log_size && lfi->count > max_log_size) {
-      fclose(lfi->fptr);
-      lfi->fptr = NULL;
-    }
-
-    if (ringbuffer_size && lfi->count > ringbuffer_size) {
-      rotatef(lfi);
-      lfi->count = 0;
-    }
-  }
-  return ret;
-}
-
-int _DEBUG_LOG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&debug_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _TRACE_MSG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&message_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _TRACE_SHORTMSG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&shortmessage_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _LOG_MSG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&log_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-int _TRACE_CALLDEBUG(const char *fmt, ...) {
-  int ret;
-  va_list ap;
-
-  va_start(ap, fmt);
-  ret = _trace(&calldebug_lfi, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
 
 int _TRACE_EXEC(const char *fmt, ...) {
   int ret;

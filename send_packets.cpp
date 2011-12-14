@@ -43,7 +43,8 @@
 
 #include <pcap.h>
 #include <stdlib.h>
-# include "win32_compatibility.h"
+#include "win32_compatibility.hpp"
+
 #ifdef WIN32
 # pragma warning (disable: 4003; disable: 4996)
 # include <winsock2.h>
@@ -66,8 +67,8 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-#include "send_packets.h"
-#include "prepare_pcap.h"
+#include "send_packets.hpp"
+#include "prepare_pcap.hpp"
 #include "screen.hpp"
 
 extern volatile unsigned long rtp_pckts_pcap;
@@ -181,6 +182,7 @@ send_packets (play_args_t * play_args)
   if (!media_ip_is_ipv6) {
     if (bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0){
       char ip[INET_ADDRSTRLEN];
+
       inet_ntop(AF_INET, &(((struct sockaddr_in *) from)->sin_addr), ip, INET_ADDRSTRLEN);
       REPORT_ERROR_NO("Could not bind RTP traffic socket to %s:%hu", ip, ntohs(((struct sockaddr_in *) from)->sin_port));
     }
@@ -188,6 +190,7 @@ send_packets (play_args_t * play_args)
   else {
     if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0){
       char ip[INET6_ADDRSTRLEN];
+
       inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) from)->sin6_addr), ip, INET_ADDRSTRLEN);
       REPORT_ERROR_NO("Could not bind socket to send RTP traffic %s:%hu", ip, ntohs(((struct sockaddr_in6 *)from )->sin6_port));
     }

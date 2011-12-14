@@ -38,8 +38,8 @@
 #include <string.h>
 #include <ctype.h>
 
-#include <xp_parser.h>
-#include <win32_compatibility.h>
+#include "xp_parser.hpp"
+#include "win32_compatibility.hpp"
 
 #ifdef WIN32
   #define snprintf _snprintf

@@ -44,7 +44,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
@@ -210,6 +210,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\logging.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\message.cpp"
 				>
 			</File>
@@ -308,7 +312,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\comp.h"
+				RelativePath=".\comp.hpp"
 				>
 			</File>
 			<File
@@ -332,7 +336,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\milenage.h"
+				RelativePath=".\milenage.hpp"
 				>
 			</File>
 			<File
@@ -340,7 +344,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\prepare_pcap.h"
+				RelativePath=".\prepare_pcap.hpp"
 				>
 			</File>
 			<File
@@ -348,7 +352,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\rijndael.h"
+				RelativePath=".\rijndael.hpp"
 				>
 			</File>
 			<File
@@ -360,7 +364,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\send_packets.h"
+				RelativePath=".\send_packets.hpp"
 				>
 			</File>
 			<File
@@ -372,7 +376,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\sslcommon.h"
+				RelativePath=".\sslcommon.hpp"
 				>
 			</File>
 			<File
@@ -396,11 +400,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\win32_compatibility.h"
+				RelativePath=".\win32_compatibility.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\xp_parser.h"
+				RelativePath=".\xp_parser.hpp"
 				>
 			</File>
 		</Filter>

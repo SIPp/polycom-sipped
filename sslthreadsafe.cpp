@@ -18,7 +18,7 @@
  */
 
 #define SSL_MAIN
-#include "sslcommon.h"
+#include "sslcommon.hpp"
 
 /*
 ** Call back function for locking function

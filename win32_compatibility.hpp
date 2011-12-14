@@ -10,10 +10,10 @@
   // Undo POSIX deprecation of needed routines.
   #define getpid _getpid
   #define strdup _strdup
+  #define unlink _unlink
 
   #define snprintf _snprintf
   #define ssize_t SSIZE_T
-
 
   int usleep(unsigned useconds);
 
@@ -112,6 +112,9 @@
 
 #else // Not WIN32
   #define SETSOCKOPT_TYPE (void *)
+
+  #define MAX_PATH                   260
+
 #endif
 
 #endif // __WIN32_COMPATIBILITY__

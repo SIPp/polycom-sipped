@@ -31,7 +31,7 @@
 #include "scenario.hpp"
 #include "screen.hpp"
 #ifdef WIN32
-# include <win32_compatibility.h>
+# include "win32_compatibility.hpp"
 #endif
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>

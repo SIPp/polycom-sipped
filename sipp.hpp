@@ -33,7 +33,7 @@
   #include <time.h>
   #include <windows.h>
 
-  #include "win32_compatibility.h"
+  #include "win32_compatibility.hpp"
 #else
   #include <sys/socket.h>
   #include <netinet/in.h>
@@ -72,14 +72,14 @@
 
 /* Sipp includes */
 
-#include "xp_parser.h"
+#include "xp_parser.hpp"
 #include "scenario.hpp"
 #include "screen.hpp"
 #include "task.hpp"
 #include "listener.hpp"
 #include "socketowner.hpp"
 #include "call.hpp"
-#include "comp.h"
+#include "comp.hpp"
 #include "variables.hpp"
 #include "stat.hpp"
 #include "actions.hpp"
@@ -89,7 +89,7 @@
 #include "watchdog.hpp"
 /* Open SSL stuff */
 #ifdef _USE_OPENSSL
-#include "sslcommon.h" 
+#include "sslcommon.hpp" 
 #endif
 
 #ifdef WIN32
@@ -162,10 +162,6 @@
 #define MAX_RECV_LOOPS_PER_CYCLE   1000
 #define MAX_SCHED_LOOPS_PER_CYCLE  1000
 #define NB_UPDATE_PER_CYCLE        1
-
-#ifndef WIN32
-  #define MAX_PATH                   250
-#endif
 
 #define MAX_PEER_SIZE              4096  /* 3pcc extended mode: max size of peer names */
 #define MAX_LOCAL_TWIN_SOCKETS     10    /*3pcc extended mode:max number of peers from which 
@@ -490,46 +486,7 @@ extern bool   useCountf                           _DEFVAL(0);
 extern char * scenario_file;
 extern char * slave_cfg_file;
 
-extern unsigned long long max_log_size		  _DEFVAL(0);
-extern unsigned long long ringbuffer_size	  _DEFVAL(0);
-extern int    ringbuffer_files			  _DEFVAL(0);
-
 extern char   screen_last_error[32768];
-extern char   screen_logfile[MAX_PATH]            _DEFVAL("");
-
-/* Log Rotation Functions. */
-struct logfile_id {
-  time_t start;
-  int n;
-};
-
-struct logfile_info {
-	const char *name;
-	bool check;
-	FILE *fptr;
-	int nfiles;
-	struct logfile_id *ftimes;
-	char file_name[MAX_PATH];
-	bool overwrite;
-	bool fixedname;
-	time_t starttime;
-	unsigned int count;
-};
-
-#ifdef GLOBALS_FULL_DEFINITION
-#define LOGFILE(name, s, check) \
-	struct logfile_info name = { s, check, NULL, 0, NULL, "", true, false, 0, 0};
-#else
-#define LOGFILE(name, s, check) \
-	extern struct logfile_info name;
-#endif
-LOGFILE(calldebug_lfi, "calldebug", true);
-LOGFILE(message_lfi, "messages", true);
-LOGFILE(shortmessage_lfi, "shortmessages", true);
-LOGFILE(log_lfi, "logs", true);
-LOGFILE(error_lfi, "errors", false);
-LOGFILE(debug_lfi, "debug", false);
-LOGFILE(exec_lfi, "exec", false);
 
 void rotate_errorf();
 int rotatef(struct logfile_info *lfi);

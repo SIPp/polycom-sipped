@@ -18,7 +18,7 @@
 #ifndef PREPARE_PCAP_H
 #define PREPARE_PCAP_H	1
 #include <pcap.h>
-#include "win32_compatibility.h"
+#include "win32_compatibility.hpp"
 
 #ifdef WIN32
 # include <winsock2.h>
@@ -79,6 +79,6 @@ typedef struct
 int check(u_int16_t *, int);
 u_int16_t checksum_carry(int);
 int prepare_pkts(char *, pcap_pkts *);
-void free_pkts(pcap_pkts *);
+//void free_pkts(pcap_pkts *); FIXME: Broken and never used
 
 #endif /* PREPARE_PCAP_H */

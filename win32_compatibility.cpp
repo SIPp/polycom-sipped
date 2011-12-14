@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "win32_compatibility.h"
+#include "win32_compatibility.hpp"
 
 int usleep(unsigned useconds)
 {

@@ -25,7 +25,7 @@
 #include "transactionstate.hpp"
 #include "dialogstate.hpp"
 #include "sipp.hpp"
-
+#include "logging.hpp"
 
 DialogState::DialogState(unsigned int base_cseq, const string &call_id) : call_id(call_id), 
                          client_cseq(base_cseq), server_cseq(0), peer_tag(0), local_tag(0), 

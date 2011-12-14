@@ -30,14 +30,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <openssl/md5.h>
+
+#include "win32_compatibility.hpp"
 #include "common.hpp"
-#include "milenage.h"
+#include "milenage.hpp"
 #include "screen.hpp"
 
-#ifdef WIN32
-# include <winsock2.h> // For u_char
-# include "win32_compatibility.h"
-#endif
+
 
 #define MD5_HASH_SIZE 16
 #define HASH_HEX_SIZE 2*MD5_HASH_SIZE

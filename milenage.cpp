@@ -15,8 +15,8 @@
  *
  *-----------------------------------------------------------------*/
 
-#include "milenage.h"
-#include "rijndael.h"
+#include "milenage.hpp"
+#include "rijndael.hpp"
 
 /*--------------------------- prototypes --------------------------*/
 

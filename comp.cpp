@@ -21,7 +21,7 @@
  */
 
 #define COMP_MAIN
-#include "comp.h"
+#include "comp.hpp"
 
 #include <dlfcn.h>
 #include <string.h>
