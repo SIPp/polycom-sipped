@@ -20,7 +20,7 @@
  */
 
 /****
- * Logging.cpp : Simple logfile encapsulation 
+ * logging.cpp : Simple logfile encapsulation 
  */
 
 
