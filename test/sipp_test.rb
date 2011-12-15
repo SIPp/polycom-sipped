@@ -27,28 +27,6 @@ require 'sys/proctable' if Config::CONFIG["host_os"] =~ /mswin|mingw/
 #
 # Note use 'ruby test.rb --name test_name' to execute the test named 'test_name' in test file 'test.rb'
 
-$options = {}
-optparse = OptionParser.new do|opts|
-  # Set a banner, displayed at the top
-  # of the help screen.
-  opts.banner = "Usage: ruby test_case.rb [options]"
- 
-  # Define the $options, and what they do
-  opts.on(["silent", "normal", "verbose"], '-v', '--verbosity [LEVEL]', 'Set verbosity depending on LEVEL.
-                                     If LEVEL is not specified default is "verbose".' ) do|level|
-    $options[:verbose] = level || "verbose"
-  end
-
-  # This displays the help screen, all programs are
-  # assumed to have this option.
-  opts.on( '-h', '--help', 'Display this screen' ) do
-    puts opts
-    exit
-  end
-end
- 
-optparse.parse!
-
 class SippTest
   attr_accessor :client_options, :server_options, :logging, 
                 :expected_client_output, :expected_server_output, :expected_error_log,
@@ -56,7 +34,7 @@ class SippTest
 				:expected_exitstatus
   
   def initialize(name, client_options, server_options = '')
-    parse_options($options)
+    process_args
     @is_windows = Config::CONFIG["host_os"] =~ /mswin|mingw/
     @name = name
     @client_options = client_options
@@ -256,21 +234,45 @@ class SippTest
 
   end # stop_sipp_server
   
-# helper routine for implementing test cases
-# outputs a string for assigning to a string variable in code for validating sipp output
-# to use, add the following to your test *before* to output a string that will pass when 
-# specified as the expected_client_output parameter (manually verify test first time!)
-#	test.run()
-#	client_output = test.get_client_output()
-#	test.puts_escaped_string(client_output)
-# Note that test which compare output to must use -skip_rlimit flag to eliminate FD_SETSIZE errors
+  def process_args
+
+    optparse = OptionParser.new do|opts|
+      # Set a banner, displayed at the top
+      # of the help screen.
+      opts.banner = "Usage: ruby test_case.rb [options]"
  
-  def parse_options(options)
-    if options[:verbose]
-      @logging = $options[:verbose]
-    end 
+      # Define the $options, and what they do
+      opts.on(["silent", "normal", "verbose"], '-v', '--verbose [LEVEL]', 'Set verbosity depending on LEVEL and enables Test::Unit::TestCase verbose output.
+                                     If LEVEL is not specified default is "verbose".' ) do|level|
+        @logging = level || "verbose"
+      end
+
+      # These are just for (hacked together) compatibility with Test::Unit options
+      opts.on '-s', '--seed SEED', Integer, "Sets random seed" do
+      end
+
+      opts.on '-n', '--name PATTERN', "Filter test names on pattern." do
+      end
+  
+      # This displays the help screen, all programs are
+      # assumed to have this option.
+      opts.on( '-h', '--help', 'Display this screen' ) do
+        puts opts
+        exit
+      end
+      opts.parse ARGV
+    end
+
   end
 
+  # helper routine for implementing test cases
+  # outputs a string for assigning to a string variable in code for validating sipp output
+  # to use, add the following to your test *before* to output a string that will pass when 
+  # specified as the expected_client_output parameter (manually verify test first time!)
+  #    test.run()
+  #    client_output = test.get_client_output()
+  #    test.puts_escaped_string(client_output)
+# Note that test which compare output to must use -skip_rlimit flag to eliminate FD_SETSIZE errors
   def puts_escaped_string(astring)
     output = astring.gsub("\n", "\\n")
     output.gsub!("\r", "\\r")
