@@ -30,9 +30,9 @@ require 'sys/proctable' if Config::CONFIG["host_os"] =~ /mswin|mingw/
 class SippTest
   attr_accessor :client_options, :server_options, :logging, 
                 :expected_client_output, :expected_server_output, :expected_error_log,
-				:expected_minimum_run_time, :expected_maximum_run_time, :run_time,
-				:expected_exitstatus
-  
+                :expected_minimum_run_time, :expected_maximum_run_time, :run_time,
+                :expected_exitstatus
+
   def initialize(name, client_options, server_options = '')
     process_args
     @is_windows = Config::CONFIG["host_os"] =~ /mswin|mingw/
@@ -54,7 +54,7 @@ class SippTest
 
     @run_time = 0;
     @expected_exitstatus = 0;
-	
+    
     @to_output = (@is_windows)? ">" : "&>"
     @redirect_error = (@is_windows)? " 2>&1" : ""
 
@@ -72,13 +72,13 @@ class SippTest
     stop_sipp_server()
 
     @run_time = Time.now - start_time
-	
+
     if (success)
       success = post_execution_validation()
     end
 
     puts "#{result_message(success)}\n" unless @logging == "silent"
-	
+
     return success;
   end
 
@@ -105,8 +105,8 @@ class SippTest
     if (!@expected_client_output.nil?)
       if (@expected_client_output != get_client_output())
         puts "Expected client output does not match actual.\n" unless @logging == "silent"
-	puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
-	result = false;
+    puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
+    result = false;
       end
     end
 
@@ -122,7 +122,7 @@ class SippTest
       if !(@expected_error_log.match get_error_log)
         puts "Expected error log does not match actual.\n" unless @logging == "silent"
         puts "Expected = '#{@expected_error_log}'\nActual = '#{get_error_log()}'\n" if @logging == "verbose"
-	result = false;
+    result = false;
       end
     end
         
@@ -139,7 +139,7 @@ class SippTest
           result = false;
       end
     end
-	
+
     #override to perform any additional follow-up tests here.
     return result
   end
@@ -149,8 +149,8 @@ class SippTest
     puts "Executing client with '#{testcase_client}'" if @logging == "verbose"
 
     result = system(testcase_client)
-	print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" if @logging == "verbose"
-	
+    print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" if @logging == "verbose"
+
     if ( (result && @expected_exitstatus == 0) || !expected_error_log.nil? ) 
       success = true
     elsif ($CHILD_STATUS.exitstatus == -1)
@@ -159,7 +159,7 @@ class SippTest
       @error_message =  "[ERROR] - child died with signal #{$CHILD_STATUS.termsig}]"
     elsif ($CHILD_STATUS.exited?)
       if ($CHILD_STATUS.exitstatus != @expected_exitstatus)
-	@error_message =  "[FAIL] exited with value #{$CHILD_STATUS.exitstatus} while expecting #{@expected_exitstatus}."
+    @error_message =  "[FAIL] exited with value #{$CHILD_STATUS.exitstatus} while expecting #{@expected_exitstatus}."
       else
         success = true
       end
@@ -194,8 +194,8 @@ class SippTest
     @server_options.empty? and return false
     puts "Executing server with '#{testcase_server}'" if @logging == "verbose"
     if @is_windows
-	  @server_pid = IO.popen(testcase_server).pid
-	else
+      @server_pid = IO.popen(testcase_server).pid
+    else
       @server_pid = fork do
         if (!exec(testcase_server))
           puts "[ERROR] - Failed to execute server command '#{testcase_server}'"
@@ -204,21 +204,21 @@ class SippTest
           return false
         end
       end
-	end
+    end
   end #start_sipp_server
 
   def stop_sipp_server
     # kill background SIPp server if it was started
     @server_options.empty? and return false
-    
-	if @is_windows
-	  Sys::ProcTable.ps.each { |ps|
+
+    if @is_windows
+      Sys::ProcTable.ps.each { |ps|
         if ps.name.downcase == "sipp.exe"
           Process.kill('KILL', ps.pid)
         end
       }
-	  Process.kill("SIGINT", @server_pid)
-	else
+      Process.kill("SIGINT", @server_pid)
+    else
       # kill immediate children of the shell whose pid is stored in @server_pid
       # may want to
       # Hash[*`ps -f`.scan(/\s\d+\s/).map{|x|x.to_i}].each{ |pid,ppid|
@@ -233,7 +233,7 @@ class SippTest
     Process.wait(@server_pid)
 
   end # stop_sipp_server
-  
+
   def process_args
 
     optparse = OptionParser.new do|opts|
@@ -253,7 +253,7 @@ class SippTest
 
       opts.on '-n', '--name PATTERN', "Filter test names on pattern." do
       end
-  
+
       # This displays the help screen, all programs are
       # assumed to have this option.
       opts.on( '-h', '--help', 'Display this screen' ) do
@@ -288,13 +288,13 @@ class SippTest
       @expected_server_output = @expected_server_output.gsub("\r","")
     end
   end
-  
+
   def remove_space_and_crlf(astring)
     output = astring.gsub("\r", "")
     output.gsub!("\n", "")
-    output.gsub!(" ", "")	
+    output.gsub!(" ", "")    
     return output
   end
-  
+
 end # class SippTest
 
