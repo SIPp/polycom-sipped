@@ -171,7 +171,11 @@ long get_long(const char *ptr, const char *what) {
 
   ret = strtol(ptr, &endptr, 0);
   if (*endptr) {
-    REPORT_ERROR("%s, \"%s\" is not a valid integer!\n", what, ptr);
+    // Error, try forced to base 10
+    ret = strtol(ptr, &endptr, 10);
+    if (*endptr) {
+      REPORT_ERROR("%s, \"%s\" is not a valid integer!\n", what, ptr);
+    }
   }
   return ret;
 }
