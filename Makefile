@@ -211,9 +211,11 @@ debug_pcap_cygwin:
 debug_pcap_ossl_cygwin:
 	@DEBUG_FLAGS=-g ; export DEBUG_FLAGS ; make pcapplay_ossl_cygwin
 
+.PHONY: clean
 clean:
 	rm -f *.o $(OUTPUT) *~ $(TOCLEAN) 
 	rm -rf cxx_repository
+	$(MAKE) -C UnitTest clean
 
 archive:
 	rm -f TMP_TAR_FILE.* $(ARCHIVE)
@@ -223,8 +225,12 @@ archive:
 	cp TMP_TAR_FILE.tar.gz $(ARCHIVE)
 	rm -f TMP_TAR_FILE.*
 
-.PHONY: test
-test:
+google_test:
+	$(MAKE) -C UnitTest 
+
+.PHONY:
+test: google_test
+	$(MAKE) -C UnitTest test
 	@pushd test > /dev/null; ./test.rb; popd > /dev/null
 	
 .PHONY: install
