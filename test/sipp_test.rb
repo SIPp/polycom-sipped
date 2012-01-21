@@ -32,6 +32,7 @@ class SippTest
                 :expected_client_output, :expected_server_output, :expected_error_log,
                 :expected_minimum_run_time, :expected_maximum_run_time, :run_time,
                 :expected_exitstatus
+  attr_reader   :error_message
 
   def initialize(name, client_options, server_options = '')
     process_args
@@ -61,7 +62,7 @@ class SippTest
   end
 
   def run
-    print "Test #{@name} " unless @logging == "silent"
+    print "\nTest #{@name} " unless @logging == "silent"
 
     start_time = Time.now
 
@@ -77,7 +78,8 @@ class SippTest
       success = post_execution_validation()
     end
 
-    puts "#{result_message(success)}\n" unless @logging == "silent"
+    print "\nTest #{@name} " if @logging == "verbose" # print again as all detail obscures which test it is...
+    print "#{result_message(success)}\n" unless @logging == "silent"
 
     return success;
   end
@@ -105,8 +107,8 @@ class SippTest
     if (!@expected_client_output.nil?)
       if (@expected_client_output != get_client_output())
         puts "Expected client output does not match actual.\n" unless @logging == "silent"
-    puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
-    result = false;
+        puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
+        result = false;
       end
     end
 
@@ -122,7 +124,7 @@ class SippTest
       if !(@expected_error_log.match get_error_log)
         puts "Expected error log does not match actual.\n" unless @logging == "silent"
         puts "Expected = '#{@expected_error_log}'\nActual = '#{get_error_log()}'\n" if @logging == "verbose"
-    result = false;
+        result = false;
       end
     end
         
@@ -154,23 +156,22 @@ class SippTest
     if ( (result && @expected_exitstatus == 0) || !expected_error_log.nil? ) 
       success = true
     elsif ($CHILD_STATUS.exitstatus == -1)
-      @error_message = "[ERROR] - Failed to execute"
+      @error_message = "[ERROR] - sipp client failed to execute"
     elsif ($CHILD_STATUS.signaled?)
-      @error_message =  "[ERROR] - child died with signal #{$CHILD_STATUS.termsig}]"
+      @error_message =  "[ERROR] - sipp client died with signal #{$CHILD_STATUS.termsig}]"
     elsif ($CHILD_STATUS.exited?)
       if ($CHILD_STATUS.exitstatus != @expected_exitstatus)
-    @error_message =  "[FAIL] exited with value #{$CHILD_STATUS.exitstatus} while expecting #{@expected_exitstatus}."
+        @error_message =  "[FAIL] sipp client exited with value #{$CHILD_STATUS.exitstatus} while expecting #{@expected_exitstatus}."
       else
         success = true
       end
     else 
-      @error_message = "Unknown failure: #{$CHILD_STATUS.to_s}"
+      @error_message = "Unknown failure executing sipp client: #{$CHILD_STATUS.to_s}"
     end
   return success
   end
 
   def result_message(success)
-    print "\nTest #{@name} " if @logging == "verbose"
     if (success)
       return "[PASS]"
     else
