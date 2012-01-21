@@ -102,10 +102,11 @@ TEST(TransactionState, ackIndex){
 
 TEST(TransactionState, transactionHash){
   TransactionState t(name);
-  EXPECT_EQ(t.getTransactionHash(), 0);
+  EXPECT_EQ(t.getTransactionHash(), 0U);
 
   t.setTransactionHash(123);
-  EXPECT_EQ(t.getTransactionHash(), 123);
+  EXPECT_EQ(t.getTransactionHash(), 123U);
+
 }
 
 // Not tested:
