@@ -1,4 +1,7 @@
 This file tracks changes responsible for version number updates.
+3.2.21 Alpha
+- Fix bug where dialog="08" is treated as invalid octal number rather than base-10 '8'.
+
 3.2.20 Dec-8-2011
 - Use posix_spawn() or spawnvep() instead of fork/exec for performing <exec> operation to work around cygwin bug and prepare for Win32 port.
 - Add support for Radiotap and 802.11 QoS RTP playback
