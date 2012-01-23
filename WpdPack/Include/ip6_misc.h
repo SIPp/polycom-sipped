@@ -18,7 +18,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * @(#) $Header$ (LBL)
+ * @(#) $Header: https://subversion.polycom.com/SVN/RepoMisc/TestUtilities/trunk/SIPped/SIPped/src/WpdPack/Include/ip6_misc.h 28153 2012-01-18 20:24:18Z Jenny.Xu@polycom.com $ (LBL)
  */
 
 /*

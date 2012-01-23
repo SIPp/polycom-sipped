@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) $Header$ (LBL)
+ * @(#) $Header: https://subversion.polycom.com/SVN/RepoMisc/TestUtilities/trunk/SIPped/SIPped/src/WpdPack/Include/pcap-bpf.h 28153 2012-01-18 20:24:18Z Jenny.Xu@polycom.com $ (LBL)
  */
 
 /*

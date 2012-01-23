@@ -37,7 +37,7 @@
  *
  *      @(#)bpf.h       7.1 (Berkeley) 5/7/91
  *
- * @(#) $Header$ (LBL)
+ * @(#) $Header: https://subversion.polycom.com/SVN/RepoMisc/TestUtilities/trunk/SIPped/SIPped/src/WpdPack/Include/pcap/bpf.h 28153 2012-01-18 20:24:18Z Jenny.Xu@polycom.com $ (LBL)
  */
 
 /*

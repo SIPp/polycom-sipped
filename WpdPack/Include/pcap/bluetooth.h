@@ -30,7 +30,7 @@
  * bluetooth data struct
  * By Paolo Abeni <paolo.abeni@email.it>
  *
- * @(#) $Header$
+ * @(#) $Header: https://subversion.polycom.com/SVN/RepoMisc/TestUtilities/trunk/SIPped/SIPped/src/WpdPack/Include/pcap/bluetooth.h 28153 2012-01-18 20:24:18Z Jenny.Xu@polycom.com $
  */
  
 #ifndef _PCAP_BLUETOOTH_STRUCTS_H__
