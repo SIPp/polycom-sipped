@@ -420,6 +420,31 @@ unsigned long getmilliseconds()
   return getmicroseconds() / 1000LL;
 }
 
+bool file_exists(const string &filename)
+{
+    if (FILE * file = fopen(filename.c_str(), "r"))
+    {
+        fclose(file);
+        return true;
+    }
+    return false;
+}
+
+
+string prepend_environment_if_needed(const string &name, const string &message=string(""))
+{
+  if (file_exists(name)) {
+    return name;
+  } else if (getenv("SIPPED")) {
+    string fullname = string(getenv("SIPPED")) + string("/") + name;
+    if (file_exists(fullname)) {
+      return fullname;
+    }
+  }
+  REPORT_ERROR("Error opening %s file '%s': File not found in current directory or in directory specified by SIPPED environment variable", message.c_str(), name.c_str());
+  return ""; // Never executes
+}
+
 
 #ifdef _USE_OPENSSL
 /****** SSL error handling                         *************/
@@ -481,10 +506,7 @@ int sip_tls_load_crls( SSL_CTX *ctx , char *crlfile)
   }
 
   /* Add the CRLS to the lookpup object */
-  char alt_path_crl[strlen(getenv("SIPPED")) + strlen(crlfile) + 2];
-  generate_alt_path(alt_path_crl, crlfile);
-  if (X509_load_crl_file(lookup,crlfile,X509_FILETYPE_PEM) != 1
-      && X509_load_crl_file(lookup,alt_path_crl,X509_FILETYPE_PEM) != 1) {
+  if (X509_load_crl_file(lookup, prepend_environment_if_needed(crlfile, "CRL").c_str(), X509_FILETYPE_PEM) != 1) {
     return (-1);
   }
 
@@ -553,31 +575,21 @@ static ssl_init_status FI_init_ssl_context (void)
   SSL_CTX_set_default_passwd_cb( sip_trp_ssl_ctx_client,
                                              passwd_call_back_routine );
 
-  char alt_path_cert[strlen(getenv("SIPPED")) + strlen(tls_cert_name) + 2];
-  generate_alt_path(alt_path_cert, tls_cert_name);
-
-  char alt_path_key[strlen(getenv("SIPPED")) + strlen(tls_key_name) + 2];
-  generate_alt_path(alt_path_key, tls_key_name);
-
-  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx, tls_cert_name, SSL_FILETYPE_PEM ) != 1
-       && SSL_CTX_use_certificate_file(sip_trp_ssl_ctx, alt_path_cert, SSL_FILETYPE_PEM ) != 1) {
+  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx, prepend_environment_if_needed(tls_cert_name, "TLS Cert").c_str(), SSL_FILETYPE_PEM ) != 1) {
     REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file failed");
     return SSL_INIT_ERROR;
   }
 
-  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client, tls_cert_name, SSL_FILETYPE_PEM ) != 1
-       && SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client, alt_path_cert, SSL_FILETYPE_PEM ) != 1) {
+  if ( SSL_CTX_use_certificate_file(sip_trp_ssl_ctx_client, prepend_environment_if_needed(tls_cert_name, "TLS Cert").c_str(), SSL_FILETYPE_PEM ) != 1) {
     REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_certificate_file (client) failed");
     return SSL_INIT_ERROR;
   }
-  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx, tls_key_name, SSL_FILETYPE_PEM ) != 1
-       && SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx, alt_path_key, SSL_FILETYPE_PEM ) != 1) {
+  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx, prepend_environment_if_needed(tls_key_name, "TLS key").c_str(), SSL_FILETYPE_PEM ) != 1) {
     REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file failed");
     return SSL_INIT_ERROR;
   }
 
-  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client, tls_key_name, SSL_FILETYPE_PEM ) != 1
-       && SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client, alt_path_key, SSL_FILETYPE_PEM ) != 1 ) {
+  if ( SSL_CTX_use_PrivateKey_file(sip_trp_ssl_ctx_client, prepend_environment_if_needed(tls_key_name, "TLS key").c_str(), SSL_FILETYPE_PEM ) != 1) {
     REPORT_ERROR("FI_init_ssl_context: SSL_CTX_use_PrivateKey_file (client) failed");
     return SSL_INIT_ERROR;
   }
@@ -2915,10 +2927,12 @@ static int check_for_message(struct sipp_socket *socket) {
   }
 
   /* Find the content-length header. */
-  if ((l = strncasestr(socketbuf->buf + socketbuf->offset, "\r\nContent-Length:", len))) {
-    l += strlen("\r\nContent-Length:");
-  } else if ((l = strncasestr(socketbuf->buf + socketbuf->offset, "\r\nl:", len))) {
-    l += strlen("\r\nl:");
+  char *content_length_const = "\r\nContent-Length:";
+  char *content_length_short_const = "\r\nl:";
+  if ((l = strncasestr(socketbuf->buf + socketbuf->offset, content_length_const, len))) {
+    l += strlen(content_length_const);
+  } else if ((l = strncasestr(socketbuf->buf + socketbuf->offset, content_length_short_const, len))) {
+    l += strlen(content_length_short_const);
   } else {
     /* There is no header, so the content-length is zero. */
     return len + 1;
@@ -5947,8 +5961,3 @@ char *jump_over_timestamp(char *src) {
   return tmp;
 }
 
-void generate_alt_path(char * path, const char * name) {
-  strcpy(path, getenv("SIPPED"));
-  strcat(path, "/");
-  strcat(path, name);
-}
