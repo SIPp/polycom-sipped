@@ -164,6 +164,22 @@ int           sendMode  = MODE_CLIENT;
 /* This describes what our 3PCC behavior is. */
 int	      thirdPartyMode = MODE_3PCC_NONE;
 
+/* These are the names of the scenarios, they must match the default_scenario table. */
+const char *scenario_table[] = {
+	"uac",
+	"uas",
+	"regexp",
+	"3pcc-C-A",
+	"3pcc-C-B",
+	"3pcc-A",
+	"3pcc-B",
+	"branchc",
+	"branchs",
+	"uac_pcap",
+	"ooc_default",
+};
+
+
 /*************** Helper functions for various types *****************/
 long get_long(const char *ptr, const char *what) {
   char *endptr;
@@ -623,12 +639,14 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
   last_recv_optional = false;
 
   if(filename) {
+    DEBUG_IN("filename = '%s'", filename);
     if(!xp_set_xml_buffer_from_file(filename, dumpxml)) {
       REPORT_ERROR("Unable to open or parse '%s' xml scenario file", filename);
     }
     scenario_path = strdup(filename);
     reduce_to_path(scenario_path);
   } else {
+    DEBUG_IN("filename = NULL, default = %s", scenario_table[deflt]);
     if(!xp_set_xml_buffer_from_string(default_scenario[deflt], dumpxml)) {
       REPORT_ERROR("Unable to load default xml scenario file");
     }
@@ -1969,20 +1987,6 @@ void freeStringTable(char ** stringList, int sizeOfList) {
   free(stringList);
 }
 
-/* These are the names of the scenarios, they must match the default_scenario table. */
-const char *scenario_table[] = {
-	"uac",
-	"uas",
-	"regexp",
-	"3pcc-C-A",
-	"3pcc-C-B",
-	"3pcc-A",
-	"3pcc-B",
-	"branchc",
-	"branchs",
-	"uac_pcap",
-	"ooc_default",
-};
 
 int find_scenario(const char *scenario) {
   int i, max;

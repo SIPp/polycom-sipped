@@ -694,6 +694,7 @@ void call::dump() {
 
 bool call::connect_socket_if_needed()
 {
+  DEBUG_IN();
   bool existing;
 
   if(call_socket) return true;
@@ -798,31 +799,32 @@ bool call::connect_socket_if_needed()
         } else {
           WARNING("Unable to connect a TCP socket");
         }
-	/* This connection failed.  We must be in multisocket mode, because
-         * otherwise we would already have a call_socket.  This call can not
-         * succeed, but does not affect any of our other calls. We do decrement
-	 * the reconnection counter however. */
-	if (reset_number != -1) {
-	  reset_number--;
-	}
+	      /* This connection failed.  We must be in multisocket mode, because
+               * otherwise we would already have a call_socket.  This call can not
+               * succeed, but does not affect any of our other calls. We do decrement
+	       * the reconnection counter however. */
+	      if (reset_number != -1) {
+	        reset_number--;
+	      }
 
-	computeStat(CStat::E_CALL_FAILED);
-	computeStat(CStat::E_FAILED_TCP_CONNECT);
-	delete this;
+	      computeStat(CStat::E_CALL_FAILED);
+	      computeStat(CStat::E_FAILED_TCP_CONNECT);
+	      delete this;
 
-	return false;
+	      return false;
       } else {
-	if(errno == EINVAL){
-	  /* This occurs sometime on HPUX but is not a true INVAL */
-	  REPORT_ERROR("Unable to connect a TCP socket, remote peer error");
-	} else {
-	  REPORT_ERROR_NO("Unable to connect a TCP socket");
-	}
+	      if(errno == EINVAL){
+	        /* This occurs sometime on HPUX but is not a true INVAL */
+	        REPORT_ERROR("Unable to connect a TCP socket, remote peer error");
+	      } else {
+	        REPORT_ERROR_NO("Unable to connect a TCP socket");
+	      }
       }
     }
-  }
+  } // TCP or TLS.
+  DEBUG_OUT();
   return true;
-}
+} // bool call::connect_socket_if_needed()
 
 bool call::lost(int index)
 {

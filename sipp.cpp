@@ -180,10 +180,8 @@ struct sipp_option options_table[] = {
 
 	{"f", "Set the statistics report frequency on screen. Default is 1 and default unit is seconds.", SIPP_OPTION_TIME_SEC, &report_freq, 1},
 	{"fd", "Set the statistics dump log report frequency. Default is 60 and default unit is seconds.", SIPP_OPTION_TIME_SEC, &report_freq_dumpLog, 1},
-        {"force_server_mode", "Set creation/send mode to server regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_server_mode, 1},
-        {"fsm", "Set creation/send mode to server regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_server_mode, 1},
-        {"force_client_mode", "Set creation/send mode to client regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_client_mode, 1},
-        {"fcm", "Set creation/send mode to client regardless of the contents of the scenario.", SIPP_OPTION_SETFLAG, &force_client_mode, 1},
+	{"force_server_mode", "Set creation/send mode to server regardless of the contents of the scenario. Defaults to false, unless using mc and TLS transport is enabled.", SIPP_OPTION_SETFLAG, &force_server_mode, 1},
+	{"force_client_mode", "Set creation/send mode to client regardless of the contents of the scenario. Defaults to false.", SIPP_OPTION_SETFLAG, &force_client_mode, 1},
 
 	{"h", NULL, SIPP_OPTION_HELP, NULL, 0},
 	{"help", NULL, SIPP_OPTION_HELP, NULL, 0},
@@ -445,6 +443,60 @@ string prepend_environment_if_needed(const string &name, const string &message=s
   return ""; // Never executes
 }
 
+// return true if address is equal, false if not
+bool is_in_addr_equal(const struct sockaddr_storage *left, const struct sockaddr_storage *right)
+{
+  if (left->ss_family != right->ss_family) {
+    return false;
+  }
+
+  if (left->ss_family == AF_INET) {
+    return memcmp( &(((struct sockaddr_in*)left)->sin_addr), &(((struct sockaddr_in*)right)->sin_addr), sizeof(struct in_addr) ) == 0;
+  }
+
+  return memcmp( &(((struct sockaddr_in6*)left)->sin6_addr), &(((struct sockaddr_in6*)right)->sin6_addr), sizeof(struct in6_addr) ) == 0;
+}
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+// get port, IPv4 or IPv6:
+unsigned short get_in_port(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return ntohs(((struct sockaddr_in*)sa)->sin_port);
+    }
+
+    return ntohs(((struct sockaddr_in6*)sa)->sin6_port);
+}
+
+string socket_to_ip_string(struct sockaddr_storage *socket)
+{
+  char ip[INET6_ADDRSTRLEN];
+
+  inet_ntop(socket->ss_family, get_in_addr((struct sockaddr *)socket), ip, sizeof(ip));
+  return string(ip);
+}
+
+string socket_to_ip_port_string(struct sockaddr_storage *socket)
+{
+  const int BUFFER_LENGTH = INET6_ADDRSTRLEN+10;
+  char ip_and_port[BUFFER_LENGTH];
+  char ip[INET6_ADDRSTRLEN];
+
+  inet_ntop(socket->ss_family, get_in_addr((struct sockaddr *)socket), ip, sizeof(ip));
+  snprintf(ip_and_port, sizeof(ip_and_port), "%s:%hu", ip, get_in_port((struct sockaddr *)socket));
+
+  return string(ip_and_port);
+}
+
 
 #ifdef _USE_OPENSSL
 /****** SSL error handling                         *************/
@@ -454,19 +506,26 @@ const char *sip_tls_error_string(SSL *ssl, int size) {
   switch(err) {
     case SSL_ERROR_NONE:
       return "No error";
+    case SSL_ERROR_ZERO_RETURN:
+      return "SSL_read returned SSL_ERROR_ZERO_RETURN (the TLS/SSL connection has been closed)";
     case SSL_ERROR_WANT_WRITE:
       return "SSL_read returned SSL_ERROR_WANT_WRITE";
     case SSL_ERROR_WANT_READ:
       return "SSL_read returned SSL_ERROR_WANT_READ";
+    case SSL_ERROR_WANT_CONNECT:
+      return "SSL_read returned SSL_ERROR_WANT_CONNECT";
+    case SSL_ERROR_WANT_ACCEPT:
+      return "SSL_read returned SSL_ERROR_WANT_ACCEPT";
     case SSL_ERROR_WANT_X509_LOOKUP:
       return "SSL_read returned SSL_ERROR_WANT_X509_LOOKUP";
-      break;
     case SSL_ERROR_SYSCALL:
       if(size<0) { /* not EOF */
-	return strerror(errno);
+	      return strerror(errno);
       } else { /* EOF */
         return "SSL socket closed on SSL_read";
       }
+    case SSL_ERROR_SSL:
+      return "SSL_read returned SSL_ERROR_SSL. One possibility is that the underlying TCP connection was unexpectedly closed.";
   }
   return "Unknown SSL Error.";
 }
@@ -3326,14 +3385,12 @@ void pollset_process(int wait)
     if(pollfiles[poll_idx].revents & POLLIN) {
       /* We can empty this socket. */
       if ((transport == T_TCP || transport == T_TLS) && sock == main_socket) {
-	struct sipp_socket *new_sock = sipp_accept_socket(sock);
-	if (!new_sock) {
-	  REPORT_ERROR_NO("Accepting new TCP connection.\n");
-	}
+        // accept connection (limiting to remote_host if one was specified and we're using no_call_id_check)
+        struct sipp_socket *new_sock = sipp_accept_socket(sock, (strlen(remote_host) && no_call_id_check) ? &remote_sockaddr : 0);
       } else if (sock == ctrl_socket) {
-	handle_ctrl_socket();
+      	handle_ctrl_socket();
       } else if (sock == stdin_socket) {
-	handle_stdin_socket();
+      	handle_stdin_socket();
       } else if (sock == localTwinSippSocket) {
 	if (thirdPartyMode == MODE_3PCC_CONTROLLER_B) {
 	  twinSippSocket = sipp_accept_socket(sock);
@@ -3939,6 +3996,7 @@ static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, in
   ret->ss_ssl = NULL;
 
   if ( transport == T_TLS ) {
+    DEBUG("Performing SSL socket initialization");
     if ((ret->ss_bio = BIO_new_socket(fd,BIO_NOCLOSE)) == NULL) {
       REPORT_ERROR("Unable to create BIO object:Problem with BIO_new_socket()\n");
     }
@@ -4033,6 +4091,7 @@ struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
 }
 
 struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *existing) {
+  DEBUG_IN();
   struct sipp_socket *sock = NULL;
   static int next_socket;
   if (pollnfds >= max_multi_socket) {  // we must take the main socket into account
@@ -4070,19 +4129,25 @@ struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *exi
     sock->ss_call_socket = true;
     *existing = false;
   }
+  DEBUG_OUT();
   return sock;
 }
 
-struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
+// Returns address of allocated sipp_socket on success or returns 0 if connection rejected due to incorrect 
+// source address.  (All other error conditions directly call REPORT_ERROR)
+// If source is not null, only accept connections from source address (no port check though)
+struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket, struct sockaddr_storage *source) {
   DEBUG_IN();
   struct sipp_socket *ret;
   struct sockaddr_storage remote_sockaddr;
   int fd;
   sipp_socklen_t addrlen = sizeof(remote_sockaddr);
 
+  DEBUG("Calling accept()");
   if((fd = accept(accept_socket->ss_fd, (struct sockaddr *)&remote_sockaddr, &addrlen))== -1) {
     REPORT_ERROR("Unable to accept on a %s socket: %s", TRANSPORT_TO_STRING(transport), strerror(errno));
   }
+  DEBUG("accept() returned fd %d from %s", fd, socket_to_ip_port_string(&remote_sockaddr).c_str());
 
 #if defined(__SUNOS)
   if (fd < 256)
@@ -4105,6 +4170,15 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
   }
 #endif
 
+  // Verify it's from the right spot if source specified
+  if (source) {
+    if (!is_in_addr_equal(&remote_sockaddr, source)) {
+      WARNING("Closing new TCP connection from %s as it does not match specified remote host %s", 
+        socket_to_ip_port_string(&remote_sockaddr).c_str(), socket_to_ip_string(source).c_str());
+      close(fd);
+      return 0;
+    }
+  }
 
   ret  = sipp_allocate_socket(accept_socket->ss_ipv6, accept_socket->ss_transport, fd, 1);
   if (!ret) {
@@ -4120,6 +4194,7 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket) {
   if (ret->ss_transport == T_TLS) {
 #ifdef _USE_OPENSSL
     int err;
+    DEBUG("Calling SSL_accept()");
     if ((err = SSL_accept(ret->ss_ssl)) < 0) {
       REPORT_ERROR("Error in SSL_accept: %s\n", sip_tls_error_string(accept_socket->ss_ssl, err));
     }
@@ -4154,7 +4229,7 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
     DEBUG("Could not bind socket to %s (%d: %s)", ip_and_port, errno, strerror(errno));
     return ret;
   }
-  DEBUG("Bound socket to %s", ip_and_port);
+  DEBUG("Bound socket %d to %s", socket->ss_fd, ip_and_port);
 
   if (!port) {
     return 0;
@@ -4180,7 +4255,7 @@ int sipp_do_connect_socket(struct sipp_socket *socket) {
   assert(socket->ss_transport == T_TCP || socket->ss_transport == T_TLS || no_call_id_check );
 
   errno = 0;
-  DEBUG("Connecting to %u", socket->ss_dest);
+  DEBUG("Calling connect()");
   ret = connect(socket->ss_fd, (struct sockaddr *)&socket->ss_dest, SOCK_ADDR_SIZE(&socket->ss_dest));
   if (ret < 0) {
     return ret;
@@ -4189,6 +4264,7 @@ int sipp_do_connect_socket(struct sipp_socket *socket) {
   if (socket->ss_transport == T_TLS) {
 #ifdef _USE_OPENSSL
     int err;
+    DEBUG("Calling SSL_connect()");
     if ((err = SSL_connect(socket->ss_ssl)) < 0) {
       REPORT_ERROR("Error in SSL connection: %s\n", sip_tls_error_string(socket->ss_ssl, err));
     }
@@ -4241,7 +4317,7 @@ int sipp_reconnect_socket(struct sipp_socket *socket) {
     socket->ss_invalid = false;
   }
 
-  DEBUG_OUT("return sipp_do_connect_socket(socket)");
+  DEBUG_OUT("about to call 'return sipp_do_connect_socket(socket)'");
   return sipp_do_connect_socket(socket);
 }
 
@@ -5360,6 +5436,8 @@ void close_calls(struct sipp_socket *socket) {
 
 int determine_remote_ip() {
   if(!strlen(remote_host)) {
+    memset(&remote_sockaddr, 0, sizeof( remote_sockaddr ));
+    // remote_host option required for client, optional for server.
     if((sendMode != MODE_SERVER)) {
       REPORT_ERROR("Missing remote host parameter. This scenario requires it.  \nCommon reasons are that the first message is a sent by SIPp or that a NOP statement precedes the <recv> and you specified the -mc option");
     }
@@ -5473,6 +5551,7 @@ int determine_remote_and_local_ip() {
 } // determine_remote_and_local_ip
 
 int open_connections() {
+  DEBUG_IN();
   int status=0;
   local_port = 0;
 
@@ -5659,6 +5738,7 @@ int open_connections() {
 
   if((!multisocket) && (transport == T_TCP || transport == T_TLS) &&
    (sendMode != MODE_SERVER)) {
+    DEBUG("Single-socket mode, TCP or TLS, and sendMode == MODE_CLIENT: creating tcp_multiplex socket");
     if((tcp_multiplex = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
       REPORT_ERROR_NO("Unable to get a TCP socket");
     }
@@ -5691,6 +5771,7 @@ int open_connections() {
 
 
   if(transport == T_TCP || transport == T_TLS) {
+    DEBUG("Listening on main_socket (fd = %d)", main_socket->ss_fd);
     if(listen(main_socket->ss_fd, 100)) {
       REPORT_ERROR_NO("Unable to listen main socket");
     }
@@ -5724,9 +5805,11 @@ int open_connections() {
 
   //casting remote_sockaddr as int* and derefrencing to get first byte. If it is null, no IP has been specified.
   if(*(int*)&remote_sockaddr && no_call_id_check && main_socket->ss_transport == T_UDP) { 
+    DEBUG("Connecting (limiting) UDP main_socket (fd = %d) to remote address");
     if(sipp_connect_socket(main_socket, &remote_sockaddr)) REPORT_ERROR("Could not connect socket to remote address. Check to make sure the remote IP is valid.");
   }
 
+  DEBUG_OUT();
   return status;
 } // open_connections
 

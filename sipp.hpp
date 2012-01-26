@@ -341,7 +341,7 @@ extern int_vt_map          userVarMap;
 //extern int      new_socket(bool P_use_ipv6, int P_type_socket, int * P_status);
 extern struct   sipp_socket *new_sipp_socket(bool use_ipv6, int transport);
 struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *existing);
-struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket);
+struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket, struct sockaddr_storage *source=0);
 extern int	sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr, int *port);
 extern int	sipp_connect_socket(struct sipp_socket *socket, struct sockaddr_storage *dest);
 extern int      sipp_reconnect_socket(struct sipp_socket *socket);
