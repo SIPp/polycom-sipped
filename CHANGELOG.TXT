@@ -1,6 +1,13 @@
 This file tracks changes responsible for version number updates.
-3.2.21 Alpha
+3.2.21 Jan-26-2012
 - Fix bug where dialog="08" is treated as invalid octal number rather than base-10 '8'.
+- Remove -fsm and -fcm short names for -force_server_mode and -force_client_mode.
+- Only accept incoming TCP/TLS connections from remote host in -mc mode.
+- Improve debug logging for TCP-related issues.
+- Improve SSL-related error messages.
+- Change cakey.bin to cakey.pem in WindowsBinary folder to match SIPp default names
+- Added Google Test unit test framework
+- Changes towards native Win32 execution (supporting libraries, refactoring of existing code).
 
 3.2.20 Dec-8-2011
 - Use posix_spawn() or spawnvep() instead of fork/exec for performing <exec> operation to work around cygwin bug and prepare for Win32 port.
