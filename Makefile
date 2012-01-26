@@ -225,11 +225,11 @@ archive:
 	cp TMP_TAR_FILE.tar.gz $(ARCHIVE)
 	rm -f TMP_TAR_FILE.*
 
-google_test:
+unit_test:
 	$(MAKE) -C UnitTest 
 
 .PHONY:
-test: google_test
+test: unit_test
 	$(MAKE) -C UnitTest test
 	@pushd test > /dev/null; ./test.rb; popd > /dev/null
 	
