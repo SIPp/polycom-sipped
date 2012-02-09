@@ -11,7 +11,7 @@
 
 # All tests produced by this Makefile.  
 # Remember to add new tests you created to the list.
-TESTS = transactionstate sample1_unittest
+TESTS = transactionstate xp_parser
 
 # Please tweak the following variable definitions as needed by your
 # project, except GTEST_HEADERS, which you can use in your own targets
@@ -77,32 +77,41 @@ gtest.a : gtest-all.o
 
 gtest_main.a : gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
-
-# Builds a sample test.  A test should link with either gtest.a or
-# gtest_main.a, depending on whether it defines its own main()
-# function.
-
-sample1.o : $(USER_DIR)/sample1.cc $(USER_DIR)/sample1.h $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/sample1.cc
-
-sample1_unittest.o : $(USER_DIR)/sample1_unittest.cc \
-                     $(USER_DIR)/sample1.h $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/sample1_unittest.cc
-
-sample1_unittest : sample1.o sample1_unittest.o gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+#####################################################
+## Builds a sample test.  A test should link with either gtest.a or
+## gtest_main.a, depending on whether it defines its own main()
+## function.
+#sample1.o : $(USER_DIR)/sample1.cc $(USER_DIR)/sample1.h $(GTEST_HEADERS)
+#	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/sample1.cc
+#sample1_unittest.o : $(USER_DIR)/sample1_unittest.cc \
+#                     $(USER_DIR)/sample1.h $(GTEST_HEADERS)
+#	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(USER_DIR)/sample1_unittest.cc
+#sample1_unittest : sample1.o sample1_unittest.o gtest_main.a
+#	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+################################
 
 SIPpedTest.o : SIPpedTest.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c SIPpedTest.cpp
     
+##### transactionstate
 transactionstate.o : transactionstate.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) -I$(SIPP_DIR) $(CXXFLAGS) -c transactionstate.cpp
     
 transactionstate : transactionstate.o $(SIPP_DIR)/transactionstate.o $(SIPP_DIR)/logging.o  gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
+##### xp_parser
+xp_parser.o : xp_parser.cpp  $(GTEST_HEADERS)
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
+
+xp_parser : xp_parser.o $(SIPP_DIR)/xp_parser.o gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	
+#################################
+
 helpers.o : helpers.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) -I$(SIPP_DIR) $(CXXFLAGS) -c helpers.cpp
     
 helpers : helpers.o $(SIPP_DIR)/helpers.o $(SIPP_DIR)/logging.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	

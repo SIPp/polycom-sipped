@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <string>
 
 #include "xp_parser.hpp"
 #include "win32_compatibility.hpp"
@@ -56,6 +57,8 @@ int    xp_stack    = 0;
 
 char xml_special_char_encoding[][6] = {"lt;", "gt;", "amp;", "apos;", "quot;", "\0"};
 char xml_special_char[]           = {'<', '>', '&', '\'', '"'};
+
+int     verbose = 0;
 
 /****************** Internal routines ********************/
 int xp_replace(char *source, char *dest, const char *search, const char *replace)
@@ -159,7 +162,7 @@ char * xp_find_local_end()
 
 /********************* Interface routines ********************/
 
-int xp_set_xml_buffer_from_string(char * str, int dumpxml)
+int xp_set_xml_buffer_from_string(const char * str, int dumpxml)
 {
   size_t len = strlen(str);
 
@@ -171,7 +174,7 @@ int xp_set_xml_buffer_from_string(char * str, int dumpxml)
   xp_position[xp_stack] = xp_file;
   
   if (dumpxml) 
-    printf("%s", &xp_file);
+    printf("%s", xp_file);
 
   if(strncmp(xp_position[xp_stack], "<?xml", strlen("<?xml"))) return 0;
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
@@ -182,17 +185,17 @@ int xp_set_xml_buffer_from_string(char * str, int dumpxml)
 
 // return index where path ends (and file spec begins) or 0 if it is missing
 // so filename[end] will be at first letter of filename
-int xp_get_start_index_of_filename(char * filename)
+int xp_get_start_index_of_filename(const char * filename)
 {
   int end = strlen(filename);
   for (; ((end>0) && (filename[end-1] != '/') && (filename[end-1] != '\\')); end--);
   return end;
 }
 
-#define DEBUG(x, ...) { if (0) { printf(x, ##__VA_ARGS__); } }
+#define DEBUG(x, ...) { if (verbose) { printf(x, ##__VA_ARGS__); } }
 
 // return 1 on success, 0 on error 
-int xp_open_and_buffer_file(char * filename, char * path, int *index, unsigned *sub_list, unsigned sub_length)
+int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsigned *sub_list, unsigned sub_length)
 {
   int include_index = 0;
   const char* include_tag = "<xi:include href=\"";
@@ -206,6 +209,13 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index, unsigned *
   const int XP_MAX_LOCAL_SUB_LIST_LEN = 26;
   unsigned local_sub_list[XP_MAX_LOCAL_SUB_LIST_LEN];
   unsigned local_sub_length = 0;
+
+  int comment_index = 0;  // used for both open and close
+  const char* start_comment_tag = "<!--";
+  const char* end_comment_tag = "-->";
+  int inside_comment = 0; // flag to set if we are currently inside a comment
+  int start_comment_length = strlen(start_comment_tag);
+  int end_comment_length = strlen(end_comment_tag);
 
   char include_file_name[XP_MAX_NAME_LEN];
   char new_path[XP_MAX_NAME_LEN];
@@ -239,8 +249,36 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index, unsigned *
   } // if !f
 
   while((c = fgetc(f)) != EOF) {
+    // look for comment tags and set inside_comment flag when required
+    if (!inside_comment){ // not in comment, look for start tag
+      if (c == start_comment_tag[comment_index]) {
+        comment_index++;
+      }
+      else {
+        comment_index=0;
+      }
+      // matched all comment start chars, flag inside_comment
+      if (comment_index >= start_comment_length ){
+        inside_comment = 1;
+        comment_index = 0;
+      }
+    }
+    else {  // we are inside a comment, scan for end_comment
+      if (c == end_comment_tag[comment_index]){
+        comment_index++;
+      }
+      else{
+        comment_index=0;
+      }
+      // matched all comment end chars,no longer  inside comment
+      if (comment_index >= end_comment_length){
+        inside_comment = 0;
+        comment_index = 0;
+      }
+    }
+
     // Handle match for include file
-    if (c == include_tag[include_index]) {
+    if ((c == include_tag[include_index]) && (!inside_comment)) {
       include_index++;
       if (include_index >= include_tag_length) {
         // match: move index to spot to overwrite, read out the filename, recursively call to place inline
@@ -431,17 +469,19 @@ int xp_open_and_buffer_file(char * filename, char * path, int *index, unsigned *
 
 
 // return 1 on success, 0 on error 
-int xp_set_xml_buffer_from_file(char * filename, int dumpxml)
+int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
 {
   int index = 0;
+  char empty[] = "";
 
-  int result = xp_open_and_buffer_file(filename, "", &index, 0, 0);
-  if (dumpxml)
-    printf("%s", &xp_file);
+  int result = xp_open_and_buffer_file(filename, empty, &index, 0, 0);
 
   xp_file[index++] = 0;
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
+
+  if (dumpxml)
+    printf("%s", &xp_file);
 
   if (!result)
     return 0;
@@ -740,3 +780,20 @@ void xp_convert_special_characters(char * buffer)
   printf("xp_convert_special_characters: OUT '%s'\n", buffer);
 
 }
+
+
+// routines to assist unit testing
+// Note: you must explicitly declare these in the test case.
+
+using namespace std;
+string xp_get_xmlbuffer()
+{
+    return string(xp_file);
+}
+
+void set_xp_parser_verbose(int value)
+{
+  verbose = value;
+}
+
+

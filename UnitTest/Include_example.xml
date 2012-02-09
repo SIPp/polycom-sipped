@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+<scenario name="Example of how to have a multipe branch point like an if/elsif/else structure" parameters="-aa -mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<xi:include href="100.xml" dialogs="1"/>
+
+</scenario>

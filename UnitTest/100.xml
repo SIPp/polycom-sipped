@@ -1,0 +1,21 @@
+<!-- This is file 100.xml -->
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+<scenario name="a 100 response" parameters="-aa -mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<send dialog="AA">
+<![CDATA[
+
+     SIP/2.0 100 Trying
+     [last_via:]
+     [last_From:]
+     [last_To:]
+     [last_cseq:]
+     [last_call-id:]
+     Contact: <sip:[local_ip]:[local_port]>
+     User-Agent: Sipp
+
+]]>
+</send>
+
+</scenario>
