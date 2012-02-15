@@ -106,7 +106,7 @@ xp_parser.o : xp_parser.cpp  $(GTEST_HEADERS)
 
 xp_parser : xp_parser.o $(SIPP_DIR)/xp_parser.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
-	
+
 #################################
 
 helpers.o : helpers.cpp $(GTEST_HEADERS)

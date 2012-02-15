@@ -45,11 +45,15 @@
 #ifdef WIN32
   #define snprintf _snprintf
 #endif
+
+using namespace std;
+
 /************* Constants and Global variables ***********/
 
 #define XP_MAX_NAME_LEN   256
 #define XP_MAX_FILE_LEN   655360
 #define XP_MAX_STACK_LEN  256
+#define MAXERRSIZE 256
 
 char   xp_file     [XP_MAX_FILE_LEN + 1];
 char * xp_position [XP_MAX_STACK_LEN];
@@ -59,8 +63,22 @@ char xml_special_char_encoding[][6] = {"lt;", "gt;", "amp;", "apos;", "quot;", "
 char xml_special_char[]           = {'<', '>', '&', '\'', '"'};
 
 int     verbose = 0;
+string xp_error_messages = "";
+char err[MAXERRSIZE];
 
 /****************** Internal routines ********************/
+// set locally with xp_store_error_message, retrieved globally by xp_get_errors()
+
+
+void store_error_message(string message)
+{
+    xp_error_messages = xp_error_messages + message;
+}
+
+string xp_get_errors() {
+    return xp_error_messages;
+}
+
 int xp_replace(char *source, char *dest, const char *search, const char *replace)
 {
   char *position;
@@ -160,6 +178,73 @@ char * xp_find_local_end()
   return ptr;
 }
 
+/*
+  * input environment variable name
+ * output value of the environment variable
+ *
+ */
+string translate_envvar(string name)
+{
+  char* value = getenv(name.c_str());
+  if (!value)
+  {
+    store_error_message( "Undefined Environment Variable : " + name + "\r\n");
+    return "";
+  }
+
+  return string(value);
+}
+/**
+ * input: array containing filename with optional path and optional environment variable
+ *        environment variable delimited by percentage char at start and end %NAME%
+ * output: environment variables are expanded and replaced with users settings
+ * return the size of the new array string
+ *        -1 if not able to substitute if array is not large enough to hold result
+ * precondition:  the array is large enough to hold expanded path/filename
+
+ */
+
+int expand_env_var(char* path_and_fn)
+{
+
+  char varMarker = '%';
+  size_t startp, endp;
+  //int substitution_count = 0;
+  string pathandfn = string(path_and_fn);
+  startp = pathandfn.find(varMarker, 0 );
+    while (startp != pathandfn.npos)
+    {
+      //substitution_count++;
+      endp = pathandfn.find(varMarker, startp+1);
+      if (endp == pathandfn.npos )
+      {
+        //throw invalid_argument("Malformed environment environment variable - missing closing" + varMarker);
+        store_error_message("Malformed environment environment variable - missing closing % \r\n");
+        return -1;
+      }
+      string envvar = pathandfn.substr(startp+1,endp-startp-1); // stripped of leading and trailing varMarker
+      string envvalue = translate_envvar(envvar);
+      if (envvalue.size()==0){
+        store_error_message("Environment Value not retrieved\r\n");
+        return -1; // unable to retrieve value for environment variable
+      }
+      pathandfn = pathandfn.substr(0,startp) + envvalue + pathandfn.substr(endp+1);
+      // look to see if there are anymore env variables
+      startp = pathandfn.find(varMarker, endp+1 );
+    }
+
+    if (pathandfn.size()+1 <= XP_MAX_NAME_LEN)
+    {
+      pathandfn.copy(path_and_fn, pathandfn.size(), 0 );
+      path_and_fn[pathandfn.size()]=0;
+      return pathandfn.size();
+    }else
+    {
+      store_error_message("Expanded path/filename larger than %d\r\n" +  XP_MAX_NAME_LEN);
+      return -1;  // array is not large enough to hold result
+    }
+}
+
 /********************* Interface routines ********************/
 
 int xp_set_xml_buffer_from_string(const char * str, int dumpxml)
@@ -238,12 +323,14 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
     if ((filename[0] != '\\') && (filename[0] != '/') && (strlen(path)) ) {
       f = fopen(path_and_filename, "rb");
         if(!f) { 
-          printf("Unable to open file name '%s' directly or in '%s'\n", filename, new_path);
+          snprintf(err,MAXERRSIZE, "Unable to open file name '%s' directly or in '%s'\r\n", filename, new_path);
+          store_error_message(err);
           return 0; 
         }
     }
     else {
-      printf("Unable to open file name '%s'\n", filename);
+      snprintf(err, MAXERRSIZE, "Unable to open file name '%s'\r\n", filename);
+      store_error_message(err);
       return 0; 
     }
   } // if !f
@@ -288,13 +375,24 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
         include_index = 0; // use to track file name
         while((c = fgetc(f)) != '"') {
           if (c == EOF || c == '\r' || c == '\n') {
-            printf("xi:include tag must be formatted exactly '<xi:include href=\"filename\"/>'  No EOF or EOLN permitted.\n");
+            snprintf(err, MAXERRSIZE, "xi:include tag must be formatted exactly '<xi:include href=\"filename\"/>'  No EOF or EOLN permitted.\r\n");
+            store_error_message(err);
             fclose(f);
             return 0;
           }
           include_file_name[include_index] = c;
           include_index++;
         } // while fgetc != '"'
+        // null terminate the filename so we can work with it as a string
+        include_file_name[include_index]=0;
+        //  we should have full path/filename inside "include_file_name"
+        //  lets scan it for a environment variable marker and substitute if required
+        //  Also adjust include_index to reflect new size of string
+        include_index=expand_env_var(include_file_name);
+        if (include_index<0){
+          store_error_message("unable to get Environment variable value\r\n");
+          return 0; // failed to expand env_var: not set , or value too long
+        }
 
         c = getc(f);
         while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace  
@@ -309,7 +407,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
             replace_index++;
           }
           if (replace_index != replace_param_length) { 
-            printf("Error: only valid option to xi:include is 'dialogs=\"1,2,3\"'.\n");
+            snprintf(err, MAXERRSIZE, "Error: only valid option to xi:include is 'dialogs=\"1,2,3\"'.\r\n");
+            store_error_message(err);
             fclose(f);
             return 0;
           }
@@ -323,7 +422,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
               number_len++;
               if (number_len > 6) {
                 number_str[number_len] = 0;
-                printf("Error in '%s': dialogs substitution string %s is too long. dialogs tag value must be comma separated numbers.\n", filename, number_str);
+                snprintf(err, MAXERRSIZE,"Error in '%s': dialogs substitution string %s is too long. dialogs tag value must be comma separated numbers.\r\n", filename, number_str);
+                store_error_message(err);
                 fclose(f);
                 return 0;
               }
@@ -333,7 +433,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 // add numbers / letters
                 int d;
                 if (local_sub_length >= XP_MAX_LOCAL_SUB_LIST_LEN) {
-                  printf("Error in '%s': Too many substitution parameters. Maximum is %d.\n", filename, XP_MAX_LOCAL_SUB_LIST_LEN);
+                  snprintf(err, MAXERRSIZE, "Error in '%s': Too many substitution parameters. Maximum is %d.\r\n", filename, XP_MAX_LOCAL_SUB_LIST_LEN);
+                  store_error_message(err);
                   fclose(f);
                   return 0;
                 }
@@ -341,7 +442,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 if (number_str[0] >= '0' && number_str[0] <= '9') {
                   d = atoi(number_str);
                   if (d > 99) {
-                    printf("Error in '%s': Maximum dialog ID for substitution is 99.\n", filename);
+                    snprintf(err, MAXERRSIZE, "Error in '%s': Maximum dialog ID for substitution is 99.\r\n", filename);
+                    store_error_message(err);
                     fclose(f);
                     return 0;
                   }
@@ -350,7 +452,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                   (toupper(number_str[1]) == toupper(number_str[0])) && (number_len == 2)) {
                   d = number_str[0] - (int)'A';
                   if (d >= sub_length) {
-                    printf("'Error in '%s': %s' => %d is greater than largest substitution available of %d.\n", filename, number_str, d+1, sub_length);
+                    snprintf(err, MAXERRSIZE, "'Error in '%s': %s' => %d is greater than largest substitution available of %d.\r\n", filename, number_str, d+1, sub_length);
+                    store_error_message(err);
                     fclose(f);
                     return 0;
                   }
@@ -358,7 +461,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                   d = sub_list[d];
                 }
                 else {
-                  printf("Invalid dialogs parameter value '%s'.\n", number_str);
+                  snprintf(err, MAXERRSIZE, "Invalid dialogs parameter value '%s'.\r\n", number_str);
+                  store_error_message(err);
                   fclose(f);
                   return 0;
                 }
@@ -372,7 +476,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 break;
             } // if c== ',' || '"'
             else {
-              printf("Error, xi:include tag's dialogs list must contain numbers separated with commas and no whitespace.\n");
+              snprintf(err, MAXERRSIZE, "Error, xi:include tag's dialogs list must contain numbers separated with commas and no whitespace.\r\n");
+              store_error_message(err);
               fclose(f);
               return 0;
             }
@@ -386,7 +491,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
 
 
         if (c != '/' || fgetc(f) != '>') {
-          printf("xi:include tag must be formatted exactly '<xi:include href=\"filename\" dialogs=\"1,2,3\"] />'  '/>' must be together.\n");
+          snprintf(err, MAXERRSIZE, "xi:include tag must be formatted exactly '<xi:include href=\"filename\" dialogs=\"1,2,3\"] />'  '/>' must be together.\r\n");
+          store_error_message(err);
           fclose(f);
           return 0;
         }
@@ -438,7 +544,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
           // Note: index is new spot; i-1 is ", i-2 & i-3 are the letters to replace
           int sub_idx = toupper(xp_file[(*index)-2] ) - (int)'A';
           if (sub_idx >= sub_length) {
-            printf("Error in '%s': not enough include parameters while attempting to substitute '%s'. This requires at least %d dialog id(s) specified with the include, but there were only %d.\n", filename, (char *) &xp_file[(*index)-(dialog_param_length+4)], sub_idx+1, sub_length);
+            snprintf(err, MAXERRSIZE, "Error in '%s': not enough include parameters while attempting to substitute '%s'. This requires at least %d dialog id(s) specified with the include, but there were only %d.\r\n", filename, (char *) &xp_file[(*index)-(dialog_param_length+4)], sub_idx+1, sub_length);
+            store_error_message(err);
             fclose(f);
             return 0; 
           }
@@ -457,15 +564,22 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
     } // if sub_list != 0
 
     if(*index >= XP_MAX_FILE_LEN) {
-      printf("Error: XML scenario file too long (current maximum for all content including includes is %d bytes).\n", XP_MAX_FILE_LEN);
+      snprintf(err, MAXERRSIZE, "Error: XML scenario file too long (current maximum for all content including includes is %d bytes).\r\n", XP_MAX_FILE_LEN);
+      store_error_message(err);
       fclose(f);
       return 0; 
     }
   }
   fclose(f);
 
+  if (xp_error_messages != "") {
+    return 0;
+  }
+
   return 1;
 } // xp_open_and_buffer_file
+
+
 
 
 // return 1 on success, 0 on error 
@@ -483,8 +597,10 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
   if (dumpxml)
     printf("%s", &xp_file);
 
-  if (!result)
+  if (!result){
+    store_error_message("Failed to retrieve file " + string(filename) + "\r\n");
     return 0;
+  }
 
   if(strncmp(xp_position[xp_stack], "<?xml", strlen("<?xml"))) return 0;
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
@@ -748,7 +864,6 @@ void xp_convert_special_characters(char * buffer)
   if (!src)
     return ;
 
-  printf("xp_convert_special_characters: IN '%s'\n", buffer);
   /* start at first & and then copy inline from src to dest with correct characters */
   while (*src) {
     if (*src == '&') {
@@ -766,7 +881,8 @@ void xp_convert_special_characters(char * buffer)
 
       if (xml_special_char_encoding[i] == NULL) {
         /* Illegal use of &, but we'll be lenient (in violation of XML rules) and allow it through */
-        printf("Illegal use of '&' in XML attribute: you should be using '&amp;' instead\n");
+        snprintf(err, MAXERRSIZE, "Illegal use of '&' in XML attribute: you should be using '&amp;' instead\r\n");
+        store_error_message(err);
         *dst = *src;
       }
 
@@ -777,15 +893,15 @@ void xp_convert_special_characters(char * buffer)
     src++;
   }
   *dst = 0;
-  printf("xp_convert_special_characters: OUT '%s'\n", buffer);
+
 
 }
+
 
 
 // routines to assist unit testing
 // Note: you must explicitly declare these in the test case.
 
-using namespace std;
 string xp_get_xmlbuffer()
 {
     return string(xp_file);

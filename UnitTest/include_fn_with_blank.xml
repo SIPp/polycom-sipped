@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!-- note the blank in the filename -->
+<xi:include href="included file.xml"/>
+</scenario>

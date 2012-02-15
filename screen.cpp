@@ -286,8 +286,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
       strcat(msg, tmp);
       screen_exit(EXIT_FATAL_ERROR);
     } else {
-      DEBUG("%s: The following events occured:\n", screen_exename);
-      fprintf(error_lfi.fptr, "%s: The following events occured:\n",
+      DEBUG("%s: The following events occurred:\n", screen_exename);
+      fprintf(error_lfi.fptr, "%s: The following events occurred:\n",
         screen_exename);
       fflush(error_lfi.fptr);
     }

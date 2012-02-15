@@ -19,7 +19,6 @@
  *           From Hewlett Packard Company.
  */
 
-
 int    xp_replace(char *source, char *dest, const char *search, const char *replace);
 int    xp_set_xml_buffer_from_string(const char * str, int dump_xml);
 int    xp_set_xml_buffer_from_file(const char * filename, int dump_xml);
@@ -32,3 +31,4 @@ char * xp_get_value(const char * name);
 char * xp_get_cdata();
 int    xp_get_content_length(char * P_buffer);
 void   xp_convert_special_characters(char * buffer); /* convert &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') */
+std::string xp_get_errors();

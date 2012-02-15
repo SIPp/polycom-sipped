@@ -1,4 +1,15 @@
 This file tracks changes responsible for version number updates.
+
+3.2.23 Feb-14-2011
+- implemented ability to use env variables within include filename specification using % as start/end delimiter
+- gtest case and ruby test case updates 
+- redirected xp_parser errors to REPORT_ERROR. Previously, Errors were overwritten by _screen_error and then again by endwin. 
+- 
+3.2.22 Feb-08-2012
+- Fix recognition of comment tags around xi-include
+- added gtest and ruby test for comments and xi include
+- added gtest unit test for xp_parser
+
 3.2.21 Jan-26-2012
 - Fix bug where dialog="08" is treated as invalid octal number rather than base-10 '8'.
 - Remove -fsm and -fcm short names for -force_server_mode and -force_client_mode.

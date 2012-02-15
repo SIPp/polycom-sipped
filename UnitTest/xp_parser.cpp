@@ -69,9 +69,6 @@ TEST(GTEST, helper_routines)
   EXPECT_EQ(447, get_file_length("100.xml"));
   EXPECT_THROW(string mystring = get_file_as_string("nonexistantFile"), runtime_error);
 }
-/////////////////////////////////////////
-
-
 
 ///////////////////////////////////////
 //  verify loading of string into private variable xp_file
@@ -116,6 +113,13 @@ TEST(xp_parser, xp_set_xml_buffer_from_string){
   EXPECT_EQ(str, xp_get_xmlbuffer()) << "private variable xp_file does not match input string";
 }
 
+// string processing does not interpret xi includes at all
+TEST(xp_parser, xp_set_xml_buffer_from_string_test_xiinclude){
+  string noncommented_xi_include_string ("<?xml-- <xi:include href=\"100.xml\"?> -->");
+  ASSERT_EQ(1, xp_set_xml_buffer_from_string(noncommented_xi_include_string.c_str(), dumpxml)) << "xp_set_xml_buffer_from_string() returned error code";
+  EXPECT_EQ(noncommented_xi_include_string, xp_get_xmlbuffer()) << "xp_set_xml_buffer_from_string does not process xi_includes: xp_file should be identical to input" ;
+}
+
 
 /////////////////////////////////////////////
 // Test xi:include functionality - verifies it works
@@ -144,7 +148,6 @@ TEST(xp_parser, xp_set_xml_buffer_from_file_no_embedded_comment){
          xp_get_xmlbuffer() << "'\n Expected = '" << expected_result << "'";
 }
 
-
 ///////////////////////////////////////
 // test xi include inside comment - verify that commented out xi-includes are not included
 TEST(xp_parser, xp_set_xml_buffer_from_file_w_include_inside_comment){
@@ -165,11 +168,80 @@ TEST(xp_parser, xp_set_xml_buffer_from_file_w_include_inside_comment){
   // note double minus not allowed inside comments,
   // http://www.w3.org/TR/2008/REC-xml-20081126/#sec-comments
   // no need to test nested comments.
+}
+
+////////////////////////////////////////
+// test the xi include filename handling
+TEST(xp_parser, xp_set_xml_buffer_from_file_include_fn_path){
+
+  // if included file name as a blank in it, file should still get included
+  string xi_include_file_w_blank_in_name = "include_fn_with_blank.xml";
+  string expected_result_file_blank_in_name= "include_fn_with_blank-expected_result.xml";
+  ASSERT_EQ(1, xp_set_xml_buffer_from_file(xi_include_file_w_blank_in_name.c_str(), dumpxml)) << "Failed to set buffer - unable to proceed";
+  EXPECT_EQ(get_file_as_string(expected_result_file_blank_in_name), xp_get_xmlbuffer()) << "xmlbuffer should contain xi include file even though fn contains blanks";
+  // if included file name has a path with a blank in it, file should still get included
+  string xi_include_file_w_blank_in_path = "include_fn_with_blank.xml";
+  string expected_result_file_blank_in_path= "include_fn_with_blank-expected_result.xml";
+  ASSERT_EQ(1, xp_set_xml_buffer_from_file(xi_include_file_w_blank_in_path.c_str(), dumpxml)) << "Failed to set buffer - unable to proceed";
+  EXPECT_EQ(get_file_as_string(expected_result_file_blank_in_path), xp_get_xmlbuffer()) << "xmlbuffer should contain xi include file even though fn contains blanks";
+}
+
+////////////////////////////////////////////
+// verify handling of environment variable as part of filename for xi includes
+// sets and unsets environment variables as part of testing.
+TEST(xp_parser, expand_env_var)
+{
+  int expand_env_var(char*);
+  char input[4096];
+
+  // single substitution at front of path
+  string pathandfilename="%SIPPED%/src/test/xp_parser.cpp";
+  char* env_value = getenv("SIPPED");
+  string expected_pathandfilename=string(env_value) + string("/src/test/xp_parser.cpp");
+  strcpy(input, pathandfilename.c_str());
+  int rc = expand_env_var(input);
+  EXPECT_GT(rc,0) << "number of substitutions should be greater than zero";
+  EXPECT_STREQ(expected_pathandfilename.c_str(), input) << "path and filename should have env var expanded";
+
+  // two environment variables in filename
+  char* env_val01 = getenv("ENV_VAR01");
+  char* env_val02 = getenv("ENV_VAR02");
+  char* tmp01 = NULL;
+  char* tmp02 = NULL;
+  if (env_val01)
+    strcpy(tmp01,env_val01);
+  if (env_val02)
+    strcpy(tmp02,env_val02);
+  setenv("ENV_VAR01","richard",1);
+  setenv("ENV_VAR02","here",1);
+  char testpath[4096];
+  strcpy(testpath,"%ENV_VAR01%/was/%ENV_VAR02%");
+  rc = expand_env_var(testpath);
+  EXPECT_EQ(16,rc) << "length of filename after substitution not correct";
+  EXPECT_STREQ("richard/was/here",testpath) << "two env var substitutions should match";
+  //restore env var if we changed them, otherwise unset them
+  if (tmp01)
+  {
+    setenv("ENV_VAR01",tmp01,1);
+  }else
+  {
+    unsetenv ("ENV_VAR01");
+  }
+  if (tmp02)
+  {
+    setenv("ENV_VAR02",tmp02,1);
+  }else
+  {
+    unsetenv("ENV_VAR02");
+  }
+
+  // test xi include that TA_DIR environment variable
+  char* tadir = getenv("TA_DIR");
+  string include_file_with_env_var = "include_using_envvar.xml";
+  string include_file_with_env_var_expected = "include_using_envvar-expected.xml";
+  EXPECT_TRUE(tadir!=NULL) << "TA_DIR environment variable must be set to complete this test";
+  ASSERT_EQ(1, xp_set_xml_buffer_from_file(include_file_with_env_var.c_str(), dumpxml)) << "Failed to set buffer - unable to proceed";
+  EXPECT_EQ(get_file_as_string(include_file_with_env_var_expected), xp_get_xmlbuffer()) << "xmlbuffer should contain xi include file even though fn contains blanks";
 
 }
-// string processing does not interpret xi includes at all
-TEST(xp_parser, xp_set_xml_buffer_from_string_test_xiinclude){
-  string noncommented_xi_include_string ("<?xml-- <xi:include href=\"100.xml\"?> -->");
-  ASSERT_EQ(1, xp_set_xml_buffer_from_string(noncommented_xi_include_string.c_str(), dumpxml)) << "xp_set_xml_buffer_from_string() returned error code";
-  EXPECT_EQ(noncommented_xi_include_string, xp_get_xmlbuffer()) << "xp_set_xml_buffer_from_string does not process xi_includes: xp_file should be identical to input" ;
-}
+

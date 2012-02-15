@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!-- note the blanks in the pathname -->
+<xi:include href="path with blanks/includeme.xml"/>
+</scenario>
