@@ -32,3 +32,8 @@ char * xp_get_cdata();
 int    xp_get_content_length(char * P_buffer);
 void   xp_convert_special_characters(char * buffer); /* convert &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') */
 std::string xp_get_errors();
+
+// Valid during xp_file parsing.
+// maybe inaccurate in methods that work with local copy of ptr
+unsigned int xp_get_whereami_key();
+std::string convert_whereami_key_to_string(unsigned int key);

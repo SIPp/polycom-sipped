@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="include_substitution" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!-- include file in current sub-directory, replacement is aA=>1, Bb=>4, cc=>2 -->
+  <?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+<scenario name="Include Substitution 1" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!-- include_substitution_1 file has directly specified parameters -->
+   <?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="Include Substitution 2" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!-- include_substitution_2 file in sub-directory, inherits substitution -->
+  
+  <send dialog="04">
+   <![CDATA[
+      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+
+  <send dialog="01">
+   <![CDATA[
+      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      cseq: [cseq dialog="04"]
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+</scenario> 
+  
+  <send dialog="01">
+   <![CDATA[
+      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+
+  <send dialog="04">
+   <![CDATA[
+      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      cseq: [cseq dialog="01"]
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+  <send dialog="02">
+   <![CDATA[
+      SUBSCRIBE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+</scenario>
+  
+  <!-- include file in current sub-directory, replacement is aA=>99, Bb=>1, cc=>3 -->
+  <?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+<scenario name="Include Substitution 1" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!-- include_substitution_1 file has directly specified parameters -->
+   <?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="Include Substitution 2" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!-- include_substitution_2 file in sub-directory, inherits substitution -->
+  
+  <send dialog="01">
+   <![CDATA[
+      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+
+  <send dialog="99">
+   <![CDATA[
+      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      cseq: [cseq dialog="01"]
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+</scenario> 
+  
+  <send dialog="99">
+   <![CDATA[
+      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+
+  <send dialog="01">
+   <![CDATA[
+      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      cseq: [cseq dialog="99"]
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+  <send dialog="03">
+   <![CDATA[
+      SUBSCRIBE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+</scenario>
+
+</scenario>
+
+

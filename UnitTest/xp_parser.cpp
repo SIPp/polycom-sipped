@@ -7,6 +7,7 @@
 
 #include "gtest/gtest.h"
 #include "xp_parser.hpp"
+#include "CompositeDocument.hpp"
 
 #include <limits.h>
 
@@ -18,6 +19,10 @@
 #include <string>
 #include <stdexcept>
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 using namespace std;
 
 // import secret test routines.for xp_parser.cpp
@@ -27,7 +32,7 @@ void set_xp_parser_verbose(int value);
 
 int debug = 0;
 int dumpxml = debug;  // echo  the xml data after its loaded into xp_file
-
+CompositeDocument build_xp_file_metadata(string sippFile, int dumpxml);
 
 //////////////////////////////////////////
 //  Unit Test Helper routines
@@ -40,6 +45,42 @@ int get_file_length(const string &fn)
   if (stat(fn.c_str(), &filestat) < 0)
     return -1;
   return filestat.st_size;
+}
+//windows/linux line ending strategy
+//  on windows, when you read a TEXT file in, file with \r\n become \n
+//    as seen by cout each char in hex.
+//  on windows, when you read a TEXT file in, file with \n becomes \n
+//  on linux, when you read a text file in, file with \n outputs \n
+//  on linux, when you read a test file in, file with \r\n outputs \r\n
+//
+//  looks like shortest route to standard is to build a way to strip \r out
+//  on any files read in so that all files only use \n
+//
+//  what if file being read into xml buffer has cr?
+//  xp_parser eats \r and does not store into xp_file so stripping cr on all input is consistent
+//  xp_parser.cpp:549 , xp_open_and_buffer_file
+//      if(c == '\r') continue;
+//      xp_file[(*index)++] = c;
+//
+string strip_cr_from_eol(string input)
+{
+  //need to remove cr not replace with blanks
+  //input.replace(input.begin(), input.end(),'\r',' ');
+  unsigned int pos = input.find('\r');
+  while (pos!=string::npos)
+  {
+    input.erase(pos,1);
+    pos = input.find('\r');
+  }
+  return input;
+}
+
+string stringFrNum(int value)
+{
+  int MAXDIGS = 256;
+  char buf[MAXDIGS];
+  sprintf(buf, "%d",value);
+  return buf;
 }
 
 // get file as a string a line at a time. line length limited to bufsize
@@ -61,7 +102,7 @@ string get_file_as_string(const string &fn)
       result += buf;
   }
   fclose (pFile);
-  return result;
+  return strip_cr_from_eol(result);
 }
 
 TEST(GTEST, helper_routines)
@@ -138,10 +179,10 @@ TEST(xp_parser, xp_set_xml_buffer_from_file_no_embedded_comment){
   //correct formula is : expected size = size1+size2-xi_include_linesize
   //for this test case : 705           = 298  + 447 - 40
   unsigned totalsize = get_file_length(sipp_script_file_name) + get_file_length(include_file_name) -40 ;
-  EXPECT_EQ(totalsize , xp_get_xmlbuffer().length()) << "Length XML string must match expected. Total size = " << 
+  EXPECT_EQ(totalsize , xp_get_xmlbuffer().length()) << "Length XML string must match expected. Total size = " <<
         file1_size << " + " << file2_size << " - "  << 40 << " =  " <<  totalsize ;
 //  if (debug) printf ("totalsize = %d + %d - %d  = %d\n", file1_size, file2_size,  40 ,  totalsize);
-  EXPECT_STREQ(expected_result.c_str(), xp_get_xmlbuffer().c_str()) << "Resulting XML string must match. Actual = " << 
+  EXPECT_STREQ(expected_result.c_str(), xp_get_xmlbuffer().c_str()) << "Resulting XML string must match. Actual = " <<
         xp_get_xmlbuffer() << "'\n Expected = '" << expected_result << "'";
   //EXPECT_EQ on String objects : equivalent to above
   EXPECT_EQ(expected_result, xp_get_xmlbuffer() ) << "Resulting XML string must match. Actual = " <<
@@ -156,7 +197,7 @@ TEST(xp_parser, xp_set_xml_buffer_from_file_w_include_inside_comment){
   int inputfilesize = get_file_length(sipp_file_commented_xiinclude);
 
   ASSERT_EQ(1, xp_set_xml_buffer_from_file(sipp_file_commented_xiinclude.c_str(), dumpxml)) << "Failed to set buffer - unable to proceed";
-  EXPECT_EQ(get_file_as_string(sipp_file_commented_xiinclude), xp_get_xmlbuffer()) << "xmlbuffer should be identical to input string. xp_file size = " << 
+  EXPECT_EQ(get_file_as_string(sipp_file_commented_xiinclude), xp_get_xmlbuffer()) << "xmlbuffer should be identical to input string. xp_file size = " <<
         xp_get_xmlbuffer().length() << " input_file_size = " << inputfilesize << ". target include file size = " << get_file_length(include_target_file) ;
 
   // file a has include b; file b has commented include c. file c contents should not be in result
@@ -244,4 +285,102 @@ TEST(xp_parser, expand_env_var)
   EXPECT_EQ(get_file_as_string(include_file_with_env_var_expected), xp_get_xmlbuffer()) << "xmlbuffer should contain xi include file even though fn contains blanks";
 
 }
+
+/////////////////////////////////////////
+// test the metafile information for xp_file that provides infrastructure for report
+// equivalence of location in source files being processed taking into account
+// multiple nested include file capabilities
+
+TEST(xp_parser, CompositeDocument)
+{
+
+  // newline offsets for composite document formed by
+  // %TA_DIR%/SIPped/SIPped/src/test/include_substitution.sipp
+  // and it's include documents  -- verified newlines by hand as correct reference
+  // for byte offset of all new lines in composite document
+  const int newlines[] = {
+  44 ,     82 ,     83 ,    182 ,    183 ,    268 ,    315 ,    353 ,    454 ,
+  455 ,    528 ,    576 ,    614 ,    615 ,    716 ,    717 ,    796 ,    799 ,
+  820 ,    833 ,    894 ,    922 ,    930 ,    940 ,    941 ,    962 ,    975 ,
+  1033 ,   1064 ,   1092 ,   1100 ,   1110 ,   1113 ,   1126 ,   1129 ,   1150 ,
+  1163 ,   1224 ,   1252 ,   1260 ,   1270 ,   1271 ,   1292 ,   1305 ,   1363 ,
+  1394 ,   1422 ,   1430 ,   1440 ,   1443 ,   1464 ,   1477 ,   1541 ,   1569 ,
+  1577 ,   1587 ,   1590 ,   1602 ,   1605 ,   1691 ,   1738 ,   1776 ,   1877 ,
+  1878 ,   1951 ,   1999 ,   2037 ,   2038 ,   2139 ,   2140 ,   2219 ,   2222 ,
+  2243 ,   2256 ,   2317 ,   2345 ,   2353 ,   2363 ,   2364 ,   2385 ,   2398 ,
+  2456 ,   2487 ,   2515 ,   2523 ,   2533 ,   2536 ,   2549 ,   2552 ,   2573 ,
+  2586 ,   2647 ,   2675 ,   2683 ,   2693 ,   2694 ,   2715 ,   2728 ,   2786 ,
+  2817 ,   2845 ,   2853 ,   2863 ,   2866 ,   2887 ,   2900 ,   2964 ,   2992 ,
+  3000 ,   3010 ,   3013 ,   3025 ,   3026 ,   3038 ,   3039 ,   3040
+  };
+  //initilize nl vector from newlines array from element 0 to element 115)
+  const vector<int> nl(newlines, newlines+116);
+  // for simplicity, transform from vector of byte locations where a newline is to
+  // a vector indexed by byte to line number
+  vector<int> byteToLine;
+  int linenumber =1;
+  for (int byte=0; byte<nl[nl.size()-1];byte++)
+  {
+    byteToLine.push_back(linenumber);
+    if (byte>=nl[linenumber-1])  //vector is zero based while lines are 1 based
+    {
+      linenumber++;
+    }
+  }
+  //byteToLine now contains a vector of line numbers with byte offset as the index
+  // Here, the newline is treated as the first char of the next line
+
+  string expected_xp_file = get_file_as_string("expected_xp_file_from_include_substitution_sipp.txt");
+
+  // expected_xp_file now contains expected composite document
+  // (resultant document after all includes executed)
+  // for include_substitution.sipp
+  string rootSippWithIncludes="../test/include_substitution.sipp";
+  int dumpxml =0;
+
+  /**
+   * Note that CompositeDocument NEEDS TO BE RESET between tests
+   * of CompositeDocument.
+   * This is done by build_xp_file_metadata .
+   */
+  CompositeDocument metadata = build_xp_file_metadata(rootSippWithIncludes, dumpxml);
+
+  // does newline map in xp_buffer match CompositeDocument?
+  EXPECT_TRUE(metadata.checkNewLineSynch(xp_get_xmlbuffer().c_str())) << "CompositeDocument Mapped Newlines not found in buffer xp_file";
+  // does composite document newlines match reference in nl vector
+  for (unsigned int i=1; i< nl.size();i++){
+    EXPECT_EQ(nl[i],metadata.getLineOffsetMap()[i]) << "Newline offsets need to match expected reference";
+  }
+  // Does xp_parser buffer contents match expected composite document
+  EXPECT_EQ(expected_xp_file,xp_get_xmlbuffer() ) << "Buffer should match expected composite document";
+  // test byte offset to composite line number.
+  for (int i=0; i<3040;i++)
+  {
+    EXPECT_EQ(byteToLine[i], metadata.compositeLineNumberFromIndex(i)) << "Line Number should match expected for byte " << i;
+  }
+
+//generate reference set of docStacks for validation
+//  fstream exp_docstack;
+//  exp_docstack.open("expected_docStacks.txt", ios_base::out);
+//  exp_docstack << metadata.dumpStacks();
+//  exp_docstack.close();
+
+  //test mapping of composite line number to document stack
+  //  verified against source include documents
+  string exp_stackdump = get_file_as_string("expected_docStacks.txt");
+  EXPECT_EQ(exp_stackdump, metadata.dumpStacks()) << "Dump of all saved Document Stacks should match expected_docStacks.txt";
+
+  // tested byte to composite line number above
+  // now need to test composite line number to stack
+  string allStacksbyLine ="";
+  for (int i=1;i<116;i++)
+  {
+    allStacksbyLine += stringFrNum(i) + "---------\n";
+    allStacksbyLine += metadata.strStackFromCompositeLineNumber(i);
+  }
+  EXPECT_EQ(get_file_as_string("expected_allStacks.txt"),allStacksbyLine) << "Stack dump by line for all lines does not match expected";
+
+}
+//todo wireup convert_whereami_key_to_string(xp_get_whereami_key())  into desired locations for error reporting
+
 

@@ -40,6 +40,7 @@
 #include <string>
 
 #include "xp_parser.hpp"
+#include "CompositeDocument.hpp"
 #include "win32_compatibility.hpp"
 
 #ifdef WIN32
@@ -66,8 +67,13 @@ int     verbose = 0;
 string xp_error_messages = "";
 char err[MAXERRSIZE];
 
+// collects newline, include file locations withing the xp_file buffer as it
+// is built from source sipp and xml files.  Initialized in xp_set_xml_buffer_from_file
+CompositeDocument xp_file_metadata;
+
 /****************** Internal routines ********************/
 // set locally with xp_store_error_message, retrieved globally by xp_get_errors()
+
 
 
 void store_error_message(string message)
@@ -247,6 +253,36 @@ int expand_env_var(char* path_and_fn)
 
 /********************* Interface routines ********************/
 
+//////////////////////////////////
+// output: byte offset into xp_file that is currently used by xp_parser
+// note that this will not be accurate if the local method takes a copy of xp_position, eg
+//    char* ptr = xp_position[xp_stack]
+// Local manipulation of  ptr not visible.
+// In those cases use  (ptr-xp_file) instead of this method to get
+// index for input to convert_whereami_key_to_string
+unsigned int xp_get_whereami_key(){
+    //byte offset into xp_file
+    unsigned int index = xp_position[xp_stack] - xp_file;
+    return index;
+}
+// input takes byte offset into xp_file
+string convert_whereami_key_to_string(unsigned int key) {
+    if (xp_file_metadata.getQtyStacks() !=0)
+    {
+      return xp_file_metadata.strStackFromIndex(key);
+    }
+    else{ // using a built-in scenario
+      return "(built-in scenario)";
+    }
+}
+
+///////////////////////////////
+//todo make CompositeDocument aware of xp_set_xml_buffer_from_string?
+// xp_file and invalidates xp_file_metadata
+// when called.  sipp typcially creates two scenarios, one
+// with user provided input through xp_open_and_buffer_file
+// and one for responses using this method.  Should CompositeDocument
+// track this method ... if only for valid/invalid flag?
 int xp_set_xml_buffer_from_string(const char * str, int dumpxml)
 {
   size_t len = strlen(str);
@@ -335,8 +371,9 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
     }
   } // if !f
 
+  xp_file_metadata.includeFile(filename);   // for track nesting of include files and line numbers
   while((c = fgetc(f)) != EOF) {
-    // look for comment tags and set inside_comment flag when required
+     // look for comment tags and set inside_comment flag when required
     if (!inside_comment){ // not in comment, look for start tag
       if (c == start_comment_tag[comment_index]) {
         comment_index++;
@@ -485,8 +522,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
           } while (1);
 
           c = fgetc(f);
-          while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace          
-         
+          while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace
+          
         } // if dialogs option specified
 
 
@@ -510,6 +547,9 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
 
     // Handle parsing file into xp_file
     if(c == '\r') continue;
+
+    // as we write to xp_file, check for newline and store location info
+    if (c=='\n')  xp_file_metadata.incr_line(*index);
     xp_file[(*index)++] = c;
     // check for dialog="nn" substitution
     if (sub_list) {
@@ -572,6 +612,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
   }
   fclose(f);
 
+  // for tracking of include documents and line numbers
+  xp_file_metadata.endIncludeFile();
   if (xp_error_messages != "") {
     return 0;
   }
@@ -606,6 +648,20 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
   xp_position[xp_stack] = xp_position[xp_stack] + 2;
 
+  if (verbose){
+    printf("xp_file metadata: stack images collected\n");
+    xp_file_metadata.dumpStacks();
+    printf("xp file metadata: map of newlines collected\n");
+    xp_file_metadata.showLineOffsetMap();
+    printf( "xp file metadata for newline sychroniziation is ");
+    if (xp_file_metadata.checkNewLineSynch(xp_file)){
+      printf(" good\n");
+    }
+    else{
+      printf(" bad.  Not all stored newlines were found in source xp_file\n");
+      printf(" Call Ed and have him send out a search party for missing newlines\n");
+    }
+  }
   return 1;
 }
 
@@ -628,14 +684,16 @@ char * debug_buffer(char * ptr)
   return buf;
 }
 
+// index is the element index we want to open.
+// It will start at beginning of buffer and decrement for each <start tag> of interest
+// until it reaches 0, at which point it returns the tags name.
 char * xp_open_element_skip_control(int index, int skip_scenario)
 {
   char * ptr = xp_position[xp_stack];
   int level = 0;
   static char name[XP_MAX_NAME_LEN];
 
-  DEBUG("xp_open_element: index = %d, skip_scenario = %d, xp_stack = %d, ptr = '%s'\n", index, skip_scenario, xp_stack, debug_buffer(ptr));
-
+  DEBUG("xp_open_element_skip_control STARTED: index = %d, skip_scenario = %d, xp_stack = %d, ptr = '%s'\n", index, skip_scenario, xp_stack, debug_buffer(ptr));
   while(*ptr) {
     if (*ptr == '<') {
       if (!strncmp(ptr,"<![CDATA[", strlen("<![CDATA["))) {
@@ -696,7 +754,7 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
             name[end-ptr-1] = 0;
 
             xp_position[++xp_stack] = end;
-            DEBUG("  Returning element '%s'; level = %d, index = %d, xp_stack = %d, ptr='%s'\n", name, level, index, xp_stack, debug_buffer(ptr));
+            DEBUG("  xp_open_element_skip_control Returning element '%s'; level = %d, index = %d, xp_stack = %d, ptr='%s'\n", name, level, index, xp_stack, debug_buffer(ptr));
             return name;
           }
         }
@@ -709,13 +767,13 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
       }
     } else if((*ptr == '/') && (*(ptr+1) == '>')) {
       level --;
-      DEBUG("  Found />; level<0 => return null; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
+      DEBUG("  Found />; if (level<0) will return null; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
       if(level < 0) return NULL;
     }
     ptr++;
   }
 
-  DEBUG("  Reached end of file, returning NULL; level = %d, index = %d\n", level, index);
+  DEBUG("  xp_open_element_skip_control Reached end of file, returning NULL; level = %d, index = %d\n", level, index);
   return NULL;
 }
 
@@ -741,7 +799,7 @@ char * xp_get_value(const char * name)
   if(!end) return NULL;
 
   ptr = xp_position[xp_stack];
-  
+
   while(*ptr) {
     ptr = strstr(ptr, name);
 
@@ -897,8 +955,6 @@ void xp_convert_special_characters(char * buffer)
 
 }
 
-
-
 // routines to assist unit testing
 // Note: you must explicitly declare these in the test case.
 
@@ -912,4 +968,19 @@ void set_xp_parser_verbose(int value)
   verbose = value;
 }
 
+CompositeDocument build_xp_file_metadata(string sippFile, int dumpxml)
+{
+  // re-initialize globals for reset between tests.
+  xp_file_metadata.reset();
+  if (xp_set_xml_buffer_from_file(sippFile.c_str(),dumpxml))
+    return xp_file_metadata;
+  else
+  {
+    // return an empty composite document if we failed to load file
+    printf("failed to load file into buffer\n");
+    CompositeDocument cdoc;
+    return cdoc;
+  }
+
+}
 

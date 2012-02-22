@@ -1,6 +1,8 @@
 This file tracks changes responsible for version number updates.
+3.2.24 Feb 22 2012
+- implemented infrastructure to support reporting of sipp xml document location for files with multiple includes + unit tests
 
-3.2.23 Feb-14-2011
+3.2.23 Feb-14-2012
 - implemented ability to use env variables within include filename specification using % as start/end delimiter
 - gtest case and ruby test case updates 
 - redirected xp_parser errors to REPORT_ERROR. Previously, Errors were overwritten by _screen_error and then again by endwin. 

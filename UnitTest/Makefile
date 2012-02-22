@@ -104,7 +104,7 @@ transactionstate : transactionstate.o $(SIPP_DIR)/transactionstate.o $(SIPP_DIR)
 xp_parser.o : xp_parser.cpp  $(GTEST_HEADERS)
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
 
-xp_parser : xp_parser.o $(SIPP_DIR)/xp_parser.o gtest_main.a
+xp_parser : xp_parser.o $(SIPP_DIR)/xp_parser.o $(SIPP_DIR)/CompositeDocument.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
 #################################

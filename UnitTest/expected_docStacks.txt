@@ -1,0 +1,37 @@
+7  ------------------
+../test/include_substitution.sipp:7
+
+12  ------------------
+include_substitution_1.xml:6
+../test/include_substitution.sipp:7
+
+34  ------------------
+include_directory/include_substitution_2.xml:23
+include_substitution_1.xml:6
+../test/include_substitution.sipp:7
+
+58  ------------------
+include_substitution_1.xml:30
+../test/include_substitution.sipp:7
+
+61  ------------------
+../test/include_substitution.sipp:10
+
+66  ------------------
+include_substitution_1.xml:6
+../test/include_substitution.sipp:10
+
+88  ------------------
+include_directory/include_substitution_2.xml:23
+include_substitution_1.xml:6
+../test/include_substitution.sipp:10
+
+112  ------------------
+include_substitution_1.xml:30
+../test/include_substitution.sipp:10
+
+117  ------------------
+../test/include_substitution.sipp:15
+
+117  ------------------
+
