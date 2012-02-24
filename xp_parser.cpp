@@ -54,7 +54,7 @@ using namespace std;
 #define XP_MAX_NAME_LEN   256
 #define XP_MAX_FILE_LEN   655360
 #define XP_MAX_STACK_LEN  256
-#define MAXERRSIZE 256
+#define MAXERRSIZE 4096
 
 char   xp_file     [XP_MAX_FILE_LEN + 1];
 char * xp_position [XP_MAX_STACK_LEN];
@@ -70,6 +70,7 @@ char err[MAXERRSIZE];
 // collects newline, include file locations withing the xp_file buffer as it
 // is built from source sipp and xml files.  Initialized in xp_set_xml_buffer_from_file
 CompositeDocument xp_file_metadata;
+int xp_file_metadata_is_not_valid =0;
 
 /****************** Internal routines ********************/
 // set locally with xp_store_error_message, retrieved globally by xp_get_errors()
@@ -189,12 +190,13 @@ char * xp_find_local_end()
  * output value of the environment variable
  *
  */
-string translate_envvar(string name)
+string translate_envvar(string name, int idx)
 {
   char* value = getenv(name.c_str());
   if (!value)
   {
     store_error_message( "Undefined Environment Variable : " + name + "\r\n");
+    store_error_message("Found at: \n" + convert_whereami_key_to_string(idx) +"\r\n");
     return "";
   }
 
@@ -210,7 +212,7 @@ string translate_envvar(string name)
 
  */
 
-int expand_env_var(char* path_and_fn)
+int expand_env_var(char* path_and_fn,int idx)
 {
 
   char varMarker = '%';
@@ -224,12 +226,12 @@ int expand_env_var(char* path_and_fn)
       endp = pathandfn.find(varMarker, startp+1);
       if (endp == pathandfn.npos )
       {
-        //throw invalid_argument("Malformed environment environment variable - missing closing" + varMarker);
         store_error_message("Malformed environment environment variable - missing closing % \r\n");
+        store_error_message("Found at:\n " + convert_whereami_key_to_string(idx) +"\r\n");
         return -1;
       }
       string envvar = pathandfn.substr(startp+1,endp-startp-1); // stripped of leading and trailing varMarker
-      string envvalue = translate_envvar(envvar);
+      string envvalue = translate_envvar(envvar, idx);
       if (envvalue.size()==0){
         store_error_message("Environment Value not retrieved\r\n");
         return -1; // unable to retrieve value for environment variable
@@ -247,6 +249,7 @@ int expand_env_var(char* path_and_fn)
     }else
     {
       store_error_message("Expanded path/filename larger than %d\r\n" +  XP_MAX_NAME_LEN);
+      store_error_message("Found at:\n " + convert_whereami_key_to_string(idx) +"\r\n");
       return -1;  // array is not large enough to hold result
     }
 }
@@ -254,12 +257,17 @@ int expand_env_var(char* path_and_fn)
 /********************* Interface routines ********************/
 
 //////////////////////////////////
-// output: byte offset into xp_file that is currently used by xp_parser
-// note that this will not be accurate if the local method takes a copy of xp_position, eg
+// Goal is to get the byte offset into xp_file that we are currently processing
+// output: byte offset into xp_file that is currently used by xp_parser. Valid
+//    after xp_file has been filled and is being parsed.   DO NOT USE THIS
+//    if you want location while xp_file is being initially buffered, USE
+//    index defined in xp_set_xml_buffer_from_file instead.
+// note that some methods method takes a copy of xp_position, eg
 //    char* ptr = xp_position[xp_stack]
-// Local manipulation of  ptr not visible.
-// In those cases use  (ptr-xp_file) instead of this method to get
-// index for input to convert_whereami_key_to_string
+//    Local manipulation of  ptr not visible and in those methods,
+//    you might want to use local ptr instead
+//    eg use  (ptr-xp_file) instead of this method to get
+//    index for input to convert_whereami_key_to_string
 unsigned int xp_get_whereami_key(){
     //byte offset into xp_file
     unsigned int index = xp_position[xp_stack] - xp_file;
@@ -275,6 +283,16 @@ string convert_whereami_key_to_string(unsigned int key) {
       return "(built-in scenario)";
     }
 }
+// this is the most generic way to get location info while parsing
+// contents of xp_file.  Valid if xp_file has not yet been overwritten
+// by xp_set_xml_buffer_from_string, which it always seems to be on
+// sipp second call to scenario to build responses.
+string whereami_if_valid()
+{
+  if (xp_file_metadata_is_not_valid)
+    return "";
+  return convert_whereami_key_to_string(xp_get_whereami_key());
+}
 
 ///////////////////////////////
 //todo make CompositeDocument aware of xp_set_xml_buffer_from_string?
@@ -287,10 +305,15 @@ int xp_set_xml_buffer_from_string(const char * str, int dumpxml)
 {
   size_t len = strlen(str);
 
+
   if(len > XP_MAX_FILE_LEN) {
     return 0;
   }
   strcpy(xp_file, str);
+  // flag since this means that CompositeDocument metadata is no longer
+  // applicable to contents of xp_file.
+  xp_file_metadata_is_not_valid=1;
+
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
   
@@ -414,6 +437,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
           if (c == EOF || c == '\r' || c == '\n') {
             snprintf(err, MAXERRSIZE, "xi:include tag must be formatted exactly '<xi:include href=\"filename\"/>'  No EOF or EOLN permitted.\r\n");
             store_error_message(err);
+            store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
             fclose(f);
             return 0;
           }
@@ -425,7 +449,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
         //  we should have full path/filename inside "include_file_name"
         //  lets scan it for a environment variable marker and substitute if required
         //  Also adjust include_index to reflect new size of string
-        include_index=expand_env_var(include_file_name);
+        include_index=expand_env_var(include_file_name, *index);
         if (include_index<0){
           store_error_message("unable to get Environment variable value\r\n");
           return 0; // failed to expand env_var: not set , or value too long
@@ -446,6 +470,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
           if (replace_index != replace_param_length) { 
             snprintf(err, MAXERRSIZE, "Error: only valid option to xi:include is 'dialogs=\"1,2,3\"'.\r\n");
             store_error_message(err);
+            store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
             fclose(f);
             return 0;
           }
@@ -461,6 +486,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 number_str[number_len] = 0;
                 snprintf(err, MAXERRSIZE,"Error in '%s': dialogs substitution string %s is too long. dialogs tag value must be comma separated numbers.\r\n", filename, number_str);
                 store_error_message(err);
+                store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
                 fclose(f);
                 return 0;
               }
@@ -472,6 +498,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 if (local_sub_length >= XP_MAX_LOCAL_SUB_LIST_LEN) {
                   snprintf(err, MAXERRSIZE, "Error in '%s': Too many substitution parameters. Maximum is %d.\r\n", filename, XP_MAX_LOCAL_SUB_LIST_LEN);
                   store_error_message(err);
+                  store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
                   fclose(f);
                   return 0;
                 }
@@ -481,6 +508,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                   if (d > 99) {
                     snprintf(err, MAXERRSIZE, "Error in '%s': Maximum dialog ID for substitution is 99.\r\n", filename);
                     store_error_message(err);
+                    store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
                     fclose(f);
                     return 0;
                   }
@@ -491,6 +519,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                   if (d >= sub_length) {
                     snprintf(err, MAXERRSIZE, "'Error in '%s': %s' => %d is greater than largest substitution available of %d.\r\n", filename, number_str, d+1, sub_length);
                     store_error_message(err);
+                    store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
                     fclose(f);
                     return 0;
                   }
@@ -500,6 +529,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 else {
                   snprintf(err, MAXERRSIZE, "Invalid dialogs parameter value '%s'.\r\n", number_str);
                   store_error_message(err);
+                  store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
                   fclose(f);
                   return 0;
                 }
@@ -515,6 +545,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
             else {
               snprintf(err, MAXERRSIZE, "Error, xi:include tag's dialogs list must contain numbers separated with commas and no whitespace.\r\n");
               store_error_message(err);
+              store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
               fclose(f);
               return 0;
             }
@@ -530,6 +561,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
         if (c != '/' || fgetc(f) != '>') {
           snprintf(err, MAXERRSIZE, "xi:include tag must be formatted exactly '<xi:include href=\"filename\" dialogs=\"1,2,3\"] />'  '/>' must be together.\r\n");
           store_error_message(err);
+          store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
           fclose(f);
           return 0;
         }
@@ -586,6 +618,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
           if (sub_idx >= sub_length) {
             snprintf(err, MAXERRSIZE, "Error in '%s': not enough include parameters while attempting to substitute '%s'. This requires at least %d dialog id(s) specified with the include, but there were only %d.\r\n", filename, (char *) &xp_file[(*index)-(dialog_param_length+4)], sub_idx+1, sub_length);
             store_error_message(err);
+            store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
             fclose(f);
             return 0; 
           }

@@ -186,7 +186,16 @@ string CompositeDocument::strStackFromIndex(unsigned int index) {
   char buf[maxdigits];
   string result = "";
   int compLineNumber = compositeLineNumberFromIndex(index);
-  result += strStackFromCompositeLineNumber(compLineNumber);
+  if (index > lineToOffset[lineToOffset.size()-1])
+  {
+    // we are probably reporting an erro while building xp_file
+    // give the latest stack since we havent finished building
+    // current stack yet
+    //result += strStackFromCompositeLineNumber(lineToOffset[lineToOffset.size()-1]);
+    result += getCurrStack().showStack();
+  }else{
+    result += strStackFromCompositeLineNumber(compLineNumber);
+  }
 //cout << __FILE__ << __LINE__ << result << endl;
   sprintf(buf, "%d", index);
   result += "Byte offset = ";

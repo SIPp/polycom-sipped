@@ -37,3 +37,4 @@ std::string xp_get_errors();
 // maybe inaccurate in methods that work with local copy of ptr
 unsigned int xp_get_whereami_key();
 std::string convert_whereami_key_to_string(unsigned int key);
+std::string whereami_if_valid();

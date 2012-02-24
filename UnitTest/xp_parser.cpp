@@ -232,7 +232,7 @@ TEST(xp_parser, xp_set_xml_buffer_from_file_include_fn_path){
 // sets and unsets environment variables as part of testing.
 TEST(xp_parser, expand_env_var)
 {
-  int expand_env_var(char*);
+  int expand_env_var(char*,int);
   char input[4096];
 
   // single substitution at front of path
@@ -240,7 +240,7 @@ TEST(xp_parser, expand_env_var)
   char* env_value = getenv("SIPPED");
   string expected_pathandfilename=string(env_value) + string("/src/test/xp_parser.cpp");
   strcpy(input, pathandfilename.c_str());
-  int rc = expand_env_var(input);
+  int rc = expand_env_var(input,0);
   EXPECT_GT(rc,0) << "number of substitutions should be greater than zero";
   EXPECT_STREQ(expected_pathandfilename.c_str(), input) << "path and filename should have env var expanded";
 
@@ -257,7 +257,7 @@ TEST(xp_parser, expand_env_var)
   setenv("ENV_VAR02","here",1);
   char testpath[4096];
   strcpy(testpath,"%ENV_VAR01%/was/%ENV_VAR02%");
-  rc = expand_env_var(testpath);
+  rc = expand_env_var(testpath,0);
   EXPECT_EQ(16,rc) << "length of filename after substitution not correct";
   EXPECT_STREQ("richard/was/here",testpath) << "two env var substitutions should match";
   //restore env var if we changed them, otherwise unset them
