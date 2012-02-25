@@ -1,0 +1,11 @@
+sipp: The following events occurred:
+2012-02-24	14:37:28:238	1330123048.238274: Unable to open or parse '../test/include_incl_badenv.sipp' xml scenario file (message is 
+Malformed environment environment variable - missing closing % 
+Found at:
+ include_badenvvar.sipp:7
+../test/include_incl_badenv.sipp:10
+Byte offset = 1965,	Line offset 67
+
+unable to get Environment variable value
+Failed to retrieve file ../test/include_incl_badenv.sipp
+).

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="Include Substitution 2" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!-- include_substitution_2 file in sub-directory, inherits substitution -->
+  
+  <send dialog="AA">
+   <![CDATA[
+      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+
+  <send dialog="BB">
+  </send>
+  
+</scenario>

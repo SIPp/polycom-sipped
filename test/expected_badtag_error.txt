@@ -1,0 +1,10 @@
+sipp: The following events occurred:
+2012-02-24	15:09:52:573	1330124992.573424: Unable to open or parse '../test/include_incl_badtag.sipp' xml scenario file (message is 
+xi:include tag must be formatted exactly '<xi:include href="filename" dialogs="1,2,3"] />'  '/>' must be together.
+Found at: 
+include_badtag.sipp:10
+../test/include_incl_badtag.sipp:10
+Byte offset = 3388,	Line offset 121
+
+Failed to retrieve file ../test/include_incl_badtag.sipp
+).

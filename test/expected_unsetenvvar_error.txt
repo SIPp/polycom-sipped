@@ -1,0 +1,12 @@
+sipp: The following events occurred:
+2012-02-24	14:56:51:177	1330124211.177863: Unable to open or parse '../test/include_incl_unset_envvar.sipp' xml scenario file (message is 
+Undefined Environment Variable : TDIR
+Found at: 
+include_unset_envvar.sipp:10
+../test/include_incl_unset_envvar.sipp:10
+Byte offset = 3389,	Line offset 122
+
+Environment Value not retrieved
+unable to get Environment variable value
+Failed to retrieve file ../test/include_incl_unset_envvar.sipp
+).

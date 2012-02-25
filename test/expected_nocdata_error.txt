@@ -1,0 +1,7 @@
+sipp: The following events occurred:
+2012-02-24	15:15:57:796	1330125357.796460: No CDATA in 'send' section of xml scenario file
+include_directory/nocdata.xml:15
+../test/include_nocdata.sipp:10
+Byte offset = 2112,	Line offset 75
+
+.

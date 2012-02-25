@@ -38,3 +38,4 @@ std::string xp_get_errors();
 unsigned int xp_get_whereami_key();
 std::string convert_whereami_key_to_string(unsigned int key);
 std::string whereami_if_valid();
+int is_xp_file_metadata_valid();

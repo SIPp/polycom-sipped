@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+<scenario name="Include Substitution 1" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+  <!-- include_substitution_1 file has directly specified parameters -->
+   <xi:include href="include_directory/include_substitution_2.xml" dialogs="BB,AA"/> 
+  
+
+  <nonexistant>
+   <![CDATA[
+      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      cseq: [cseq dialog="AA"]
+      Content-Length: [len]
+    ]]>
+  </nonexistant>
+  
+  
+  <send dialog="CC">
+   <![CDATA[
+      SUBSCRIBE sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+      Content-Length: [len]
+    ]]>
+  </send>
+  
+</scenario>

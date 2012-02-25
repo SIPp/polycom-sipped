@@ -1,0 +1,7 @@
+sipp: The following events occurred:
+2012-02-24	14:26:39:391	1330122399.391498: Unknown element 'nonexistant' in xml scenario file
+madeuptag.xml:9
+../test/include_madeuptag.sipp:7
+Byte offset = 1145,	Line offset 37
+
+.

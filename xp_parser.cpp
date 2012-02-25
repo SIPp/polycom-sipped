@@ -294,6 +294,11 @@ string whereami_if_valid()
   return convert_whereami_key_to_string(xp_get_whereami_key());
 }
 
+int is_xp_file_metadata_valid()
+{
+  return !xp_file_metadata_is_not_valid;
+}
+
 ///////////////////////////////
 //todo make CompositeDocument aware of xp_set_xml_buffer_from_string?
 // xp_file and invalidates xp_file_metadata
@@ -662,6 +667,11 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
 {
   int index = 0;
   char empty[] = "";
+  //reset metadata in case this is called multiple times
+  //  valid until either xp_file loaded from string or
+  //  this method called again.
+  xp_file_metadata.reset();
+  xp_file_metadata_is_not_valid =0;
 
   int result = xp_open_and_buffer_file(filename, empty, &index, 0, 0);
 
@@ -683,7 +693,7 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
 
   if (verbose){
     printf("xp_file metadata: stack images collected\n");
-    xp_file_metadata.dumpStacks();
+    printf("%s\n",xp_file_metadata.dumpStacks().c_str());
     printf("xp file metadata: map of newlines collected\n");
     xp_file_metadata.showLineOffsetMap();
     printf( "xp file metadata for newline sychroniziation is ");
@@ -727,6 +737,7 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
   static char name[XP_MAX_NAME_LEN];
 
   DEBUG("xp_open_element_skip_control STARTED: index = %d, skip_scenario = %d, xp_stack = %d, ptr = '%s'\n", index, skip_scenario, xp_stack, debug_buffer(ptr));
+  if (is_xp_file_metadata_valid()) DEBUG("Source File Location:\n%s\n", convert_whereami_key_to_string(ptr-xp_file).c_str());
   while(*ptr) {
     if (*ptr == '<') {
       if (!strncmp(ptr,"<![CDATA[", strlen("<![CDATA["))) {
@@ -1005,6 +1016,7 @@ CompositeDocument build_xp_file_metadata(string sippFile, int dumpxml)
 {
   // re-initialize globals for reset between tests.
   xp_file_metadata.reset();
+  xp_file_metadata_is_not_valid =0;
   if (xp_set_xml_buffer_from_file(sippFile.c_str(),dumpxml))
     return xp_file_metadata;
   else

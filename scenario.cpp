@@ -722,7 +722,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
       for (int i = 0; i < currentNbVarNames; i++) {
         int id = allocVars->find(currentTabVarName[i], false);
         if (id == -1) {
-          REPORT_ERROR("Could not reference non-existant variable '%s'", currentTabVarName[i]);
+          REPORT_ERROR("Could not reference non-existant variable '%s'\n%s\n", currentTabVarName[i], whereami_if_valid().c_str());
         }
       }
       freeStringTable(currentTabVarName, currentNbVarNames);
@@ -730,7 +730,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
     } else if(!strcmp(elem, "DefaultMessage")) {
       char *id = xp_get_string("id", "DefaultMessage");
       if(!(ptr = xp_get_cdata())) {
-        REPORT_ERROR("No CDATA in 'send' section of xml scenario file");
+        REPORT_ERROR("No CDATA in 'send' section of xml scenario file%s\n",whereami_if_valid().c_str());
       }
       char *msg = clean_cdata(ptr);
       set_default_message(id, msg);
@@ -739,7 +739,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
     } else if(!strcmp(elem, "label")) {
       ptr = xp_get_string("id", "label");
       if (labelMap.find(ptr) != labelMap.end()) {
-        REPORT_ERROR("The label name '%s' is used twice", ptr);
+        REPORT_ERROR("The label name '%s' is used twice,\n%s\n", ptr,whereami_if_valid().c_str());
       }
       labelMap[ptr] = messages.size();
       free(ptr);
@@ -758,11 +758,11 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           /* Add an init label. */
           ptr = xp_get_value((char *)"id");
           if (initLabelMap.find(ptr) != initLabelMap.end()) {
-            REPORT_ERROR("The label name '%s' is used twice", ptr);
+            REPORT_ERROR("The label name '%s' is used twice\n%s\n", ptr, whereami_if_valid().c_str());
           }
           initLabelMap[ptr] = initmessages.size();
         } else {
-          REPORT_ERROR("Invalid element in an init stanza: '%s'", initelem);
+          REPORT_ERROR("Invalid element in an init stanza: '%s',\n%s\n", initelem, whereami_if_valid().c_str());
         }
         xp_close_element();
       }
@@ -770,8 +770,9 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         DEBUG("Embedded <%s> tag in script.  Assumed to be due to include file and ignoring", elem);
         found_scenario_tag = true; // don't want to jump to </scenario> right away.
     } else { /** Message Case */
+
       if (found_timewait) {
-        REPORT_ERROR("<timewait> can only be the last message in a scenario!\n");
+        REPORT_ERROR("<timewait> can only be the last message in a scenario!\n%s\n",whereami_if_valid().c_str());
       }
       message *curmsg = new message(messages.size(), name ? name : "unknown scenario");
       messages.push_back(curmsg);
@@ -781,7 +782,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         curmsg->M_type = MSG_TYPE_SEND;
         /* Sent messages descriptions */
         if(!(ptr = xp_get_cdata())) {
-          REPORT_ERROR("No CDATA in 'send' section of xml scenario file");
+          REPORT_ERROR("No CDATA in 'send' section of xml scenario file\n%s\n",whereami_if_valid().c_str());
         }
 
         int removed_clrf = 0;
@@ -817,20 +818,20 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         // While you can simply use use_txn rather than ack_txn and response_txn, you may still use the more
         // specific forms, but only with their respective message types.
         if ((xp_get_value("ack_txn")) && (!curmsg->send_scheme->isAck())) {
-          REPORT_ERROR("Cannot use ack_txn for non-ACK packet");
+          REPORT_ERROR("Cannot use ack_txn for non-ACK packet\n%s\n",whereami_if_valid().c_str());
         }
 
          if ((xp_get_value("response_txn")) && (!curmsg->send_scheme->isResponse())) {
-          REPORT_ERROR("response_txn can only be used with response packets");
+          REPORT_ERROR("response_txn can only be used with response packets\n%s\n",whereami_if_valid().c_str());
         }
 
         // If this is a request we are sending, then store our transaction/method matching information.
         if (!curmsg->send_scheme->isResponse()) {
           if ((ptr = xp_get_value("start_txn"))) {
             if (curmsg->send_scheme->isAck()) 
-              REPORT_ERROR("An ACK message can not start a transaction. Use use_txn or ack_txn instead to re-use branch and cseq values (even though 2xx-ACK is technically a new SIP transaction)");
+              REPORT_ERROR("An ACK message can not start a transaction. Use use_txn or ack_txn instead to re-use branch and cseq values (even though 2xx-ACK is technically a new SIP transaction)\n%s\n",whereami_if_valid().c_str());
             if (curmsg->send_scheme->isCancel()) 
-              REPORT_ERROR("Cannot use start_txn with CANCEL. Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction)");            
+              REPORT_ERROR("Cannot use start_txn with CANCEL. Use use_txn instead to re-use branch and cseq values (even though CANCEL is technically a new SIP transaction)\n%s\n",whereami_if_valid().c_str());
             curmsg->startTransaction(ptr);
           } else if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("ack_txn"))) {
             curmsg->useTransaction(ptr);
@@ -851,7 +852,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
             curmsg->useTransaction(ptr);
           } else if ((ptr = xp_get_value("start_txn"))) {
             ("Responses can not start a transaction");
-            REPORT_ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.");
+            REPORT_ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.\n%s\n",whereami_if_valid().c_str());
           } 
         } // else
 
@@ -872,18 +873,17 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("response_txn"))) {
             curmsg->useTransaction(ptr);
           } else if ((xp_get_value("start_txn"))) {
-            REPORT_ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.");
+            REPORT_ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.\n%s\n",whereami_if_valid().c_str());
           } 
         } // response
 
         if((ptr = xp_get_value((char *)"request"))) {
           curmsg -> recv_request = strdup(ptr);
-
           if ((xp_get_value("ack_txn")) && (strcmp(curmsg->recv_request, "ACK"))) {
-            REPORT_ERROR("Cannot use ack_txn for non-ACK packet. Use use_txn or start_txn instead");
+            REPORT_ERROR("Cannot use ack_txn for non-ACK packet. Use use_txn or start_txn instead\n%s\n",whereami_if_valid().c_str());
           }
           if ((ptr = xp_get_value("response_txn"))) {
-            REPORT_ERROR("response_txn can not be used to receive a request.  Use use_txn or start_txn instead");
+            REPORT_ERROR("response_txn can not be used to receive a request.  Use use_txn or start_txn instead\n%s\n",whereami_if_valid().c_str());
           }
           if ((ptr = xp_get_value("start_txn"))) {
             // mark as start so values are stored when message is received
@@ -900,7 +900,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         last_recv_optional = curmsg->optional;
         curmsg->advance_state = xp_get_bool("advance_state", "recv", true);
         if (!curmsg->advance_state && curmsg->optional == OPTIONAL_FALSE) {
-          REPORT_ERROR("advance_state is allowed only for optional messages (index = %d)\n", messages.size() - 1);
+          REPORT_ERROR("advance_state is allowed only for optional messages (index = %d)\n%s\n", messages.size() - 1,whereami_if_valid().c_str());
         }
 
         if (0 != (ptr = xp_get_value((char *)"regexp_match"))) {
@@ -980,7 +980,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         if((ptr = xp_get_value((char *)"src"))) {
           curmsg->peer_src = strdup(ptr);
         } else if (extendedTwinSippMode) {
-          REPORT_ERROR("You must specify a 'src' for recvCmd when using extended 3pcc mode!");
+          REPORT_ERROR("You must specify a 'src' for recvCmd when using extended 3pcc mode!\n%s\n",whereami_if_valid().c_str());
         }
       } else if(!strcmp(elem, "sendCmd")) {
         checkOptionalRecv(elem, scenario_file_cursor);
@@ -1005,11 +1005,10 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
             peers[std::string(peer)] = infos; 
           }
         } else if (extendedTwinSippMode) {
-          REPORT_ERROR("You must specify a 'dest' for sendCmd with extended 3pcc mode!");
+          REPORT_ERROR("You must specify a 'dest' for sendCmd with extended 3pcc mode!\n%s\n",whereami_if_valid().c_str());
         }
-
         if(!(ptr = xp_get_cdata())) {
-          REPORT_ERROR("No CDATA in 'sendCmd' section of xml scenario file");
+          REPORT_ERROR("No CDATA in 'sendCmd' section of xml scenario file\n%s\n",whereami_if_valid().c_str());
         }
         char *msg = clean_cdata(ptr);
 
@@ -1017,7 +1016,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         free(msg);
       }
       else {
-        REPORT_ERROR("Unknown element '%s' in xml scenario file", elem);
+        REPORT_ERROR("Unknown element '%s' in xml scenario file\n%s\n", elem, whereami_if_valid().c_str());
       }
 
       getCommonAttributes(curmsg);
