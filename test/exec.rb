@@ -8,13 +8,15 @@
 require 'test/unit'
 require './sipp_test'
 
+# On a single core machine with 100% cpu loading, 15 seconds was found to yield 99.7% pass rate
+# On a quad core machine, RUNTIME never fell outside range of 2 - 4 seconds
 class Exec < Test::Unit::TestCase
   def test_exec_command
   	# verify <exec command=""> [runs fast, doesn't mind 123 exit code]
-    test = SippTest.new("exec_command", "-sf exec_command.sipp -m 1 -l 1 -key command \"sleep 3 && echo test \"", "-sn uas -aa ")
-	test.expected_maximum_run_time = 2.5
+    test = SippTest.new("exec_command", "-sf exec_command.sipp -m 1 -l 1 -key command \"sleep 16 && echo test \"", "-sn uas -aa ")
+	test.expected_maximum_run_time = 15
     assert(test.run())
-	sleep 3 # be sure child process has finished before test case finishes so address is no longer in use.
+	sleep 16 # be sure child process has finished before test case finishes so address is no longer in use.
   end
   
   def test_exec_verify_pass

@@ -9,6 +9,18 @@
 require 'rubygems'
 require 'getopt/std'
 require 'English'
+# delete prev set of logs and console captures
+def cleandir
+    Dir.glob('*.log').each do |f|
+        File.delete(f)
+        #puts "Deleted #{f}"
+    end
+    Dir.glob('*.out').each do |f|
+        File.delete(f)
+        #puts "Deleted #{f}"
+    end 
+end
+cleandir()
 
 # require each test case here
 require "./aa_expires_default.rb"
@@ -38,4 +50,5 @@ require "./zero_content_length_header_not_last_scenarios.rb"
 def show_help_message
   puts "Usage: test \n\n";
 end
+
 

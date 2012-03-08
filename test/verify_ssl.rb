@@ -13,7 +13,7 @@ class VerifySSL < Test::Unit::TestCase
   def test_verify_ssl
 	# Verify SSL works back-to-back
     test = SippTest.new("test_verify_ssl", "-sn uac -t ln -mc -force_client_mode", "-sn uas -t l1 -mc")
-    assert(test.run(), "Vefify SSL failed (make sure SIPPED environment variable is set)")
+    assert(test.run(), "Vefify SSL failed (SIPPED environment variable?  set SIPPED=c:/TestUtilities/SIPped/WindowsBinary/SIPped)")
   end
   
 end
