@@ -6,7 +6,7 @@
 #
 
 require 'rubygems'
-require 'getopt/std'
+#require 'getopt/std'
 require 'English'
 require 'rbconfig'
 require 'optparse'
@@ -100,7 +100,7 @@ class SippTest
     else
       cmd='netstat -nat | grep "15060"'
     end
-    result=`#{cmd}`
+    result=`#{cmd}` 
     return (result.include?'15060')
   end
 
@@ -194,7 +194,7 @@ class SippTest
             result=`#{cmd}`
             result.each{|s|
                 a=s.split()
-                puts s
+                puts s  if @logging == "verbose"
                 if ((a[3]=="LISTENING")||(a[3]=="ESTABLISHED"))
                     pos=a[4].index('/')
                     if (pos)
@@ -212,7 +212,7 @@ class SippTest
             puts @name
             cmd='netstat -napt | grep 15060'
             result=`#{cmd}`
-            puts result
+            puts result if @logging == "verbose"
             result.each{|s|
                 a = s.split()
                 puts s
@@ -230,6 +230,7 @@ class SippTest
   end
 
   # Ensure the server is up on port before starting client side
+  # return success indicator
   def wait_for_Server_if_required
     max_wait_time = 4
     if (!noUdpRequired())
@@ -242,8 +243,10 @@ class SippTest
         # If you are adding a new test that doesn't require a UDP server to be
         # present on port 15060 to pass your test, add it to noUdpServerRequired
         if count == max_wait_time
-          raise RuntimeError,  "UDP Server Never showed up for test:  #{@name} "  
+          #raise RuntimeError,  "UDP Server Never showed up for test:  #{@name} "  
+          return false
         end
+        return true
         # test name has ssl or tcp in it, then look for tcp server
     elsif (@name =~ /ssl|tcp/)
         count = 0
@@ -253,9 +256,12 @@ class SippTest
             sleep 1
         end
         if count == max_wait_time
-          raise RuntimeError,  "TCP Server Never showed up for test: #{@name} "
+          #raise RuntimeError,  "TCP Server Never showed up for test: #{@name} "
+          return false
         end
+        return true
     end
+    return true
     #otherwise, nowait required
   end
 
@@ -284,8 +290,11 @@ class SippTest
     start_time = Time.now
 
     start_sipp_server(server_commandline)
-    wait_for_Server_if_required()
-
+    success = wait_for_Server_if_required()
+    if not success
+      return success
+    end
+    
     success = start_sipp_client(client_commandline)
     stop_sipp_server()
 
