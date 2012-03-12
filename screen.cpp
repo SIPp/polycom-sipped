@@ -23,6 +23,7 @@
 
 #include "stat.hpp"
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 #include "logging.hpp"
 
 #include <curses.h>

@@ -29,6 +29,8 @@
 
 #include <stdlib.h>
 #include "sipp.hpp"
+#include "call.hpp"
+#include "sipp_globals.hpp"
 #include "logging.hpp"
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>

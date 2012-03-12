@@ -22,6 +22,7 @@
  */
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 #include <assert.h>
 #ifdef PCAPPLAY
 #include "prepare_pcap.hpp"

@@ -46,6 +46,7 @@
 #include <assert.h>
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 
 socket_owner_map_map socket_to_owners;
 

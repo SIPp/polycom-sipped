@@ -49,6 +49,7 @@
 #include "send_packets.hpp"
 #endif
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 #include "deadcall.hpp"
 #include "logging.hpp"
 

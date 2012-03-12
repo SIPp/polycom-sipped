@@ -39,6 +39,9 @@
 
 #include <dlfcn.h>
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
+
+
 #include "assert.h"
 #include <string.h>
 #ifdef WIN32

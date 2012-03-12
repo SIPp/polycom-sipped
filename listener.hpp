@@ -27,6 +27,8 @@
 #include <string.h>
 #include <assert.h>
 
+
+#include "sipp_globals.hpp"
 #include "sipp.hpp"
 
 class listener {

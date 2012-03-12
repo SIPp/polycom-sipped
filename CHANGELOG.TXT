@@ -1,4 +1,7 @@
 This file tracks changes responsible for version number updates.
+3.2.25 Mar 12 2012
+- phase 1 refactoring sipp globals : introduction of sipp_globals.hpp/.cpp, elim of use of (_DEFVAL, overridden extern)
+
 3.2.24 Feb 22 2012
 - implemented infrastructure to support reporting of sipp xml document location for files with multiple includes + unit tests
 

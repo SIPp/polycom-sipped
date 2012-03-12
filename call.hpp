@@ -45,6 +45,15 @@
 #include "common.hpp"
 #include "transactionstate.hpp"
 #include "dialogstate.hpp"
+
+//RCL
+//isnt it better to put dependencies here since classes build on these here
+//rather than relying on order of includes prior to including this file in
+// sipp.hpp -> sippp_globals.hpp
+#include "task.hpp"
+#include "listener.hpp"
+#include "socketowner.hpp"
+
 #ifdef _USE_OPENSSL
 #include "sslcommon.hpp"
 #endif

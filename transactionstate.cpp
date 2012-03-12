@@ -24,6 +24,7 @@
 #include <sstream>
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 #include "transactionstate.hpp"
 
 

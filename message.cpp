@@ -37,7 +37,10 @@
  */
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 #include "message.hpp"
+#include "common.hpp"
+#include "call.hpp"
 
 struct KeywordMap {
 	const char *keyword;

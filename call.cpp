@@ -53,7 +53,10 @@
 #ifdef PCAPPLAY
 #include "send_packets.hpp"
 #endif
+
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
+
 #include "call.hpp"
 #include "deadcall.hpp"
 #include "assert.h"

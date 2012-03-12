@@ -20,6 +20,7 @@
  */
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 #include "screen.hpp"
 #include "stat.hpp"
 #include "infile.hpp"

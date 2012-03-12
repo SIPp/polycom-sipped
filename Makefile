@@ -31,7 +31,8 @@ OUTPUT=sipp
 # C & C++ object files to be built
 OBJ= xp_parser.o message.o scenario.o screen.o call.o transactionstate.o dialogstate.o \
      comp.o sipp.o stat.o actions.o variables.o infile.o deadcall.o task.o socketowner.o \
-     listener.o opentask.o reporttask.o watchdog.o logging.o  CompositeDocument.o
+     listener.o opentask.o reporttask.o watchdog.o logging.o  CompositeDocument.o \
+	 sipp_globals.o
 
 # Libraries directories
 LIBDIR_linux=
@@ -160,12 +161,12 @@ INCDIR_Cygwin=-I. -I/usr/include/openssl -I/usr/include -I/usr/lib/WpdPack/Inclu
 INCDIR_Darwin=-I. -I/usr/local/ssl/include
 INCDIR=$(INCDIR_$(SYSTEM)) 
 
+
 -include local.mk
 
 # Building without TLS and authentication (no openssl pre-requisite)
 all:
 	$(MAKE) OSNAME=`uname|sed -e "s/CYGWIN.*/CYGWIN/"` MODELNAME=`uname -m|sed "s/Power Macintosh/ppc/"` $(OUTPUT)
-
 # Building with TLS and authentication
 ossl:
 	$(MAKE) OSNAME=`uname|sed -e "s/CYGWIN.*/CYGWIN/"` MODELNAME=`uname -m|sed "s/Power Macintosh/ppc/"` OBJ_TLS="auth.o sslinit.o sslthreadsafe.o  milenage.o rijndael.o" TLS_LIBS="-lssl -lcrypto" TLS="-D_USE_OPENSSL -DOPENSSL_NO_KRB5" $(OUTPUT)
@@ -234,7 +235,7 @@ test: unit_test
 	@pushd test > /dev/null; ./test.rb; popd > /dev/null
 	
 .PHONY: install
-install: all
+install: 
 	install -m 0755 sipp $(prefix)/bin
 	chown root $(prefix)/bin/sipp
 	chmod 6755 $(prefix)/bin/sipp
@@ -254,3 +255,5 @@ install: all
 fortune.so: fortune.cpp
 	g++ -fPIC $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c -o fortune.o $<
 	gcc -shared -Wl,-soname,fortune.so -o $@ fortune.o
+
+

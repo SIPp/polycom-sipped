@@ -25,6 +25,7 @@
 #include <assert.h>
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 
 listener_map listeners;
 

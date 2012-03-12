@@ -28,6 +28,8 @@
 #include <assert.h>
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
+
 #include "scenario.hpp"
 #include "screen.hpp"
 #ifdef WIN32

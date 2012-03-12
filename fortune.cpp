@@ -19,6 +19,7 @@
  *           Charles P Wright from IBM Research
  */
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 
 /* This is a fun sample of creating your own extensible keyword. */
 int fortune(call *call, MessageComponent *comp, char *buf, int len) {

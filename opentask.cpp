@@ -31,6 +31,7 @@
  *           Charles P Wright from IBM Research
  */
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 
 class opentask *opentask::instance = NULL;
 unsigned long opentask::calls_since_last_rate_change = 0;

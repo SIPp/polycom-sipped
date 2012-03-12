@@ -31,6 +31,7 @@
  *           Charles P Wright from IBM Research
  */
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 
 class stattask *stattask::instance = NULL;
 class screentask *screentask::instance = NULL;

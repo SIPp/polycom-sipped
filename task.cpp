@@ -46,6 +46,7 @@
 #include <assert.h>
 
 #include "sipp.hpp"
+#include "sipp_globals.hpp"
 
 task_list all_tasks;
 task_list running_tasks;
