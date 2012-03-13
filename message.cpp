@@ -36,8 +36,8 @@
  *           Andy Aicken
  */
 
-#include "sipp.hpp"
 #include "sipp_globals.hpp"
+#include "screen.hpp"
 #include "message.hpp"
 #include "common.hpp"
 #include "call.hpp"

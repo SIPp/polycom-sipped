@@ -3,25 +3,10 @@
  * sipp_globals.cpp
  *
  *  Created on: Mar 9, 2012
- *      Author: sipped
+ *      Author: rlum
  */
 #include "sipp_globals.hpp"
-#include "call.hpp"
-//rtcheck = RTCHECK_FULL;const def in call.cpp
-/** has to be after defined constants above because call.cpp needs us
- * to provide defines and we need call.hpp to get his contstants
- * int                rtcheck                 = RTCHECK_FULL;  in sipp_globals.cpp
- *
- *
-In file included from listener.hpp:33,
-                 from call.hpp:55,
-                 from sipp_globals.hpp:18,
-                 from sipp_globals.cpp:9:
-sipp.hpp:464: error: ‘MAX_LOCAL_TWIN_SOCKETS’ was not declared in this scope
- *
- * MAX_LOCAL_TWIN_SOCKETS is defined above but
- */
-// #include "call.hpp" //rtcheck = const def in call.cpp
+#include "call.hpp"  // RTCHECK_FULL  MAX_LOCAL_TWIN_SOCKETS
 
 int                duration                = 0;
 double             rate                    = DEFAULT_RATE;
@@ -318,139 +303,10 @@ char *             slave_cfg_file;
 
 char               screen_last_error[32768];
 
-//void rotate_errorf();
-//int rotatef(struct logfile_info *lfi);
-//void log_off(struct logfile_info *lfi);
-
-/* Screen/Statistics Printing Functions. */
-//void print_statistics(int last);
-//void print_count_file(FILE *f, int header);
-
-
-/********************* Mini-Parser Routines *******************/
-
-//int get_method(char *msg);
-//char * get_tag_from_to(char *msg);
-//char * get_tag_from_from(char *msg);
-//unsigned long int get_cseq_value(const char *msg);
-//unsigned long get_reply_code(const char *msg);
-
-/********************** Network Interfaces ********************/
-
-//int send_message(int s, void ** comp_state, char * msg);
-//#ifdef _USE_OPENSSL
-//int send_message_tls(SSL *s, void ** comp_state, char * msg);
-//#endif
-
-/* Socket Buffer Management. */
-//#define NO_COPY 0
-//#define DO_COPY 1
-//struct socketbuf *alloc_socketbuf(char *buffer, size_t size, int copy);
-//void free_socketbuf(struct socketbuf *socketbuf);
-
-/* These buffers lets us read past the end of the message, and then split it if
- * required.  This eliminates the need for reading a message octet by octet and
- * performing a second read for the content length. */
-//struct socketbuf {
-//  char *buf;
-//  size_t len;
-//  size_t offset;
-//  struct sockaddr_storage addr;
-//  struct socketbuf *next;
-//};
-
-/* This is an abstraction of a socket, which provides buffers for input and
- * output. */
-//struct sipp_socket {
-//  int  ss_count; /* How many users are there of this socket? */
-//
-//  int ss_transport; /* T_TCP, T_UDP, or T_TLS. */
-//  bool ss_ipv6;
-//  bool ss_control; /* Is this a control socket? */
-//  bool ss_call_socket; /* Is this a call socket? */
-//  bool ss_changed_dest; /* Has the destination changed from default. */
-//
-//  int ss_fd;  /* The underlying file descriptor for this socket. */
-//  void *ss_comp_state; /* The compression state. */
-//#ifdef _USE_OPENSSL
-//  SSL *ss_ssl;  /* The underlying SSL descriptor for this socket. */
-//  BIO *ss_bio;  /* The underlying BIO descriptor for this socket. */
-//#endif
-//  struct sockaddr_storage ss_remote_sockaddr; /* Who we are talking to. */
-//  struct sockaddr_storage ss_dest; /* Who we are talking to. */
-//
-//
-//  int ss_pollidx; /* The index of this socket in our poll structures. */
-//  bool ss_congested; /* Is this socket congested? */
-//  bool ss_invalid; /* Has this socket been closed remotely? */
-//
-//  struct socketbuf *ss_in; /* Buffered input. */
-//  size_t ss_msglen; /* Is there a complete SIP message waiting, and if so how big? */
-//  struct socketbuf *ss_out; /* Buffered output. */
-//};
-
-/* Write data to a socket. */
-//int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flags, struct sockaddr_storage *dest);
-/* Mark a socket as "bad". */
-//void sipp_socket_invalidate(struct sipp_socket *socket);
-/* Actually free the socket. */
-//void sipp_close_socket(struct sipp_socket *socket);
-
-//#define WS_EAGAIN 1 /* Return EAGAIN if there is no room for writing the message. */
-//#define WS_BUFFER 2 /* Buffer the message if there is no room for writing the message. */
-
-
-//#if defined (__hpux) || defined (__alpha) && !defined (__FreeBSD__)
-//#define sipp_socklen_t  int
-//#else
-//#define sipp_socklen_t  socklen_t
-//#endif
-
-//#define SOCK_ADDR_SIZE(a) \
-//  (((a)->ss_family == AF_INET) ? sizeof(struct sockaddr_in) \
-//                               : sizeof(struct sockaddr_in6))
-//
-//#if defined(__cplusplus) && defined (__hpux)
-//#define _RCAST(type, val) (reinterpret_cast<type> (val))
-//#else
-//#define _RCAST(type, val) ((type)(val))
-//#endif
-
-/********************* Utilities functions  *******************/
-
-//char *strcasestr2 ( const char *__haystack, const char *__needle);
-//char *get_peer_addr(char *);
-//int get_decimal_from_hex(char hex);
-//
-//bool reconnect_allowed();
-//void reset_connection(struct sipp_socket *);
-//void close_calls(struct sipp_socket *);
-//int close_connections();
-//int open_connections();
-//void timeout_alarm(int);
-//
-//int determine_remote_and_local_ip();
-//
-//char *jump_over_timestamp(char *src);
-
-/* extended 3PCC mode */
-//struct sipp_socket **get_peer_socket(char *);
-//bool is_a_peer_socket(struct sipp_socket *);
-//bool is_a_local_socket(struct sipp_socket *);
-//void connect_to_peer (char *, int , sockaddr_storage *, char *, struct sipp_socket **);
-//void connect_to_all_peers ();
-//void connect_local_twin_socket(char *);
-//void close_peer_sockets();
-//void close_local_sockets();
-//void free_peer_addr_map();
 
 /******************** Recv Poll Processing *********************/
 
 struct sipp_socket* sockets[SIPP_MAXFDS];
 
-// all defines in hpp
-// all pure struct defintions in hpp
-// all sipp.cpp global function decl in hpp
-// only mem alloc in this file
 
 

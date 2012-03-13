@@ -48,10 +48,11 @@
 #ifdef PCAPPLAY
 #include "send_packets.hpp"
 #endif
-#include "sipp.hpp"
+
 #include "sipp_globals.hpp"
 #include "deadcall.hpp"
 #include "logging.hpp"
+#include "screen.hpp"   //for access to  WARNING
 
 deadcall::deadcall(char *id, const char *reason) : listener(id, true) {
   this->expiration = clock_tick + deadcall_wait;

@@ -18,6 +18,7 @@
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
  */
+#include <string>
 
 int    xp_replace(char *source, char *dest, const char *search, const char *replace);
 int    xp_set_xml_buffer_from_string(const char * str, int dump_xml);

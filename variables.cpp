@@ -21,8 +21,12 @@
  *           
  */
 
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "variables.hpp"
+#include "screen.hpp"
 #include "logging.hpp"
 
 /*

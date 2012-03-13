@@ -21,6 +21,9 @@
 #ifndef __SOCKETOWNER__
 #define __SOCKETOWNER__
 
+#include <map>
+#include <list>
+
 class socketowner {
 public:
   socketowner();

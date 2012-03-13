@@ -23,6 +23,9 @@
 #define __FILECONTENTS__
 
 #include <vector>
+#include <string>
+
+#include "variables.hpp"
 
 class FileContents {
 public:

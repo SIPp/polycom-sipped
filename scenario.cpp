@@ -28,10 +28,14 @@
  */
 
 #include <stdlib.h>
-#include "sipp.hpp"
+#include <limits.h>
+
+#include "screen.hpp"
+#include "xp_parser.hpp"
 #include "call.hpp"
 #include "sipp_globals.hpp"
 #include "logging.hpp"
+
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>

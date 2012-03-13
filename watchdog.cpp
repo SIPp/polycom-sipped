@@ -30,8 +30,11 @@
  *           Wolfgang Beck
  *           Charles P Wright from IBM Research
  */
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
+
+#include "watchdog.hpp"
+#include "screen.hpp"
+#include "stat.hpp"
+#include "sipp_globals.hpp"  // clock_tick
 
 void watchdog::dump() {
   WARNING("Watchdog Task: interval = %d, major_threshold = %d (%d triggers left), minor_threshold = %d (%d triggers left)", interval, major_threshold, major_maxtriggers, minor_threshold, minor_maxtriggers);

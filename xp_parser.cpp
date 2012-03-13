@@ -41,10 +41,11 @@
 
 #include "xp_parser.hpp"
 #include "CompositeDocument.hpp"
-#include "win32_compatibility.hpp"
+
 
 #ifdef WIN32
   #define snprintf _snprintf
+#include "win32_compatibility.hpp"
 #endif
 
 using namespace std;

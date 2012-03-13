@@ -23,8 +23,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
+#include "logging.hpp"
 #include "transactionstate.hpp"
 
 

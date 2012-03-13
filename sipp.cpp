@@ -38,9 +38,46 @@
 #define GLOBALS_FULL_DEFINITION
 
 #include <dlfcn.h>
-#include "sipp.hpp"
+#include "sipp.hpp"   // some CYGWIN WIN32 stuff that may be needed
 #include "sipp_globals.hpp"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+
+#ifdef WIN32
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #include <time.h>
+  #include <windows.h>
+
+  #include "win32_compatibility.hpp"
+#else
+  #include <netinet/tcp.h>
+  #include <sys/poll.h>
+  #include <sys/resource.h>
+  #include <arpa/inet.h>
+  #include <netdb.h>
+#endif
+
+#ifndef __SUNOS
+#ifndef WIN32
+  #include <curses.h>
+#endif
+#else
+#include <stdarg.h>
+#endif
+
+#if defined(__HPUX) || defined(__SUNOS)
+#include <alloca.h>
+#endif
+
+#include "screen.hpp"
+#include "call.hpp"
+#include "comp.hpp"
+#include "opentask.hpp"
+#include "reporttask.hpp"
+#include "watchdog.hpp"
 
 #include "assert.h"
 #include <string.h>
@@ -49,7 +86,6 @@
 # include <process.h>
 #endif
 
-#include "logging.hpp"
 
 #ifdef _USE_OPENSSL
 SSL_CTX  *sip_trp_ssl_ctx = NULL; /* For SSL cserver context */

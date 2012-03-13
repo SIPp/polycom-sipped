@@ -18,14 +18,15 @@
  *           From Hewlett Packard Company.
  *	     Charles P. Wright from IBM Research
  */
+#include <iostream>
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
+#include "sipp_globals.hpp"   // SIPP_MAX_MSG_SIZE
 #include "screen.hpp"
 #include "stat.hpp"
 #include "infile.hpp"
-#include <iostream>
-#include <assert.h>
 
 /* Read MAX_CHAR_BUFFER_SIZE size lines from the "fileName" and populate it in
  * the fileContents vector. Each line should be terminated with a '\n'

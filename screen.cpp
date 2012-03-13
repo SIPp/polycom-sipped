@@ -22,10 +22,16 @@
  */
 
 #include "stat.hpp"
-#include "sipp.hpp"
+#include "scenario.hpp"  // display_scenario
+#include "assert.h"
 #include "sipp_globals.hpp"
 #include "logging.hpp"
+#include "screen.hpp"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <curses.h>
 
 #ifndef WIN32
@@ -37,13 +43,6 @@
 # include <time.h>
 # include <csignal>
 #endif
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <screen.hpp>
-#include <errno.h>
 
 #ifdef __SUNOS
 #include<stdarg.h>

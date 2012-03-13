@@ -3,19 +3,18 @@
  *
  *
  *  Created on: Mar 9, 2012
- *      Author: sipped
+ *      Author: rlum
  */
 
 #ifndef SIPP_GLOBALS_HPP_
 #define SIPP_GLOBALS_HPP_
 
 /* Std C includes */
-#ifdef WIN32
+#ifdef WIN32   //TODO check if all the win32 includes really needed here
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #include <time.h>
   #include <windows.h>
-
   #include "win32_compatibility.hpp"
 #else
   #include <sys/socket.h>     // sockaddr_storage
@@ -23,7 +22,7 @@
 
 #include <string>
 #include <map>
-#include <list>  // call, dialogstate, listener, task
+#include <list>
 #include <set>
 
 #include "variables.hpp" // VariableTable
@@ -516,6 +515,20 @@ void                       free_peer_addr_map();
 /******************** Recv Poll Processing *********************/
 
 extern struct sipp_socket  *sockets[SIPP_MAXFDS];
+
+
+/************************** Constants **************************/
+
+#ifdef SVN_VERSION
+# ifdef LOCAL_VERSION_EXTRA
+#  define SIPP_VERSION               SVN_VERSION LOCAL_VERSION_EXTRA
+# else
+#  define SIPP_VERSION               SVN_VERSION
+# endif
+#else
+# define SIPP_VERSION               "unknown"
+#endif
+
 
 
 #endif /* SIPP_GLOBALS_HPP_ */

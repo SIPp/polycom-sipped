@@ -23,9 +23,9 @@
 #include <sys/types.h>
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
+#include "listener.hpp"
 
 listener_map listeners;
 
@@ -39,7 +39,7 @@ listener::listener(const char *id, bool listening) {
 
 void listener::startListening() {
   assert(!listening);
-  listeners.insert(pair<listener_map::key_type,listener *>(listener_map::key_type(id),this));
+  listeners.insert(std::pair<listener_map::key_type,listener *>(listener_map::key_type(id),this));
   listening = true;
 }
 

@@ -45,8 +45,9 @@
 #endif
 #include <assert.h>
 
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
+#include "task.hpp"
+#include "screen.hpp"
+#include "sipp_globals.hpp"  // clock_tick
 
 task_list all_tasks;
 task_list running_tasks;

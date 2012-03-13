@@ -30,8 +30,16 @@
  *           Wolfgang Beck
  *           Charles P Wright from IBM Research
  */
-#include "sipp.hpp"
+#include <assert.h>
+#include <math.h>
+
 #include "sipp_globals.hpp"
+#include "opentask.hpp"
+#include "screen.hpp"
+#include "stat.hpp"
+#include "scenario.hpp"
+#include "call.hpp"
+
 
 class opentask *opentask::instance = NULL;
 unsigned long opentask::calls_since_last_rate_change = 0;

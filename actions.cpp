@@ -20,10 +20,17 @@
  *            From Hewlett Packard Company.
  *            Guillaume Teissier from FTR&D
  */
-
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
 #include <assert.h>
+#include <stdlib.h>
+
+#include "actions.hpp"
+#include "screen.hpp"
+#include "scenario.hpp"
+#include "common.hpp"
+#include "send_packets.hpp"
+#include "variables.hpp"
+
+
 #ifdef PCAPPLAY
 #include "prepare_pcap.hpp"
 #endif

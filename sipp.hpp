@@ -21,80 +21,10 @@
 #ifndef __SIPP__
 #define __SIPP__
 
-/* Std C includes */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#ifdef WIN32
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
-  #include <time.h>
-  #include <windows.h>
-
-  #include "win32_compatibility.hpp"
-#else
-  #include <sys/socket.h>
-  #include <netinet/in.h>
-  #include <netinet/tcp.h>
-  #include <sys/time.h>
-  #include <sys/poll.h>
-  #include <sys/resource.h>
-  #include <unistd.h>
-  #include <arpa/inet.h>
-  #include <netdb.h>
-#endif
-
-#include <sys/types.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <ctype.h>
-#include <signal.h>
-#include <time.h>
-#include <limits.h>
-#include <vector>
-#include <string>
-#include <map>
-#include <set>
-#include <math.h>
-#ifndef __SUNOS
-#ifndef WIN32
-  #include <curses.h>
-#endif
-#else
-#include <stdarg.h>
-#endif
-
-#if defined(__HPUX) || defined(__SUNOS)
-#include <alloca.h>
-#endif
-
-/* Sipp includes */
-#include "sipp_globals.hpp"
-
-#include "xp_parser.hpp"
-#include "scenario.hpp"
-#include "screen.hpp"
-#include "task.hpp"
-#include "listener.hpp"
-#include "socketowner.hpp"
-#include "call.hpp"
-#include "comp.hpp"
-#include "variables.hpp"
-#include "stat.hpp"
-#include "actions.hpp"
-#include "infile.hpp"
-#include "opentask.hpp"
-#include "reporttask.hpp"
-#include "watchdog.hpp"
-
-
-
 /* Open SSL stuff */
-#ifdef _USE_OPENSSL
-#include "sslcommon.hpp" 
-#endif
+//#ifdef _USE_OPENSSL
+//#include "sslcommon.hpp"
+//#endif
 
 #ifdef WIN32
   #pragma warning (disable: 4003; disable: 4996)
@@ -111,20 +41,6 @@
 #define FD_SETSIZE 1024
 #endif
 #endif
-
-
-/************************** Constants **************************/
-
-#ifdef SVN_VERSION
-# ifdef LOCAL_VERSION_EXTRA
-#  define SIPP_VERSION               SVN_VERSION LOCAL_VERSION_EXTRA
-# else
-#  define SIPP_VERSION               SVN_VERSION
-# endif
-#else
-# define SIPP_VERSION               "unknown"
-#endif
-
 
 #ifdef GLOBALS_FULL_DEFINITION
 #undef extern

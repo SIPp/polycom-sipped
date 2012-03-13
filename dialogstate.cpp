@@ -21,11 +21,11 @@
 
 #include <string.h>
 #include <map>
+#include <stdlib.h>
 
 #include "transactionstate.hpp"
 #include "dialogstate.hpp"
-#include "sipp.hpp"
-#include "sipp_globals.hpp"
+#include "screen.hpp"
 #include "logging.hpp"
 
 DialogState::DialogState(unsigned int base_cseq, const string &call_id) : call_id(call_id), 

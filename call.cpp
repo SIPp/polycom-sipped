@@ -38,29 +38,31 @@
  *	     Martin H. VanLeeuwen
  */
 
-#include <iterator>
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <sys/types.h>
+#include <limits.h>  // INT_MAX
+
 #ifndef WIN32
   #include <sys/wait.h>
+  #include <netdb.h>
+  #include <arpa/inet.h>
 #else
+  #include "win32_compatibility.hpp"
   #include <io.h>
   #include <process.h>
 #endif
+
 
 #ifdef PCAPPLAY
 #include "send_packets.hpp"
 #endif
 
-#include "sipp.hpp"
 #include "sipp_globals.hpp"
-
 #include "call.hpp"
 #include "deadcall.hpp"
 #include "assert.h"
 #include "logging.hpp"
+#include "screen.hpp"
+#include "comp.hpp"
+#include "opentask.hpp"
 
 #define callDebug(x, ...) do { if (useDebugf) { DEBUG(x, ##__VA_ARGS__); } if (useCallDebugf) { _callDebug(x, ##__VA_ARGS__ ); } } while (0)
 

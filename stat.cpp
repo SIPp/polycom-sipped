@@ -26,12 +26,14 @@
 #include <fstream>
 #include <iomanip>
 #include <assert.h>
+#include <math.h>
+#include <stdlib.h>
 
-#include "sipp.hpp"
+#include "stat.hpp"
 #include "sipp_globals.hpp"
-
 #include "scenario.hpp"
 #include "screen.hpp"
+
 #ifdef WIN32
 # include "win32_compatibility.hpp"
 #endif
