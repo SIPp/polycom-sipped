@@ -21,29 +21,4 @@
 #ifndef __SIPP__
 #define __SIPP__
 
-/* Open SSL stuff */
-//#ifdef _USE_OPENSSL
-//#include "sslcommon.hpp"
-//#endif
-
-#ifdef WIN32
-  #pragma warning (disable: 4003; disable: 4996)
-#else
-  #define SocketError() errno
-#endif
-
-#ifndef __CYGWIN
-#ifndef FD_SETSIZE
-#define FD_SETSIZE 65000
-#endif
-#else
-#ifndef FD_SETSIZE
-#define FD_SETSIZE 1024
-#endif
-#endif
-
-#ifdef GLOBALS_FULL_DEFINITION
-#undef extern
-#endif
-
 #endif // __SIPP__

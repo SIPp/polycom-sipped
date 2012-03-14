@@ -25,9 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "variables.hpp"
-#include "screen.hpp"
 #include "logging.hpp"
+#include "screen.hpp"
+#include "variables.hpp"
 
 /*
 __________________________________________________________________________

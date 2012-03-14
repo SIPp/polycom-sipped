@@ -35,19 +35,20 @@
  *           Michael Dwyer from Cibation
  */
 
-#include <iterator>
 #include <algorithm>
+#include <assert.h>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sys/types.h>
+
 #ifndef WIN32
   #include <sys/wait.h>
 #endif
-#include <assert.h>
 
-#include "task.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"  // clock_tick
+#include "task.hpp"
 
 task_list all_tasks;
 task_list running_tasks;

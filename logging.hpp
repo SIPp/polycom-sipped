@@ -28,9 +28,9 @@
 #ifndef __LOGGING__
 #define __LOGGING__
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
-#include <stdarg.h>
 #include "win32_compatibility.hpp"
 
 

@@ -21,8 +21,8 @@
 #define __DIALOGSTATE__
 
 #include <map>
-#include <list>
 #include <string>
+
 #include "common.hpp"
 #include "transactionstate.hpp"
 

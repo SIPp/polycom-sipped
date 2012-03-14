@@ -22,21 +22,21 @@
  *
  */
 
-#include <iostream>
-#include <fstream>
-#include <iomanip>
 #include <assert.h>
+//#include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <math.h>
 #include <stdlib.h>
 
-#include "stat.hpp"
-#include "sipp_globals.hpp"
 #include "scenario.hpp"
 #include "screen.hpp"
+#include "sipp_globals.hpp"
+#include "stat.hpp"
 
-#ifdef WIN32
-# include "win32_compatibility.hpp"
-#endif
+
+#include "win32_compatibility.hpp"
+
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>

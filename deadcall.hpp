@@ -1,4 +1,12 @@
-#include "call.hpp"
+#include "listener.hpp"
+#include "task.hpp"
+
+#ifdef WIN32
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+#else
+  #include <sys/socket.h>
+#endif
 
 class deadcall : public virtual task, public virtual listener {
 public:

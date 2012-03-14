@@ -5,8 +5,9 @@
  *  Created on: Mar 9, 2012
  *      Author: rlum
  */
-#include "sipp_globals.hpp"
+
 #include "call.hpp"  // RTCHECK_FULL  MAX_LOCAL_TWIN_SOCKETS
+#include "sipp_globals.hpp"
 
 int                duration                = 0;
 double             rate                    = DEFAULT_RATE;

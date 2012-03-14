@@ -33,13 +33,12 @@
 #include <assert.h>
 #include <math.h>
 
-#include "sipp_globals.hpp"
+#include "call.hpp"
 #include "opentask.hpp"
 #include "screen.hpp"
-#include "stat.hpp"
 #include "scenario.hpp"
-#include "call.hpp"
-
+#include "sipp_globals.hpp"
+#include "stat.hpp"
 
 class opentask *opentask::instance = NULL;
 unsigned long opentask::calls_since_last_rate_change = 0;

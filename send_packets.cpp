@@ -67,8 +67,9 @@
 #include <fcntl.h>
 #include <pthread.h>
 
+#include "logging.hpp"
+//#include "prepare_pcap.hpp"
 #include "send_packets.hpp"
-#include "prepare_pcap.hpp"
 #include "screen.hpp"
 
 extern volatile unsigned long rtp_pckts_pcap;

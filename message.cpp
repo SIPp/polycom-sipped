@@ -36,11 +36,13 @@
  *           Andy Aicken
  */
 
-#include "sipp_globals.hpp"
-#include "screen.hpp"
-#include "message.hpp"
-#include "common.hpp"
+
 #include "call.hpp"
+#include "common.hpp"
+#include "message.hpp"
+#include "screen.hpp"
+#include "sipp_globals.hpp"
+
 
 struct KeywordMap {
 	const char *keyword;

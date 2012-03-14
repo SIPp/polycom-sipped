@@ -19,9 +19,7 @@
 #define PREPARE_PCAP_H	1
 #include <pcap.h>
 
-
 #ifdef WIN32
-#include "win32_compatibility.hpp"
 # include <winsock2.h>
 # include <ws2tcpip.h>
 #else

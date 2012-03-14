@@ -35,19 +35,19 @@
  *           Michael Dwyer from Cibation
  */
 
-#include <iterator>
+#include <assert.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sys/types.h>
-#include <assert.h>
 
 #ifndef WIN32
   #include <sys/wait.h>
 #endif
 
-#include "socketowner.hpp"
 #include "sipp_globals.hpp"  //sipp_close_socket
+#include "socketowner.hpp"
 
 socket_owner_map_map socket_to_owners;
 

@@ -252,8 +252,8 @@ install:
 .cpp.o:
 	$(CPP) $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c -o $*.o $<
 
-fortune.so: fortune.cpp call.o message.o comp.o screen.o
-	g++ -fPIC $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c -o fortune.o  $^
+fortune.so: fortune.cpp 
+	g++ -fPIC $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c $^ -o fortune.o  
 	gcc -shared -Wl,-soname,fortune.so -o $@ fortune.o
 
 

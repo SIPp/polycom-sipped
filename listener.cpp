@@ -17,13 +17,11 @@
  *           From Hewlett Packard Company.
  *	     Charles P. Wright from IBM Research
  */
-#include <map>
-#include <iterator>
-#include <list>
-#include <sys/types.h>
-#include <string.h>
 #include <assert.h>
+#include <iterator>
 #include <stdlib.h>
+#include <string.h>
+//#include <sys/types.h>
 
 #include "listener.hpp"
 

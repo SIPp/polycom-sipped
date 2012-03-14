@@ -34,14 +34,12 @@
 #include <ctime> 
 #ifdef WIN32
 # include <time.h>
-# include "win32_compatibility.hpp"
 #else
 # include <sys/time.h> 
 #endif
-#include <time.h> 
-#include <iostream>
+
 #include <fstream>
-#include <stdio.h>
+#include <time.h>
 
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>

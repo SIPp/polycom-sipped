@@ -20,10 +20,7 @@
 #ifndef __TASK__
 #define __TASK__
 
-#include <map>
 #include <list>
-#include <sys/types.h>
-#include <string.h>
 
 /* Forward declaration of call, so that we can define the call_list iterator
  * that is referenced from call. */

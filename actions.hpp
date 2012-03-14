@@ -23,8 +23,11 @@
 #ifndef _CACTIONS
 #define _CACTIONS
 
-#include "variables.hpp"
+#include <regex.h>
+
 #include "message.hpp"
+#include "variables.hpp"
+
 class CSample;
 
 #ifdef PCAPPLAY

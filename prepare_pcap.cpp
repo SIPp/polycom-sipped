@@ -34,9 +34,9 @@
 #endif
 #include <string.h>
 
+#include "logging.hpp"
 #include "prepare_pcap.hpp"
 #include "screen.hpp"
-#include "logging.hpp"
 
 /* We define our own structures for Ethernet Header and IPv6 Header as they are not available on CYGWIN.
  * We only need the fields, which are necessary to determine the type of the next header.

@@ -24,10 +24,8 @@
 #ifndef _CVARIABLE
 #define _CVARIABLE
 
-#include <string>
 #include <map>
-#include <sys/types.h>
-#include <regex.h>
+#include <string>
 
 typedef std::map<std::string, int> str_int_map;
 typedef std::map<int, char *> int_str_map;

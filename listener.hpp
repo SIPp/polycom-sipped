@@ -21,11 +21,7 @@
 #define __LISTENER__
 
 #include <map>
-#include <iterator>
-#include <list>
-#include <sys/types.h>
-#include <string.h>
-#include <assert.h>
+#include <string>
 
 class listener {
 public:

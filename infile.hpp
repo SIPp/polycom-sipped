@@ -22,8 +22,8 @@
 #ifndef __FILECONTENTS__
 #define __FILECONTENTS__
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "variables.hpp"
 

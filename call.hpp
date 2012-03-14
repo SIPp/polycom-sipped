@@ -23,8 +23,7 @@
 #define __CALL__
 
 #include <map>
-#include <list>
-#include <sys/types.h>
+
 #ifdef WIN32
   #include <winsock2.h>
   #include <ws2tcpip.h>
@@ -40,16 +39,11 @@
   #endif
 #endif
 
-#include <string.h>
-
-#include "scenario.hpp"
-#include "stat.hpp"
-#include "common.hpp"
-#include "transactionstate.hpp"
 #include "dialogstate.hpp"
-#include "task.hpp"
 #include "listener.hpp"
+#include "scenario.hpp"
 #include "socketowner.hpp"
+#include "task.hpp"
 
 #ifdef _USE_OPENSSL
 #include "sslcommon.hpp"

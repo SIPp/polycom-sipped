@@ -33,15 +33,14 @@
 
 /*******************  Include files *********************/
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <string>
 
-#include "xp_parser.hpp"
 #include "CompositeDocument.hpp"
-
+#include "xp_parser.hpp"
 
 #ifdef WIN32
   #define snprintf _snprintf

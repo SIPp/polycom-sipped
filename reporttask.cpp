@@ -33,12 +33,12 @@
 
 #include <assert.h>
 
-#include "sipp_globals.hpp"
-#include "reporttask.hpp"
-#include "screen.hpp"
-#include "stat.hpp"
-#include "scenario.hpp"
 #include "opentask.hpp"
+#include "reporttask.hpp"
+#include "scenario.hpp"
+#include "screen.hpp"
+#include "sipp_globals.hpp"
+#include "stat.hpp"
 
 class stattask *stattask::instance = NULL;
 class screentask *screentask::instance = NULL;

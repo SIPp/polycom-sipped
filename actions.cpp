@@ -24,12 +24,10 @@
 #include <stdlib.h>
 
 #include "actions.hpp"
-#include "screen.hpp"
-#include "scenario.hpp"
 #include "common.hpp"
+#include "scenario.hpp"
+#include "screen.hpp"
 #include "send_packets.hpp"
-#include "variables.hpp"
-
 
 #ifdef PCAPPLAY
 #include "prepare_pcap.hpp"

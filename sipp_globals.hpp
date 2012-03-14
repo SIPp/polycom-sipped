@@ -10,23 +10,23 @@
 #define SIPP_GLOBALS_HPP_
 
 /* Std C includes */
-#ifdef WIN32   //TODO check if all the win32 includes really needed here
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
+#ifdef WIN32
   #include <time.h>
   #include <windows.h>
-  #include "win32_compatibility.hpp"
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
 #else
   #include <sys/socket.h>     // sockaddr_storage
 #endif
 
-#include <string>
-#include <map>
-#include <list>
-#include <set>
 
-#include "variables.hpp" // VariableTable
+#include <list>
+#include <map>
+#include <set>
+#include <string>
+
 #include "infile.hpp"   // FileContents
+#include "variables.hpp" // VariableTable
 
 #ifdef _USE_OPENSSL
 #include "sslcommon.hpp"  // BIO, SSL

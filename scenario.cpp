@@ -26,15 +26,15 @@
  *	     Charles P. Wright from IBM Research
  *	     Michael Stovenour
  */
-
+#include <assert.h>
 #include <stdlib.h>
 #include <limits.h>
 
-#include "screen.hpp"
-#include "xp_parser.hpp"
 #include "call.hpp"
-#include "sipp_globals.hpp"
 #include "logging.hpp"
+#include "screen.hpp"
+#include "sipp_globals.hpp"
+#include "xp_parser.hpp"
 
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>
