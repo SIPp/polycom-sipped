@@ -38,10 +38,17 @@
 
 
 #include "call.hpp"
-#include "common.hpp"
-#include "message.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
+//
+#include "common.hpp"
+#include "message.hpp"
+#include "scenario.hpp"
+#include <map>
+#include <string>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 
 struct KeywordMap {

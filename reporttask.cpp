@@ -38,7 +38,9 @@
 #include "scenario.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
+//
 #include "stat.hpp"
+#include <stdio.h>
 
 class stattask *stattask::instance = NULL;
 class screentask *screentask::instance = NULL;

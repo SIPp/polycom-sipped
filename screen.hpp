@@ -26,10 +26,6 @@
 #ifndef __SCREEN_H__
 #define __SCREEN_H__
 
-
-#include "logging.hpp"
-
-
 #ifndef WIN32
   void REPORT_ERROR(const char *fmt, ...) __attribute__ ((noreturn));
 #else

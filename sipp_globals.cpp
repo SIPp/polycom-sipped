@@ -5,9 +5,19 @@
  *  Created on: Mar 9, 2012
  *      Author: rlum
  */
-
-#include "call.hpp"  // RTCHECK_FULL  MAX_LOCAL_TWIN_SOCKETS
 #include "sipp_globals.hpp"
+#include "call.hpp"
+//
+#include "socketowner.hpp"
+#include "variables.hpp"
+#include <netdb.h>
+#include <stdio.h>
+#include <stddef.h>  // RTCHECK_FULL  MAX_LOCAL_TWIN_SOCKETS
+#ifdef _USE_OPENSSL
+#include "sslcommon.hpp"
+#endif
+
+
 
 int                duration                = 0;
 double             rate                    = DEFAULT_RATE;

@@ -24,21 +24,23 @@
 #ifndef __SCENARIO__
 #define __SCENARIO__
 
-#include <map>
-#include <vector>
-
-#ifdef WIN32
-  #include <winsock2.h>
-#else
-  #include <sys/socket.h>
-#endif
+//#ifdef WIN32
+//  #include <winsock2.h>
+//#else
+//  #include <sys/socket.h>
+//#endif
 
 #include <string.h>
-
+//
+#include <map>
+#include <vector>
+#include <string>
+#include <regex.h>
 #include "actions.hpp"
-#include "message.hpp"
 #include "stat.hpp"
+#include "message.hpp"
 #include "variables.hpp"
+
 
 #define MSG_TYPE_SENDCMD   0
 #define MSG_TYPE_RECVCMD   1

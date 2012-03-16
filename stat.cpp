@@ -23,19 +23,20 @@
  */
 
 #include <assert.h>
-//#include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <math.h>
-#include <stdlib.h>
+
 
 #include "scenario.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
+//
 #include "stat.hpp"
-
-
 #include "win32_compatibility.hpp"
+#include <stdlib.h>
+#include <iomanip>
+#include <fstream>
+
 
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>

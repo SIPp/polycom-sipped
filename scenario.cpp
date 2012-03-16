@@ -27,14 +27,31 @@
  *	     Michael Stovenour
  */
 #include <assert.h>
-#include <stdlib.h>
 #include <limits.h>
 
+
 #include "call.hpp"
-#include "logging.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
 #include "xp_parser.hpp"
+#include "logging.hpp"
+//
+#include "actions.hpp"
+#include "message.hpp"
+#include "scenario.hpp"
+#include "stat.hpp"
+#include "variables.hpp"
+#include <string>
+#include <list>
+#include <map>
+#include <vector>
+#include <regex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+
 
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>

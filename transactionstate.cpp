@@ -19,12 +19,13 @@
  *
  */
 
-#include <iostream>
 #include <sstream>
-#include <string.h>
 
 #include "logging.hpp"
 #include "transactionstate.hpp"
+//
+#include <iostream>
+
 
 TransactionState::TransactionState(const string &name) : name(name), branch(""), lastReceivedMessage(""), 
                                    cseq(0), cseqMethod(""), client(false), lastResponseCode(0), transactionResponseHash(0), ackIndex(0)

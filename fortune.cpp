@@ -18,15 +18,21 @@
  *           From Hewlett Packard Company.
  *           Charles P Wright from IBM Research
  */
-#include <stdlib.h>
-#include <errno.h>
+
 
 #include "call.hpp" // call
+#include "screen.hpp"   // REPORT_ERROR
+#include "sipp_globals.hpp"
+#include "logging.hpp" //SIPP_MAX_MSG_SIZE
+//
 #include "comp.hpp" //comp
 #include "message.hpp"  //MessageComponent
-#include "screen.hpp"   // REPORT_ERROR
+#include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
-#include "sipp_globals.hpp" //SIPP_MAX_MSG_SIZE
 
 /* This is a fun sample of creating your own extensible keyword. */
 int fortune(call *call, MessageComponent *comp, char *buf, int len) {

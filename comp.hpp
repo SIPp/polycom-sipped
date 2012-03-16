@@ -19,12 +19,12 @@
  *           From Hewlett Packard Company.
  */
 
-#include <sys/types.h>
-#ifdef WIN32
-  #include <winsock2.h>
-#else
-  #include <sys/socket.h>
-#endif
+//#include <sys/types.h>
+//#ifdef WIN32
+//  #include <winsock2.h>
+//#else
+//  #include <sys/socket.h>
+//#endif
 
 
   char * comp_load();

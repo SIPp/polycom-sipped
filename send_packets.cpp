@@ -41,10 +41,6 @@
 #define __FAVOR_BSD
 #endif /*__LINUX*/
 
-#include <pcap.h>
-#include <stdlib.h>
-#include "win32_compatibility.hpp"
-
 #ifdef WIN32
 # pragma warning (disable: 4003; disable: 4996)
 # include <winsock2.h>
@@ -64,13 +60,20 @@
 #endif
 
 #include <string.h>
-#include <fcntl.h>
 #include <pthread.h>
-
 #include "logging.hpp"
-//#include "prepare_pcap.hpp"
 #include "send_packets.hpp"
 #include "screen.hpp"
+//
+#include "prepare_pcap.hpp"
+#include <fcntl.h>
+#include <pcap.h>
+#include <stdlib.h>
+#include "win32_compatibility.hpp"
+#include <stdio.h>
+#include <sys/types.h>
+
+
 
 extern volatile unsigned long rtp_pckts_pcap;
 extern volatile unsigned long rtp_bytes_pcap;

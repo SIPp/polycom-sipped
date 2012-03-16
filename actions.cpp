@@ -20,17 +20,21 @@
  *            From Hewlett Packard Company.
  *            Guillaume Teissier from FTR&D
  */
-#include <assert.h>
 #include <stdlib.h>
-
-#include "actions.hpp"
 #include "common.hpp"
 #include "scenario.hpp"
 #include "screen.hpp"
 #include "send_packets.hpp"
-
+//
+#include "actions.hpp"
+#include "stat.hpp"
 #ifdef PCAPPLAY
 #include "prepare_pcap.hpp"
+#endif
+#include <stdio.h>
+#include <string.h>
+#ifndef WIN32
+  #include <unistd.h>
 #endif
 
 static const char* strIntCmd(CAction::T_IntCmdType type)

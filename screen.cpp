@@ -23,11 +23,6 @@
 
 #include <assert.h>
 #include <curses.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 
 #ifndef WIN32
 # include <sys/time.h>
@@ -43,11 +38,18 @@
 #include<stdarg.h>
 #endif
 
-
+#include "logging.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
 #include "scenario.hpp"  // display_scenario
+//
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "stat.hpp"
+#include "win32_compatibility.hpp"
+
 
 extern bool    timeout_exit;
 

@@ -1,6 +1,6 @@
 #include "CompositeDocument.hpp"
 #include <iostream>
-#include <cstdlib>
+
 #include <cstring>
 #include <sstream>
 #include <iomanip>

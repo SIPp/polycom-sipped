@@ -40,7 +40,6 @@
 
 #include <limits.h>  // INT_MAX
 #include <assert.h>
-
 #ifndef WIN32
   #include <sys/wait.h>
   #include <netdb.h>
@@ -49,18 +48,26 @@
   #include <io.h>
   #include <process.h>
 #endif
-
-#ifdef PCAPPLAY
-#include "send_packets.hpp"
-#endif
-
 #include "call.hpp"
 #include "comp.hpp"
 #include "deadcall.hpp"
-#include "logging.hpp"
 #include "opentask.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
+#include "logging.hpp"
+#ifdef PCAPPLAY
+#include "send_packets.hpp"
+#endif
+// directly referenced but by covered by above
+#include "actions.hpp"
+#include "common.hpp"
+#include "infile.hpp"
+#include "message.hpp"
+#include "prepare_pcap.hpp"
+#include "stat.hpp"
+#include "transactionstate.hpp"
+#include "variables.hpp"
+#include <ctype.h>
 
 #define callDebug(x, ...) do { if (useDebugf) { DEBUG(x, ##__VA_ARGS__); } if (useCallDebugf) { _callDebug(x, ##__VA_ARGS__ ); } } while (0)
 

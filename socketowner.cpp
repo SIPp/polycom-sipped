@@ -36,18 +36,18 @@
  */
 
 #include <assert.h>
+#include "sipp_globals.hpp"
+#include "socketowner.hpp"
+//
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <sys/types.h>
-
 #ifndef WIN32
   #include <sys/wait.h>
 #endif
 
-#include "sipp_globals.hpp"  //sipp_close_socket
-#include "socketowner.hpp"
+
 
 socket_owner_map_map socket_to_owners;
 

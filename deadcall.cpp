@@ -35,19 +35,6 @@
  *           Michael Dwyer from Cibation
  */
 
-#include <iterator>
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <sys/types.h>
-#include <assert.h>
-#ifndef WIN32
-  #include <sys/wait.h>
-#endif
-
-#ifdef PCAPPLAY
-#include "send_packets.hpp"
-#endif
 
 #include "common.hpp"
 #include "deadcall.hpp"
@@ -55,7 +42,14 @@
 #include "screen.hpp"
 #include "sipp_globals.hpp"
 #include "stat.hpp"
-
+//
+#include <iterator>
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+#ifdef PCAPPLAY
+#include "send_packets.hpp"
+#endif
 
 deadcall::deadcall(char *id, const char *reason) : listener(id, true) {
   this->expiration = clock_tick + deadcall_wait;

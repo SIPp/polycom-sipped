@@ -33,11 +33,9 @@
 
 /*******************  Include files *********************/
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <string>
 
 #include "CompositeDocument.hpp"
 #include "xp_parser.hpp"
@@ -46,6 +44,11 @@
   #define snprintf _snprintf
 #include "win32_compatibility.hpp"
 #endif
+//
+#include <ctype.h>
+#include <string>
+#include <stddef.h>
+
 
 using namespace std;
 

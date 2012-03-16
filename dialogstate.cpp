@@ -19,9 +19,7 @@
  *
  */
 
-#include <string.h>
 #include <stdlib.h>
-
 #include "dialogstate.hpp"
 #include "logging.hpp"
 #include "screen.hpp"

@@ -39,18 +39,25 @@
   #endif
 #endif
 
-#include "dialogstate.hpp"
-#include "listener.hpp"
-#include "scenario.hpp"
-#include "socketowner.hpp"
-#include "task.hpp"
-
 #ifdef _USE_OPENSSL
 #include "sslcommon.hpp"
 #endif
 #ifdef PCAPPLAY
 #include "send_packets.hpp"
 #endif
+
+#include "dialogstate.hpp"
+#include "listener.hpp"
+#include "scenario.hpp"
+#include "socketowner.hpp"
+#include "task.hpp"
+// directly referenced but by covered by above
+#include "actions.hpp"
+#include "message.hpp"
+#include "stat.hpp"
+#include "transactionstate.hpp"
+#include "variables.hpp"
+
 
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

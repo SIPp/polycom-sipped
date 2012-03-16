@@ -18,12 +18,11 @@
  *	     Charles P. Wright from IBM Research
  */
 #include <assert.h>
-#include <iterator>
 #include <stdlib.h>
 #include <string.h>
-//#include <sys/types.h>
-
 #include "listener.hpp"
+//
+#include <iterator>
 
 listener_map listeners;
 

@@ -39,7 +39,6 @@
 #endif
 
 #include <fstream>
-#include <time.h>
 
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>
@@ -48,6 +47,8 @@
 #endif
 
 #include "variables.hpp"
+//
+
 
 using namespace std;
 
@@ -568,7 +569,7 @@ private:
 
   double computeRtdMean(int which, int type);
   double computeRtdStdev(int which, int type);
-
+  //sipp_close_socket
   /**
    * Effective C++
    *

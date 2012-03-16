@@ -24,16 +24,16 @@
  */
 
 #include "logging.hpp"
-
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
 #ifndef WIN32
-# include <sys/time.h>
 # include <unistd.h>
 # include <signal.h>
+//
+# include <sys/time.h>
 #endif
+
 
 
 // Variables set by configuration parameters 

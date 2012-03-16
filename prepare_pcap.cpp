@@ -15,7 +15,7 @@
  *
  *  Author : Guillaume TEISSIER from FTR&D 02/02/2006
  */
-#include <pcap.h>
+
 #include <stdlib.h>
 #ifdef WIN32
 # include <winsock2.h>
@@ -33,10 +33,11 @@
 # endif
 #endif
 #include <string.h>
-
-#include "logging.hpp"
 #include "prepare_pcap.hpp"
 #include "screen.hpp"
+#include "logging.hpp"
+//
+#include <pcap.h>
 
 /* We define our own structures for Ethernet Header and IPv6 Header as they are not available on CYGWIN.
  * We only need the fields, which are necessary to determine the type of the next header.
