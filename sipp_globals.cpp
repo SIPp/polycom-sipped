@@ -10,7 +10,11 @@
 //
 #include "socketowner.hpp"
 #include "variables.hpp"
-#include <netdb.h>
+#ifdef WIN32
+  #include <winsock2.h>
+#else
+  #include <netdb.h>
+#endif
 #include <stdio.h>
 #include <stddef.h>  // RTCHECK_FULL  MAX_LOCAL_TWIN_SOCKETS
 #ifdef _USE_OPENSSL

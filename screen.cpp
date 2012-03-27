@@ -22,16 +22,20 @@
  */
 
 #include <assert.h>
-#include <curses.h>
+
 
 #ifndef WIN32
 # include <sys/time.h>
 # include <sys/resource.h>
 # include <unistd.h>
 # include <signal.h>
+#include <curses.h>
 #else
 # include <time.h>
 # include <csignal>
+#include <conio.h>  //getch
+
+//#include <errno.h>
 #endif
 
 #ifdef __SUNOS
@@ -50,6 +54,10 @@
 #include "stat.hpp"
 #include "win32_compatibility.hpp"
 
+// has to be after above to avoid interfering with macro def move
+#ifdef WIN32
+#include "curses.h"
+#endif
 
 extern bool    timeout_exit;
 

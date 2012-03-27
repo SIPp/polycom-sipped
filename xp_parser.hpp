@@ -18,6 +18,10 @@
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
  */
+
+#ifndef __XPPARSERHPP__
+#define __XPPARSERHPP__
+
 #include <string>
 
 int    xp_replace(char *source, char *dest, const char *search, const char *replace);
@@ -40,3 +44,7 @@ unsigned int xp_get_whereami_key();
 std::string convert_whereami_key_to_string(unsigned int key);
 std::string whereami_if_valid();
 int is_xp_file_metadata_valid();
+
+
+#endif
+

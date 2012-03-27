@@ -19,6 +19,8 @@
  *           From Hewlett Packard Company.
  */
 
+#ifndef __COMPHPP__
+#define __COMPHPP__
 //#include <sys/types.h>
 //#ifdef WIN32
 //  #include <winsock2.h>
@@ -67,4 +69,6 @@
 #define COMP_KO      -1
   
 
+
+#endif 
 

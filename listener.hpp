@@ -23,7 +23,11 @@
 #include <map>
 #include <string>
 //
-#include <sys/socket.h>
+#ifdef WIN32
+	#include <winsock2.h>
+#else
+	#include <sys/socket.h>
+#endif
 
 class listener {
 public:

@@ -47,6 +47,7 @@
 #else
   #include <io.h>
   #include <process.h>
+  #include <errno.h>
 #endif
 #include "call.hpp"
 #include "comp.hpp"
@@ -67,7 +68,7 @@
 #include "stat.hpp"
 #include "transactionstate.hpp"
 #include "variables.hpp"
-#include <ctype.h>
+//#include <ctype.h>
 
 #define callDebug(x, ...) do { if (useDebugf) { DEBUG(x, ##__VA_ARGS__); } if (useCallDebugf) { _callDebug(x, ##__VA_ARGS__ ); } } while (0)
 

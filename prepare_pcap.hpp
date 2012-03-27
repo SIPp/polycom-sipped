@@ -26,7 +26,7 @@
 # include <netinet/in.h>
 # include <netinet/udp.h>
 #endif
-#include <time.h>
+
 
 #if defined(__HPUX) || defined(__DARWIN) || defined(__CYGWIN) || defined(__FreeBSD__)
 #define u_int8_t uint8_t

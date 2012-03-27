@@ -6,6 +6,7 @@
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #include <process.h>
+  #include <io.h>
 
   // Undo POSIX deprecation of needed routines.
   #define getpid _getpid
@@ -111,6 +112,13 @@
   #define EREMOTE                 WSAEREMOTE
 
 #else // Not WIN32
+ //win32 compat above provides equiv methods to posix version below
+  #include <sys/wait.h>
+  #include <netdb.h>      //addrinfo
+  #include <arpa/inet.h>  //inet_pton
+  #include <sys/time.h>   //gettimeofday
+  #include <strings.h>    //strcasecmp strncasecmp
+  #include <string.h>     //strndup,strcasestr
   #define SETSOCKOPT_TYPE (void *)
 
   #define MAX_PATH                   260

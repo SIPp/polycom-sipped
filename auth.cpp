@@ -34,7 +34,7 @@
 #include "common.hpp"
 #include "milenage.hpp"
 #include "screen.hpp"
-//#include "win32_compatibility.hpp"
+#include "win32_compatibility.hpp"
 //
 #include <sys/types.h>
 #include <stddef.h>

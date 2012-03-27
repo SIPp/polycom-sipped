@@ -41,7 +41,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\include&quot;;.;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\include&quot;;.\pthreads_w32.2\include;&quot;$(TA_DIR)\SIPped\SIPped\src\OpenSSL-Win32\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -62,6 +62,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="libdl.lib pthreadVC2.lib wpcap.lib ws2_32.lib"
+				ShowProgress="1"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
@@ -206,10 +207,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\listener.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\logging.cpp"
 				>
 			</File>
@@ -244,6 +241,15 @@
 			<File
 				RelativePath=".\screen.cpp"
 				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+						ShowIncludes="true"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\send_packets.cpp"
@@ -251,6 +257,18 @@
 			</File>
 			<File
 				RelativePath=".\sipp.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ShowIncludes="true"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\sipp_globals.cpp"
 				>
 			</File>
 			<File
@@ -372,6 +390,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\sipp_globals.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\socketowner.hpp"
 				>
 			</File>
@@ -382,6 +404,14 @@
 			<File
 				RelativePath=".\stat.hpp"
 				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="/DWIN32"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\task.hpp"

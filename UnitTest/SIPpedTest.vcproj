@@ -185,6 +185,10 @@
 				RelativePath=".\transactionstate.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\xp_parser.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

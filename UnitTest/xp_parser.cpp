@@ -11,7 +11,10 @@
 
 #include <limits.h>
 
+
 #include <unistd.h>
+
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -66,7 +69,7 @@ string strip_cr_from_eol(string input)
 {
   //need to remove cr not replace with blanks
   //input.replace(input.begin(), input.end(),'\r',' ');
-  unsigned int pos = input.find('\r');
+  size_t pos = input.find('\r');
   while (pos!=string::npos)
   {
     input.erase(pos,1);
@@ -77,7 +80,7 @@ string strip_cr_from_eol(string input)
 
 string stringFrNum(int value)
 {
-  int MAXDIGS = 256;
+  const int MAXDIGS = 256;
   char buf[MAXDIGS];
   sprintf(buf, "%d",value);
   return buf;
@@ -87,7 +90,7 @@ string stringFrNum(int value)
 string get_file_as_string(const string &fn)
 {
   FILE* pFile;
-  int bufsize = 4096;
+  const int bufsize = 4096;
   char buf[bufsize];
   string result;
 
@@ -105,11 +108,6 @@ string get_file_as_string(const string &fn)
   return strip_cr_from_eol(result);
 }
 
-TEST(GTEST, helper_routines)
-{
-  EXPECT_EQ(447, get_file_length("100.xml"));
-  EXPECT_THROW(string mystring = get_file_as_string("nonexistantFile"), runtime_error);
-}
 
 ///////////////////////////////////////
 //  verify loading of string into private variable xp_file
@@ -382,6 +380,7 @@ TEST(xp_parser, CompositeDocument)
 
 }
 
+/* move to a ruby test case
 // verify some parsing error conditions and location reporting
 TEST(xp_parser, whereami  )
 {
@@ -432,3 +431,5 @@ TEST(xp_parser, whereami  )
 
 
 }
+*/
+

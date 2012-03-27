@@ -1,3 +1,6 @@
+#ifndef __DEADCALLHPP__
+#define __DEADCALLHPP__
+
 #include "listener.hpp"
 #include "task.hpp"
 
@@ -28,3 +31,6 @@ protected:
   unsigned long expiration;
   char *reason;
 };
+
+#endif
+

@@ -33,6 +33,7 @@
 
 #include <ctime> 
 #ifdef WIN32
+#include <winsock2.h>
 # include <time.h>
 #else
 # include <sys/time.h> 

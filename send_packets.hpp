@@ -35,9 +35,10 @@
 #ifndef _SIPP_SEND_PACKETS_H_
 #define _SIPP_SEND_PACKETS_H_
 
-#include <time.h>
+
 
 #ifdef WIN32
+//#include <time.h>  // ???
   #include <winsock2.h>
 #else
   #include <sys/time.h>

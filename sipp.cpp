@@ -35,7 +35,7 @@
  *	     Michael Hirschbichler
  */
 
-#include <dlfcn.h>
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +52,7 @@
   #include <netinet/tcp.h>
   #include <sys/poll.h>
   #include <sys/resource.h>
+  #include <dlfcn.h>
 #endif
 
 #ifndef __SUNOS

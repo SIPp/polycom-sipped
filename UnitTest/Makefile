@@ -49,7 +49,8 @@ all : $(TESTS)
 
 # Run all tests.  EOL makes each line run separately so early failures are reported properly
 test : $(TESTS)
-	$(foreach test, $^, ./$(test) $(EOL))
+	#$(foreach test, $^, ./$(test) $(EOL))
+	$(foreach test, $^, ./$(test) --gtest_output=xml:testresults/$(test).xml $(EOL))
 
 clean :
 	rm -f $(TESTS) gtest.a gtest_main.a *.o

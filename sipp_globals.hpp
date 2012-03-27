@@ -28,12 +28,14 @@
 
 /* Std C includes */
 #ifdef WIN32
-  #include <time.h>
-  #include <windows.h>
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
+  //#include <time.h>
+  //#include <windows.h>
+  //#include <winsock2.h>
+  //#include <ws2tcpip.h>
 #else
   #include <sys/socket.h>     // sockaddr_storage
+  #include <unistd.h>
+  #include <sys/types.h>
 #endif
 
 #include <list>
@@ -50,8 +52,6 @@
 #include <string>
 #include "logging.hpp"
 #include <stdio.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <stddef.h>
 
 #define T_UDP                      0
