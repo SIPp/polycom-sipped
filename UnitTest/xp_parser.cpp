@@ -11,9 +11,9 @@
 
 #include <limits.h>
 
-
-#include <unistd.h>
-
+#ifndef WIN32
+  #include <unistd.h>
+#endif
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -27,7 +27,47 @@
 #include <sstream>
 
 using namespace std;
+// windows variants of setenv, unsetenv 
+#ifdef WIN32
+  #include <stdlib.h>
+  #include <string>
+  
 
+  char* get_env_var(string envname)
+  {
+      size_t len;
+      char* pvalue;
+      errno_t err = _dupenv_s(&pvalue, &len, envname.c_str());
+      if (err) printf("failed to get environment variable %s, errno = (%d)\n",envname.c_str(),err);
+      return pvalue;
+  }
+  
+  int setenv(string envname,string envvalue,int overwrite)
+  { 
+    //char* env_value = get_env_var(envname.c_str());
+    char* env_value = getenv(envname.c_str());
+    if (overwrite||(env_value==NULL))
+    {
+      std::string envstring = (envname + "=" + envvalue);
+      int result = _putenv(envstring.c_str());
+
+      free(env_value);
+      return result;
+    }
+
+    // overwrite not set and it exists. change nothing 
+    free(env_value);
+    return -1;
+  }
+
+  int unsetenv(string envname)
+  {
+    std::string envstring = (envname + "=");
+    int result = _putenv(envname.c_str());
+    return result;
+  }
+
+#endif
 // import secret test routines.for xp_parser.cpp
 string xp_get_xmlbuffer();
 void set_xp_parser_verbose(int value);
@@ -380,56 +420,4 @@ TEST(xp_parser, CompositeDocument)
 
 }
 
-/* move to a ruby test case
-// verify some parsing error conditions and location reporting
-TEST(xp_parser, whereami  )
-{
-//test error calls from xp_parser
-  string cmd = "sipp -sf ../test/include_incl_badenv.sipp -mc 172.23.6.185   -trace_debug -error_file badenv_error.txt  > junk 2>&1";
-  system(cmd.c_str());
-  string expected_badenv_errorlog = get_file_as_string("../test/expected_badenv_error.txt");
-  expected_badenv_errorlog = expected_badenv_errorlog.substr(79);
-  string actual_badenv_errorlog = get_file_as_string("badenv_error.txt");
-  actual_badenv_errorlog = actual_badenv_errorlog.substr(79);
-  EXPECT_EQ(expected_badenv_errorlog,actual_badenv_errorlog ) << "Non Existant Tag error with source file location should match expected";
-
-  cmd = "sipp -sf ../test/include_incl_unset_envvar.sipp -mc 172.23.6.185   -trace_debug -error_file unsetenv_error.txt  > junk 2>&1";
-  system(cmd.c_str());
-  string expected_unsetenv_errorlog = get_file_as_string("../test/expected_unsetenvvar_error.txt");
-  expected_unsetenv_errorlog = expected_badenv_errorlog.substr(79);
-  string actual_unsetenv_errorlog = get_file_as_string("unsetenv_error.txt");
-  actual_unsetenv_errorlog = actual_badenv_errorlog.substr(79);
-  EXPECT_EQ(expected_unsetenv_errorlog,actual_unsetenv_errorlog ) << "Non Existant Tag error with source file location should match expected";
-
-  cmd = "sipp -sf ../test/include_incl_badtag.sipp -mc 172.23.6.185 -trace_debug -error_file badtag_error.txt  > junk 2>&1";
-  system(cmd.c_str());
-  string expected_badtag_errorlog = get_file_as_string("../test/expected_badtag_error.txt");
-  expected_badtag_errorlog = expected_badtag_errorlog.substr(79);
-  string actual_badtag_errorlog = get_file_as_string("badtag_error.txt");
-  actual_badtag_errorlog = actual_badtag_errorlog.substr(79);
-  EXPECT_EQ(expected_badtag_errorlog,actual_badtag_errorlog ) << "Non Existant Tag error with source file location should match expected";
-
-
-// test error calls from scenario
-  cmd = "sipp -sf ../test/include_madeuptag.sipp -mc 172.23.6.185   -trace_debug -error_file madeuptag_error.txt > junk 2>&1";
-  system(cmd.c_str() );
-  string expected_madeuptag_errorlog = get_file_as_string("../test/expected_madeuptag_error.txt");
-  //delete the first line which is date/timestamp
-  expected_madeuptag_errorlog = expected_madeuptag_errorlog.substr(79);
-  string actual_madeuptag_errorlog = get_file_as_string("madeuptag_error.txt");
-  actual_madeuptag_errorlog = actual_madeuptag_errorlog.substr(79);
-  EXPECT_EQ(expected_madeuptag_errorlog,actual_madeuptag_errorlog ) << "Non Existant Tag error with source file location should match expected";
-
-  cmd = "sipp -sf ../test/include_nocdata.sipp -mc 172.23.6.185 -trace_debug -error_file nocdata_error.txt > junk 2>&1";
-  system(cmd.c_str() );
-  string expected_nocdata_errorlog = get_file_as_string("../test/expected_nocdata_error.txt");
-  //delete the first line which is date/timestamp
-  expected_nocdata_errorlog = expected_nocdata_errorlog.substr(79);
-  string actual_nocdata_errorlog = get_file_as_string("nocdata_error.txt");
-  actual_nocdata_errorlog = actual_nocdata_errorlog.substr(79);
-  EXPECT_EQ(expected_nocdata_errorlog,actual_nocdata_errorlog ) << "Non Existant Tag error with source file location should match expected";
-
-
-}
-*/
 

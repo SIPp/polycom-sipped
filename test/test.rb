@@ -46,6 +46,7 @@ require "./verify_strcmp.rb"
 require "./verify_test_action.rb"
 require "./verify_transaction_keywords.rb"
 require "./zero_content_length_header_not_last_scenarios.rb"
+require "./verify_whereami.rb"
 
 def show_help_message
   puts "Usage: test \n\n";

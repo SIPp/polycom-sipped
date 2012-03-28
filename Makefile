@@ -117,7 +117,7 @@ CPPFLAGS_linux=-D__LINUX -pthread
 CPPFLAGS_freebsd=-D__LINUX -pthread
 CPPFLAGS_tru64=-D__OSF1 -pthread
 CPPFLAGS_SunOS=${DEBUG_FLAGS} -D__SUNOS
-CPPFLAGS_Cygwin=-D__CYGWIN -Dsocklen_t=int
+CPPFLAGS_Cygwin=-D__CYGWIN -Dsocklen_t=int -Wall
 CPPFLAGS_Darwin=-D__DARWIN
 CPPFLAGS=$(CPPFLAGS_$(SYSTEM)) $(VERINFO) $(TLS) $(PCAPPLAY) $(EXTRACPPFLAGS)
 

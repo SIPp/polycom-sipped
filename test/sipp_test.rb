@@ -110,6 +110,7 @@ class SippTest
   #add new tests here if your test doesnt need a udp server  
   #otherwise test will timeout waiting for udp server to show up 
   #when timed out raises exception
+  #todo:   add method during intialization that automatically adds test to this list if no server_options specified or if testname contains ssl or tcp
   def noUdpRequired()
     noUdpServerRequired=Set[
       "dump_sequence_diagram_uac",
@@ -119,7 +120,12 @@ class SippTest
       "test_include_envvar",
       "include_substitution",
       "include_substitution_sequence_diagram",
-      "test_verify_ssl"]
+      "test_verify_ssl",
+      "test_badenv",
+      "test_unset_env",
+      "test_badtag",
+      "test_falsetag",
+      "test_nocdata"]
     return (noUdpServerRequired.include?@name)
   end
 
@@ -346,7 +352,7 @@ class SippTest
     end
 
     if(!@expected_error_log.nil?)
-      if !(@expected_error_log.match get_error_log)
+      if !(@expected_error_log.match(get_error_log())):
         puts "Expected error log does not match actual.\n" unless @logging == "silent"
         puts "Expected = '#{@expected_error_log}'\nActual = '#{get_error_log()}'\n" if @logging == "verbose"
         result = false;

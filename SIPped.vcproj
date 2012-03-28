@@ -409,7 +409,7 @@
 					>
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="/DWIN32"
+						CommandLine="/DWIN32&#x0D;&#x0A;"
 					/>
 				</FileConfiguration>
 			</File>
