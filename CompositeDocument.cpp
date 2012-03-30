@@ -80,7 +80,7 @@ CompositeDocument::DocStack CompositeDocument::docStackFromCompositeLineNumber(
       found = true;
       // always want to show the deeper stack.  As we include docs, deeper stack is later
       // as we pop include files of stack, deeper stack is the older/earlier stack
-      if ((compositeDocument[i].getDocsInStack() < compositeDocument[i-1].getDocsInStack())&&
+      if ((i>0) && (compositeDocument[i].getDocsInStack() < compositeDocument[i-1].getDocsInStack())&&
           (compositeDocument[i-1].getCompositeLineNumber() == targetCompLineNu )) {
         target = DocStack(compositeDocument[i-1]);
       }else{
