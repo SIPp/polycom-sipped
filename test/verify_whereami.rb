@@ -21,7 +21,7 @@ class WhereAmI < Test::Unit::TestCase
   #environment variable is not set and used in xi include
   def test_unset_env
     test = SippTest.new("test_unset_env", "-sf include_incl_unset_envvar.sipp") #unsetenv_error.txt
-    test.expected_error_log = /Undefined Environment Variable \: TDIR\nFound at\:\s*\n\s*include_unset_envvar.sipp\:10\s*\n.*include_incl_unset_envvar.sipp\:10/
+    test.expected_error_log = /Undefined Environment Variable \: TDIR\r*\nFound at\:\s*\n\s*include_unset_envvar.sipp\:10\s*\n.*include_incl_unset_envvar.sipp\:10/
     #test.logging="verbose"
     assert(test.run())
   end
