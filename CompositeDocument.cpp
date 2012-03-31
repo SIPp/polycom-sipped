@@ -182,7 +182,7 @@ int CompositeDocument::compositeLineNumberFromIndex(int index) {
  * @precondition line number has less than maxdigits digits
  */
 string CompositeDocument::strStackFromIndex(unsigned int index) {
-  int maxdigits = 256;
+  const int maxdigits = 256;
   char buf[maxdigits];
   string result = "";
   int compLineNumber = compositeLineNumberFromIndex(index);
@@ -220,7 +220,7 @@ bool CompositeDocument::checkNewLineSynch(const char* xp_file) {
       cout << "mismatch at offset ";
       cout << lineToOffset[i];
       cout << ", found: " << xp_file[lineToOffset[i]] << endl;
-      int bufsize=50;
+      const int bufsize=50;
       char buf[bufsize];
       strncpy(buf,xp_file+lineToOffset[i]-10, bufsize-1);
       cout << "xp_file around mismatch: " << endl;

@@ -119,6 +119,7 @@ class SippTest
       "include_directory",
       "test_include_envvar",
       "include_substitution",
+      "include_directory_sequence_diagram",
       "include_substitution_sequence_diagram",
       "test_verify_ssl",
       "test_badenv",
