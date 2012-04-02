@@ -1,13 +1,14 @@
 #!/usr/bin/ruby
-
+# windows only version  
 lastresult =""
-result = `netstat -naob | grep "5060\\|5069" `
+result = `netstat -naob | grep -B1 "sipp.exe" `
 run = true
 while run
 	lastresult = result
-	result = `netstat -naob | grep "5060\\|5069" `
+	result = `netstat -naob | grep -B1 "sipp.exe" `
 	if (result != lastresult)
-		puts "----------------------"
+    ts = Time.new
+		puts "-------------------------------------#{ts.inspect}"
 		puts result
 	end
 	sleep 0.3

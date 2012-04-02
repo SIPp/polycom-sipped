@@ -1,6 +1,14 @@
 @ECHO OFF
 setlocal
 
+set TA_DIR=%WORKSPACE%\TestUtilities
+set SIPPED=%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped
+set CYGWIN=nodosfilewarning
+
+copy /Y  C:\TA_Config\SIPped\rsipp\rsipp.config.xml "%TA_DIR%\SIPped\rsipp\"
+
+cd "%TA_DIR%\SIPped\SIPped\src"
+
 IF  /I "X%1"=="Xhelp" goto :HELP
 IF  /I "X%1"=="X?" goto :HELP
 goto:EXECUTE
