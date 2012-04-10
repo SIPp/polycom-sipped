@@ -257,11 +257,4 @@ fortune.so: fortune.cpp
 	g++ -fPIC $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c $^ -o fortune.o  
 	gcc -shared -Wl,-soname,fortune.so -o $@ fortune.o
 
-richard:
-	echo $(OS)
-ifeq  "$(OS)"  "Windows_NT" 
-		@pushd test && pwd && ./test.rb && popd 
-else
-		@pushd test > /dev/null; ./test.rb; popd > /dev/null
-endif
 		

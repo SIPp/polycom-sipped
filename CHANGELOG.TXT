@@ -1,5 +1,8 @@
 This file tracks changes responsible for version number updates.
 
+3.2.27 Apr 10 2012
+- fixed one way audio on sipp ipv6 playback(sipp was sending to port 0)
+
 3.2.26 Mar 13 2012
 - phase 2 refactor sipp globals: unwind implied dependancies and make them explicit.
 - removed some dependancies that are now no longer required

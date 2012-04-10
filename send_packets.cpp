@@ -222,6 +222,8 @@ send_packets (play_args_t * play_args)
     from6.sin6_family = AF_INET6;
     memcpy(&(to6.sin6_addr.s6_addr), &(((struct sockaddr_in6 *)(void *) to)->sin6_addr.s6_addr), sizeof(to6.sin6_addr.s6_addr));
     memcpy(&(from6.sin6_addr.s6_addr), &(((struct sockaddr_in6 *)(void *) from)->sin6_addr.s6_addr), sizeof(from6.sin6_addr.s6_addr));
+    memcpy(&(to6.sin6_port), &(((struct sockaddr_in6 *)(void *) to)->sin6_port), sizeof(to6.sin6_port));
+    memcpy(&(from6.sin6_port), &(((struct sockaddr_in6 *)(void *) from)->sin6_port), sizeof(from6.sin6_port));
   }
 
 
