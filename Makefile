@@ -142,7 +142,7 @@ LFLAGS_Darwin=
 LFLAGS=$(LFLAGS_$(SYSTEM)) $(EXTRALFLAGS)
 
 #Link Libraries
-LIBS_linux= -ldl -lpthread -lncurses -lstdc++ -lm -L /usr/local/lib -L /usr/lib -L /usr/lib64
+LIBS_linux= -ldl -lpthread -lncurses -lstdc++ -lm -L /usr/lib64 -L /usr/local/lib -L /usr/lib
 LIBS_hpux= -lcurses -lpthread -L /opt/openssl/lib -L /usr/local/lib
 LIBS_tru64= -lcurses -lpthread
 LIBS_freebsd= -lcurses -pthread -L /usr/local/lib

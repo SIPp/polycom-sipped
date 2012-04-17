@@ -44,6 +44,7 @@
   #include <sys/wait.h>
   #include <netdb.h>
   #include <arpa/inet.h>
+  #include <errno.h>
 #else
   #include <io.h>
   #include <process.h>

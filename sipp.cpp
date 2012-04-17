@@ -53,6 +53,7 @@
   #include <sys/poll.h>
   #include <sys/resource.h>
   #include <dlfcn.h>
+  #include <errno.h>
 #endif
 
 #ifndef __SUNOS
