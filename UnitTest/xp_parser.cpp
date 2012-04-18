@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include <string>
+#include <cstring>
 #include <stdexcept>
 
 #include <iostream>
@@ -274,8 +275,10 @@ TEST(xp_parser, expand_env_var)
   char input[4096];
 
   // single substitution at front of path
-  string pathandfilename="%SIPPED%/src/test/xp_parser.cpp";
   char* env_value = getenv("SIPPED");
+  ASSERT_STRNE(env_value,NULL) << "SIPPED environment variable is not set";
+  string pathandfilename="%SIPPED%/src/test/xp_parser.cpp";
+  
   string expected_pathandfilename=string(env_value) + string("/src/test/xp_parser.cpp");
   strcpy(input, pathandfilename.c_str());
   int rc = expand_env_var(input,0);
@@ -316,6 +319,7 @@ TEST(xp_parser, expand_env_var)
 
   // test xi include that TA_DIR environment variable
   char* tadir = getenv("TA_DIR");
+  ASSERT_STRNE(tadir,NULL) << "TA_DIR environment variable is not set";
   string include_file_with_env_var = "include_using_envvar.xml";
   string include_file_with_env_var_expected = "include_using_envvar-expected.xml";
   EXPECT_TRUE(tadir!=NULL) << "TA_DIR environment variable must be set to complete this test";

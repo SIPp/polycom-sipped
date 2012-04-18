@@ -16,7 +16,7 @@ public:
   deadcall(char *id, const char * reason);
   ~deadcall();
 
-  virtual bool process_incoming(char * msg, struct sockaddr_storage *);
+  virtual bool process_incoming(char * msg, struct sockaddr_storage *, struct sipp_socket *socket);
   virtual bool  process_twinSippCom(char * msg);
 
   virtual bool run();

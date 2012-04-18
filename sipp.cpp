@@ -2760,9 +2760,9 @@ static int read_error(struct sipp_socket *socket, int ret) {
 	 * send again we may "ressurect" the socket by reconnecting it.*/
         sipp_socket_invalidate(socket);
         if (reset_close) {
-          WARNING("TCP connection closed remotely. Ending call.");
-	  close_calls(socket);
-	}
+		  WARNING("Read Error: TCP connection closed remotely. Ending call. Use options '-t tn -reconnect_close false ' to allow remote disconnect in a call");
+		  close_calls(socket);
+		}
       }
       return 0;
     }
@@ -3326,7 +3326,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
 	REPORT_ERROR("Out of memory allocating a call!");
       }
     }
-    else // mode != from SERVER and 3PCC Controller B
+    else // mode is CLIENT [mode != from SERVER, 3PCC, MODE_SLAVE, MODE_MASTER]
     {
       // This is a message that is not relating to any known call
       if (auto_answer == true) {
@@ -3354,6 +3354,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
     }
   }
 
+
   /* If the call was not created above, we just drop this message. */
   if (!listener_ptr) {
     DEBUG("Call not created above so dropping message");
@@ -3366,7 +3367,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   }
   else
   {
-    listener_ptr -> process_incoming(msg, src);
+    listener_ptr -> process_incoming(msg, src, socket);
   }
   DEBUG_OUT();
 } // process_message
@@ -4148,39 +4149,39 @@ struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *exi
   struct sipp_socket *sock = NULL;
   static int next_socket;
   if (pollnfds >= max_multi_socket) {  // we must take the main socket into account
-    /* Find an existing socket that matches transport and ipv6 parameters. */
-    int first = next_socket;
-    do
-    {
-      int test_socket = next_socket;
-      next_socket = (next_socket + 1) % pollnfds;
+	/* Find an existing socket that matches transport and ipv6 parameters. */
+	int first = next_socket;
+	do
+	{
+	  int test_socket = next_socket;
+	  next_socket = (next_socket + 1) % pollnfds;
 
-      if (sockets[test_socket]->ss_call_socket) {
-	/* Here we need to check that the address is the default. */
-	if (sockets[test_socket]->ss_ipv6 != use_ipv6) {
-	  continue;
-	}
-	if (sockets[test_socket]->ss_transport != transport) {
-	  continue;
-	}
-	if (sockets[test_socket]->ss_changed_dest) {
-	  continue;
-	}
+	  if (sockets[test_socket]->ss_call_socket) {
+		/* Here we need to check that the address is the default. */
+		if (sockets[test_socket]->ss_ipv6 != use_ipv6) {
+		  continue;
+		}
+		if (sockets[test_socket]->ss_transport != transport) {
+		  continue;
+		}
+		if (sockets[test_socket]->ss_changed_dest) {
+		  continue;
+		}
 
-	sock = sockets[test_socket];
-	sock->ss_count++;
-	*existing = true;
-	break;
-      }
-    }
-    while (next_socket != first);
-    if (next_socket == first) {
-      REPORT_ERROR("Could not find an existing call socket to re-use!");
-    }
+		sock = sockets[test_socket];
+		sock->ss_count++;
+		*existing = true;
+		break;
+	  }
+	}
+	while (next_socket != first);
+	if (next_socket == first) {
+	  REPORT_ERROR("Could not find an existing call socket to re-use!");
+	}
   } else {
-    sock = new_sipp_socket(use_ipv6, transport);
-    sock->ss_call_socket = true;
-    *existing = false;
+	sock = new_sipp_socket(use_ipv6, transport);
+	sock->ss_call_socket = true;
+	*existing = false;
   }
   DEBUG_OUT();
   return sock;
@@ -4467,7 +4468,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.27 BETA"
+	  printf("\n SIPped v3.2.28 BETA"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif

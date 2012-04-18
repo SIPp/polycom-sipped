@@ -709,8 +709,17 @@ bool call::connect_socket_if_needed()
   DEBUG_IN();
   bool existing;
 
-  if(call_socket) return true;
-  if(!multisocket) return true;
+  // if socket already exists and it's valid for use, return true.
+  // if UDP socket existance is sufficient.
+  if (call_socket && (transport == T_UDP)) return true; 
+  // if TCP ensure connection is established
+  // get another connection if tcp remotely closed(eg. ss_invalid), 
+  // otherwise already have a valid socket, so return true
+  if ((call_socket) && (!call_socket->ss_invalid)) return true;
+
+  // Don't try to establish connection if single socket mode 
+  // connection close intended to cause error next time socket send/recv'd on.
+  if(!multisocket) return true; 
 
   if(transport == T_UDP) {
     struct sockaddr_storage saddr;
@@ -3343,7 +3352,7 @@ void call::queue_up(char *msg) {
   queued_msg = strdup(msg);
 }
 
-bool call::process_incoming(char * msg, struct sockaddr_storage *src)
+bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sipp_socket *socket)
 {
   int             reply_code;
   static char     request[65];
@@ -3360,6 +3369,16 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
   callDebug("Processing %d byte incoming message for call-ID %s (hash %u):\n%s\n\n", strlen(msg), id, hash(msg), msg);
 
   setRunning();
+
+  // Associate with socket if existing call's socket is invalid or doesnt exist
+  // If no_call_id_check is not enabled process_message would have created a new call.
+  // But we're checking here too just to be extra safe.
+  if (no_call_id_check && socket) {
+	// Associate call with the socket msg arrived on if call_socket is invalid (closed).
+	if( (call_socket==NULL)||(call_socket->ss_invalid) ) {
+	  associate_socket(socket);
+	}
+  }
 
   /* Ignore the messages received during a pause if -pause_msg_ign is set */
   if(call_scenario->messages[msg_index] -> M_type == MSG_TYPE_PAUSE && pause_msg_ign) return(true);

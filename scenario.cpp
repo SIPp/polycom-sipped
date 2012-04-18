@@ -874,8 +874,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           if ((ptr = xp_get_value("use_txn")) || (ptr = xp_get_value("response_txn"))) {
             curmsg->useTransaction(ptr);
           } else if ((ptr = xp_get_value("start_txn"))) {
-            ("Responses can not start a transaction");
-            REPORT_ERROR("Responses can not start a transaction.  You can not use the start_txn attribute when sending or receiving a SIP response, only with a SIP request.\n%s\n",whereami_if_valid().c_str());
+            REPORT_ERROR("Responses can not start a transaction.  start_txn attribute is invalid when sending or receiving a response, only valid for SIP request.\n%s\n",whereami_if_valid().c_str());
           } 
         } // else
 

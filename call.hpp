@@ -107,7 +107,7 @@ public:
 
   virtual ~call();
 
-  virtual bool process_incoming(char * msg, struct sockaddr_storage *src = NULL);
+  virtual bool process_incoming(char * msg, struct sockaddr_storage *src = NULL, struct sipp_socket *socket = NULL);
   virtual bool  process_twinSippCom(char * msg);
 
   virtual bool run();

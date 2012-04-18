@@ -1,5 +1,9 @@
 This file tracks changes responsible for version number updates.
 
+3.2.28 Apr 18 2012
+- enable tcp reconnection after phone FIN connection.  
+- enable sipp to use an existing tcp connection rather than initiating a new connection for responses
+
 3.2.27 Apr 10 2012
 - fixed one way audio on sipp ipv6 playback(sipp was sending to port 0)
 
