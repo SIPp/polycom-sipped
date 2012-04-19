@@ -478,7 +478,11 @@ class SippTest
         a = s.split()
         if (a[2].to_i == @server_pid)
           puts "NOT DEAD YET:SIGKILL #{a[1]} because its ppid of #{@server_pid} matches the server process.\n"  if @logging == "verbose"
-          Process.kill("SIGKILL", a[1].to_i)
+          begin
+            Process.kill("SIGKILL", a[1].to_i)
+          rescue Errno::ESRCH => e
+            puts "Process #{a[1].to_i} terminated before we could sigkill, so Kill returned ESRCH response (but this is OK).\n"
+          end
         end
       }
     end

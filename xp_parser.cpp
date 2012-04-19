@@ -189,7 +189,8 @@ char * xp_find_local_end()
 }
 
 /*
-  * input environment variable name
+  * input name: environment variable name
+  * input idx: index into xp_file, used for error location reporting
  * output value of the environment variable
  *
  */
@@ -198,16 +199,20 @@ string translate_envvar(string name, int idx)
   char* value = getenv(name.c_str());
   if (!value)
   {
-    store_error_message( "Undefined Environment Variable : " + name + "\r\n");
-    store_error_message("Found at: \n" + convert_whereami_key_to_string(idx) +"\r\n");
+    store_error_message( "Undefined Environment Variable : " + name + "\r\n" + 
+                         "Found at: \n" + convert_whereami_key_to_string(idx) +"\r\n");
     return "";
   }
 
   return string(value);
 }
 /**
- * input: array containing filename with optional path and optional environment variable
+ * input:path_and_fn 
+ *        array containing filename with optional path and optional environment variable
  *        environment variable delimited by percentage char at start and end %NAME%
+ * input:idx
+ *        pointer to current location within xp_file (the buffer being filled with include files)
+          this is required for location reporting should we run into errors.
  * output: environment variables are expanded and replaced with users settings
  * return the size of the new array string
  *        -1 if not able to substitute if array is not large enough to hold result
@@ -229,8 +234,8 @@ int expand_env_var(char* path_and_fn,int idx)
       endp = pathandfn.find(varMarker, startp+1);
       if (endp == pathandfn.npos )
       {
-        store_error_message("Malformed environment environment variable - missing closing % \r\n");
-        store_error_message("Found at:\n " + convert_whereami_key_to_string(idx) +"\r\n");
+        store_error_message("Malformed environment environment variable - missing closing % \r\n" +
+                             string("Found at:\n ") + convert_whereami_key_to_string(idx) + string("\r\n"));
         return -1;
       }
       string envvar = pathandfn.substr(startp+1,endp-startp-1); // stripped of leading and trailing varMarker
@@ -251,8 +256,8 @@ int expand_env_var(char* path_and_fn,int idx)
       return pathandfn.size();
     }else
     {
-      store_error_message("Expanded path/filename larger than %d\r\n" +  XP_MAX_NAME_LEN);
-      store_error_message("Found at:\n " + convert_whereami_key_to_string(idx) +"\r\n");
+      store_error_message("Expanded path/filename larger than %d\r\n" +  XP_MAX_NAME_LEN +
+                           string("Found at:\n ") + convert_whereami_key_to_string(idx) +string("\r\n"));
       return -1;  // array is not large enough to hold result
     }
 }
@@ -302,13 +307,7 @@ int is_xp_file_metadata_valid()
   return !xp_file_metadata_is_not_valid;
 }
 
-///////////////////////////////
-//todo make CompositeDocument aware of xp_set_xml_buffer_from_string?
-// xp_file and invalidates xp_file_metadata
-// when called.  sipp typcially creates two scenarios, one
-// with user provided input through xp_open_and_buffer_file
-// and one for responses using this method.  Should CompositeDocument
-// track this method ... if only for valid/invalid flag?
+
 int xp_set_xml_buffer_from_string(const char * str, int dumpxml)
 {
   size_t len = strlen(str);
