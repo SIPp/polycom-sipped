@@ -47,7 +47,7 @@ class SippTest
     @server_options = server_options
     @sipp_local_port = 5069
     @sipp_remote_port = 15060
-    @sipp_logging_parameters = "" # "-trace_screen -trace_msg"
+    @sipp_logging_parameters = "" #"-trace_debug" # "-trace_screen -trace_msg"
     @sipp_path = (@is_windows)? "..\\sipp.exe" : "../sipp"
     @logging = "normal" unless @logging
     @error_message = "";
@@ -66,81 +66,47 @@ class SippTest
 
   end
 
-######################
-# Robustness routines to handle heavily loaded cpu where variance in
-# response times is much higher than normal
+  def netstat(grep_value)
+    if (@is_windows) 
+      cmd="netstat -nao | grep \"#{grep_value}\""   #numbers all executables ownerpid, udp
+    else
+      cmd="netstat -nau | grep \"#{grep_value}\""   #numbers all udp
+    end
+    result = `#{cmd}`
+    puts "netstat_command: '#{cmd}'\n'#{result}'" if @logging=="verbose"
+    return result
+  end
   
-  #show what is sitting on test ports
-  def portscan
-    puts "\n----------\n"
-    if (@is_windows)
-      cmd ='netstat -nabo | grep "15060\|5069"'
-    else
-      cmd ='netstat -na | grep "15060 \|5069 "'
-    end
-    system(cmd)
-    puts "\n----------\n"
+  def netstat_remote_ports
+    return netstat(@sipp_remote_port)
   end
 
-  #Check if there is a udp server on port 15060
-  def UDPserverIsUp
-    if (@is_windows)
-      cmd='netstat -nabo -p UDP | grep "15060"'   #numbers all executables ownerpid, udp
-    else
-      cmd='netstat -nau | grep "15060"'           #numbers all udp
-    end
-    result=`#{cmd}`
-    return (result.include?'15060')
+  def netstat_remote_tcp_ports
+    # netstat | grep port | grep -i TCP
+    return netstat("#{@sipp_remote_port}\" | grep -i TCP")
   end
-
-  #Check if there is a tcp server on port 15060
-  def TCPServerIsUP
-    if (@is_windows)
-      cmd='netstat -naob -p TCP | grep "15060"'
-    else
-      cmd='netstat -nat | grep "15060"'
-    end
-    result=`#{cmd}` 
-    return (result.include?'15060')
+  
+  def netstat_local_and_remote_ports
+    return netstat("#{@sipp_remote_port}\\|#{@sipp_local_port}")
   end
+  
 
-
-
-  #Check if given testname does not require a sip server on udp 15060
-  #add new tests here if your test doesnt need a udp server  
-  #otherwise test will timeout waiting for udp server to show up 
-  #when timed out raises exception
-  #todo:   add method during intialization that automatically adds test to this list if no server_options specified or if testname contains ssl or tcp
-  def noUdpRequired()
-    noUdpServerRequired=Set[
-      "dump_sequence_diagram_uac",
-      "dump_sequence_diagram_mc",
-      "test_commented_include_substitution",
-      "include_directory",
-      "test_include_envvar",
-      "include_substitution",
-      "include_directory_sequence_diagram",
-      "include_substitution_sequence_diagram",
-      "test_verify_ssl",
-      "test_badenv",
-      "test_unset_env",
-      "test_badtag",
-      "test_falsetag",
-      "test_nocdata"]
-    return (noUdpServerRequired.include?@name)
+  def is_remote_port_in_use
+    result = netstat_remote_ports()
+    bool = result.include? "#{@sipp_remote_port}"
+    puts "is_remote_port_in_use(): result.include? #{@sipp_remote_port} = #{bool}";
+    return bool
   end
+  
 
-
-  #kills any process sitting on test port 5069 or 15060 
+  #kills any process sitting on local or remote test port
   #   cannot use stop_sipp_server since that logic is based upon
   #   the server_pid of the previous instance of sipp_test and is no longer available.
   def kill_sipp_processes
+    puts "kill_sipp_process: Find pid of process blocking our port"
+    result = netstat_local_and_remote_ports()
     if (not (@is_windows))
-      puts "Find pid of process blocking our port"
       #kill processes holding  our ports
-      cmd = 'netstat -nap | grep "5069 \\|15060 "'
-      result = `#{cmd}`
-      puts result if @logging=="verbose"
       result.each{|s|
         a = s.split()
         # 0          1      2 3                           4                           5           6
@@ -165,8 +131,6 @@ class SippTest
         end 
       }
     else #is_windows
-      cmd='netstat -nao | grep "15060\|5069 "'
-      result=`{#cmd}`
       #  0      1                      2                      3               4
       #  Proto  Local Address          Foreign Address        State           PID
       #  TCP    172.23.2.49:50693      172.23.0.200:389       ESTABLISHED     988
@@ -186,106 +150,85 @@ class SippTest
     end #is_windows
   end
 
-  #kill  tcp sessions on port 15060.  
-  #Note aging of tcp connections goes to TIME_WAIT for 1-4min before 
-  #releasing port, only kill ESTABLISHED or LISTENING connections here
-  #so that our sipp test can be the only server on this port.
-  def killtcpsessions_if_required
-    #get all tcp connections on port 15060 if testcase is for tcp or ssl
-    if (@name =~ /ssl|tcp/i)
-        if @is_windows
-            #  Proto  Local Address          Foreign Address        State           PID
-            #  TCP    172.23.2.49:50691      172.23.0.199:1025      ESTABLISHED     596
-            #  TCP    127.0.0.1:15060        0.0.0.0:0              LISTENING       36212
-            cmd='netstat -nao -p TCP | grep 15060'
-            result=`#{cmd}`
-            result.each{|s|
-                a=s.split()
-                puts s  if @logging == "verbose"
-                if ((a[3]=="LISTENING")||(a[3]=="ESTABLISHED"))
-                    pos=a[4].index('/')
-                    if (pos)
-                        pid = a[4][0,pos-1].to_i
-                        puts "TCP PORT 15060 BLOCKED: sigkill process #{a[4]} "
-                        Process.kill("SIGKILL",pid)
-                    end
-                end
-            }
-        else
-            #Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name  
-            #tcp        0      0 127.0.0.1:15060             0.0.0.0:*                   LISTEN      14561/sipp          
-            #tcp        0      0 127.0.0.1:56512             127.0.0.1:15060             ESTABLISHED 16253/sipp          
-            #tcp      113      0 127.0.0.1:15060             127.0.0.1:56512             ESTABLISHED -                   
-            puts @name
-            cmd='netstat -napt | grep 15060'
-            result=`#{cmd}`
-            puts result if @logging == "verbose"
-            result.each{|s|
-                a = s.split()
-                puts s
-                if ((a[5] == "LISTEN")||(a[5] == "ESTABLISHED"))
-                    pos = a[6].index('/')
-                    if pos
-                        pid = a[6][0,pos].to_i
-                        puts "TCP PORT BLOCKED sigkill process #{pid}  #{a[6]} "
-                        Process.kill("SIGKILL",pid)
-                    end
-                end
-            }
-        end
-    end #if tcp|ssl
-  end
+  # Kill tcp sessions on port @sipp_remote_port.  
+  # Note aging of tcp connections goes to TIME_WAIT for 1-4min before 
+  # releasing port, only kill ESTABLISHED or LISTENING connections here
+  # so that our sipp test can be the only server on this port.
+  def kill_tcp_sessions_if_required
+    puts "kill_tcp_sessions_if_required()\n" if @logging == "verbose"
+    result = netstat_remote_tcp_ports();
 
+    if @is_windows    
+        #  Proto  Local Address          Foreign Address        State           PID
+        #  TCP    172.23.2.49:50691      172.23.0.199:1025      ESTABLISHED     596
+        #  TCP    127.0.0.1:15060        0.0.0.0:0              LISTENING       36212
+        state_index = 3
+        pid_index = 4
+    else
+        #Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name  
+        #tcp        0      0 127.0.0.1:15060             0.0.0.0:*                   LISTEN      14561/sipp          
+        #tcp        0      0 127.0.0.1:56512             127.0.0.1:15060             ESTABLISHED 16253/sipp          
+        #tcp      113      0 127.0.0.1:15060             127.0.0.1:56512             ESTABLISHED -                   
+        state_index = 5
+        pid_index = 6
+    end
+
+    result.each{|s|
+        a=s.split()
+        if ((a[state_index]=="LISTENING")||(a[state_index]=="ESTABLISHED"))
+            puts "TCP session #{s} needs killing"  if @logging == "verbose"
+            pos=a[pid_index].index('/')
+            if (pos)
+                # PID/Program name on Linux
+                pid = a[pid_index][0,pos-1].to_i
+            else
+                # PID on Windows (no /)
+                pid = a[pid_index].to_i
+            end
+            if pid > 0            
+                puts "sigkill process #{pid} extracted from '#{a[pid_index]}' for blocked TCP PORT #{@sipp_remote_port}"
+                Process.kill("SIGKILL",pid)
+            else
+                puts "No PID assocaited with in-use port: cannot kill.\n"
+            end
+        end
+    }
+  end
+ 
   # Ensure the server is up on port before starting client side
   # return success indicator
-  def wait_for_Server_if_required
+  def wait_for_server_to_be_ready
+    puts "wait_for_server_to_be_ready()\n" if @logging == "verbose"
     max_wait_time = 4
-    if (!noUdpRequired())
-        count = 0
-        while( !UDPserverIsUp() && ( count< max_wait_time) )
-            puts "waiting for udp server #{count}" if @logging == "verbose"
-            count+=1
-            sleep 1
-        end
-        # If you are adding a new test that doesn't require a UDP server to be
-        # present on port 15060 to pass your test, add it to noUdpServerRequired
-        if count == max_wait_time
-          #raise RuntimeError,  "UDP Server Never showed up for test:  #{@name} "  
-          return false
-        end
-        return true
-        # test name has ssl or tcp in it, then look for tcp server
-    elsif (@name =~ /ssl|tcp/)
-        count = 0
-        while(!TCPServerIsUP() &&(count<max_wait_time))
-            puts "waiting for tcp server #{count}" if @logging == "verbose"
-            count +=1
-            sleep 1
-        end
-        if count == max_wait_time
-          #raise RuntimeError,  "TCP Server Never showed up for test: #{@name} "
-          return false
-        end
-        return true
+    time_waited = 0
+    while ( (!is_remote_port_in_use()) && (time_waited < max_wait_time) )
+        puts "wait_for_server_to_be_ready: waiting for server to start (waited #{time_waited} of maximum #{max_wait_time} seconds)." if @logging == "verbose"
+        sleep 1
+        time_waited += 1
     end
+    
+    if time_waited >= max_wait_time
+       return false
+    end
+    
     return true
-    #otherwise, nowait required
   end
 
-  #At start of test, don't want any residual sipp processes 
-  #from previous test to interfere
-  def wait_then_kill_old_sipp_server_if_required
-    serveruptime = 0
-    while(UDPserverIsUp())
-      puts "waiting for prev test server to die(#{serveruptime})" if @logging == "verbose"
-      serveruptime += 1
+  # At start of test, don't want any residual sipp processes from previous test to interfere
+  def ensure_needed_sipp_ports_are_unused
+    puts "ensure_needed_sipp_ports_are_unused()\n" if @logging == "verbose"
+    maximum_wait_time = 8
+    time_waited_for_server = 0
+    while(is_remote_port_in_use())
+      puts "Waiting for previous test server to finish (waited #{time_waited_for_server} of maximum #{maximum_wait_time} seconds)." if @logging == "verbose"
       sleep 1
-      if (serveruptime >= 8)
-        portscan() 
+      time_waited_for_server += 1
+      if (time_waited_for_server >= maximum_wait_time)
+        puts "Previous SIPp test server taking too long: will kill it now." unless @logging == "silent"
         kill_sipp_processes()
       end
     end
-    killtcpsessions_if_required()  
+    kill_tcp_sessions_if_required()  
   end
 
 ##############################  
@@ -293,17 +236,23 @@ class SippTest
 
   def run
     print "\nTest #{@name} \n" unless @logging == "silent"
-    wait_then_kill_old_sipp_server_if_required()  
+    ensure_needed_sipp_ports_are_unused()  
     start_time = Time.now
+    success = true
 
-    start_sipp_server(server_commandline)
-    success = wait_for_Server_if_required()
-    if not success
-      return success
+    if (need_sipp_server())
+      success = start_sipp_server(server_commandline)
+      if ((success) and (!wait_for_server_to_be_ready()))
+        puts "Error: Server not ready for use: stopping test case\n" unless @logg
+        stop_sipp_server()
+        success = false
+      end
     end
     
-    success = start_sipp_client(client_commandline)
-    stop_sipp_server()
+    if (success )
+      success = start_sipp_client(client_commandline)
+      stop_sipp_server()
+    end
 
     @run_time = Time.now - start_time
     if (success)
@@ -386,7 +335,10 @@ class SippTest
     result = system(testcase_client)
     print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" if @logging == "verbose"
 
-    if ( (result && @expected_exitstatus == 0) || !expected_error_log.nil? ) 
+    if (!result && @expected_exitstatus != 0)  
+      puts "SIPp client returned false / non-zero response code in test that expected success." unless logging == "silent"
+      success = false
+    elsif ( (result && @expected_exitstatus == 0) || !expected_error_log.nil? ) 
       success = true
     elsif ($CHILD_STATUS.exitstatus == -1)
       @error_message = "[ERROR] - sipp client failed to execute"
@@ -423,12 +375,19 @@ class SippTest
   def get_error_log()
     return IO.read(@error_log_destination)
   end
+  
+  def need_sipp_server()
+    @server_options.empty? and return false
+    return true
+  end
+  
   # run server sipp process in background, saving pid
   def start_sipp_server(testcase_server)
     @server_options.empty? and return false
     puts "Executing server with '#{testcase_server}'" if @logging == "verbose"
     if @is_windows
       @server_pid = IO.popen(testcase_server).pid
+      puts "Server PID is '#{@server_pid}'" if @logging == "verbose"
     else
       @server_pid = fork do
         if (!exec(testcase_server))
@@ -439,6 +398,7 @@ class SippTest
         end
       end
     end
+    return true
   end #start_sipp_server
 
   def stop_sipp_server
@@ -453,7 +413,7 @@ class SippTest
           Process.kill('SIGKILL', ps.pid)
         end
       }
-      puts "Test Complete: Shutting down sipp server: sigint server pid = #{@server_pid}" if @logging == "verbose"
+      puts "Test Cleanup: Shutting down sipp server: sigint server pid = #{@server_pid}" if @logging == "verbose"
       Process.kill("SIGINT", @server_pid)
     else
       # kill immediate children of the shell whose pid is stored in @server_pid
@@ -462,7 +422,7 @@ class SippTest
       `ps -ef`.each{|s|
         a = s.split()
         if (a[2].to_i == @server_pid)
-          puts "Test Complete, SIGINT #{a[1]} because its ppid of #{@server_pid} matches the server process.\n"  if @logging == "verbose"
+          puts "Test Cleanup, SIGINT #{a[1]} because its ppid of #{@server_pid} matches the server process.\n"  if @logging == "verbose"
           # note, occasional error ERSCH will occur if pid dies between ps and kill.(not a failure - timing issue of no consequence)
           # swallow it here to prevent sending as error to tester and carry on 
           begin
@@ -487,7 +447,8 @@ class SippTest
       }
     end
     if (@is_windows)
-        Process.wait(@server_pid)
+        puts "Wait() for server PID #{@server_pid}" if @logging == "verbose"
+        Process.waitpid(@server_pid) # crashes on my ruby install if process is specified...
     else
         Process.wait(@server_pid, Process::WNOHANG)
     end
