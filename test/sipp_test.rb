@@ -94,7 +94,7 @@ class SippTest
   def is_remote_port_in_use
     result = netstat_remote_ports()
     bool = result.include? "#{@sipp_remote_port}"
-    puts "is_remote_port_in_use(): result.include? #{@sipp_remote_port} = #{bool}";
+    puts "is_remote_port_in_use(): result.include? #{@sipp_remote_port} = #{bool}" if @logging == "verbose"
     return bool
   end
   
