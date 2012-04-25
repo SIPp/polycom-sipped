@@ -68,9 +68,9 @@ class SippTest
 
   def netstat(grep_value)
     if (@is_windows) 
-      cmd="netstat -nao | grep \"#{grep_value}\""   #numbers all executables ownerpid, udp
+      cmd="netstat -nao | grep \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""   #numbers all executables ownerpid, udp
     else
-      cmd="netstat -nap | grep \"#{grep_value}\""   #numbers all udp
+      cmd="netstat -nap | grep \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""   #numbers all udp
     end
     result = `#{cmd}`
     puts "netstat_command: '#{cmd}'\n'#{result}'" if @logging=="verbose"
@@ -258,7 +258,7 @@ argno = pid_index
         kill_sipp_processes()
       end
     end
-    kill_tcp_sessions_if_required()  
+#    kill_tcp_sessions_if_required()  these are killed as required by kill_sipp_processes so no need for separate process
   end
 
 ##############################  
