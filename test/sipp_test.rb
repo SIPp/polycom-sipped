@@ -105,6 +105,30 @@ class SippTest
   def kill_sipp_processes
     puts "kill_sipp_process: Find pid of process blocking our port"
     result = netstat_local_and_remote_ports()
+    if @is_windows    
+        #  Proto  Local Address          Foreign Address        State           PID
+        #  TCP    172.23.2.49:50691      172.23.0.199:1025      ESTABLISHED     596
+        #  TCP    127.0.0.1:15060        0.0.0.0:0              LISTENING       36212
+        #  0      1                      2                      3               4
+        #  Proto  Local Address          Foreign Address        State           PID
+        #  TCP    172.23.2.49:50693      172.23.0.200:389       ESTABLISHED     988
+        #  UDP    127.0.0.1:5069         *:*                                    133712
+        #  UDP    127.0.0.1:15060        *:*                                    133568
+        state_index = 3
+        pid_index = 4
+    else
+        # 0          1      2 3                           4                           5           6
+        # Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name  
+        # tcp        0      0 127.0.0.1:15060             0.0.0.0:*                   LISTEN      2087/sipp  
+        # udp        0      0 127.0.0.1:15060             127.0.0.1:5069              ESTABLISHED 5460/sipp
+        # udp        0      0 127.0.0.1:15060             0.0.0.0:*                               26852/sipp  
+        # udp        0      0 :::15060                    :::* 
+        # tcp      113      0 127.0.0.1:15060             127.0.0.1:56512             ESTABLISHED -                   
+        state_index = 5
+        pid_index = 6
+    end
+
+
     if (not (@is_windows))
       #kill processes holding  our ports
       result.each{|s|
@@ -116,7 +140,8 @@ class SippTest
         # udp        0      0 127.0.0.1:15060             0.0.0.0:*                               26852/sipp  
         # udp        0      0 :::15060                    :::* 
         # last case we cannot id process blocking our port, 
-        for argno in (5..6) do
+#        for argno in (5..6) do
+argno = pid_index
           if (a[argno])
               pos=a[argno].index('/')
               if (pos) 
@@ -130,7 +155,7 @@ class SippTest
                 puts "ERROR: Unable to obtain PID from netstat: cannot kill SIPp process.\n"
               end
           end
-        end 
+#        end 
       }
     else #is_windows
       #  0      1                      2                      3               4
@@ -141,7 +166,8 @@ class SippTest
 
       result.each{|s|
         a = s.split()
-        for argno in (3..4) do
+#        for argno in (3..4) do
+argno = pid_index
           if ((a[argno])&&(a[arno].to_i>0))
               pid = a[arno].to_i
               puts "WARNING: PORT BLOCKED,  sigkill pid #{pid} : #{a[0]}  #{a[1]}  #{a[2]}" 
@@ -149,7 +175,7 @@ class SippTest
           else
             puts "ERROR: Unable to obtain PID from netstat: cannot kill SIPp process.\n"
           end
-        end
+ #       end
       } 
     end #is_windows
   end
