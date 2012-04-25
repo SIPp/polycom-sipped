@@ -70,7 +70,7 @@ class SippTest
     if (@is_windows) 
       cmd="netstat -nao | grep \"#{grep_value}\""   #numbers all executables ownerpid, udp
     else
-      cmd="netstat -nau | grep \"#{grep_value}\""   #numbers all udp
+      cmd="netstat -nap | grep \"#{grep_value}\""   #numbers all udp
     end
     result = `#{cmd}`
     puts "netstat_command: '#{cmd}'\n'#{result}'" if @logging=="verbose"
@@ -126,6 +126,8 @@ class SippTest
                 pid = pidstr.to_i
                 puts "WARNING: PORT BLOCKED,  sigkill pid #{pid} : #{a[3]}  #{a[argno]}" 
                 Process.kill("SIGKILL",pid)
+              else
+                puts "ERROR: Unable to obtain PID from netstat: cannot kill SIPp process.\n"
               end
           end
         end 
@@ -144,6 +146,8 @@ class SippTest
               pid = a[arno].to_i
               puts "WARNING: PORT BLOCKED,  sigkill pid #{pid} : #{a[0]}  #{a[1]}  #{a[2]}" 
               Process.kill("SIGKILL",pid)
+          else
+            puts "ERROR: Unable to obtain PID from netstat: cannot kill SIPp process.\n"
           end
         end
       } 
