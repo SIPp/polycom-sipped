@@ -366,7 +366,7 @@ argno = pid_index
     print "result = #{result} ; exitstatus = #{$CHILD_STATUS.exitstatus} ; expecting #{@expected_exitstatus}\n" if @logging == "verbose"
 
     if (!result && @expected_exitstatus == 0)  
-      puts "SIPp client returned false / expected_exitstatus code indicates test expects success." unless logging == "silent"
+      puts "SIPp client returned false exitstatus = #{$CHILD_STATUS.exitstatus} and expected_exitstatus code 0 indicates test expects success." unless logging == "silent"
       success = false
     elsif ( (result && @expected_exitstatus == 0) || !expected_error_log.nil? ) 
       success = true
