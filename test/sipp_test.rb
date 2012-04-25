@@ -83,7 +83,7 @@ class SippTest
 
   def netstat_remote_tcp_ports
     # netstat | grep port | grep -i TCP
-    return netstat("#{@sipp_remote_port}\" | grep -i TCP")
+    return netstat("#{@sipp_remote_port}\" | grep -i \"TCP")
   end
   
   def netstat_local_and_remote_ports
