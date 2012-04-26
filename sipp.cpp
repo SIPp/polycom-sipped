@@ -1147,9 +1147,15 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
         else
           sprintf(temp_str, "%d", curmsg -> recv_response);
         if(creationMode == MODE_SERVER) {
-          fprintf(f,"  ----------> %-14s ", temp_str);
+          if (curmsg->optional == OPTIONAL_TRUE) 
+            fprintf(f,"  ---------*> %-14s ", temp_str);
+          else
+            fprintf(f,"  ----------> %-14s ", temp_str);
         } else { 
-          fprintf(f,"  %14s <---------- ", temp_str);
+          if (curmsg->optional == OPTIONAL_TRUE)
+            fprintf(f,"  %14s <*--------- ", temp_str);
+          else
+            fprintf(f,"  %14s <---------- ", temp_str);
         }
 
         if (!diagram_only) {
@@ -1207,9 +1213,15 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
         else
           sprintf(temp_str, "%s", curmsg -> recv_request);
         if(creationMode == MODE_SERVER) {
-          fprintf(f,"  ----------> %-14s ", temp_str);
+          if (curmsg->optional == OPTIONAL_TRUE) 
+            fprintf(f,"  ---------*> %-14s ", temp_str);
+          else
+            fprintf(f,"  ----------> %-14s ", temp_str);
         } else {
-          fprintf(f,"  %14s <---------- ", temp_str);
+          if (curmsg->optional == OPTIONAL_TRUE)
+            fprintf(f,"  %14s <*--------- ", temp_str);
+          else
+            fprintf(f,"  %14s <---------- ", temp_str);
         }
 
         if (!diagram_only) {
@@ -3265,91 +3277,91 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   listener *listener_ptr = get_listener(no_call_id_check == false ? call_id : NULL);
 
   if (useShortMessagef == 1) {
-              struct timeval currentTime;
-              GET_TIME (&currentTime);
-              TRACE_SHORTMSG("%s\tR\t%s\tCSeq:%s\t%s\n",
-              CStat::formatTime(&currentTime),call_id, get_incoming_header_content(msg,"CSeq:"), get_incoming_first_line(msg));
-          } 
+    struct timeval currentTime;
+    GET_TIME (&currentTime);
+    TRACE_SHORTMSG("%s\tR\t%s\tCSeq:%s\t%s\n",
+      CStat::formatTime(&currentTime),call_id, get_incoming_header_content(msg,"CSeq:"), get_incoming_first_line(msg));
+  } 
 
   if(!listener_ptr)
   {
     DEBUG("get_listener() returned 0 (so new call must be created)");
     if(thirdPartyMode == MODE_3PCC_CONTROLLER_B || thirdPartyMode == MODE_3PCC_A_PASSIVE
-	|| thirdPartyMode == MODE_MASTER_PASSIVE || thirdPartyMode == MODE_SLAVE)
+      || thirdPartyMode == MODE_MASTER_PASSIVE || thirdPartyMode == MODE_SLAVE)
     {
       // Adding a new OUTGOING call !
       DEBUG("Adding a new OUTGOING 3PCC call");
       main_scenario->stats->computeStat(CStat::E_CREATE_OUTGOING_CALL);
       call *new_ptr = new call(call_id, is_ipv6, 0, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
       if (!new_ptr) {
-	      REPORT_ERROR("Out of memory allocating a call!");
+        REPORT_ERROR("Out of memory allocating a call!");
       }
 
       outbound_congestion = false;
       if((socket != main_socket) &&
-	  (socket != tcp_multiplex) &&
-	  (socket != localTwinSippSocket) &&
-	  (socket != twinSippSocket) &&
-	  (!is_a_local_socket(socket))) {
-	new_ptr->associate_socket(socket);
-	socket->ss_count++;
+        (socket != tcp_multiplex) &&
+        (socket != localTwinSippSocket) &&
+        (socket != twinSippSocket) &&
+        (!is_a_local_socket(socket))) {
+          new_ptr->associate_socket(socket);
+          socket->ss_count++;
       } else {
-	/* We need to hook this call up to a real *call* socket. */
-	if (!multisocket) {
-	  switch(transport) {
-	    case T_UDP:
-	      new_ptr->associate_socket(main_socket);
-	      main_socket->ss_count++;
-	      break;
-	    case T_TCP:
-	    case T_TLS:
-	      new_ptr->associate_socket(tcp_multiplex);
-	      tcp_multiplex->ss_count++;
-	      break;
-	  }
-	}
+        /* We need to hook this call up to a real *call* socket. */
+        if (!multisocket) {
+          switch(transport) {
+      case T_UDP:
+        new_ptr->associate_socket(main_socket);
+        main_socket->ss_count++;
+        break;
+      case T_TCP:
+      case T_TLS:
+        new_ptr->associate_socket(tcp_multiplex);
+        tcp_multiplex->ss_count++;
+        break;
+          }
+        }
       }
       listener_ptr = new_ptr;
     }
     else if(creationMode == MODE_SERVER)
     {
       if (quitting >= 1) {
-	CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
-	TRACE_MSG("Discarded message for new calls while quitting\n");
-	return;
+        CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
+        TRACE_MSG("Discarded message for new calls while quitting\n");
+        return;
       }
 
       // Adding a new INCOMING call !
       main_scenario->stats->computeStat(CStat::E_CREATE_INCOMING_CALL);
       listener_ptr = new call(call_id, socket, use_remote_sending_addr ? &remote_sending_sockaddr : src);
       if (!listener_ptr) {
-	REPORT_ERROR("Out of memory allocating a call!");
+        REPORT_ERROR("Out of memory allocating a call!");
       }
     }
     else // mode is CLIENT [mode != from SERVER, 3PCC, MODE_SLAVE, MODE_MASTER]
     {
       // This is a message that is not relating to any known call
       if (auto_answer == true) {
-	// If auto answer mode, try to answer the incoming message
-	// with automaticResponseMode
-	// call is discarded before exiting the block
-	if(!get_reply_code(msg)){
-	  ooc_scenario->stats->computeStat(CStat::E_CREATE_INCOMING_CALL);
-	  /* This should have the real address that the message came from. */
-	  call *call_ptr = new call(ooc_scenario, socket, use_remote_sending_addr ? &remote_sending_sockaddr : src, call_id, 0 /* no user. */, socket->ss_ipv6, true, false);
-	  if (!call_ptr) {
-	    REPORT_ERROR("Out of memory allocating a call!");
-	  }
-	  CStat::globalStat(CStat::E_AUTO_ANSWERED);
-	  call_ptr->process_incoming(msg, src);
-	} else {
-	  /* We received a response not relating to any known call */
-	  /* Do nothing, even if in auto answer mode */
-	  CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
-	}
+        // If auto answer mode, try to answer the incoming message
+        // with automaticResponseMode
+        // call is discarded before exiting the block
+        if(!get_reply_code(msg)){
+          ooc_scenario->stats->computeStat(CStat::E_CREATE_INCOMING_CALL);
+          /* This should have the real address that the message came from. */
+          call *call_ptr = new call(ooc_scenario, socket, use_remote_sending_addr ? &remote_sending_sockaddr : src, call_id, 0 /* no user. */, socket->ss_ipv6, true, false);
+          if (!call_ptr) {
+            REPORT_ERROR("Out of memory allocating a call!");
+          }
+          CStat::globalStat(CStat::E_AUTO_ANSWERED);
+          call_ptr->process_incoming(msg, src);
+        } else {
+          /* We received a response not relating to any known call */
+          /* Do nothing, even if in auto answer mode */
+          CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
+        }
       } else {
-	CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
-	WARNING("Discarding message which can't be mapped to a known SIPp call:\n%s", msg);
+        CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
+        WARNING("Discarding message which can't be mapped to a known SIPp call:\n%s", msg);
       }
     }
   }
@@ -4468,7 +4480,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.28"
+	  printf("\n SIPped v3.2.29"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif

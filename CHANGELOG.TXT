@@ -1,4 +1,7 @@
 This file tracks changes responsible for version number updates.
+3.2.29 Apr 26 2012
+- enabled loose_message_sequence, active when -mc option is used
+- added * indicator to optional messages in dump sequence diagram 
 
 3.2.28 Apr 18 2012
 - enable tcp reconnection after phone FIN connection.  

@@ -19,7 +19,7 @@ class DumpSequenceDiagram < Test::Unit::TestCase
 
   def test_dump_sequence_diagram_default_uac
     test = SippTest.new("dump_sequence_diagram_uac", "-dump_sequence_diagram -sn uac -skip_rlimit")
-	test.expected_client_output = %Q!          INVITE ----------> \r\n             100 <---------- \r\n             180 <---------- \r\n             183 <---------- \r\n             200 <---------- \r\n             ACK ----------> \r\n       Pause     [      0ms]         \r\n             BYE ----------> \r\n             200 <---------- \r\n\r\n!
+	test.expected_client_output = %Q!          INVITE ----------> \r\n             100 <*--------- \r\n             180 <*--------- \r\n             183 <*--------- \r\n             200 <---------- \r\n             ACK ----------> \r\n       Pause     [      0ms]         \r\n             BYE ----------> \r\n             200 <---------- \r\n\r\n!
     assert(test.run())
   end
 

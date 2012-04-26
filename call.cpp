@@ -40,6 +40,8 @@
 
 #include <limits.h>  // INT_MAX
 #include <assert.h>
+#include <set>
+
 #ifndef WIN32
   #include <sys/wait.h>
   #include <netdb.h>
@@ -86,6 +88,8 @@ char short_and_long_headers[NUM_OF_SHORT_FORM_HEADERS * 2][MAX_HEADER_NAME_LEN] 
     "Call-ID:", "Contact:", "Content-Encoding:", "Content-Length:", "Content-Type:", "From:", "Subject:", "Supported:", "To:", "Via:"};
 char encode_buffer[MAX_HEADER_LEN * ENCODE_LEN_PER_CHAR];
 
+
+
 #ifdef PCAPPLAY
 /* send_packets pthread wrapper */
 void *send_wrapper(void *);
@@ -94,6 +98,8 @@ int call::dynamicId       = 0;
 int call::maxDynamicId    = 10000+2000*4;
 int call::startDynamicId  = 10000;
 int call::stepDynamicId   = 4;
+
+using namespace std;
 
 /************** Call map and management routines **************/
 static unsigned int next_number = 1;
@@ -432,6 +438,14 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   nb_last_delay = 0;
   use_ipv6 = ipv6;
   queued_msg = NULL;
+
+
+  if (no_call_id_check) 
+    // allows receipt of messages from other dialogs instead of  
+    // strict sequential scenario order.
+    loose_message_sequence = true;
+  else
+    loose_message_sequence = false;
 
 #ifdef _USE_OPENSSL
   dialog_authentication = NULL;
@@ -1459,6 +1473,7 @@ bool call::next()
   /* What is the next message index? */
   /* Default without branching: use the next message */
   int new_msg_index = msg_index+1;
+
   /* If branch needed, overwrite this default */
   if ( ((*msgs)[msg_index]->next >= 0) &&
        ((test == -1) || M_callVariableTable->getVar(test)->isSet())
@@ -3290,8 +3305,9 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
       }
     }
     if (result && curmsg->isUseTxn()) {
-      // use_txn on received request => verify branches match
+      // use_txn on received request => verify branches match,  branch uniquely ids transactions
       DEBUG("Request matches: verify txn.branch");
+      // txn_name are retrieved from scenario file start_txn and use_txn attributes eg <recv response="200" start_txn="invite" 
       TransactionState &txn = ds->get_transaction(curmsg->getTransactionName(), index); // reports error if not found.
       if (curmsg->isAck() && txn.isLastResponseCode2xx()) {
         // 2xx-triggered ACK => new transaction (branch) expected.
@@ -3352,6 +3368,7 @@ void call::queue_up(char *msg) {
   queued_msg = strdup(msg);
 }
 
+ 
 bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sipp_socket *socket)
 {
   int             reply_code;
@@ -3365,7 +3382,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   T_ActionResult  actionResult;
 
   getmilliseconds();
-  DEBUG_IN();
+  DEBUG_IN("Current msg_index is %d\n", msg_index);
   callDebug("Processing %d byte incoming message for call-ID %s (hash %u):\n%s\n\n", strlen(msg), id, hash(msg), msg);
 
   setRunning();
@@ -3374,10 +3391,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   // If no_call_id_check is not enabled process_message would have created a new call.
   // But we're checking here too just to be extra safe.
   if (no_call_id_check && socket) {
-	// Associate call with the socket msg arrived on if call_socket is invalid (closed).
-	if( (call_socket==NULL)||(call_socket->ss_invalid) ) {
-	  associate_socket(socket);
-	}
+  // Associate call with the socket msg arrived on if call_socket is invalid (closed).
+    if( (call_socket==NULL)||(call_socket->ss_invalid) ) {
+      associate_socket(socket);
+    }
   }
 
   /* Ignore the messages received during a pause if -pause_msg_ign is set */
@@ -3456,6 +3473,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   // Some updates in next section should become per-dialog (ie peer tags and such).
 
   /* Is it a response ? */
+  // all responses in format <version> <code> <reason phrase> eg SIP/2.0 200 OK
+  // all requests in format  <method (request type)> <URI (address/resource)> <version> 
+  //		eg REGISTER sip:polycom.com SIP/2.0
   if((msg[0] == 'S') && 
     (msg[1] == 'I') &&
     (msg[2] == 'P') &&
@@ -3476,12 +3496,13 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
         get_remote_media_addr(msg);
 #endif
       }
-
+      // this is a valid response with a reply code so set request to zero
       request[0]=0;
       // extract the cseq method and branch from the response for verification
       extract_cseq_method (responsecseqmethod, msg);
       extract_branch (branch, msg);
   } else if((ptr = strchr(msg, ' '))) {
+    // this is a sip request
     if((ptr - msg) < 64) {
       memcpy(request, msg, ptr - msg);
       request[ptr - msg] = 0;
@@ -3513,26 +3534,95 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   /* Try to find it in the expected non mandatory responses
   * until the first mandatory response in the scenario */
   char reason[MAX_HEADER_LEN]; // store match failure reason for logging purposes
+
+  // loose_message_sequence
+  // allows for out of sequnce messages if from different dialog's
+  // once a dialog is added to this,the remaining messages in that dialog are not
+  // checked for match, they are just skipped over
+
+  set<int> encountered_dialogs_with_nonoptional_msg; 
+  set<int>::iterator it;
+
+  DEBUG("loose_message_sequence is '%s'\n", loose_message_sequence ? "true" : "false");
   for(search_index = msg_index;
     search_index < (int)call_scenario->messages.size();
     search_index++) {
-
-      if(!matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id, reason)) { 
-        if(call_scenario->messages[search_index] -> optional) {
-          continue;
+      //loose_message_sequence - allows for next message to be for any dialog, not just current dialog
+      it=encountered_dialogs_with_nonoptional_msg.find(call_scenario->messages[search_index]->dialog_number);
+      if ( it == encountered_dialogs_with_nonoptional_msg.end())
+      {
+        // process dialogs that we have not yet encountered mandatory messages from
+        if(matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id, reason)) { 
+          // rec'd msg matches current expected message. 
+          found = true;
+          DEBUG("Incoming message matched to msg_index %d \n",search_index);
+          break;// rec'd message successful match to current scenario message
+        } 
+        else 
+        {
+          if (!(loose_message_sequence) && !(call_scenario->messages[search_index]->optional) ){
+            // strict sequence and mandatory scenario message means we stop looking and found=false 
+            break;
+          }
+          // loose_message_sequence incompatible with 
+          // branch, conditional branching, probablistic branch, timeout branch
+          // if any are set different than default (off), stop.
+          if ( loose_message_sequence && (
+            //  #TODO: do we really want to fail on nop ??					
+            //	(call_scenario->messages[search_index]->M_type == MSG_TYPE_NOP)||
+              (call_scenario->messages[search_index]->nextLabel != NULL )||
+              (call_scenario->messages[search_index]->test != -1 )||
+              (call_scenario->messages[search_index]->condexec != -1 )||
+              (call_scenario->messages[search_index]->chance != 0 )||
+              (call_scenario->messages[search_index]->onTimeoutLabel != NULL )) )
+          {
+            char temp_str[256];
+            if(call_scenario->messages[search_index]-> recv_response) {
+              sprintf(temp_str, "%d(%-2d)", call_scenario->messages[search_index] -> recv_response, 
+                      call_scenario->messages[search_index]->dialog_number);
+            }
+            else
+            {
+              sprintf(temp_str, "%s(%-2d)", call_scenario->messages[search_index] -> recv_request, 
+                      call_scenario->messages[search_index]->dialog_number);
+            }
+            REPORT_ERROR("loose_message_sequence is incompatible with branching in message index '%d', message: %s ",  
+              search_index, temp_str );
+            break;
+          }
+          //first encountered optional message that doesnt match - continue looking for match 
+          if ( call_scenario->messages[search_index]->optional){
+            //encountered_dialogs_with_nonoptional_msg.insert(call_scenario->messages[search_index]->dialog_number);
+            //TODO: if we dont mark this dialog as encountered then we can come back 
+            //			here to allow contiguous sequence of optionals to be checked for match.
+            //      Identical behaviour to pre loose_message_sequence feature
+            DEBUG("msg_index %d is optional, continue searching\n", search_index);
+            continue;
+          }
+          // we are now at the first encountered mandatory message for this dialog which does not match		
+          // add it to the encountered list and keep searching
+          encountered_dialogs_with_nonoptional_msg.insert(call_scenario->messages[search_index]->dialog_number);
+          DEBUG("Dialog %d added to encountered_dialogs_with_nonoptional_msg \n", 
+            call_scenario->messages[search_index]->dialog_number, search_index);
         }
-        /* The received message is different for the expected one */
-        break;
       }
-
-      found = true;
-      /* TODO : this is a little buggy: If a 100 trying from an INVITE
-      * is delayed by the network until the BYE is sent, it may
-      * stop BYE transmission erroneously, if the BYE also expects
-      * a 100 trying. */    
-      break;
-  }
-
+      else
+      {
+        // we have encountered this dialog before, found a mandatory message and 
+        // not yet found a match in it.  Skip remaining messages in this dialog to
+        // look for other dialogs with potential match.
+          DEBUG("Mandatory Message in Dialog %d, has already been encountered, skipping msg_index %d\n", search_index); 
+          continue;
+      }
+  }// for (search_index)
+  
+ 
+// This old TODO still apply?
+        /* TODO : this is a little buggy: If a 100 trying from an INVITE
+          * is delayed by the network until the BYE is sent, it may
+          * stop BYE transmission erroneously, if the BYE also expects
+          * a 100 trying. */    
+        
 /* worry about all this later (or never... )
   /* Try to find it in the old non-mandatory receptions if not in functional mode * /
   if ((!found) && (!no_call_id_check)) {
@@ -3606,8 +3696,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   if(!found) {
     DEBUG("Message not matched: processing an unexpected message. ");
     DEBUG("Reason: %s", reason);
-    if (call_scenario->unexpected_jump >= 0) {
-      bool recursive = false;
+    // unexpected_jump contains the index for the location where scenario file contains
+    // <label id="_unexp.main"/>   This is a feature to allow user to specify a message
+    // sequence for any unexpected message.  "_unexp.retaddr" can be used for return in
+    // scenario
+    if (call_scenario->unexpected_jump >= 0) {  //scenario has "label id="_unexp.main" to catch unexp jumps
+      bool recursive = false;										// identify recursive calls to "label id="_unexp.main"
       if (call_scenario->retaddr >= 0) {
         if (M_callVariableTable->getVar(call_scenario->retaddr)->getDouble() != 0) {
           /* We are already in a jump! */
@@ -3617,6 +3711,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
         }
       }
       if (!recursive) {
+        // valid _unexp.main label and first attempt to handle by _unexp.main
         if (call_scenario->pausedaddr >= 0) {
           M_callVariableTable->getVar(call_scenario->pausedaddr)->setDouble(paused_until);
         }
@@ -3625,6 +3720,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
         paused_until = 0;
         return run();
       } else {
+        // second time through _unexp.main. 
         if (!process_unexpected(msg, reason)) {
           DEBUG("Call aborted by unexpected message handling");
           return false;
@@ -3633,6 +3729,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
     } else {
       T_AutoMode L_case;
       if ((L_case = checkAutomaticResponseMode(request)) == 0) {
+        //E_AM_DEFAULT (0)  means it wasnt a BYE,CANCEL,PING,AA,AA_REGISTER,OOCALL
         if (!process_unexpected(msg, reason)) {
           DEBUG("Call aborted by unexpected message handling");
           return false;
@@ -3645,11 +3742,14 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   }
 
   // Message was found, store call-id if specified
-
+  
+  DEBUG ("Message found at index %d from dialog %d\n", search_index, 
+    call_scenario->messages[search_index]->dialog_number);
   // Retrieve dialog state for this message so it can be updated
   DialogState *ds = get_dialogState(call_scenario->messages[search_index]->dialog_number);
 
-  // If first time we've seen this call-id, remeber it for next time
+  // If first time we've seen this call-id, remember it for next time
+
   if (call_scenario->messages[search_index]->dialog_number != -1) {
     if (ds->call_id.empty()) 
       ds->call_id = call_id;
@@ -3883,7 +3983,33 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
     ) {
       /* If we are paused, then we need to wake up so that we properly go through the state machine. */
       paused_until = 0;
-      msg_index = search_index;
+//
+      if (loose_message_sequence) 
+      {
+        // this message was the expected one, message was in sequence
+        // so search_index (which is the index we found a match at)
+        // should be one greater than the current msg_index. 
+        if ((search_index - msg_index) <=1)
+        {
+          // if next message has already been received, skip forward until the
+          // msg_index+1 has not been processed 
+          msg_index = get_last_insequence_received_mandatory_message(search_index);
+        }
+        else 
+        {
+          // advancemessage, nb_recv counter already incremented.
+          // this is an unexpected early message - do not call next;
+          // msg_index should not be incremented. 
+          // Continue waiting for current scenario message.
+          assert ((search_index - msg_index > 1));
+          return true; // #TODO true/false impact?
+        }
+      }
+      else
+      {
+        msg_index = search_index;
+      }
+      DEBUG ("Setting msg_index to %d before calling next\n", msg_index);
       return next();
   } else {
     unsigned int timeout = wake();
@@ -3926,6 +4052,55 @@ double call::get_rhs(CAction *currentAction) {
   }
 }
 
+
+/**
+* for loose_message_sequence capability, find the last in sequence mandatory message received 
+*     eg  1.manRec  2.opt	 3.opt 4.manRec       -> 4   // where opt is any combination of rec and not received
+*         1.manRec  2.opt  3.opt 4.man!Rec      -> 1
+*         1.optRec  2.man!rec                   -> 1
+*  That is, we don't actually pay attention to # of times optional messaages are       
+*  gotten, just the mandatory one.
+*
+* Input: the current message index
+* Returns: the last in sequence  received message index     
+*   skips over optional messages only if there is a mandatory received message directly after them
+* post condition is that the next mandatory message index (returnvalue+1) has not been processed.
+*   and the message index of the return value has been processed.
+*
+**/
+unsigned int call::get_last_insequence_received_mandatory_message(int msg_index)
+{
+  unsigned int search_index;
+  unsigned int candidate_index = msg_index;
+  for (search_index = msg_index; search_index < call_scenario->messages.size()-1; search_index++)
+  {
+    //next_hasbeen_received_in_advance as marked by fact that counter nb_recv = calls
+    //only want to advance to last sequentially received mandatory message 
+    //   allows  out of order optional messages until next mandatory message is received
+    if ((call_scenario->messages[search_index+1]->nb_recv >= call_scenario->stats->GetStat(CStat::CPT_C_CurrentCall))
+      && (call_scenario->messages[search_index+1]->optional==OPTIONAL_FALSE))
+    {
+      DEBUG( "advancing candidate to message: %d, nb_recv: %d, calls: %d\n",
+        search_index+1, 
+        call_scenario->messages[search_index+1]->nb_recv, 
+        call_scenario->stats->GetStat(CStat::CPT_C_CurrentCall) );
+      candidate_index=search_index+1;
+      continue;
+    }
+    //next_is_optional - look ahead in scenario, if received msg found later in scenario than optional msg, skip ahead.
+    if (call_scenario->messages[search_index+1]->optional==OPTIONAL_TRUE) 
+    {
+      continue;
+    }
+    //only get here if msg[searchindex] is mandatory and not received.
+    break;
+  }
+  // candidate has already been received.  No insequence received messages follow this message. 
+  // insequence means seperated by optionals only. Optionals may or may not be already received.
+  assert(call_scenario->messages[candidate_index]->nb_recv >= call_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated));
+  DEBUG( "last insequence received message is %d\n",candidate_index);
+  return candidate_index;
+}
 
 call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 {
@@ -4348,7 +4523,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
     } else if ((currentAction->getActionType() == CAction::E_AT_EXECUTE_CMD) ||
                (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD)) {
       SendingMessage *curMsg = currentAction->getMessage();
-      char* x = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf*/);
+      char* x = createSendingMessage(curMsg, -2 /* do not add crlf*/);
       char redirect_command[MAX_HEADER_LEN];
       bool verify_result = (currentAction->getActionType() == CAction::E_AT_VERIFY_CMD);
 

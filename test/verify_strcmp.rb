@@ -17,6 +17,7 @@ class VerifyStrcmp < Test::Unit::TestCase
   def test_test_fail
     negative_test = SippTest.new("verify_strcmp_fail", "-sf verify_strcmp_fail_client.sipp -mc", "-sf verify_strcmp_fail_server.sipp -mc")
     negative_test.expected_error_log = /String comparision between variables firstcseq and secondcseq has failed, because INVITE is NOT the same as INV/
+    negative_test.expected_exitstatus = 255
     assert(negative_test.run())
   end
 end

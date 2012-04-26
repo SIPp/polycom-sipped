@@ -14,6 +14,7 @@ class WhereAmI < Test::Unit::TestCase
   def test_badenv
     test = SippTest.new("test_badenv", "-sf include_incl_badenv.sipp")
     test.expected_error_log = /Malformed environment environment variable - missing closing %\s*\nFound at\:\s*\n\s*include_badenvvar.sipp\:7\s*\n\s*include_incl_badenv.sipp\:10/
+    test.expected_exitstatus = 255
     #test.logging="verbose"
     assert(test.run())
   end
@@ -23,6 +24,7 @@ class WhereAmI < Test::Unit::TestCase
     test = SippTest.new("test_unset_env", "-sf include_incl_unset_envvar.sipp") #unsetenv_error.txt
     test.expected_error_log = /Undefined Environment Variable \: TDIR\r*\nFound at\:\s*\n\s*include_unset_envvar.sipp\:10\s*\n.*include_incl_unset_envvar.sipp\:10/
     #test.logging="verbose"
+    test.expected_exitstatus = 255
     assert(test.run())
   end
   
@@ -31,6 +33,7 @@ class WhereAmI < Test::Unit::TestCase
     test = SippTest.new("test_badtag", "-sf include_incl_badtag.sipp")
     test.expected_error_log = /xi\:include tag must be formatted exactly .*\nFound at\:\s*\n\s*include_badtag.sipp\:10\s*\n\s*include_incl_badtag.sipp\:10/
     #test.logging="verbose"
+    test.expected_exitstatus = 255
     assert(test.run())
   end
   
@@ -39,6 +42,7 @@ class WhereAmI < Test::Unit::TestCase
     test = SippTest.new("test_falsetag", "-sf include_madeuptag.sipp -mc")
     test.expected_error_log = /Unknown element \'nonexistant\' in xml scenario file\s*\n\s*madeuptag.xml\:9\s*\n\s*include_madeuptag.sipp\:7/
     #test.logging="verbose"
+    test.expected_exitstatus = 255
     assert(test.run())
   end
 
@@ -47,6 +51,7 @@ class WhereAmI < Test::Unit::TestCase
     test = SippTest.new("test_nocdata", "-sf include_nocdata.sipp -mc")
     test.expected_error_log = /No CDATA in 'send' section of xml scenario file\ninclude_directory\/nocdata.xml\:15\ninclude_nocdata.sipp\:10/
     #test.logging="verbose"
+    test.expected_exitstatus = 255
     assert(test.run())
   end
   

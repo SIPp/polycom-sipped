@@ -154,6 +154,9 @@ private:
   scenario *call_scenario;
   unsigned int   number;
 
+  bool loose_message_sequence;
+  unsigned int get_last_insequence_received_mandatory_message(int msg_index);
+
 public:
   static   int   maxDynamicId;    // max value for dynamicId; this value is reached !
   static   int   startDynamicId;  // offset for first dynamicId  FIXME:in CmdLine
