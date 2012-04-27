@@ -38,6 +38,9 @@
 
     ]]>
   </send>
+  
+  <recv response="200" dialog="1" use_txn="C1">
+  </recv>
 
   <nop>
     <action>

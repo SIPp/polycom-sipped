@@ -1,4 +1,9 @@
 This file tracks changes responsible for version number updates.
+
+3.2.30 Apr 27 2012
+- enabled index counter to be shown on message sequence diagrams by default
+
+
 3.2.29 Apr 26 2012
 - enabled loose_message_sequence, active when -mc option is used
 - added * indicator to optional messages in dump sequence diagram 

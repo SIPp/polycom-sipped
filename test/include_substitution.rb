@@ -21,7 +21,7 @@ class IncludeDirectory < Test::Unit::TestCase
   def test_include_substitution_sequence_diagram
     test = SippTest.new("include_substitution_sequence_diagram", "-sf include_substitution.sipp -mc -dump_sequence_diagram -skip_rlimit")
 	
-    test.expected_client_output = %Q!      INVITE(4 ) ----------> \r\n         BYE(1 ) ----------> \r\n      INVITE(1 ) ----------> \r\n         BYE(4 ) ----------> \r\n   SUBSCRIBE(2 ) ----------> \r\n      INVITE(1 ) ----------> \r\n         BYE(99) ----------> \r\n      INVITE(99) ----------> \r\n         BYE(1 ) ----------> \r\n   SUBSCRIBE(3 ) ----------> \r\n!
+    test.expected_client_output = %Q!0 :      INVITE(4 ) ----------> \r\n1 :         BYE(1 ) ----------> \r\n2 :      INVITE(1 ) ----------> \r\n3 :         BYE(4 ) ----------> \r\n4 :   SUBSCRIBE(2 ) ----------> \r\n5 :      INVITE(1 ) ----------> \r\n6 :         BYE(99) ----------> \r\n7 :      INVITE(99) ----------> \r\n8 :         BYE(1 ) ----------> \r\n9 :   SUBSCRIBE(3 ) ----------> \r\n!
     assert(test.run())
   end
 

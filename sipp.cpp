@@ -122,7 +122,7 @@ int passwd_call_back_routine(char  *buf , int size , int flag, void *passwd)
 #endif
 
 bool do_hide = true;
-bool show_index = false;
+bool show_index = true;
 
 static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd, int accepting);
 struct sipp_socket *ctrl_socket = NULL;  // ctrl_socket is network socket for remote control of SIPp

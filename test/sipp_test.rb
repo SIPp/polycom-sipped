@@ -68,9 +68,11 @@ class SippTest
 
   def netstat(grep_value)
     if (@is_windows) 
-      cmd="netstat -nao | grep \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""   #numbers all executables ownerpid, udp
+      # netstat option o is for process that owns connection
+      cmd="netstat -nao | grep \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""   
     else
-      cmd="netstat -nap | grep \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""   #numbers all udp
+      # netstat option p is for pid/program running connecion
+      cmd="netstat -nap | grep -i \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""
     end
     result = `#{cmd}`
     puts "netstat_command: '#{cmd}'\n'#{result}'" if @logging=="verbose"
@@ -104,35 +106,16 @@ class SippTest
   #   the server_pid of the previous instance of sipp_test and is no longer available.
   def kill_sipp_processes
     puts "kill_sipp_process: Find pid of process blocking our port"
+    # result will not contain any TIMEWAIT states
     result = netstat_local_and_remote_ports()
-    if @is_windows    
-        #  Proto  Local Address          Foreign Address        State           PID
-        #  TCP    172.23.2.49:50691      172.23.0.199:1025      ESTABLISHED     596
-        #  TCP    127.0.0.1:15060        0.0.0.0:0              LISTENING       36212
-        #  0      1                      2                      3               4
-        #  Proto  Local Address          Foreign Address        State           PID
-        #  TCP    172.23.2.49:50693      172.23.0.200:389       ESTABLISHED     988
-        #  UDP    127.0.0.1:5069         *:*                                    133712
-        #  UDP    127.0.0.1:15060        *:*                                    133568
-        state_index = 3
-        pid_index = 4
-    else
-        # 0          1      2 3                           4                           5           6
-        # Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name  
-        # tcp        0      0 127.0.0.1:15060             0.0.0.0:*                   LISTEN      2087/sipp  
-        # udp        0      0 127.0.0.1:15060             127.0.0.1:5069              ESTABLISHED 5460/sipp
-        # udp        0      0 127.0.0.1:15060             0.0.0.0:*                               26852/sipp  
-        # udp        0      0 :::15060                    :::* 
-        # tcp      113      0 127.0.0.1:15060             127.0.0.1:56512             ESTABLISHED -                   
-        state_index = 5
-        pid_index = 6
-    end
-
 
     if (not (@is_windows))
       #kill processes holding  our ports
       result.each{|s|
         a = s.split()
+        
+        # examples of all forms of netstat output, note variable number of arguments
+        # missing state field means pid is arg 5 instead of 6
         # 0          1      2 3                           4                           5           6
         # Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name  
         # tcp        0      0 127.0.0.1:15060             0.0.0.0:*                   LISTEN      2087/sipp  
@@ -140,11 +123,13 @@ class SippTest
         # udp        0      0 127.0.0.1:15060             0.0.0.0:*                               26852/sipp  
         # udp        0      0 :::15060                    :::* 
         # last case we cannot id process blocking our port, 
-#        for argno in (5..6) do
-argno = pid_index
+               
+        # pid may be in arg 5 or 6 of each line.
+        for argno in (5..6) do
           if (a[argno])
               pos=a[argno].index('/')
               if (pos) 
+                #rely on fact that arg 5 or 6 will contain pid/process
                 puts s if @logging == "verbose"
                 pidstr=a[argno].to_s
                 pidstr = pidstr[0,pos]
@@ -155,74 +140,33 @@ argno = pid_index
                 puts "ERROR: Unable to obtain PID from netstat: cannot kill SIPp process.\n"
               end
           end
-#        end 
+        end 
       }
     else #is_windows
+      #  Again, note variable number of arg possible in ea line
       #  0      1                      2                      3               4
       #  Proto  Local Address          Foreign Address        State           PID
       #  TCP    172.23.2.49:50693      172.23.0.200:389       ESTABLISHED     988
       #  UDP    127.0.0.1:5069         *:*                                    133712
       #  UDP    127.0.0.1:15060        *:*                                    133568
 
+      #  Note on win7 UDP state rarely has a value, even when it is LISTENING
+      #     cannot rely state as an indicator for kill candidate 
       result.each{|s|
         a = s.split()
-#        for argno in (3..4) do
-argno = pid_index
-          if ((a[argno])&&(a[arno].to_i>0))
-              pid = a[arno].to_i
+        # pid may be in arg 3 or 4 of each line
+        for argno in (3..4) do
+          if ((a[argno])&&(a[argno].to_i>0))
+              # rely on fact that a number in arg 3 or 4 is going to be a pid
+              pid = a[argno].to_i
               puts "WARNING: PORT BLOCKED,  sigkill pid #{pid} : #{a[0]}  #{a[1]}  #{a[2]}" 
               Process.kill("SIGKILL",pid)
           else
             puts "ERROR: Unable to obtain PID from netstat: cannot kill SIPp process.\n"
           end
- #       end
+        end
       } 
     end #is_windows
-  end
-
-  # Kill tcp sessions on port @sipp_remote_port.  
-  # Note aging of tcp connections goes to TIME_WAIT for 1-4min before 
-  # releasing port, only kill ESTABLISHED or LISTENING connections here
-  # so that our sipp test can be the only server on this port.
-  def kill_tcp_sessions_if_required
-    puts "kill_tcp_sessions_if_required()\n" if @logging == "verbose"
-    result = netstat_remote_tcp_ports();
-
-    if @is_windows    
-        #  Proto  Local Address          Foreign Address        State           PID
-        #  TCP    172.23.2.49:50691      172.23.0.199:1025      ESTABLISHED     596
-        #  TCP    127.0.0.1:15060        0.0.0.0:0              LISTENING       36212
-        state_index = 3
-        pid_index = 4
-    else
-        #Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name  
-        #tcp        0      0 127.0.0.1:15060             0.0.0.0:*                   LISTEN      14561/sipp          
-        #tcp        0      0 127.0.0.1:56512             127.0.0.1:15060             ESTABLISHED 16253/sipp          
-        #tcp      113      0 127.0.0.1:15060             127.0.0.1:56512             ESTABLISHED -                   
-        state_index = 5
-        pid_index = 6
-    end
-
-    result.each{|s|
-        a=s.split()
-        if ((a[state_index]=="LISTENING")||(a[state_index]=="ESTABLISHED"))
-            puts "TCP session #{s} needs killing"  if @logging == "verbose"
-            pos=a[pid_index].index('/')
-            if (pos)
-                # PID/Program name on Linux
-                pid = a[pid_index][0,pos-1].to_i
-            else
-                # PID on Windows (no /)
-                pid = a[pid_index].to_i
-            end
-            if pid > 0            
-                puts "sigkill process #{pid} extracted from '#{a[pid_index]}' for blocked TCP PORT #{@sipp_remote_port}"
-                Process.kill("SIGKILL",pid)
-            else
-                puts "No PID assocaited with in-use port: cannot kill.\n"
-            end
-        end
-    }
   end
  
   # Ensure the server is up on port before starting client side
@@ -258,7 +202,6 @@ argno = pid_index
         kill_sipp_processes()
       end
     end
-#    kill_tcp_sessions_if_required()  these are killed as required by kill_sipp_processes so no need for separate process
   end
 
 ##############################  
