@@ -3,6 +3,7 @@
 #include <cstring>      //memcmp
 #include <netinet/in.h> //sockadr_in, in_addr, ntohs
 #include <arpa/inet.h>  //inet_ntop
+#include <stdio.h>      //snprintf
 
 // return true if address is equal, false if not
 bool is_in_addr_equal(const struct sockaddr_storage *left, const struct sockaddr_storage *right)

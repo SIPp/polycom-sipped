@@ -49,7 +49,7 @@
 #else
 //  #include <arpa/inet.h>
 //  #include <netdb.h>
-//  #include <netinet/tcp.h>
+  #include <netinet/tcp.h>
   #include <sys/poll.h>
   #include <sys/resource.h>
   #include <dlfcn.h>
