@@ -267,7 +267,11 @@ int expand_env_var(char* path_and_fn,int idx)
 //////////////////////////////////
 // Goal is to get the byte offset into xp_file that we are currently processing
 // output: byte offset into xp_file that is currently used by xp_parser. Valid
-//    after xp_file has been filled and is being parsed.   DO NOT USE THIS
+//    after xp_file has been filled and is being parsed. (eg scenario pushes
+//    ptrs to parts of xp_file onto xp_position as a stack of 
+//    pointers for parsing/processing
+//    
+//    DO NOT USE THIS DURING INTIAL BUFFERING OF XP_FILE
 //    if you want location while xp_file is being initially buffered, USE
 //    index defined in xp_set_xml_buffer_from_file instead.
 // note that some methods method takes a copy of xp_position, eg

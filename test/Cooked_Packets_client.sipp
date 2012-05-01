@@ -41,6 +41,9 @@
     ]]>
   </send>
 
+  <recv response="200" dialog="1" >
+  </recv>
+  
   <nop display="stream audio Cooked_Packets-192_168_2_1-16416_(1).pcap">
     <action>
       <exec play_pcap_audio="Cooked_Packets-192_168_2_1-16416_(1).pcap"/>

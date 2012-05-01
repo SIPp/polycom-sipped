@@ -71,6 +71,7 @@
 #include "stat.hpp"
 #include "transactionstate.hpp"
 #include "variables.hpp"
+#include "socket_helper.hpp"
 //#include <ctype.h>
 
 #define callDebug(x, ...) do { if (useDebugf) { DEBUG(x, ##__VA_ARGS__); } if (useCallDebugf) { _callDebug(x, ##__VA_ARGS__ ); } } while (0)
@@ -3566,7 +3567,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           }
           // loose_message_sequence incompatible with 
           // branch, conditional branching, probablistic branch, timeout branch
-          // if any are set different than default (off), stop.
+          // if any are set different than default (off), stop. \
+          // this test only hit if we come across a branching message 
+          // while searching for an out of sequence msg
           if ( loose_message_sequence && (
             //  #TODO: do we really want to fail on nop ??					
             //	(call_scenario->messages[search_index]->M_type == MSG_TYPE_NOP)||
@@ -4612,18 +4615,30 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
     } else if ((currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) ||
       (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO)) {
         play_args_t *play_args = 0;
+        string media_type;
         if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) {
           DEBUG("getActionType() is E_AT_PLAY_PCAP_AUDIO");
           play_args = &(this->play_args_a);
+          media_type = string("Audio");
           if (currentAction->getMediaPortOffset()) {
             this->set_audio_from_port(media_port + currentAction->getMediaPortOffset());
           }
         } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
           DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
           play_args = &(this->play_args_v);
+          media_type = string("Video");
           if (currentAction->getMediaPortOffset()) {
             this->set_video_from_port(media_port + currentAction->getMediaPortOffset());
           }
+        }
+        DEBUG("From: %s (0x%x)  To: %s (0x%x)", 
+          socket_to_ip_port_string(&(play_args->from)).c_str(),
+          *((int*)get_in_addr(&(play_args->from))),
+          socket_to_ip_port_string(&(play_args->to)).c_str(),
+          *((int*)get_in_addr(&(play_args->to)) ));
+        if ((socket_to_ip_string(&(play_args->to)).empty()) || (get_in_port(&(play_args->to)) == 0)){
+          REPORT_ERROR("No destination media IP or port defined for %s while processing message index %d.  To address is '%s'\n,%s",
+            media_type.c_str(), curmsg->index, socket_to_ip_port_string(&(play_args->to)).c_str(), curmsg->get_source_location().c_str());
         }
         play_args->pcap = currentAction->getPcapPkts();
         /* port number is set in [auto_]media_port interpolation*/
@@ -4637,7 +4652,6 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           from->sin_family = AF_INET;
           from->sin_addr.s_addr = inet_addr(media_ip);
         }
-
         /* Create a thread to send RTP packets */
         pthread_attr_t attr;
         pthread_attr_init(&attr);

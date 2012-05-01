@@ -266,7 +266,6 @@ send_packets (play_args_t * play_args)
 
   /* Closing the socket is handled by pthread_cleanup_push()/pthread_cleanup_pop() */
   pthread_cleanup_pop(1);
-printf("send_packets():250 - Leaving thread\n");
   DEBUG_OUT();
   return result;
 }

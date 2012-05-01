@@ -1,5 +1,9 @@
 This file tracks changes responsible for version number updates.
 
+3.2.31 May 01 2012
+- refactored socket helper routines into socket_helper.cpp/hpp
+- added dest ip port validation check for media playback 
+
 3.2.30 Apr 27 2012
 - enabled index counter to be shown on message sequence diagrams by default
 

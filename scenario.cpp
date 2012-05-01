@@ -130,6 +130,11 @@ message::message(int index, const char *desc) : start_txn(false), txn_name("")
   content_length_flag = ContentLengthNoPresent;
 
   recv_response_for_cseq_method_list = NULL;
+
+//byte offset into xp_file buffer that contained this message. 
+//only valid for messages loaded in from -sf command line option
+  //xp_file_byte_offset=0; 
+  source_file_location = string("");
 }
 
 message::~message()
@@ -172,6 +177,16 @@ const string &message::checkTransactionName(const string &txnName) {
   }
   return txnName;
 }
+
+// input: byte offset into the xp_file buffer that the
+//    current location that is being processed for debugging
+//    and error reporting
+void message::set_source_location(unsigned int byteOffset){
+    //xp_file_byte_offset = byteOffset;}
+    source_file_location = convert_whereami_key_to_string(byteOffset);
+  }
+
+
 
 /******** Global variables which compose the scenario file **********/
 
@@ -799,6 +814,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
       }
       message *curmsg = new message(messages.size(), name ? name : "unknown scenario");
       messages.push_back(curmsg);
+      //curmsg->set_source_location(xp_get_whereami_key());
 
       if(!strcmp(elem, "send")) {
         checkOptionalRecv(elem, scenario_file_cursor);
@@ -1040,6 +1056,20 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
       else {
         REPORT_ERROR("Unknown element '%s' in xml scenario file\n%s\n", elem, whereami_if_valid().c_str());
       }
+      
+      //xp_file_metadata_valid only if reading from file with -sf command line option
+      //note ooc scenario and other internal scenario can be loaded into xp_file after main_scenario
+      //our metadata will only apply to image of xp_file when our main scenario file was loaded
+      if (is_xp_file_metadata_valid())
+      {
+        curmsg->set_source_location(xp_get_whereami_key());
+        //DEBUG("whereami = %d \n", curmsg->get_source_location());
+        //string source_location = convert_whereami_key_to_string(curmsg->get_source_offset());
+        DEBUG("Added Message %d to Scenario %s from index %d which comes from document:\n%s",
+          messages.size(), name , xp_get_whereami_key(),
+          curmsg->get_source_location().c_str());
+      }
+
 
       getCommonAttributes(curmsg);
     } /** end * Message case */
@@ -1074,7 +1104,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
   if (messages.size() == 0) {
     REPORT_ERROR("Did not find any messages inside of scenario!");
   }
-}//scenairo::scenario
+}//scenario::scenario
+
 
 void scenario::runInit() {
   call *initcall;
@@ -2031,6 +2062,22 @@ void reduce_to_path(char *filename)
   }
   *end = '\0';
 }
+
+//
+//string scenario::get_message_source_file_location(message* curmsg)
+//{
+//  int buffer_offset = curmsg.get_source_offset();
+//  if (buffer_offset == 0)
+//  {
+//    // zero indicates we have no source file information to pass on.
+//    return "";
+//  }
+//  else
+//  {
+//    return convert_whereami_key_to_string(buffer_offset);
+//  }
+//}
+
 
 // TIP: to integrate an existing XML scenario, use the following sed line:
 // cat ../3pcc-controller-B.xml | sed -e 's/\"/\\\"/g' -e 's/\(.*\)/\"\1\\n\"/'

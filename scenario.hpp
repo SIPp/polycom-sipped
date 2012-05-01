@@ -177,14 +177,23 @@ public:
   string getTransactionName() { return txn_name; }
   bool isStartTxn()  { return start_txn; }
   bool isUseTxn()    { return !start_txn && !txn_name.empty(); }
+  
 
+
+  void set_source_location(unsigned int byteOffset);
+
+  //unsigned int get_source_offset(){return xp_file_byte_offset;}
+    string get_source_location(){return source_file_location;}
 
 private:
+  //unsigned int  xp_file_byte_offset; // byte offset into xp_file that this message was sourced from - see xp_get_whereami_key
+  string        source_file_location;
   bool           start_txn;          // true means store state associated with message as it is sent or received
   string         txn_name;           // transaction name (empty if none defined). Note that non-empty txn_name does not imply use_txn as it may also by start_txn.
 
   // return txnName if valid name, abort with error if not
   const string &checkTransactionName(const string &txnName);
+
 
 };
 
