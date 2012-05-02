@@ -1882,6 +1882,32 @@ void scenario::parseCheckIt(CAction* action, char* varName, char* what) {
     if(varName) get_var(varName, what); // bump usage count
   }
 }
+
+
+// scan messages in this scenario to see if any of the messages
+// use branching (non linear flow through scenario)
+bool scenario::doesScenarioHaveOnlyLinearElements(){
+  vector<message *>::iterator it;
+  for ( it=messages.begin(); it<messages.end(); it++){
+    message* msg = *it;
+    if (msg->next != -1){
+      DEBUG ( "NonLinear Scenario:Message Index %d uses branching\n",  msg->index);
+      return false;
+    }
+    // scan all actions for this message for jump commands
+    if (msg->M_actions){
+      for (int i=0 ; i<msg->M_actions->getActionSize();i++){
+        if (msg->M_actions->getAction(i)->getActionType() == CAction::E_AT_JUMP){
+          DEBUG( "NonLinear Scenario:Message Index %d uses jump action.", msg->index);
+          return false;
+        }
+      }
+    }
+  }// for messages
+  return true;
+}
+
+
 // optional leading + or - (so accepts blank => 0, or + or - an integer, assumes no offset is +.
 // ie '', '+5', '-5' and '5'.
 bool parseInteger(char *ptr, int& result) {

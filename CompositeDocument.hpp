@@ -131,7 +131,7 @@ public:
   int getQtyStacks();
   string dumpStacks();
   int compositeLineNumberFromIndex(int index);
-  string strStackFromIndex(unsigned int index);
+  string strStackFromIndex( int index);
   void showLineOffsetMap();
   bool checkNewLineSynch(const char* xp_file);
   void reset();  // make like this object is newly made

@@ -183,7 +183,8 @@ public:
   void set_source_location(unsigned int byteOffset);
 
   //unsigned int get_source_offset(){return xp_file_byte_offset;}
-    string get_source_location(){return source_file_location;}
+  string get_source_location(){return source_file_location;}
+
 
 private:
   //unsigned int  xp_file_byte_offset; // byte offset into xp_file that this message was sourced from - see xp_get_whereami_key
@@ -207,7 +208,7 @@ public:
 
   void runInit();
 
-	/* One message for each command in XML file (ie <send>, <recv>, <nop>, etc*/
+  /* One message for each command in XML file (ie <send>, <recv>, <nop>, etc*/
   msgvec messages;
   msgvec initmessages;
   char *name;
@@ -226,6 +227,7 @@ public:
 
   CStat *stats;
   AllocVariableTable *allocVars;
+  bool doesScenarioHaveOnlyLinearElements();
 
 private:
 

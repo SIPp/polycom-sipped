@@ -181,7 +181,7 @@ int CompositeDocument::compositeLineNumberFromIndex(int index) {
  * @output stringified equivalent DocStack at given byte offset
  * @precondition line number has less than maxdigits digits
  */
-string CompositeDocument::strStackFromIndex(unsigned int index) {
+string CompositeDocument::strStackFromIndex( int index) {
   const int maxdigits = 256;
   char buf[maxdigits];
   string result = "";
