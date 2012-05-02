@@ -1,8 +1,10 @@
 This file tracks changes responsible for version number updates.
 3.2.32 May 02 2012
+- loose_message_sequence refinements 
 - auto detect use of branching (next and jump) to disable loose_message_sequence
 - correct handling of multiple occurence of same message within a dialog for loose_message_sequence
 - handling of pause and nop for loose_message_sequence
+- use cumulative calls as reference to identify already received messages to allow for sipp or remote originations
 
 3.2.31 May 01 2012
 - refactored socket helper routines into socket_helper.cpp/hpp

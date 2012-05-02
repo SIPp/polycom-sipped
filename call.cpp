@@ -3555,6 +3555,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   set<int> encountered_dialogs_with_nonoptional_msg; 
   set<int>::iterator it;
 
+  // identify received messages by comparing to cumulative calls made during this scenario
+  unsigned long long cumulative_calls = call_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) +
+    call_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated);
+
   // try to match against unreceived mandatory and optinal messages
   // Without loose_message_sequence, 
   //    Stop as soon when the first unreceived mandatory message is encountered
@@ -3575,7 +3579,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           //      rec(2) NOTIFY  <--rec early
           //      rec(2) NOTIFY  <--rec early
           //      do not want to double count first notify and not count second at all
-          if (call_scenario->messages[search_index]->nb_recv >= call_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)){
+          if (call_scenario->messages[search_index]->nb_recv >= cumulative_calls){
             //matches but has already been received, keep searching.
             continue;
           }
@@ -4079,18 +4083,20 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
 {
   unsigned int search_index;
   unsigned int candidate_index = search_from_msg_index;
+  unsigned long long cumulative_calls = call_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) +
+    call_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated);
   for (search_index = search_from_msg_index; search_index < call_scenario->messages.size()-1; search_index++)
   {
     //next_hasbeen_received_in_advance as marked by fact that counter nb_recv = calls
     //only want to advance to last sequentially received mandatory message 
     //   allows  out of order optional messages until next mandatory message is received
-    if ((call_scenario->messages[search_index+1]->nb_recv >= call_scenario->stats->GetStat(CStat::CPT_C_CurrentCall))
+    if ((call_scenario->messages[search_index+1]->nb_recv >= cumulative_calls)
       && (call_scenario->messages[search_index+1]->optional==OPTIONAL_FALSE))
     {
       DEBUG( "Mandatory Message received, advancing candidate to message: %d, nb_recv: %d, calls: %d\n",
         search_index+1, 
         call_scenario->messages[search_index+1]->nb_recv, 
-        call_scenario->stats->GetStat(CStat::CPT_C_CurrentCall) );
+        cumulative_calls );
       candidate_index=search_index+1;
       continue;
     }
@@ -4105,7 +4111,8 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
   }
   // candidate has already been received.  No insequence received messages follow this message. 
   // insequence means seperated by optionals only. Optionals may or may not be already received.
-  assert(call_scenario->messages[candidate_index]->nb_recv >= call_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated));
+  // this message must have already been received or else something is terribly wrong.
+  assert(call_scenario->messages[candidate_index]->nb_recv >= cumulative_calls);
   DEBUG( "last insequence received message is %d\n",candidate_index);
   return candidate_index;
 }
