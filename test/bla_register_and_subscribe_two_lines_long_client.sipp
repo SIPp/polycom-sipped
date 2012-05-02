@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="bla_register_and_subscribe_two_lines.xml" parameters="-mc">
+<!-- Accept line 1 registration -->
+<recv request="REGISTER" rrs="true" dialog="1">
+</recv>
+
+<send dialog="1">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:];tag=[call_number]
+[last_Call-Id]
+[last_Cseq]
+User-Agent: SIPp
+[last_Contact:];expires=120
+Content-Length: [len]
+
+]]>
+</send>
+
+
+<!-- Send line1 BLA subscription and send initial BLA state -->
+<send dialog="2">
+<![CDATA[
+SUBSCRIBE [next_url dialog="1"] SIP/2.0
+From: State_Agent line1_to_uri <to@line1.com>;tag=a59ec025
+To: line1_from_uri <ugh@line1.com>
+CSeq: [cseq] SUBSCRIBE
+Call-Id: [call_id]
+Event: dialog;sla;include-session-description
+User-Agent: Sipp
+Contact: <sip:[local_ip]:[local_port]>
+Expires: 3600
+Max-Forwards: 20
+Via: SIP/2.0/UDP [local_ip];branch=z9hG4bK-fbf2a8fcfe1af30350d645eda93d0014
+Content-Length: [len]
+]]>
+</send>
+
+<!-- Accept line 2 registration -->
+<recv request="REGISTER" rrs="true" dialog="4">
+</recv>
+
+
+<recv response="200" dialog="2"></recv>
+
+<send dialog="4">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:];tag=[call_number]
+[last_Call-Id]
+[last_Cseq]
+User-Agent: SIPp
+[last_Contact:];expires=120
+Content-Length: [len]
+
+]]>
+</send>
+
+<recv request="NOTIFY" dialog="2"></recv>
+
+<send dialog="2">
+<![CDATA[
+SIP/2.0 200 OK
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Allow: INVITE, ACK, CANCEL, BYE, REFER, OPTIONS, NOTIFY
+[last_via:]
+Content-Length: [len]
+]]>
+</send>
+
+<!-- Receive phone's BLA subscription and sent initial BLA state -->
+<recv request="SUBSCRIBE" dialog="3"></recv>
+
+<send dialog="3"> 
+<![CDATA[
+SIP/2.0 202 Accepted
+[last_From:]
+[last_To:];tag=thirdTag
+[last_Call-id:]
+[last_cseq:]
+[last_via:]
+Allow: NOTIFY,SUBSCRIBE
+Allow-Events: dialog;sla;include-session-description
+Contact: <sip:SD13aq5-meccfempfbv5t3uqkvm0iji012k6hv@[local_ip]:[local_port];transport=udp>
+Expires: 3700
+Content-Length: 0
+]]>
+
+</send>
+
+<send dialog="3">
+<![CDATA[
+NOTIFY [next_url dialog="1"] SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=z9hG4bKq1f19h20bo809kbasduisk000.1
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+<recv response="200" dialog="3" crlf="true"></recv>
+
+
+
+<!-- Send line 2 BLA subscription and send initial BLA state -->
+<send dialog="5">
+<![CDATA[
+SUBSCRIBE [next_url dialog="4"] SIP/2.0
+From: State_Agent <to@line1.com>;tag=a59ec025
+To: line1_from_uri <ugh@line1.com>
+CSeq: [cseq] SUBSCRIBE
+Call-Id: [call_id]
+Event: dialog;sla;include-session-description
+User-Agent: Sipp
+Contact: <sip:[local_ip]:[local_port]>
+Expires: 3600
+Max-Forwards: 20
+Via: SIP/2.0/UDP [local_ip];branch=z9hG4bK-fbf2a8fcfe1af30350d645eda93d0014
+Content-Length: [len]
+]]>
+</send>
+
+<recv response="200" dialog="5"></recv>
+
+<recv request="NOTIFY" dialog="5"></recv>
+
+<send dialog="5">
+<![CDATA[
+SIP/2.0 200 OK
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Allow: INVITE, ACK, CANCEL, BYE, REFER, OPTIONS, NOTIFY
+[last_via:]
+Content-Length: [len]
+]]>
+</send>
+
+<!-- Receive phone's BLA subscription and sent initial BLA state -->
+<recv request="SUBSCRIBE" dialog="6"></recv>
+
+<send dialog="6"> 
+<![CDATA[
+SIP/2.0 202 Accepted
+[last_From:]
+[last_To:];tag=thirdTag
+[last_Call-id:]
+[last_cseq:]
+[last_via:]
+Allow: NOTIFY,SUBSCRIBE
+Allow-Events: dialog;sla;include-session-description
+Contact: <sip:SD13aq5-meccfempfbv5t3uqkvm0iji012k6hv@[local_ip]:[local_port];transport=udp>
+Expires: 3700
+Content-Length: 0
+]]>
+
+</send>
+
+<send dialog="6">
+<![CDATA[
+NOTIFY [next_url dialog="4"] SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=z9hG4bKq1f19h20bo809kbasduisk000.1
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="4"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+<recv response="200" dialog="6"></recv>
+</scenario>
