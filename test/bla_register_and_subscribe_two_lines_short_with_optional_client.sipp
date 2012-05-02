@@ -46,7 +46,7 @@ Content-Length: [len]
 </recv>
 
 <!-- Accept line 2 registration -->
-<recv request="REGISTER" rrs="true" dialog="4">
+<recv request="REGISTER" rrs="true" start_txn="S1" dialog="4">
 </recv>
 
 <!-- Accept retransmission of reg  -->
@@ -55,7 +55,7 @@ Content-Length: [len]
 
 <recv response="200" dialog="2"></recv>
 
-<send dialog="4" crlf="true">
+<send dialog="4" use_txn="S1" crlf="true">
 <![CDATA[
 
 SIP/2.0 200 OK
