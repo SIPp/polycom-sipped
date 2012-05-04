@@ -6,6 +6,7 @@ This file tracks changes responsible for version number updates.
 - fleshing out debug statements
 - enable receipt of multiple copies of optional
 - fix handling of mandatory while waiting on optional
+- unexpected message errors show list of possible expected messages
 
 
 3.2.32 May 02 2012

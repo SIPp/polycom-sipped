@@ -2770,7 +2770,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
                                        }
       case E_Message_Last_CSeq_Number: {
         DEBUG("[last_CSeq_Number] %s", txn.trace().c_str());
-        dest += sprintf(dest, "%d", get_cseq_value(txn.getLastReceivedMessage().c_str()) + comp->offset);
+        dest += sprintf(dest, "%ld", get_cseq_value(txn.getLastReceivedMessage().c_str()) + comp->offset);
         break;
                                        }
       case E_Message_Last_Branch: {
@@ -3560,6 +3560,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   // checked for match, they are just skipped over
   set<int> encountered_dialogs_with_nonoptional_msg; 
   set<int>::iterator it;
+  map<int,int> dialog_msgindex;
 
   // identify received messages by comparing to cumulative calls made during this scenario
   unsigned long long cumulative_calls = call_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) +
@@ -3623,6 +3624,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           // note that nop and pause are skipped over above and will not reach here, so default dialog
           // will not entered here by those messages.
           encountered_dialogs_with_nonoptional_msg.insert(call_scenario->messages[search_index]->dialog_number);
+          dialog_msgindex[call_scenario->messages[search_index]->dialog_number] = search_index;
           DEBUG("message %d triggers Dialog %d added to encountered_dialogs_with_nonoptional_msg", 
             search_index, call_scenario->messages[search_index]->dialog_number );
           // if the first encountered message of this dialog has been previously received, skip ahead..
@@ -3641,8 +3643,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   
 
 
-/* worry about all this later (or never... )
-  /* Try to find it in the old non-mandatory receptions if not in functional mode * /
+//worry about all this later (or never... ) 
+  //Try to find it in the old non-mandatory reeptions if not in functional mode 
+  /**
   if ((!found) && (!no_call_id_check)) {
     bool contig = true;
     for(search_index = msg_index - 1;
@@ -3655,10 +3658,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
             break;
           } else {
             if (call_scenario->messages[search_index]->isResponse() && call_scenario->messages[search_index]->isUseTxn()) {
-              /* This is a reply to an old transaction. * /
+              // This is a reply to an old transaction.
               TransactionState &txn =  ds->get_transaction(call_scenario->messages[search_index]->getTransactionName());
               if (!strcmp(txn.getBranch().c_str, branch)) {
-                /* This reply is provisional, so it should have no effect if we recieve it out-of-order. * /
+                // This reply is provisional, so it should have no effect if we recieve it out-of-order. 
                 if (reply_code >= 100 && reply_code <= 199) {
                   TRACE_MSG("-----------------------------------------------\n"
                     "Ignoring provisional %s message for transaction %s:\n\n%s\n",
@@ -3667,17 +3670,19 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
                     TRANSPORT_TO_STRING(transport), call_scenario->messages[search_index]->getTransactionName().c_str(), hash(msg), msg);
                   return true;
                 } else if (int ackIndex = txn.getAckIndex()) {
-                  /* This is the message before an ACK, so verify that this is an invite transaction. * /
+                  // This is the message before an ACK, so verify that this is an invite transaction.
                   assert (call_scenario->transactions[checkTxn - 1].isInvite); Do we care?  Should we set isInvite when we transmit an INVITE to the request?
                   sendBuffer(createSendingMessage(call_scenario->messages[ackIndex] -> send_scheme, ackIndex));
                   return true;
                 } else {
                   assert (!call_scenario->transactions[checkTxn - 1].isInvite);
-                  /* This is a non-provisional message for the transaction, and
-                  * we have already gotten our allowable response.  Just make sure
-                  * that it is not a retransmission of the final response. * /
+
+                  // This is a non-provisional message for the transaction, and
+                  // we have already gotten our allowable response.  Just make sure
+                  // that it is not a retransmission of the final response. 
+
                   if (txn.getTransactionResponseHash() == hash(msg)) {
-                    /* We have gotten this retransmission out-of-order, let's just ignore it. * /
+                    // We have gotten this retransmission out-of-order, let's just ignore it. 
                     TRACE_MSG("-----------------------------------------------\n"
                       "Ignoring final %s message for transaction %s:\n\n%s\n",
                       TRANSPORT_TO_STRING(transport), call_scenario->messages[search_index]->getTransactionName().c_str(), msg);
@@ -3690,12 +3695,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
                 }
               }
             } else {
-              /*
-              * we received a non mandatory msg for an old transaction (this could be due to a retransmit.
-              * If this response is for an INVITE transaction, retransmit the ACK to quench retransmits.
-              * This is unaware of multi-dialog scenarios and won't produce desired results if the index+1's
-              * ACK is for a different call-id.
-              * /
+              
+               //we received a non mandatory msg for an old transaction (this could be due to a retransmit.
+               //If this response is for an INVITE transaction, retransmit the ACK to quench retransmits.
+               //This is unaware of multi-dialog scenarios and won't produce desired results if the index+1's
+               //ACK is for a different call-id.
+              
               if ( (reply_code) &&
                 (0 == strncmp (responsecseqmethod, "INVITE", strlen(responsecseqmethod)) ) &&
                 (call_scenario->messages[search_index+1]->M_type == MSG_TYPE_SEND) &&
@@ -3745,9 +3750,40 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
         }
       }
     } else {
+      //unexpected message handling 
       T_AutoMode L_case;
       if ((L_case = checkAutomaticResponseMode(request)) == 0) {
         //E_AM_DEFAULT (0)  means it wasnt a BYE,CANCEL,PING,AA,AA_REGISTER,OOCALL
+
+        if (loose_message_sequence){
+          // replace the reason message with list of possible incoming matches instead of just the 
+          // last one that is returned by multiple calls to matches_scenario
+          if (!*request) {
+            sprintf(reason, "Response '%d' does not match expected request(s)\n", reply_code);
+          } else {
+            sprintf(reason, "Request '%s' does not match expected request(s)\n", request);
+          }
+          string reasons = string (reason);
+          set<int>::iterator it;
+          for ( it=encountered_dialogs_with_nonoptional_msg.begin();
+            it != encountered_dialogs_with_nonoptional_msg.end(); it++){
+              int msgindex = dialog_msgindex[*it];
+              if (call_scenario->messages[msgindex]->recv_request) {
+                sprintf(reason,"\tMessage index %3d, %s(%d)\n",
+                  msgindex, call_scenario->messages[msgindex]->recv_request, *it);
+              }
+              else{
+                sprintf(reason,"\tMessage index %3d, %3d(%d)\n",
+                  msgindex, call_scenario->messages[msgindex]->recv_response, *it);
+              }
+              reasons = reasons + string(reason);
+          }
+          if (reasons.size() >= MAX_HEADER_LEN ){
+            reasons = reasons.substr(0,MAX_HEADER_LEN);
+          }
+          sprintf(reason,reasons.c_str());
+        }
+
         if (!process_unexpected(msg, reason)) {
           DEBUG("Call aborted by unexpected message handling");
           return false;
@@ -4004,51 +4040,34 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
       DEBUG("Matched Mandatory message or Matched Message uses next cmd");
       if (loose_message_sequence) 
       {
-        // this message was the expected one, message was in sequence
-        // so search_index (which is the index we found a match at)
-        // should be one greater than the current msg_index. 
-        if ((search_index - msg_index) <=1) {
+        if (search_index == msg_index) {
           DEBUG("Message Received was the expected message");
           if (call_scenario->messages[search_index]->optional==OPTIONAL_TRUE){
-            // received message is optional and is the one we were waiting for
-            DEBUG("Received Message %d, an optional message, Index not advanced");
+            DEBUG("Received Message %d, an optional message, Index not advanced",search_index);
             return true;
           }
           else{
-            // received message is mandatory and is the one we were waiting for
             DEBUG("current msg_index = %d, incoming matched mandatory message, search_index=%d",
               msg_index,search_index);
-            // scan ahead from matched index to see if we have any other already 
-            // received messages that we can skip past (match index forward)
-            msg_index = get_last_insequence_received_message(search_index);
+            // scan ahead for pre-received messages that we can skip past 
+            //msg_index = get_last_insequence_received_message(search_index);
           }
         }
         else{
           // this is an unexpected early message
-          // Check and see if we can advance from current msg_index up to
-          // match index (and perhaps beyond for other early messages).
-          DEBUG("current msg_index = %d, incoming matched future message search_index=%d",
+          DEBUG("current scenario msg_index = %d, incoming matched future message search_index=%d",
             msg_index,search_index);
+          // see if we can advance msg_index to incoming message
           msg_index = get_last_insequence_received_message(msg_index);
           if (msg_index < search_index){
-            // current message = mandatory
-            // received message = future optional or mandatory
-            // unreceived mandatory messages between current and received
-            // could not advance to match position, keep waiting
-            // eg matched message was from a different dialog than 
-            // the one we are currently waiting for.
-            // we need to keep waiting for current message
-            DEBUG("msg_index = %d, incoming matched future message search_index=%d, Note advancing, keep waiting",
+            // could not advance to match position, keep waiting for current msg_index
+            DEBUG("msg_index = %d, incoming matched future message search_index=%d, Not able to advance to incoming message, keep waiting for current msg_index",
               msg_index,search_index);
             return true;
           }
           else{
-            // current message = optional
-            // received message = future mandatory
-            // could advance to match position or beyond, proceed to next
             DEBUG("msg_index = %d, incoming matched future message search_index=%d, Skipped pre-received messsages, Proceed to next message",
               msg_index,search_index);
-            return next();
           }
         }
       }
@@ -4112,8 +4131,8 @@ double call::get_rhs(CAction *currentAction) {
 * Input:  the message index that we want to start searching from 
 * Returns: 
 *   the last "in sequence"  received message index     
-*   "in sequence" = skips over optional messages only 
-*       if there is a mandatory received message directly after them
+*   "in sequence" = skips over optional messages only if there is a 
+*        mandatory received message directly after them
 *   return value may be the current message, which may be an optional message
 * post condition : 
  *  if a future insequence mandatory message exists, it will not have been received. 
@@ -4139,7 +4158,7 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
     if ((call_scenario->messages[search_index+1]->nb_recv >= cumulative_calls)
       && (call_scenario->messages[search_index+1]->optional==OPTIONAL_FALSE))
     {
-      DEBUG( "Mandatory Message received, advancing candidate to message: %d, nb_recv: %d, calls: %d\n",
+      DEBUG( "Next Message was Mandatory and already received, advancing candidate to message: %d, nb_recv: %d, calls: %d\n",
         search_index+1, 
         call_scenario->messages[search_index+1]->nb_recv, 
         cumulative_calls );
@@ -4149,13 +4168,14 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
     //next_is_optional - look ahead in scenario, if received msg found later in scenario than optional msg, skip ahead.
     if (call_scenario->messages[search_index+1]->optional==OPTIONAL_TRUE) 
     {
-      DEBUG("Optional Message, keep searching");
+      DEBUG("Next Message is Optional , keep searching");
       continue;
     }
     //only get here if msg[searchindex] is mandatory and not received.
+    DEBUG("Found message %d, mandatory, unrecieved message, stop searching for candidate indexes to advance to",search_index);
     break;
   }
-  // candidate has already been received.  No insequence received messages follow this message. 
+  // candidate has already been received.  No mandatory insequence received messages follow this message. 
   // insequence means seperated by optionals only. Optionals may or may not be already received.
   DEBUG_OUT( "last insequence received message is %d\n",candidate_index);
   return candidate_index;

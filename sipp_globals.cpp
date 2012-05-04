@@ -1,5 +1,4 @@
 /*
-/*
  * sipp_globals.cpp
  *
  *  Created on: Mar 9, 2012
@@ -234,12 +233,13 @@ unsigned long      watchdog_reset          = 600000;
  int               startDynamicId          = 10000;  // offset for first dynamicId  FIXME:in CmdLine
  int               stepDynamicId           = 4;      // step of increment for dynamicId
 
-
-//#define GET_TIME(clock)       \
-//{                             \
-//  struct timezone tzp;        \
-//  gettimeofday (clock, &tzp); \
-//}
+/**
+#define GET_TIME(clock)       \
+{                             \
+  struct timezone tzp;        \
+  gettimeofday (clock, &tzp); \
+}
+**/
 
 /*********************** Global Sockets  **********************/
 

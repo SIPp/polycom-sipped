@@ -45,7 +45,7 @@ class LooseMessageSequencing < Test::Unit::TestCase
   def test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_server.sipp -mc")
     test.expected_exitstatus = 1
-    test.expected_error_log = /unexpected message.*while expecting \'RANDOM\' \(index 3\)\. Request \'RANDOM\' does not match expected request \'NOTIFY\'/
+    test.expected_error_log = /Request \'RANDOM\' does not match expected request\(s\).*Message index   6, 200\(2\).*Message index  10, SUBSCRIBE\(3\).*Message index   4, REGISTER\(4\).*Message index  14, NOTIFY\(5\)/m
     assert(test.run())
   end    
   
