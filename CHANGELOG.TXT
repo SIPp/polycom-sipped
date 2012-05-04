@@ -1,4 +1,13 @@
 This file tracks changes responsible for version number updates.
+
+
+3.2.33 May 04 2012
+- loose_message_sequence refinements 
+- fleshing out debug statements
+- enable receipt of multiple copies of optional
+- fix handling of mandatory while waiting on optional
+
+
 3.2.32 May 02 2012
 - loose_message_sequence refinements 
 - auto detect use of branching (next and jump) to disable loose_message_sequence
