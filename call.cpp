@@ -3377,7 +3377,7 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
     sprintf(reason, "Call-ID does not match: Expected = '%s', Actual = '%s'", ds->call_id.c_str(), call_id.c_str());
     result = false;
   }
-  DEBUG_OUT("returning %s", result ? "true" : "false");
+  DEBUG_OUT("returning %s, reason = %s", result ? "true" : "false", reason);
   return result;
 }
 
@@ -3580,7 +3580,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
         search_index, msg_index, call_scenario->messages[search_index]->dialog_number);
       if ( it == encountered_dialogs_with_nonoptional_msg.end()) {
         // process dialogs that we have not yet encountered mandatory messages from
-        DEBUG("Dialog %d, not encountered yet", call_scenario->messages[search_index]->dialog_number);
+        DEBUG("Dialog %d, mandatory message not encountered yet", call_scenario->messages[search_index]->dialog_number);
         if(matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id, reason)) { 
           // rec'd msg matches current expected message. 
 
@@ -3759,9 +3759,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           // replace the reason message with list of possible incoming matches instead of just the 
           // last one that is returned by multiple calls to matches_scenario
           if (!*request) {
-            sprintf(reason, "Response '%d' does not match expected request(s)\n", reply_code);
+            sprintf(reason, "Response '%d' does not match any expected message\n", reply_code);
           } else {
-            sprintf(reason, "Request '%s' does not match expected request(s)\n", request);
+            sprintf(reason, "Request '%s' does not match any expected message\n", request);
           }
           string reasons = string (reason);
           set<int>::iterator it;
@@ -3772,9 +3772,26 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
                 sprintf(reason,"\tMessage index %3d, %s(%d)\n",
                   msgindex, call_scenario->messages[msgindex]->recv_request, *it);
               }
-              else{
+              else if (call_scenario->messages[msgindex]->recv_response > 0 ){
                 sprintf(reason,"\tMessage index %3d, %3d(%d)\n",
                   msgindex, call_scenario->messages[msgindex]->recv_response, *it);
+              }
+              // We could omit the following but maybe useful to user to know
+              // these are next valid outgoing mandatory message (before any
+              // incoming messages for that dialog can be received.
+               else if ( (call_scenario->messages[msgindex]->send_scheme) &&
+                (call_scenario->messages[msgindex]->send_scheme->getMethod()) ) {
+                sprintf(reason,"\tMessage index %3d, %s(%d) - SendingMessage\n",
+                  msgindex, call_scenario->messages[msgindex]->send_scheme->getMethod(), *it);
+              }
+              else if ((call_scenario->messages[msgindex]->send_scheme)&&
+                (call_scenario->messages[msgindex]->send_scheme->getCode()>0)){
+                sprintf(reason,"\tMessage index %3d, %3d(%d) - SendingMessage\n",
+                  msgindex, call_scenario->messages[msgindex]->send_scheme->getCode(), *it);
+              }
+              else {
+                sprintf(reason,"\tMessage index %3d, UKNOWN(%d)\n",
+                  msgindex, *it);
               }
               reasons = reasons + string(reason);
           }
@@ -4147,11 +4164,16 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
   unsigned long long cumulative_calls = call_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) +
     call_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated);
 
-  DEBUG_IN("scan forwrd from message index %d", search_from_msg_index);
+  DEBUG_IN("scan forwrd from message index %d, incalls %lld, outcalls %lld, total calls %lld ", 
+    search_from_msg_index, 
+    call_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated),
+    call_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated), 
+    cumulative_calls
+    );
   for (search_index = search_from_msg_index; search_index < call_scenario->messages.size()-1; search_index++)
   {
-    DEBUG("current message index %d, n+1: %d, n+1.nb_recv:- %d, calls: cumulative_calls ", 
-      search_index, call_scenario->messages[search_index+1]->nb_recv, cumulative_calls );
+    DEBUG("current message index %d, next index: %d, next.nb_recv: %d, calls: %lld cumulative_calls ", 
+      search_index, search_index +1, call_scenario->messages[search_index+1]->nb_recv, cumulative_calls );
     //next_hasbeen_received_in_advance as marked by fact that counter nb_recv = calls
     //only want to advance to last sequentially received mandatory message 
     //   allows  out of order optional messages until next mandatory message is received
@@ -4172,7 +4194,8 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
       continue;
     }
     //only get here if msg[searchindex] is mandatory and not received.
-    DEBUG("Found message %d, mandatory, unrecieved message, stop searching for candidate indexes to advance to",search_index);
+    DEBUG("Found next message %d is a mandatory, unreceived message, stop searching for candidate indexes to advance to",
+      search_index+1);
     break;
   }
   // candidate has already been received.  No mandatory insequence received messages follow this message. 

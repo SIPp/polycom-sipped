@@ -42,10 +42,11 @@ class LooseMessageSequencing < Test::Unit::TestCase
   
 # negative tests here...
 
+# tests failure and verifies failure message points to correct list of acceptable message indexes
   def test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_server.sipp -mc")
     test.expected_exitstatus = 1
-    test.expected_error_log = /Request \'RANDOM\' does not match expected request\(s\).*Message index   6, 200\(2\).*Message index  10, SUBSCRIBE\(3\).*Message index   4, REGISTER\(4\).*Message index  14, NOTIFY\(5\)/m
+    test.expected_error_log = /Request \'RANDOM\' does not match any expected message.*Message index   6, 200\(2\).*Message index  10, SUBSCRIBE\(3\).*Message index   4, REGISTER\(4\).*Message index  14, NOTIFY\(5\)/m
     assert(test.run())
   end    
   
@@ -68,5 +69,453 @@ class LooseMessageSequencing < Test::Unit::TestCase
     test.expected_error_log = /unexpected message.*while expecting \'RANDOM\'\s\(index 3\)\.\sResponse\s\'200\'\sdoes not match/
     assert(test.run())
   end    
+  
+  
+# a base test case , this should pass  
+  def test_bla_register_sub
+    test = SippTest.new("test_bla_register_sub", "-sf test_bla_register_sub_client.sipp  -mc", "-sf test_bla_register_sub_server.sipp -mc")
+    assert(test.run())
+  
+  end
+# simplify base case by removing second phone  
+  def test_bla_register_sub_no2nd
+    test = SippTest.new("test_bla_register_sub_no2nd", "-sf test_bla_register_sub_client_no2nd.sipp  -mc", "-sf test_bla_register_sub_server_no2nd.sipp -mc")
+    assert(test.run())
+  end
+
+# test out of sequence notify to verify failure  
+#             SERVER                      CLIENT
+# 0 :    REGISTER(1 ) <----------  0 :    REGISTER(1 ) ---------->
+# 1 :         200(1 ) ---------->  1 :         200(1 ) <----------
+# 2 :   SUBSCRIBE(2 ) <----------  2 :   SUBSCRIBE(2 ) ---------->
+#                                 3 :         200(2 ) <----------
+# 3 :      NOTIFY(2 ) ---------->  4 :      NOTIFY(2 ) <----------  # fails here
+# 4 :         200(2 ) ---------->  
+# 5 :         200(2 ) <----------  5 :         200(2 ) ---------->
+# 6 :   SUBSCRIBE(3 ) ---------->  6 :   SUBSCRIBE(3 ) <----------
+# 7 :         202(3 ) <----------  7 :         202(3 ) ---------->
+# 8 :      NOTIFY(3 ) <----------  8 :      NOTIFY(3 ) ---------->
+# 9 :         200(3 ) ---------->  9 :         200(3 ) <----------
+
+  def test_bla_register_sub_no2nd_early_notify
+    test = SippTest.new("test_bla_register_sub_no2nd_early_notify", "-sf test_bla_register_sub_client_no2nd.sipp  -mc", "-sf test_bla_register_sub_server_early_notify.sipp -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /unexpected message.*while expecting \'200\'\s\(index 3\)\.\sRequest\s\'NOTIFY\'\sdoes not match.*Message index   3, 200\(2\).*Message index   6, SUBSCRIBE\(3\)/m
+    assert(test.run())
+  end
+  
+# test out of sequence notify around optional to verify late optional will fail
+#       
+# 0 :    REGISTER(1 ) <----------  0 :    REGISTER(1 ) ---------->
+# 1 :         200(1 ) ---------->  1 :         200(1 ) <----------
+# 2 :   SUBSCRIBE(2 ) <----------  2 :   SUBSCRIBE(2 ) ---------->
+#                                 3 :         200(2 ) <*---------
+# 3 :      NOTIFY(2 ) ---------->  4 :      NOTIFY(2 ) <----------  
+# 4 :         200(2 ) ---------->                                    // should fail here
+# 5 :         200(2 ) <----------  5 :         200(2 ) ---------->
+# 6 :   SUBSCRIBE(3 ) ---------->  6 :   SUBSCRIBE(3 ) <----------
+# 7 :         202(3 ) <----------  7 :         202(3 ) ---------->
+# 8 :      NOTIFY(3 ) <----------  8 :      NOTIFY(3 ) ---------->
+# 9 :         200(3 ) ---------->  9 :         200(3 ) <----------
+
+  def test_bla_register_sub_no2nd_early_notify_optional_200
+    test = SippTest.new("test_bla_register_sub_no2nd_early_notify_optional_200", "-sf test_bla_register_sub_client_no2nd_optional200.sipp -mc", "-sf test_bla_register_sub_server_early_notify.sipp -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /unexpected message.*while expecting \'SUBSCRIBE\' \(index 6\)\. Response \'200\' does not match any expected message.*Message index   6, SUBSCRIBE\(3\)/m
+    assert(test.run())
+  end
+
+# test multiple optional recieves between sends - should fail parsing
+#       
+# 0 :    REGISTER(1 ) <----------  0 :    REGISTER(1 ) ---------->
+# 1 :         200(1 ) ---------->  1 :         200(1 ) <----------
+# 2 :   SUBSCRIBE(2 ) <----------  2 :   SUBSCRIBE(2 ) ---------->
+#                                 3 :         200(2 ) <*---------
+# 3 :      NOTIFY(2 ) ---------->  4 :      NOTIFY(2 ) <*---------  
+# 4 :         200(2 ) ---------->                                    
+# 5 :         200(2 ) <----------  5 :         200(2 ) ---------->
+# 6 :   SUBSCRIBE(3 ) ---------->  6 :   SUBSCRIBE(3 ) <----------
+# 7 :         202(3 ) <----------  7 :         202(3 ) ---------->
+# 8 :      NOTIFY(3 ) <----------  8 :      NOTIFY(3 ) ---------->
+# 9 :         200(3 ) ---------->  9 :         200(3 ) <----------
+# exercises scenario::checkOptionalRecv
+  def test_bla_register_sub_no2nd_early_notify_optional_200andNotify
+    test = SippTest.new("test_bla_register_sub_no2nd_early_notify_optional_200andNotify", "-sf test_bla_register_sub_client_no2nd_optional200Notify.sipp -mc", "-sf test_bla_register_sub_server_early_notify.sipp -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /<recv> before <send> sequence without a mandatory message/m
+    assert(test.run())
+  end
+  
+  
+  
+# test waiting on optional, recv mandatory  - should pass
+#       SERVER                              CLIENT
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(2 ) <----------    2 :   SUBSCRIBE(2 ) ---------->  
+# 3 :         ACK(2 ) ---------->    3 :         ACK(2 ) <*---------  waiting on opt 
+#                                   4 :         200(2 ) <*---------  
+# 4 :      NOTIFY(2 ) ---------->    5 :      NOTIFY(2 ) <----------  recv mandatory
+# 6 :         200(2 ) <----------    6 :         200(2 ) ---------->  
+# 7 :   SUBSCRIBE(3 ) ---------->    7 :   SUBSCRIBE(3 ) <----------  
+# 8 :         202(3 ) <----------    8 :         202(3 ) ---------->  
+# 9 :      NOTIFY(3 ) <----------    9 :      NOTIFY(3 ) ---------->  
+# 10:         200(3 ) ---------->    10:         200(3 ) <----------  
+
+
+  def test_waiting_on_opt_recv_mand_same_dialog
+    test = SippTest.new("test_waiting_on_opt_recv_mand_same_dialog", "-sf test_bla_register_sub_client_no2nd_optional200_wAck.sipp -mc", "-sf test_bla_register_sub_server_early_notify_wAck.sipp -mc")
+    #test.expected_exitstatus = 1
+    #test.expected_error_log = /<recv> before <send> sequence without a mandatory message/m
+    assert(test.run())
+  end
+  
+  
+
+# early mandatory, other dialog while waiting on optional - should pass
+#         SERVER                            CLIENT
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(2 ) <----------    2 :   SUBSCRIBE(2 ) ---------->  
+# 3 :         ACK(2 ) ---------->    3 :         ACK(2 ) <*---------  waiting on opt 
+# 7 :   SUBSCRIBE(3 ) ---------->                                    early subscribe
+#                                   4 :         200(2 ) <*---------  
+# 4 :      NOTIFY(2 ) ---------->    5 :      NOTIFY(2 ) <----------  recv mand
+      
+# 6 :         200(2 ) <----------    6 :         200(2 ) ---------->  
+# 7 :   SUBSCRIBE(3 ) <----------  
+# 8 :         202(3 ) <----------    8 :         202(3 ) ---------->  
+# 9 :      NOTIFY(3 ) <----------    9 :      NOTIFY(3 ) ---------->  
+# 10:         200(3 ) ---------->    10:         200(3 ) <----------  
+  def test_waiting_on_opt_recv_mand_other_dialog
+    test = SippTest.new("test_waiting_on_opt_recv_mand_other_dialog", "-sf test_bla_register_sub_client_no2nd_optional200_wAck.sipp -mc", "-sf test_bla_register_sub_server_early_notify_wAck_earlySubscribe.sipp -mc")
+    #test.expected_exitstatus = 1
+    #test.expected_error_log = /<recv> before <send> sequence without a mandatory message/m
+    assert(test.run())
+  end
+  
+# early out of sequence mandatory fr other dialog while waiting on optional - should fail
+#         SERVER                            CLIENT  
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(3 ) ---------->    2 :   SUBSCRIBE(3 ) <----------  
+# 3 :         202(3 ) <----------    3 :         202(3 ) ---------->  
+# 4 :   SUBSCRIBE(2 ) <----------    4 :   SUBSCRIBE(2 ) ---------->  
+#                                   5 :         ACK(2 ) <*---------  wait on optional
+# 5 :         200(3 ) ---------->                                    out of seq mandatory fr other dialog
+#                                   6 :         200(2 ) <*---------  
+# 6 :      NOTIFY(2 ) ---------->    7 :      NOTIFY(2 ) <----------  
+# 7 :         200(2 ) <----------    8 :         200(2 ) ---------->  
+# 8 :      NOTIFY(3 ) <----------    9 :      NOTIFY(3 ) ---------->  
+#                                   10:         200(3 ) <----------  
+
+  def test_waiting_on_opt_recv_out_of_order_mand_other_dialog
+    test = SippTest.new("test_waiting_on_opt_recv_out_of_order_mand_other_dialog", "-sf test_bla_register_sub_client_no2nd_optional200_wAck_earlyDiialog3.sipp -mc", "-sf test_bla_register_sub_server_early_notify_wAck_earlySubscribe_early200.sipp  -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'ACK\' \(index 5\). Response \'200\' does not match.*Message index   7.*Message index   9/m
+    assert(test.run())
+  end
+
+#verify optional messages cannot be received if required mandatory messages for that dialog have not been processed while waiting on optional
+#         SERVER                            CLIENT  
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(2 ) <----------    2 :   SUBSCRIBE(2 ) ---------->  
+# 3 :   SUBSCRIBE(3 ) ---------->    3 :   SUBSCRIBE(3 ) <----------  
+# 4 :         202(3 ) <----------    4 :         202(3 ) ---------->  
+#                                   5 :         200(3 ) <*---------  Waiting optional dialog 3
+# 5 :         ACK(2 ) ---------->                                    recv illegal early opt dialog 2
+# 6 :         200(3 ) ---------->      
+# 7 :      NOTIFY(2 ) ---------->    6 :      NOTIFY(2 ) <----------  
+#                                   7 :         ACK(2 ) <*---------  
+# 8 :         200(2 ) <----------    8 :         200(2 ) <----------  
+#                                   9 :         200(2 ) ---------->  
+# 9 :      NOTIFY(3 ) <----------    10:      NOTIFY(3 ) ---------->  
+#                                   11:         200(3 ) <----------  
+
+  def test_wait_opt_recv_opt_other_dialog_too_early
+    test = SippTest.new("test_wait_opt_recv_opt_other_dialog_too_early", "-sf test_wait_opt_recv_opt_other_dialog_too_early_client.sipp -mc", "-sf test_wait_opt_recv_opt_other_dialog_too_early_server.sipp  -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'ACK\' does not match.*Message index   6.*Message index  10/m
+    assert(test.run())
+  end
+  
+#verify optional messages cannot be received if required mandatory messages for that dialog have not been processed while waiting on mandatory
+#         SERVER                            CLIENT  
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(2 ) <----------    2 :   SUBSCRIBE(2 ) ---------->  
+# 3 :   SUBSCRIBE(3 ) ---------->    3 :   SUBSCRIBE(3 ) <----------  
+# 4 :         202(3 ) <----------    4 :         202(3 ) ---------->  
+#                                   5 :         200(3 ) <----------  Waiting mandatory dialog 3
+# 5 :         ACK(2 ) ---------->                                    recv illegal early opt dialog 2
+# 6 :         200(3 ) ---------->      
+# 7 :      NOTIFY(2 ) ---------->    6 :      NOTIFY(2 ) <----------  
+#                                   7 :         ACK(2 ) <*---------  
+# 8 :         200(2 ) <----------    8 :         200(2 ) <----------  
+#                                   9 :         200(2 ) ---------->  
+# 9 :      NOTIFY(3 ) <----------    10:      NOTIFY(3 ) ---------->  
+#                                   11:         200(3 ) <----------  
+
+  def test_wait_man_recv_opt_other_dialog_too_early
+    test = SippTest.new("test_wait_man_recv_opt_other_dialog_too_early", "-sf test_wait_man_recv_opt_other_dialog_too_early_client.sipp -mc", "-sf test_wait_opt_recv_opt_other_dialog_too_early_server.sipp  -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'ACK\' does not match.*Message index   6.*Message index   5/m
+    assert(test.run())
+  end
+
+#verify mandatory messages cannot be received if required mandatory messages for that dialog have not been processed while waiting on mandatory
+#         SERVER                            CLIENT  
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(2 ) <----------    2 :   SUBSCRIBE(2 ) ---------->  
+# 3 :   SUBSCRIBE(3 ) ---------->    3 :   SUBSCRIBE(3 ) <----------  
+# 4 :         202(3 ) <----------    4 :         202(3 ) ---------->  
+#                                   5 :         200(3 ) <----------  Waiting mandatory dialog 3
+# 5 :         ACK(2 ) ---------->                                    recv illegal early mandatory dialog 2
+# 6 :         200(3 ) ---------->      
+# 7 :      NOTIFY(2 ) ---------->    6 :      NOTIFY(2 ) <----------  
+#                                   7 :         ACK(2 ) <----------  
+# 8 :         200(2 ) <----------    8 :         200(2 ) <----------  
+#                                   9 :         200(2 ) ---------->  
+# 9 :      NOTIFY(3 ) <----------    10:      NOTIFY(3 ) ---------->  
+#                                   11:         200(3 ) <----------  
+
+  def test_wait_man_recv_man_other_dialog_too_early
+    test = SippTest.new("test_wait_man_recv_man_other_dialog_too_early", "-sf test_wait_man_recv_man_other_dialog_too_early_client.sipp -mc", "-sf test_wait_opt_recv_opt_other_dialog_too_early_server.sipp  -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'ACK\' does not match.*Message index   6.*Message index   5/m
+    assert(test.run())
+  end
+ 
+# ref base - everything in one dialog using mc 
+# SERVER    CLIENT
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------
+# 2 :   SUBSCRIBE(1 ) <----------    2 :   SUBSCRIBE(1 ) ---------->
+# 3 :    REGISTER(1 ) ---------->    3 :    REGISTER(1 ) <----------
+# 4 :         200(1 ) ---------->    4 :         200(1 ) <----------
+# 5 :      NOTIFY(1 ) ---------->    5 :      NOTIFY(1 ) <----------
+# 6 :         200(1 ) <----------    6 :         200(1 ) ---------->
+# 7 :   SUBSCRIBE(1 ) ---------->    7 :   SUBSCRIBE(1 ) <----------
+# 8 :         202(1 ) <----------    8 :         202(1 ) ---------->
+# 9 :      NOTIFY(1 ) <----------    9 :      NOTIFY(1 ) ---------->
+# 10:         200(1 ) ---------->    10:         200(1 ) <----------
+# 11:      NOTIFY(1 ) ---------->    11:      NOTIFY(1 ) <----------
+
+  def test_all_one_dialog_ref
+    test = SippTest.new("test_all_one_dialog_ref", "-sf test_advancing_prereceived_after_send_client.sipp -mc", "-sf test_advancing_prereceived_after_send_server.sipp  -mc")
+    #test.expected_exitstatus = 1
+    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'ACK\' does not match.*Message index   6.*Message index   5/m
+    assert(test.run())
+  end
+#         SERVER                            CLIENT      
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 3 :    REGISTER(2 ) ---------->                                     early legal receipt
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(1 ) <----------    2 :   SUBSCRIBE(1 ) ---------->   this send should trigger jumping over prereceived
+#                                    11:      NOTIFY(1 ) <*----------  waiting on optional should not occur - prereceived next message
+#                                    3 :    REGISTER(2 ) <---------  
+# 4 :         200(1 ) ---------->    4 :         200(1 ) <----------  
+# 5 :      NOTIFY(1 ) ---------->    5 :      NOTIFY(1 ) <----------  
+# 6 :         200(1 ) <----------    6 :         200(1 ) ---------->  
+# 7 :   SUBSCRIBE(1 ) ---------->    7 :   SUBSCRIBE(1 ) <----------  
+# 8 :         202(1 ) <----------    8 :         202(1 ) ---------->  
+# 9 :      NOTIFY(1 ) <----------    9 :      NOTIFY(1 ) ---------->  
+# 10:         200(1 ) ---------->    10:         200(1 ) <----------  
+      
+  def test_skipping_prereceived_after_send
+    test = SippTest.new("test_skipping_prereceived_after_send", "-sf test_advancing_prereceived_after_send_client_opt_notify.sipp -mc", "-sf test_advancing_prereceived_after_send_server_early_reg.sipp  -mc")
+    assert(test.run())
+  end
+  
+  
+  
+  #         SERVER                            CLIENT      
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->  
+# 3 :    REGISTER(2 ) ---------->                                     early legal receipt
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------  
+# 2 :   SUBSCRIBE(1 ) <----------    2 :   SUBSCRIBE(1 ) ---------->   this send should trigger jumping over prereceived
+#                                    11:      NOTIFY(1 ) <*----------  waiting on optional should not occur - prereceived next message
+# 3 :    REGISTER(2 ) ---------->    3 :    REGISTER(2 ) <---------   double register should fail  
+# 4 :         200(1 ) ---------->    4 :         200(1 ) <----------  
+# 5 :      NOTIFY(1 ) ---------->    5 :      NOTIFY(1 ) <----------  
+# 6 :         200(1 ) <----------    6 :         200(1 ) ---------->  
+# 7 :   SUBSCRIBE(1 ) ---------->    7 :   SUBSCRIBE(1 ) <----------  
+# 8 :         202(1 ) <----------    8 :         202(1 ) ---------->  
+# 9 :      NOTIFY(1 ) <----------    9 :      NOTIFY(1 ) ---------->  
+# 10:         200(1 ) ---------->    10:         200(1 ) <----------  
+      
+  def test_skipping_prereceived_after_send_w_illegal_double_reg
+    test = SippTest.new("test_skipping_prereceived_after_send_w_illegal_double_reg", "-sf test_advancing_prereceived_after_send_client_opt_notify.sipp -mc", "-sf test_advancing_prereceived_after_send_server_early_reg_and_twice.sipp  -mc")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'REGISTER\' does not match.*Message index   5,\s*200\(1\)/m
+    assert(test.run())
+  end
+  
+# test multiple calls (invites?) both initiated and received since this is our 
+# reference for wether or not messages are already received.  
+
+# another reference cases before we continue exercising loose_message_sequence  
+ #              sERVER	                        	CLIENT
+# 0 :          INVITE <----------		0 :          INVITE ---------->
+#                                   1 :             100 <*---------
+# 1 :             180 ---------->		2 :             180 <*---------
+#                                   3 :             183 <*---------
+# 2 :             200 ---------->		4 :             200 <----------
+# 3 :             ACK <*---------		5 :             ACK ---------->
+#                                   6 :       Pause     [      0ms]
+# 4 :             BYE <----------		7 :             BYE ---------->
+# 5 :             200 ---------->		8 :             200 <----------
+ 
+   def test_uas_uac
+    test = SippTest.new("test_uas_uac", "-sf myuac.sipp -mc -m 10", "-sf myuas.sipp  -mc -m 10")
+    #test.expected_exitstatus = 1
+    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'REGISTER\' does not match.*Message index   5,\s*200\(1\)/m
+    assert(test.run())
+  end 
+  
+   #              sERVER	                        	CLIENT
+# 0 :      INVITE(1 ) <----------		0 :      INVITE(1 ) ---------->
+#                                   1 :         100(1 ) <*---------
+# 1 :         180(1 ) ---------->		2 :         180(1 ) <*---------
+#                                   3 :         183(1 ) <*---------
+# 2 :         200(1 ) ---------->		4 :         200(1 ) <----------
+# 3 :         ACK(1 ) <*---------		5 :         ACK(1 ) ---------->
+#                                   6 :       Pause     [      0ms]
+# 4 :         BYE(1 ) <----------		7 :         BYE(1 ) ---------->
+# 5 :         200(1 ) ---------->		8 :         200(1 ) <----------
+
+ 
+   def test_uas_uac_dialog
+    test = SippTest.new("test_uas_uac_dialog", "-sf myuac_dialog.sipp -mc -m 10", "-sf myuas_dialog.sipp  -mc -m 10")
+    #test.expected_exitstatus = 1
+    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'REGISTER\' does not match.*Message index   5,\s*200\(1\)/m
+    assert(test.run())
+  end 
+  
+# 0 :      INVITE(1 ) <----------		0 :      INVITE(1 ) ---------->
+#                                   1 :         100(1 ) <*---------
+# 1 :         180(1 ) ---------->		2 :         180(1 ) <*---------
+#                                   3 :         183(1 ) <*---------
+# 2 :         200(1 ) ---------->		4 :         200(1 ) <----------
+# 3 :         200(1 ) ---------->		
+# 4 :         ACK(1 ) <*---------		5 :         ACK(1 ) ---------->
+#                                   6 :       Pause     [   1000ms]
+# 5 :         BYE(1 ) <----------		7 :         BYE(1 ) ---------->
+# 6 :         200(1 ) ---------->		8 :         200(1 ) <----------
+
+  
+  def test_unexpected_message_during_pause
+    test = SippTest.new("test_unexpected_message_during_pause", "-sf myuac_dialog_1secPause.sipp -mc ", "-sf myuas_dialog_double200.sipp  -mc ")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while pausing \(index 6\). Response \'200\' does not match.*Message index   7,\s*BYE\(1\)/m
+    assert(test.run())
+  end 
+  
+ #          SERVER                      		CLIENT	
+# 0 :      INVITE(1 ) <----------		0 :      INVITE(1 ) ---------->	
+#                                   1 :         100(1 ) <*---------	
+# 1 :         180(1 ) ---------->		2 :         180(1 ) <*---------	
+#                                   3 :         183(1 ) <*---------	
+# 2 :         200(1 ) ---------->		4 :         200(1 ) <----------	
+# 3 :         200(1 ) ---------->                                       should fail here
+# 4 :         ACK(1 ) <*---------		5 :         ACK(1 ) ---------->	
+#                                   6 :       Pause     [   1000ms]	
+# 5 :         BYE(1 ) <----------		7 :         BYE(1 ) ---------->	
+# 6 :         200(1 ) ---------->		8 :         200(1 ) <----------	
+			
+# 7 :      INVITE(2 ) <----------		9 :      INVITE(2 ) ---------->	
+#                                   10:         100(2 ) <*---------	
+# 8 :         180(2 ) ---------->		11:         180(2 ) <*---------	
+#                                   12:         183(2 ) <*---------	
+# 9 :         200(2 ) ---------->		13:         200(2 ) <----------	
+# 10:         200(2 ) ---------->			
+# 11:         ACK(2 ) <*---------		14:         ACK(2 ) ---------->	
+#                                   15:       Pause     [   1000ms]	
+# 12:         BYE(2 ) <----------		16:         BYE(2 ) ---------->	
+# 13:         200(2 ) ---------->		17:         200(2 ) <----------	
+  def test_unexpected_message_during_pause_2calls
+    test = SippTest.new("test_unexpected_message_during_pause_2calls", "-sf myuac_dialog_1secPause_2calls.sipp -mc ", "-sf myuas_dialog_double200_2calls.sipp  -mc ")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while pausing \(index 6\). Response \'200\' does not match.*Message index   7,\s*BYE\(1\)/m
+    assert(test.run())
+  end 
+  
+  
+ # Since we use cumulative calls compared to received count to determine if msg has been pre-received
+ # can we confuse sipp by having two simultaneous calls
+#          SERVER                      		CLIENT	
+#                                   9 :      INVITE(2 ) ---------->	
+# 0 :      INVITE(1 ) <----------		0 :      INVITE(1 ) ---------->	  creates 2 cumaltive calls - will this allow double recd msgs?
+#                                   1 :         100(1 ) <*---------	
+# 1 :         180(1 ) ---------->		2 :         180(1 ) <*---------	
+#                                   3 :         183(1 ) <*---------	
+# 2 :         200(1 ) ---------->		4 :         200(1 ) <----------	
+# 3 :         200(1 ) ---------->                                       should fail here
+# 4 :         ACK(1 ) <*---------		5 :         ACK(1 ) ---------->	
+#                                   6 :       Pause     [   1000ms]	
+# 5 :         BYE(1 ) <----------		7 :         BYE(1 ) ---------->	
+# 6 :         200(1 ) ---------->		8 :         200(1 ) <----------	
+			
+# 7 :      INVITE(2 ) <----------		
+#                                   10:         100(2 ) <*---------	
+# 8 :         180(2 ) ---------->		11:         180(2 ) <*---------	
+#                                   12:         183(2 ) <*---------	
+# 9 :         200(2 ) ---------->		13:         200(2 ) <----------	
+# 10:         200(2 ) ---------->			
+# 11:         ACK(2 ) <*---------		14:         ACK(2 ) ---------->	
+#                                   15:       Pause     [   1000ms]	
+# 12:         BYE(2 ) <----------		16:         BYE(2 ) ---------->	
+# 13:         200(2 ) ---------->		17:         200(2 ) <----------	
+
+  def test_unexpected_message_during_pause_2calls_earlyReg_call2
+    test = SippTest.new("test_unexpected_message_during_pause_2calls_earlyReg_call2", "-sf myuac_dialog_1secPause_2calls_early2ndinvite.sipp -mc ", "-sf myuas_dialog_double200_2calls.sipp  -mc ")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while pausing \(index 7\). Response \'200\' does not match.*Message index   8,\s*BYE\(1\).*Message index  13, 200\(2\)/m
+    assert(test.run())
+  end 
+  
+  
+  
+#           SERVER		                        CLIENT	
+# 0 :      INVITE(1 ) <----------		0 :      INVITE(1 ) ---------->	
+# 1 :      INVITE(2 ) <----------		9 :      INVITE(2 ) ---------->	
+#                                   1 :         100(1 ) <*---------	
+# 4 :         180(1 ) ---------->		2 :         180(1 ) <*---------	
+#                                   3 :         183(1 ) <*---------	
+			
+# 2 :         200(2 ) ---------->			                                  early 200 legal
+# 5 :         200(1 ) ---------->		4 :         200(1 ) <----------	
+# 3 :         200(2 ) ---------->			                                  2nd copy of early 200 - illegal, should fail
+# 6 :         ACK(1 ) <*---------		5 :         ACK(1 ) ---------->	
+#                                   6 :       Pause     [   1000ms]	    should block here, no legal incoming messages at this point
+# 7 :         BYE(1 ) <----------		7 :         BYE(1 ) ---------->	      both dialogs require a sendmessage next
+# 8 :         200(1 ) ---------->		8 :         200(1 ) <----------	
+			
+			
+#                                   10:         100(2 ) <*---------	
+# 9 :         180(2 ) ---------->		11:         180(2 ) <*---------	
+#                                   12:         183(2 ) <*---------	
+# 10:         200(2 ) ---------->		13:         200(2 ) <----------	
+# 11:         ACK(2 ) <*---------		14:         ACK(2 ) ---------->	
+#                                   15:       Pause     [   1000ms]	
+# 12:         BYE(2 ) <----------		16:         BYE(2 ) ---------->	
+# 13:         200(2 ) ---------->		17:         200(2 ) <----------	
+			
+
+
+  def test_unexpected_duplicate_early_message_during_2calls
+    test = SippTest.new("test_unexpected_duplicate_early_message_during_2calls", "-sf myuac_dialog_1secPause_2calls_ack.sipp -mc ", "-sf myuas_dialog_double200_2calls_earlydouble200.sipp  -mc ")
+    test.expected_exitstatus = 1
+    test.expected_error_log = /Aborting call on unexpected message for.*while pausing \(index 7\). Response \'200\' does not match.*Message index   8,\s*BYE\(1\).*Message index  14, ACK\(2\)/m
+    assert(test.run())
+  end 
+
+  
+  ##todo  nop pause handling -> scan over nops and pauses
+  #   unexpected message error handling  recv_erquest,  recv_response, send method, send code
+  # reason too large
+  
 end
 
