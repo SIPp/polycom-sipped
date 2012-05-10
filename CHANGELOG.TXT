@@ -1,5 +1,11 @@
 This file tracks changes responsible for version number updates.
 
+3.2.34 May 10 2012
+-loose_message_sequence fixes
+-preReceived messages after nop and pause are properly skipped over 
+-fix handling of duplicate advance messages
+-fix scan forward for acceptable next messages to stop at send messages
+-disallow last messages in scenario that are optional
 
 3.2.33 May 04 2012
 - loose_message_sequence refinements 

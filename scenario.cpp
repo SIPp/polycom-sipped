@@ -1078,6 +1078,11 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
     else
       found_scenario_tag = false;
   } // end while
+  //check if last message is optional and disallow it
+  if (messages[messages.size()-1]->optional == OPTIONAL_TRUE){
+    REPORT_ERROR("Last Message (index = %d) cannot be on optional message.\n%s", 
+      messages.size()-1, messages[messages.size()-1]->get_source_location().c_str());
+  }
 
   DEBUG("Finished processing elements.\n");
   free(method_list);

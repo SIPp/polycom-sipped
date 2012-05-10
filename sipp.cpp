@@ -3401,6 +3401,9 @@ void pollset_process(int wait)
       if ((transport == T_TCP || transport == T_TLS) && sock == main_socket) {
         // accept connection (limiting to remote_host if one was specified and we're using no_call_id_check)
         struct sipp_socket *new_sock = sipp_accept_socket(sock, (strlen(remote_host) && no_call_id_check) ? &remote_sockaddr : 0);
+        DEBUG("Allocated new socket remote %s, dest %s ", 
+          socket_to_ip_string(&(new_sock->ss_remote_sockaddr)).c_str(), 
+          socket_to_ip_string(&(new_sock->ss_dest)).c_str()  );
       } else if (sock == ctrl_socket) {
       	handle_ctrl_socket();
       } else if (sock == stdin_socket) {
@@ -4428,7 +4431,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.33"
+	  printf("\n SIPped v3.2.34"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -5448,7 +5451,7 @@ void close_calls(struct sipp_socket *socket) {
   DEBUG_OUT();
 }
 
-int determine_remote_ip() {
+void determine_remote_ip() {
   if(!strlen(remote_host)) {
     memset(&remote_sockaddr, 0, sizeof( remote_sockaddr ));
     // remote_host option required for client, optional for server.
@@ -5506,7 +5509,7 @@ int determine_remote_ip() {
 
 } // determine_remote_ip
 
-int determine_local_ip() {
+void determine_local_ip() {
   if(gethostname(hostname,64) != 0) {
     REPORT_ERROR_NO("Can't get local hostname in 'gethostname(hostname,64)'");
   }
@@ -5559,7 +5562,7 @@ int determine_local_ip() {
   }
 } // determine_local_ip
 
-int determine_remote_and_local_ip() {
+void determine_remote_and_local_ip() {
   determine_remote_ip();
   determine_local_ip();
 } // determine_remote_and_local_ip

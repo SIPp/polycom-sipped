@@ -518,7 +518,7 @@ int                        close_connections();
 int                        open_connections();
 void                       timeout_alarm(int);
 
-int                        determine_remote_and_local_ip();
+void                        determine_remote_and_local_ip();
 
 char                      *jump_over_timestamp(char *src);
 

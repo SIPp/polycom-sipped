@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+                                                        -->
+
+<scenario name="Basic UAS responder">
+  <recv request="INVITE" crlf="true" dialog="1">
+  </recv>
+
+  <send dialog="1">
+    <![CDATA[
+
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <send retrans="500" dialog="1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Type: application/sdp
+      Content-Length: [len]
+
+      v=0
+      o=user1 53655765 2353687637 IN IP[local_ip_type] [local_ip]
+      s=-
+      c=IN IP[media_ip_type] [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+
+    ]]>
+  </send>
+  
+  <recv request="ACK"
+        optional="true"
+        rtd="true"
+        dialog="1"
+        crlf="true">
+  </recv>
+
+  <recv request="BYE" dialog="1">
+  </recv>
+
+  <send dialog="1">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+<!-- second call -->
+
+  <recv request="INVITE" crlf="true" dialog="2">
+  </recv>
+
+  <send dialog="2">
+    <![CDATA[
+
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <send retrans="500" dialog="2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Type: application/sdp
+      Content-Length: [len]
+
+      v=0
+      o=user1 53655765 2353687637 IN IP[local_ip_type] [local_ip]
+      s=-
+      c=IN IP[media_ip_type] [media_ip]
+      t=0 0
+      a=sendrecv
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+
+    ]]>
+  </send>
+  
+  <recv request="ACK"
+        optional="true"
+        rtd="true"
+        dialog="2"
+        crlf="true">
+  </recv>
+
+  <recv request="BYE" dialog="2">
+  </recv>
+
+  <send dialog="2">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+<!-- end of 2nd call -->
+
+<recv request="SUBSCRIBE" dialog="3"></recv>
+
+<send dialog="3">
+<![CDATA[
+NOTIFY sip:CA.cym.com SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+<send dialog="3">
+<![CDATA[
+NOTIFY sip:CA.cym.com SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+<send dialog="3">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:];tag=[call_number]
+[last_Call-Id]
+[last_Cseq]
+User-Agent: SIPp
+[last_Contact:];expires=120
+Content-Length: [len]
+
+]]>
+</send>
+
+<recv response="200" dialog="3"></recv>
+
+
+</scenario>
+
