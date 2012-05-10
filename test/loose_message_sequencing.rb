@@ -42,6 +42,27 @@ class LooseMessageSequencing < Test::Unit::TestCase
   
 # negative tests here...
 
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->              
+# 1 :         200(1 ) ---------->    1 :         200(1 ) <----------              
+# 2 :   SUBSCRIBE(2 ) <----------    2 :   SUBSCRIBE(2 ) ---------->              
+# 3 :      RANDOM(7 ) ---------->    3 :      RANDOM(7 ) <*---------              
+# 4 :      RANDOM(7 ) ---------->                  
+# 5 :      RANDOM(4 ) ---------->                                     Fails here as required Register for dialog 4 has not yet been received            
+# 6 :    REGISTER(4 ) ---------->    4 :    REGISTER(4 ) <----------              
+# 7 :      RANDOM(4 ) ---------->    5 :      RANDOM(4 ) <*---------              
+# 8 :         200(2 ) ---------->    6 :         200(2 ) <----------              
+# 9 :         200(4 ) <----------    7 :         200(4 ) ---------->              
+                  
+# 10:      NOTIFY(2 ) ---------->    8 :      NOTIFY(2 ) <----------              
+# 11:         200(2 ) <----------    9 :         200(2 ) ---------->              
+# 12:   SUBSCRIBE(3 ) ---------->    10:   SUBSCRIBE(3 ) <----------              
+# 13:         202(3 ) <----------    11:         202(3 ) ---------->              
+# 14:      NOTIFY(3 ) <----------    12:      NOTIFY(3 ) ---------->              
+# 15:         200(3 ) ---------->    13:         200(3 ) <----------              
+                  
+# 16:      NOTIFY(5 ) ---------->    14:      NOTIFY(5 ) <----------              
+
+
 # tests failure and verifies failure message points to correct list of acceptable message indexes
   def test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_server.sipp -mc")
@@ -650,6 +671,8 @@ class LooseMessageSequencing < Test::Unit::TestCase
 
   # Test mutliple early messages within SAME dialog, with same message occuring multiple times
   # verify advancing happens when pre-requisite message is sent
+  # next after send vs next after recv have different logic paths.
+  # this tests also proves send msg properly advances over pre-received messages 
 #         SERVER                             CLIENT  
 # 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->          
 # 1 :    REGISTER(2 ) ---------->              
@@ -685,7 +708,7 @@ class LooseMessageSequencing < Test::Unit::TestCase
 # 4 :      NOTIFY(5 ) ---------->      
 # 5 :         200(1 ) ---------->    1 :         200(1 ) <----------  
 # 6 :   SUBSCRIBE(1 ) <----------    2 :   SUBSCRIBE(1 ) ---------->  
-    #                                3 :      NOTIFY(1 ) <*---------  
+    #                                3 :      NOTIFY(1 ) <*---------  optional not rec'd
     #                                4 :    REGISTER(2 ) <----------  early 1
     #                                5 :      NOTIFY(3 ) <----------  early 2
     #                                6 :         ACK(4 ) <----------  early 3
@@ -701,9 +724,67 @@ class LooseMessageSequencing < Test::Unit::TestCase
   def test_recv_advances_multiple_early_messages_wide
     test = SippTest.new("test_recv_advances_multiple_early_messages_wide", "-sf test_recv_advances_multiple_early_messages_wide_client.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_server.sipp -mc ")
     assert(test.run())
+  end
+
+# order within early rec'd messages should be indep between dialogs  
+#         SERVER                      CLIENT
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->
+# 1 :    REGISTER(2 ) ---------->    
+# 2 :      NOTIFY(5 ) ---------->    
+# 3 :         ACK(4 ) ---------->    
+# 4 :      NOTIFY(3 ) ---------->    
+# 5 :         200(1 ) ---------->    1 :         200(1 ) <----------
+# 6 :   SUBSCRIBE(1 ) <----------    2 :   SUBSCRIBE(1 ) ---------->
+    #                                3 :      NOTIFY(1 ) <*---------
+    #                                4 :    REGISTER(2 ) <----------
+    #                                5 :      NOTIFY(3 ) <----------
+    #                                6 :         ACK(4 ) <----------
+    #                                7 :      NOTIFY(5 ) <----------
+# 7 :         200(1 ) ---------->    8 :         200(1 ) <----------
+# 8 :      NOTIFY(1 ) ---------->    9 :      NOTIFY(1 ) <----------
+# 9 :         200(1 ) <----------    10:         200(1 ) ---------->
+# 10:   SUBSCRIBE(1 ) ---------->    11:   SUBSCRIBE(1 ) <----------
+# 11:         202(1 ) <----------    12:         202(1 ) ---------->
+# 12:      NOTIFY(1 ) <----------    13:      NOTIFY(1 ) ---------->
+# 13:         200(1 ) ---------->    14:         200(1 ) <----------
+
+
+ def test_recv_advances_multiple_early_messages_wide_reverseDislogOrder
+    test = SippTest.new("test_recv_advances_multiple_early_messages_wide_reverseDislogOrder", "-sf test_recv_advances_multiple_early_messages_wide_client.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server.sipp -mc ")
+    assert(test.run())
   end   
 
+# next after send vs next after recv have different logic paths.
+# this tests that recv msg properly advances over pre-received messages 
+  #       SERVER                              CLIENT
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->    
+# 1 :    REGISTER(2 ) ---------->        
+# 2 :      NOTIFY(5 ) ---------->        
+# 3 :         ACK(4 ) ---------->        
+# 4 :      NOTIFY(3 ) ---------->        
+# 5 :         200(1 ) ---------->    1 :         200(1 ) <----------  recv triggers catchup  
+    #                                2 :      NOTIFY(1 ) <*---------    
+    #                                3 :    REGISTER(2 ) <----------  early 1  
+    #                                4 :      NOTIFY(3 ) <----------  early 4  
+    #                                5 :         ACK(4 ) <----------  early 3  
+    #                                6 :      NOTIFY(5 ) <----------  early 2  
+# 7 :         200(1 ) ---------->    7 :         200(1 ) <----------    
+# 8 :      NOTIFY(1 ) ---------->    8 :      NOTIFY(1 ) <----------    
+# 9 :         200(1 ) <----------    9 :         200(1 ) ---------->    
+# 10:   SUBSCRIBE(1 ) ---------->    10:   SUBSCRIBE(1 ) <----------    
+# 11:         202(1 ) <----------    11:         202(1 ) ---------->    
+# 12:      NOTIFY(1 ) <----------    12:      NOTIFY(1 ) ---------->    
+# 13:         200(1 ) ---------->    13:         200(1 ) <----------    
+        
 
+ 
+  def test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv
+    test = SippTest.new("test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv", "-sf test_recv_advances_multiple_early_messages_wide_client_catchupTriggeredByrecv.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_catchupTriggeredByrecv.sipp -mc ")
+    assert(test.run())
+  end   
+
+  
+  
   
 end
 

@@ -3563,9 +3563,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
 
   // once a dialog is added to this,the remaining messages in that dialog are not
   // checked for match, they are just skipped over
-  set<int> encountered_dialogs_with_nonoptional_msg; 
+  set<int> encountered_dialogs_with_nonoptional_unreceived_msg; 
   set<int>::iterator it;
-  // keep track of which message index triggered entry into encountered_dialogs_with_nonoptional_msg
+  // keep track of which message index triggered entry into encountered_dialogs_with_nonoptional_unreceived_msg
   map<int,int> dialog_msgindex;
 
   // identify received messages by comparing to cumulative calls made during this scenario
@@ -3581,12 +3581,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
     search_index < (int)call_scenario->messages.size();
     search_index++) {
       //loose_message_sequence - allows for next message to be for any dialog, not just current dialog
-      it=encountered_dialogs_with_nonoptional_msg.find(call_scenario->messages[search_index]->dialog_number);
+      it=encountered_dialogs_with_nonoptional_unreceived_msg.find(call_scenario->messages[search_index]->dialog_number);
       DEBUG ("Searching for message, search_index = %d, message_index = %d, dialog = %d",
         search_index, msg_index, call_scenario->messages[search_index]->dialog_number);
-      if ( it == encountered_dialogs_with_nonoptional_msg.end()) {
-        // not found, process dialogs that we have not yet encountered mandatory messages from
-        DEBUG("Dialog %d, mandatory message not encountered yet", call_scenario->messages[search_index]->dialog_number);
+      if ( it == encountered_dialogs_with_nonoptional_unreceived_msg.end()) {
+        // process dialogs that we have not yet encountered mandatory messages from
+        DEBUG("Dialog %d, unreceived mandatory message not encountered yet", call_scenario->messages[search_index]->dialog_number);
         if(matches_scenario(search_index, reply_code, request, responsecseqmethod, branch, call_id, reason)) { 
           // rec'd msg matches current expected message. 
 
@@ -3602,12 +3602,14 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
             continue;
           }
           else{
+            // matched to unreceived scenario message
             found = true;
             DEBUG("Incoming message matched to msg_index %d ",search_index);
             break;// rec'd message successful match to current scenario message
           }
         }
-        else {// incoming does not match current scenario message
+        else {
+          // incoming does not match current scenario message
           if (!(loose_message_sequence) && !(call_scenario->messages[search_index]->optional) ){
             // strict sequence and mandatory scenario message means we stop looking and found=false 
             DEBUG("No loose_message_sequence, mandatory message, No Match - Fail");
@@ -3620,7 +3622,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
             DEBUG("loose_message_sequence encountered NOP or PAUSE.at index %d, continue searching",  search_index);
             continue;
           }
-          //first encountered optional message that doesnt match - continue looking for match 
+          // encountered optional message that doesnt match - continue looking for match 
           if ( call_scenario->messages[search_index]->optional){
             DEBUG("msg_index %d is optional, continue searching", search_index);
             continue;
@@ -3632,21 +3634,21 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           // will not be entered here by those messages.
           // At this point message can be a send or recv message in the scenario, either way its mandatory.
           if (call_scenario->messages[search_index]->nb_recv < cumulative_calls) {
-            // if message of this dialog has been previously received, do not add to list and keep searching
-            // for first occurence of UNRECEIVED message to add to list
-            encountered_dialogs_with_nonoptional_msg.insert(call_scenario->messages[search_index]->dialog_number);
+            encountered_dialogs_with_nonoptional_unreceived_msg.insert(call_scenario->messages[search_index]->dialog_number);
             dialog_msgindex[call_scenario->messages[search_index]->dialog_number] = search_index;
-            DEBUG("message %d triggers Dialog %d added to encountered_dialogs_with_nonoptional_msg", 
+            DEBUG("message %d triggers Dialog %d added to encountered_dialogs_with_nonoptional_unreceived_msg", 
               search_index, call_scenario->messages[search_index]->dialog_number );
           }
           else{
+            // message of this dialog has been previously received, do not add to list and keep searching
+            // for first occurence of UNRECEIVED message to add to list
             DEBUG("Message %d, Dialog %d, nb_recv %d, calls %d , Already received, not added to encountered list, keep searching",
               search_index, call_scenario->messages[search_index]->nb_recv,cumulative_calls);
           }
         }
       }
       else{
-        // we have encountered this dialog before, found a mandatory message and 
+        // we have encountered this dialog before, found an unreceived mandatory message and 
         // not yet found a match in it.  Skip remaining messages in this dialog to
         // look for other dialogs with potential match.
           DEBUG("Mandatory Message index %d, Dialog %d, has already been encountered, skipping", 
@@ -3779,8 +3781,8 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           }
           string reasons = string (reason);
           set<int>::iterator it;
-          for ( it=encountered_dialogs_with_nonoptional_msg.begin();
-            it != encountered_dialogs_with_nonoptional_msg.end(); it++){
+          for ( it=encountered_dialogs_with_nonoptional_unreceived_msg.begin();
+            it != encountered_dialogs_with_nonoptional_unreceived_msg.end(); it++){
               int msgindex = dialog_msgindex[*it];
               if (call_scenario->messages[msgindex]->recv_request) {
                 sprintf(reason,"\tMessage index %3d, %s(%d)\n",
@@ -4080,10 +4082,8 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
             return true;
           }
           else{
-            DEBUG("current msg_index = %d, incoming matched mandatory message, search_index=%d",
+            DEBUG("current msg_index = %d, incoming matched expected mandatory message, search_index=%d",
               msg_index,search_index);
-            // scan ahead for pre-received messages that we can skip past 
-            //msg_index = get_last_insequence_received_message(search_index);
           }
         }
         else{
@@ -4099,7 +4099,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
             return true;
           }
           else{
-            DEBUG("msg_index = %d, incoming matched future message search_index=%d, Skipped pre-received messsages, Proceed to next message",
+            DEBUG("msg_index = %d, incoming matched future message search_index=%d, Skipped pre-received messsages before proceeding to next message",
               msg_index,search_index);
           }
         }
