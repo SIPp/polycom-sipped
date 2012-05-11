@@ -775,14 +775,86 @@ class LooseMessageSequencing < Test::Unit::TestCase
 # 11:         202(1 ) <----------    11:         202(1 ) ---------->    
 # 12:      NOTIFY(1 ) <----------    12:      NOTIFY(1 ) ---------->    
 # 13:         200(1 ) ---------->    13:         200(1 ) <----------    
-        
-
- 
+         
   def test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv
     test = SippTest.new("test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv", "-sf test_recv_advances_multiple_early_messages_wide_client_catchupTriggeredByrecv.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_catchupTriggeredByrecv.sipp -mc ")
     assert(test.run())
   end   
 
+# as   test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv but server sends optional notify(1) too early causes failure
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->            
+# 1 :    REGISTER(2 ) ---------->                                         legal      
+# 2 :      NOTIFY(5 ) ---------->                                         legal      
+# 3 :         ACK(4 ) ---------->                                         legal      
+# 4 :      NOTIFY(3 ) ---------->                                         legal      
+# 5 :      NOTIFY(1 ) ---------->                                         fail here, blocked by requried 200 dialog 1      
+# 6 :         200(1 ) ---------->    1 :         200(1 ) <----------            
+# 7 :         200(1 ) ---------->    2 :      NOTIFY(1 ) <-Optional-            
+# 8 :      NOTIFY(1 ) ---------->    3 :    REGISTER(2 ) <----------      early1      
+# 9 :         200(1 ) <----------    4 :      NOTIFY(3 ) <----------      early4      
+# 10:   SUBSCRIBE(1 ) ---------->    5 :         ACK(4 ) <----------      early3      
+# 11:         202(1 ) <----------    6 :      NOTIFY(5 ) <----------      early2      
+# 12:      NOTIFY(1 ) <----------    7 :         202(1 ) ---------->            
+# 13:         200(1 ) ---------->    8 :      NOTIFY(1 ) ---------->            
+    # 9 :         200(1 ) <----------            
+
+
+
+
+  def test_recv_advances_multiple_early_messages_wide_earlyNotifyDialogOne
+    test = SippTest.new("test_recv_advances_multiple_early_messages_wide_earlyNotifyDialogOne", "-sf test_recv_advances_multiple_early_messages_wide_client_catchupTriggeredByrecv.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_earlyNotifyDialogOne.sipp -mc ")
+    test.expected_exitstatus = 255
+    test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'NOTIFY\' does not match any expected message.*Message index   1, 200\(1\)/m
+    assert(test.run())
+  end  
+  
+# as   test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv but server sends unexpected random(7) causes failure
+  def test_recv_advances_multiple_early_messages_wide_unexpectedRandom
+    test = SippTest.new("test_recv_advances_multiple_early_messages_wide_unexpectedRandom", "-sf test_recv_advances_multiple_early_messages_wide_client_catchupTriggeredByrecv.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_unexpectedRandom.sipp -mc ")
+    test.expected_exitstatus = 255
+    test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'RANDOM\' does not match any expected message.*Message index   1, 200\(1\).*Message index   3, REGISTER\(2\).*Message index   4, NOTIFY\(3\).*Message index   5, ACK\(4\).*Message index   6, NOTIFY\(5\)/m
+    assert(test.run())
+  end  
+  
+  #pre-received messages followed by a send message 
+  #       server                      client      
+# 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->      
+# 1 :      RANDOM(7 ) ---------->          
+# 2 :    REGISTER(2 ) ---------->          
+# 3 :      NOTIFY(5 ) ---------->          
+# 4 :         ACK(4 ) ---------->          
+# 5 :      NOTIFY(3 ) ---------->          
+# 6 :         200(1 ) ---------->    1 :         200(1 ) <----------      
+# 7 :      NOTIFY(1 ) ---------->    2 :      NOTIFY(1 ) <*---------      
+    #                                3 :    REGISTER(2 ) <----------      early2
+    #                                4 :      NOTIFY(3 ) <----------      early5
+    #                                5 :         ACK(4 ) <----------      early4
+    #                                6 :      NOTIFY(5 ) <----------      early3
+# 8 :         202(1 ) <----------    7 :         202(1 ) ---------->    send message      
+# 9 :      NOTIFY(1 ) <----------    8 :      NOTIFY(1 ) ---------->      
+     
+          
+    #                                9 :      RANDOM(7 ) <----------      early1
+# 10:         200(1 ) ---------->    10:         200(1 ) <---------- 
+
+  
+  def test_optionalmsg_earlymsg_send_catchup
+    test = SippTest.new("test_optionalmsg_earlymsg_send_catchup", "-sf test_recv_advances_multiple_early_messages_wide_multipleRandoms_client.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_multipleRandoms_server.sipp -mc ")
+    # test.expected_exitstatus = 255
+    # test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'RANDOM\' does not match any expected message.*Message index   1, 200\(1\).*Message index   3, REGISTER\(2\).*Message index   4, NOTIFY\(3\).*Message index   5, ACK\(4\).*Message index   6, NOTIFY\(5\)/m
+    assert(test.run())
+  end  
+  
+  
+  def test_lastmessage_is_prereceived
+    test = SippTest.new("test_optionalmsg_earlymsg_send_catchup", "-sf test_lasts_message_prereceived_client.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_unexpectedRandom.sipp -mc ")
+    # test.expected_exitstatus = 255
+    # test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'RANDOM\' does not match any expected message.*Message index   1, 200\(1\).*Message index   3, REGISTER\(2\).*Message index   4, NOTIFY\(3\).*Message index   5, ACK\(4\).*Message index   6, NOTIFY\(5\)/m
+    assert(test.run())
+  end  
+  
+  # as test_optionalmsg_earlymsg_send_catchup but no optional notify sent
+  # as test_optionalmsg_earlymsg_send_catchup last message is prereceived
   
   
   

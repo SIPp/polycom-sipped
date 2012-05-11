@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="bla_register_and_subscribe_two_lines.xml" parameters="-mc">
+<!-- Accept line 1 registration -->
+
+<recv request="REGISTER" rrs="true" dialog="1">
+</recv>
+  <send dialog="7">
+    <![CDATA[
+
+      RANDOM sip:optional.cym.com SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: ua2 <sip:ua2@nnl.cym:[local_port]>[local_tag_param]
+      To: ua1 <sip:ua2@nnl.cym:[local_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] RANDOM
+      Contact: sip:ua2@[local_ip]:[local_port]
+      Content-Length: 0
+      Expires: 300
+
+    ]]>
+  </send>
+  
+<!-- Accept line 2 registration -->
+  <send dialog="2">
+    <![CDATA[
+
+      REGISTER sip:CA.cym.com SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: ua2 <sip:ua2@nnl.cym:[local_port]>[local_tag_param]
+      To: ua1 <sip:ua2@nnl.cym:[local_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] REGISTER
+      Contact: sip:ua2@[local_ip]:[local_port]
+      Content-Length: 0
+      Expires: 300
+
+    ]]>
+  </send>
+
+  <send dialog="5">
+<![CDATA[
+NOTIFY sip:CA.cym.com SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+Call-ID: [call_id]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+
+<send dialog="4">
+    <![CDATA[
+
+      ACK sip:[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/UDP [local_ip]:[local_port];branch=[branch]
+      From: "1556" <sip:1556@[local_ip]:[local_port]>[local_tag_param]
+      To: <sip:123@[remote_ip]:[remote_port];user=phone>[remote_tag_param]
+      CSeq: [cseq] ACK
+      Call-ID: [call_id]
+      Contact: <sip:1556@[local_ip]:[local_port];transport=[transport]>
+      Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, INFO, MESSAGE, SUBSCRIBE, NOTIFY, PRACK, UPDATE, REFER
+      User-Agent: PolycomSoundPointIP-SPIP_650-UA/3.3.1.0933
+      Accept-Language: en
+      Max-Forwards: 70
+      Content-Length: [len]
+
+    ]]>
+  </send>
+  
+  <send dialog="3">
+<![CDATA[
+NOTIFY sip:CA.cym.com SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+Call-ID: [call_id]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+
+
+  
+
+
+<send dialog="1">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Allow: INVITE, ACK, CANCEL, BYE, REFER, OPTIONS, NOTIFY
+[last_via:]
+Content-Length: [len]
+
+]]>
+</send>
+
+
+
+<send dialog="1">
+<![CDATA[
+NOTIFY sip:CA.cym.com SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+
+<recv response="202" dialog="1"></recv>
+
+
+
+
+
+
+</scenario>

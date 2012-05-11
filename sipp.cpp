@@ -1096,12 +1096,12 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
           sprintf(temp_str, "%d", curmsg -> recv_response);
         if(creationMode == MODE_SERVER) {
           if (curmsg->optional == OPTIONAL_TRUE) 
-            fprintf(f,"  ---------*> %-14s ", temp_str);
+            fprintf(f,"  -Optional-> %-14s ", temp_str);
           else
             fprintf(f,"  ----------> %-14s ", temp_str);
         } else { 
           if (curmsg->optional == OPTIONAL_TRUE)
-            fprintf(f,"  %14s <*--------- ", temp_str);
+            fprintf(f,"  %14s <-Optional- ", temp_str);
           else
             fprintf(f,"  %14s <---------- ", temp_str);
         }
@@ -1162,12 +1162,12 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
           sprintf(temp_str, "%s", curmsg -> recv_request);
         if(creationMode == MODE_SERVER) {
           if (curmsg->optional == OPTIONAL_TRUE) 
-            fprintf(f,"  ---------*> %-14s ", temp_str);
+            fprintf(f,"  -Optional-> %-14s ", temp_str);
           else
             fprintf(f,"  ----------> %-14s ", temp_str);
         } else {
           if (curmsg->optional == OPTIONAL_TRUE)
-            fprintf(f,"  %14s <*--------- ", temp_str);
+            fprintf(f,"  %14s <-Optional- ", temp_str);
           else
             fprintf(f,"  %14s <---------- ", temp_str);
         }
@@ -4431,7 +4431,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.35"
+	  printf("\n SIPped v3.2.36"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif

@@ -1,14 +1,5 @@
 This file tracks changes responsible for version number updates.
 
-3.2.35 May 10 2012
-- fix some compiler warnings
-
-3.2.34 May 10 2012
--loose_message_sequence fixes
--preReceived messages after nop and pause are properly skipped over 
--fix handling of duplicate advance messages
--fix scan forward for acceptable next messages to stop at send messages
--disallow last messages in scenario that are optional
 
 3.2.33 May 04 2012
 - loose_message_sequence refinements 
@@ -16,6 +7,8 @@ This file tracks changes responsible for version number updates.
 - enable receipt of multiple copies of optional
 - fix handling of mandatory while waiting on optional
 - unexpected message errors show list of possible expected messages including next blocking sending message
+- handling of pre-received messages after send,nop, pause
+- fix advancing on pre-received messages to stop advancing at outgoing messages 
 
 
 3.2.32 May 02 2012

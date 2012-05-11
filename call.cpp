@@ -4084,6 +4084,8 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           else{
             DEBUG("current msg_index = %d, incoming matched expected mandatory message, search_index=%d",
               msg_index,search_index);
+            // see if there are any prereceived messages
+            msg_index = get_last_insequence_received_message(msg_index);
           }
         }
         else{
@@ -4186,6 +4188,15 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
     call_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated), 
     cumulative_calls
     );
+
+  if(  ( (call_scenario->messages[search_from_msg_index]->M_type==MSG_TYPE_RECVCMD)||
+         (call_scenario->messages[search_from_msg_index]->M_type==MSG_TYPE_RECV   )   ) &&
+        (call_scenario->messages[search_from_msg_index]->nb_recv < cumulative_calls)    &&
+        (call_scenario->messages[search_from_msg_index]->optional!=OPTIONAL_TRUE)   ) {
+    DEBUG("Current Message is Mandatory recv message that hasnt been received yet, do not advance");
+    return search_from_msg_index;
+  }
+
   for (search_index = search_from_msg_index; search_index < call_scenario->messages.size()-1; search_index++)
   {
     DEBUG("current message index %d, next index: %d, next.nb_recv: %d, calls: %lld cumulative_calls ", 

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario xmlns:xi="http://www.w3.org/2001/XInclude" name="bla_register_and_subscribe_two_lines.xml" parameters="-mc">
+
+
+<!-- Accept line 1 registration -->
+  <send dialog="1">
+    <![CDATA[
+
+      REGISTER sip:CA.cym.com SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: ua1 <sip:ua1@nnl.cym:[local_port]>[local_tag_param]
+      To: ua1 <sip:ua1@nnl.cym:[local_port]>
+      Call-ID: [call_id]
+      CSeq: [cseq] REGISTER
+      Contact: sip:ua1@[local_ip]:[local_port]
+      Content-Length: 0
+      Expires: 300
+
+    ]]>
+  </send>
+
+<recv response="200" dialog="1"></recv>
+
+<recv request="NOTIFY" dialog="1"></recv>
+
+<!-- Accept line 2 registration -->
+<recv request="REGISTER" dialog="2">
+</recv>
+
+<recv request="NOTIFY" dialog="3"></recv>
+
+<recv request="ACK" dialog="4"></recv>
+
+<recv request="NOTIFY" dialog="5"></recv>
+
+
+<send dialog="1"> 
+<![CDATA[
+SIP/2.0 202 Accepted
+[last_From:]
+[last_To:];tag=thirdTag
+[last_Call-id:]
+[last_cseq:]
+[last_via:]
+Allow: NOTIFY,SUBSCRIBE
+Allow-Events: dialog;sla;include-session-description
+Contact: <sip:SD13aq5-meccfempfbv5t3uqkvm0iji012k6hv@[local_ip]:[local_port];transport=udp>
+Expires: 3700
+Content-Length: 0
+]]>
+
+</send>
+
+<send dialog="1">
+<![CDATA[
+NOTIFY [next_url dialog="1"] SIP/2.0
+Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
+To: <line1_from_uri <ugh@line1.com>>[peer_tag_param]
+From: <to@line1.com>;tag=thirdTag
+[last_Call-ID:]
+CSeq: [cseq] NOTIFY
+Max-Forwards: 69
+Content-Type: application/dialog-info+xml
+Event: dialog;sla;include-session-description
+Subscription-State: active
+Contact: <[next_url dialog="1"]>
+Content-Length: [len]
+
+<?xml version="1.0"?>
+<dialog-info xmlns="urn:ietf:params:xml:ns:dialog-info" version="0" state="full" entity="sip:6049828021@172.23.70.141:5060">
+</dialog-info>
+]]>
+</send>
+
+
+<recv response="200" dialog="1" crlf="true"></recv>
+
+<recv request="RANDOM" dialog="7">
+
+
+
+
+
+
+</scenario>
