@@ -256,7 +256,7 @@ private:
 
   char* scenario_path;
 
-  void parseCheckIt(CAction* action, char* varName, char* what);
+  void parseCheckIt(CAction* action, char* varName, const char* what);
 };
 
 /* There are external variable containing the current scenario */

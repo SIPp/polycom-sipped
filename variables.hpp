@@ -74,7 +74,7 @@ public:
   bool getBool();
 
   /* Cast this to a double variable, return the result in newValue. */
-  bool toDouble(double *newValue, char *what);
+  bool toDouble(double *newValue, const char *what);
 
   // constructor and destructor
   CCallVariable();

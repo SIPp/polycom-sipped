@@ -124,12 +124,13 @@ char *CCallVariable::getString()
   } else if (M_type == E_VT_REGEXP && M_matchingValue) {
     return(M_matchingValue);
   } else {
+    // todo: isnt this dangerous? essentially declaring a local variable and returning a pointer to it?
     return "";
   }
 }
 
 /* Convert this variable to a double. Returns true on success, false on failure. */
-bool CCallVariable::toDouble(double *newValue, char *what)
+bool CCallVariable::toDouble(double *newValue, const char *what)
 {
   char *p;
   DEBUG_IN();

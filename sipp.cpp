@@ -805,7 +805,7 @@ char * strcasestr2(const char *s, const char *find) {
   return ((char *)s);
 }
 
-char * strncasestr(char *s, char *find, size_t n) {
+char * strncasestr(char *s, const char *find, size_t n) {
   char *end = s + n;
   char c, sc;
   size_t len;
@@ -2999,8 +2999,8 @@ static int check_for_message(struct sipp_socket *socket) {
   }
 
   /* Find the content-length header. */
-  char *content_length_const = "\r\nContent-Length:";
-  char *content_length_short_const = "\r\nl:";
+  const char *content_length_const = "\r\nContent-Length:";
+  const char *content_length_short_const = "\r\nl:";
   if ((l = strncasestr(socketbuf->buf + socketbuf->offset, content_length_const, len))) {
     l += strlen(content_length_const);
   } else if ((l = strncasestr(socketbuf->buf + socketbuf->offset, content_length_short_const, len))) {
@@ -4431,7 +4431,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.34"
+	  printf("\n SIPped v3.2.35"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif

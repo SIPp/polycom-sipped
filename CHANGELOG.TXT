@@ -1,5 +1,8 @@
 This file tracks changes responsible for version number updates.
 
+3.2.35 May 10 2012
+- fix some compiler warnings
+
 3.2.34 May 10 2012
 -loose_message_sequence fixes
 -preReceived messages after nop and pause are properly skipped over 

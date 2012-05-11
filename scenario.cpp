@@ -1873,7 +1873,7 @@ void parseMediaPortOffset(char* ptr, CAction* action) {
 
 //gets the boolean value of check it or check it inverse, and sets it in the action
 //Note: uses xp_get_value() so previous results stored in the static buffer will change
-void scenario::parseCheckIt(CAction* action, char* varName, char* what) {
+void scenario::parseCheckIt(CAction* action, char* varName, const char* what) {
   if (xp_get_value("check_it")) {
     if(xp_get_bool("check_it", what, false)) {
       action->setCheckIt(true);
