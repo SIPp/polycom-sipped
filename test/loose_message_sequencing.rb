@@ -853,8 +853,7 @@ class LooseMessageSequencing < Test::Unit::TestCase
     assert(test.run())
   end  
   
-  # as test_optionalmsg_earlymsg_send_catchup but no optional notify sent
-  # as test_optionalmsg_earlymsg_send_catchup last message is prereceived
+
   
   
   

@@ -1,5 +1,24 @@
 This file tracks changes responsible for version number updates.
 
+3.2.36 May 11 2012
+loose_message_sequence
+-fix advancing of prereceived messages on receipt of current expected message
+-fix scanning forward for candidate messages to stop if current message is a unrecv mand msg
+-change appearance of optional messages in dsd
+
+
+
+3.2.35
+-fix some general compiler warnings
+
+
+3.2.34
+
+loose_message_sequence more system level tests
+-preReceived messages after nop and pause are properly skipped over 
+-fix handling of duplicate advance messages
+-fix scan forward for acceptable messages to stop at send messages
+-check for last message that is optional and disallow
 
 3.2.33 May 04 2012
 - loose_message_sequence refinements 
