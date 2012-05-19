@@ -1,5 +1,9 @@
 This file tracks changes responsible for version number updates.
 
+3.2.37 May 18 2012
+- add optional attribute  no_esc  to local_ip remote_ip media_ip server_ip to remove ipv6 square brackets.
+default is with escaping. This option has no impact on ipv4 addresses.
+
 3.2.36 May 11 2012
 loose_message_sequence
 -fix advancing of prereceived messages on receipt of current expected message

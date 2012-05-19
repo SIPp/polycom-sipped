@@ -446,6 +446,10 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   if (no_call_id_check && call_scenario->doesScenarioHaveOnlyLinearElements()) {
     DEBUG("Loose message sequence is enabled.");
     loose_message_sequence = true;
+    //string problems = get_set_of_problematic_optional_messages(call_scenario);
+    //if ( problems.length() > 0) {
+    //  REPORT_ERROR(problems.c_str());
+    //};
   }
   else {
     DEBUG("Loose message sequence is disabled.");
@@ -2329,7 +2333,6 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   for (int i = 0; i < src->numComponents(); i++) {
     MessageComponent *comp = src->getComponent(i);
     int left = buf_len - (dest - msg_buffer);
-
     // per-component dialog state may be different than message if explicitly specified via dialog= attribute
     DialogState *ds = (comp->dialog_number == src->getDialogNumber() ? src_dialog_state : get_dialogState(comp->dialog_number));
 
@@ -2356,6 +2359,12 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         }
         dest += snprintf(dest, left, "%s", remote_ip_escaped);
         break;
+      case E_Message_Remote_IP_noesc:
+        if (!strlen(remote_ip)){
+          REPORT_ERROR("The \"[remote_ip]\" keyword requires a remote IP be specified on the command line");
+        }
+        dest += snprintf(dest, left, "%s", remote_ip);
+        break;
       case E_Message_Remote_Host:
         dest += snprintf(dest, left, "%s", remote_host);
         break;
@@ -2364,6 +2373,9 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
       case E_Message_Local_IP:
         dest += snprintf(dest, left, "%s", local_ip_escaped);
+        break;
+      case E_Message_Local_IP_noesc:
+        dest += snprintf(dest, left, "%s", local_ip);
         break;
       case E_Message_Local_Port:
         int port;
@@ -2378,9 +2390,12 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         dest += snprintf(dest, left, "%s", TRANSPORT_TO_STRING(transport));
         break;
       case E_Message_Local_IP_Type:
+        DEBUG("local_ip_is_ipv6 = ", local_ip_is_ipv6);
         dest += snprintf(dest, left, "%s", (local_ip_is_ipv6 ? "6" : "4"));
         break;
-      case E_Message_Server_IP: {
+      case E_Message_Server_IP:
+      case E_Message_Server_IP_noesc:
+        {
         /* We should do this conversion once per socket creation, rather than
         * repeating it every single time. */
         struct sockaddr_storage server_sockaddr;
@@ -2397,7 +2412,15 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
             &((_RCAST(struct sockaddr_in6 *,&server_sockaddr))->sin6_addr),
             temp_dest,
             INET6_ADDRSTRLEN);
-          dest += snprintf(dest, left, "%s",temp_dest);
+          // if we want no esc on ipv6 remove the surrounding [] if they are present
+          DEBUG("IPV6 local address calculated to be %s", temp_dest);
+          string noIPv6escape;
+          if (comp->type == E_Message_Server_IP_noesc){
+            noIPv6escape = remove_ipv6_brackets_if_present(temp_dest);
+          } 
+          dest += snprintf(dest, left, "%s",noIPv6escape.c_str());
+          free ((void*)temp_dest);
+          temp_dest=NULL;
         } else {
           dest += snprintf(dest, left, "%s",
             inet_ntoa((_RCAST(struct sockaddr_in *,&server_sockaddr))->sin_addr));
@@ -2406,6 +2429,9 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
                                 break;
       case E_Message_Media_IP:
         dest += snprintf(dest, left, "%s", media_ip_escaped);
+        break;
+      case E_Message_Media_IP_noesc:
+        dest += snprintf(dest, left, "%s", media_ip);
         break;
       case E_Message_Media_Port:
       case E_Message_Auto_Media_Port: {
@@ -2436,6 +2462,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         break;
                                       }
       case E_Message_Media_IP_Type:
+        DEBUG("media_ip_is_ipv6 = ", media_ip_is_ipv6);
         dest += snprintf(dest, left, "%s", (media_ip_is_ipv6 ? "6" : "4"));
         break;
       case E_Message_Call_Number:
@@ -5199,3 +5226,141 @@ void setArguments(char* args, char** argv) {
   argv[2] = args;
   argv[3] = NULL;
 }
+
+
+// INPUTS: the target message that is an optional message
+//      call_scenario which contains all the messages for this scenario
+// RETURNS: the next message index of the same dialog or a PAUSE or NOP message index
+//    -1 if no other relevant messages found.
+int get_next_msg_in_same_or_default_dialog(int msgindex,scenario * call_scenario){
+  int dialog = call_scenario->messages[msgindex]->dialog_number;
+  for (unsigned int i = msgindex+1; i< call_scenario->messages.size();i++){
+    if ((call_scenario->messages[i]->M_type == MSG_TYPE_PAUSE) ||
+        (call_scenario->messages[i]->M_type == MSG_TYPE_NOP) ||
+        (call_scenario->messages[i]->dialog_number == dialog)  ){
+          return i;
+    }
+  }
+  // no other messages relevant to this dialog
+  return -1;
+}
+
+
+// INPUTS 
+//    ptr to scenario which constains all messages
+// RETURNS  error string that contains list of problematic optional messages 
+//    if no problems, length of error string will be zero 
+//
+//within dialog
+//  opt - send : illegal, will hang
+//  opt - recv : no problem
+//  opt - end  : illegal, will hang
+//  opt - opt  : ok
+//outside of dialog
+//  opt - pause : illegal, will hang
+//  opt - nop   : illegal, will hang
+//  opt - end   : illegal, will hang
+string get_set_of_problematic_optional_messages(scenario * call_scenario){
+
+  string result;
+  int buffersize = 32;
+  char dialog_number_str[buffersize];
+  char msg_number_str[buffersize];
+  char temp_str[buffersize];
+  
+  DEBUG_IN("scanning %d scenario messages", call_scenario->messages.size());
+
+  for (unsigned int counter = 0; counter< call_scenario->messages.size();counter++){
+    DEBUG("message %d, dialog %d, msg_type %d, optional %d, ",
+      counter, call_scenario->messages[counter]->dialog_number, 
+      call_scenario->messages[counter]->M_type,
+      call_scenario->messages[counter]->optional);
+
+    sprintf(msg_number_str,"%d", counter);
+    sprintf(dialog_number_str,"%d", call_scenario->messages[counter]->dialog_number);
+    if (call_scenario->messages[counter]->optional == OPTIONAL_TRUE){
+      if (counter == call_scenario->messages.size()-1){
+        // last message is an optional    opt-end
+        result += string("Optional Message ") + string(msg_number_str) + 
+          string("(") + string(dialog_number_str) + string(") is last message. Last message cannot be optional\n");
+        return result;
+      }
+      else{
+        // look for next message in same dialog or nop or pause
+        int next_relevant_msg = get_next_msg_in_same_or_default_dialog(counter, call_scenario);
+// uncomment if we want to enforce that the last message in a dialog cannot be optional
+// should not cause problems as other dialogs can trigger scenario to proceed past this optional
+        //if (next_relevant_msg <0){
+        //  // no other relevant messages to this message. Last message in dialog is an optional: opt-end
+        //  result += string("Optional Message ") + string(msg_number_str) + 
+        //  string("(") + string(dialog_number_str) + string(") is last message in this dialog. Last message of a dialog cannot be optional\n");
+        //  continue;
+        //}
+        if ((call_scenario->messages[next_relevant_msg]->optional == OPTIONAL_TRUE) ||
+            ( call_scenario->messages[next_relevant_msg]->M_type == MSG_TYPE_RECV) ||
+              ( call_scenario->messages[next_relevant_msg]->M_type == MSG_TYPE_RECVCMD)  ) {
+          // next message relevant to this optinal is an optional, or is a recv, no problems with this optional, continue scanning, opt-recv, opt-opt
+          continue;
+        }
+        else{
+          // optional message followed by a send pause or nop,  opt-pause, opt-nop, opt-send
+          sprintf(temp_str, "%d", next_relevant_msg);
+          result += "Optional message " + string(msg_number_str) + "(" + string(dialog_number_str) + 
+            ") followed by message " + string(temp_str) ;
+          
+          switch (call_scenario->messages[next_relevant_msg]->M_type){
+            case (MSG_TYPE_SENDCMD):
+            case (MSG_TYPE_SEND):
+              sprintf(temp_str, ", a SEND message");
+              break;
+            case (MSG_TYPE_PAUSE):
+              sprintf(temp_str, ", a PAUSE message");
+              break;
+            case (MSG_TYPE_NOP):
+              sprintf(temp_str, ", a NOP message");
+              break;
+          }
+          result += string(temp_str) + " which is not allowed\n";
+          continue;
+        }
+      }//if counter
+    }
+    else{
+      // mandatory message, not relevant to optional message validation
+      continue;
+    }
+  }//for 
+
+  return result;
+}
+
+
+string remove_ipv6_brackets_if_present(char* ip)
+{
+  string ipaddr(ip);
+  if (ipaddr.at(0) = '[') {
+    ipaddr.erase(0);
+    unsigned int pos = ipaddr.find(']');
+    if (pos != string::npos) 
+      ipaddr.erase(pos);
+  }
+  return ipaddr;
+}
+
+// removes % marker and all chars to right of % except ']'
+string remove_ipv6_zone_if_present(char* ip)
+{
+  string ipaddr(ip);
+  int zone_pos = ipaddr.find('%');
+  if (zone_pos){
+    while ((ipaddr.size() > zone_pos+1) && (ipaddr.at(zone_pos+1) != ']')){
+      ipaddr.erase(zone_pos+1,1);
+      printf("%s\n", ipaddr.c_str());
+    }
+    ipaddr.erase(zone_pos,1);
+  }
+  return ipaddr;
+}
+
+
+

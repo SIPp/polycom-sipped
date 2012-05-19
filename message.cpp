@@ -59,17 +59,26 @@ struct KeywordMap {
 typedef std::map<std::string, customKeyword> kw_map;
 kw_map keyword_map;
 
+/* these keywords may optionally specify noesc or esc (default value if no option specified) 
+    to allow control of wether [] surround ipv6 addresses. if used with ipv4, no effect.
+    */
+struct KeywordMap IP_Keywords[] = {
+  {"remote_ip", E_Message_Remote_IP },
+  {"local_ip", E_Message_Local_IP },
+  {"server_ip", E_Message_Server_IP },
+  {"media_ip", E_Message_Media_IP }
+};
+
 /* These keywords take no parameters. */
 struct KeywordMap SimpleKeywords[] = {
-  {"remote_ip", E_Message_Remote_IP },
+
   {"remote_host", E_Message_Remote_Host },
   {"remote_port", E_Message_Remote_Port },
   {"transport", E_Message_Transport },
-  {"local_ip", E_Message_Local_IP },
+
   {"local_ip_type", E_Message_Local_IP_Type },
   {"local_port", E_Message_Local_Port },
-  {"server_ip", E_Message_Server_IP },
-  {"media_ip", E_Message_Media_IP },
+
 #ifdef PCAPPLAY
   {"auto_media_port", E_Message_Auto_Media_Port },
 #endif
@@ -278,6 +287,45 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           break;
         }
       }
+      
+      // check ip addresses for optional specifier for ipv6 esc
+      bool ip_keyword = false;
+      if (!simple_keyword)
+      {
+        for (unsigned int i = 0; i< sizeof(IP_Keywords)/sizeof(IP_Keywords[0]); i++) {
+          //exact match  or contains full keyword and a space 
+          if ( !strcmp(keyword, IP_Keywords[i].keyword) ||  
+              ( !strncmp(keyword, IP_Keywords[i].keyword, strlen(IP_Keywords[i].keyword) ) &&
+              ( strlen(keyword)> strlen(IP_Keywords[i].keyword )) &&
+              ( keyword[strlen(IP_Keywords[i].keyword)] ==  ' ')     )  ) {
+              newcomp->type = IP_Keywords[i].type;
+              DEBUG("searching for no_esc attribte in  '%s' " , keyword);
+              if( strstr(keyword, "no_esc")  ) {
+                // want the no escape version of the ip address
+                
+                switch (IP_Keywords[i].type){
+                  case (E_Message_Remote_IP):
+                    newcomp->type = E_Message_Remote_IP_noesc;
+                    break;
+                  case (E_Message_Local_IP):
+                    newcomp->type = E_Message_Local_IP_noesc;
+                    break;
+                  case (E_Message_Server_IP):
+                    newcomp->type = E_Message_Server_IP_noesc;
+                    break;
+                  case(E_Message_Media_IP):
+                    newcomp->type = E_Message_Media_IP_noesc;
+                    break;
+                  default:
+                    REPORT_ERROR("Unknown ip address specifier type %d while building message to send", IP_Keywords[i].keyword);
+                    break;
+                }
+              }
+              ip_keyword = true;
+              break;
+          }
+        }//for
+      }
 
       bool dialog_keyword = false;
       for (unsigned int i = 0; i < sizeof(DialogSpecificKeywords)/sizeof(DialogSpecificKeywords[0]); i++) {
@@ -297,7 +345,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
          parse_generated(keyword, newcomp);
        }
 
-      if (simple_keyword || dialog_keyword) {
+      if (simple_keyword || dialog_keyword || ip_keyword) {
         messageComponents.push_back(newcomp);
         continue;
       }

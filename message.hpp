@@ -104,6 +104,10 @@ typedef enum {
   E_Message_SippVersion,
   E_Message_File,
   E_Message_Custom,
+  E_Message_Remote_IP_noesc,
+  E_Message_Local_IP_noesc,
+  E_Message_Server_IP_noesc,
+  E_Message_Media_IP_noesc,
 } MessageCompType;
 
 class SendingMessage {

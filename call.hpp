@@ -157,6 +157,8 @@ private:
   bool loose_message_sequence;
   unsigned int get_last_insequence_received_message(int search_from_msg_index);
 
+
+
 public:
   static   int   maxDynamicId;    // max value for dynamicId; this value is reached !
   static   int   startDynamicId;  // offset for first dynamicId  FIXME:in CmdLine
@@ -449,5 +451,9 @@ void uri_encode(const char *src, char *dest);
 bool is_reserved_char(char c);
 int countArguments(char* args);
 void setArguments(char* args, char** argv);
+
+string get_set_of_problematic_optional_messages(scenario * call_scenario);
+string remove_ipv6_brackets_if_present(char* ip);
+
 
 #endif

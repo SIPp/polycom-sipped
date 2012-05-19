@@ -4431,7 +4431,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.36"
+	  printf("\n SIPped v3.2.37"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif
@@ -5508,6 +5508,7 @@ void determine_remote_ip() {
   }
 
 } // determine_remote_ip
+
 
 void determine_local_ip() {
   if(gethostname(hostname,64) != 0) {
