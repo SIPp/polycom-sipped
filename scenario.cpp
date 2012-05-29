@@ -2156,7 +2156,7 @@ char * default_scenario [] = {
 "      Content-Length: [len]\n"
 "\n"
 "      v=0\n"
-"      o=user1 53655765 2353687637 IN IP[local_ip_type] [local_ip no_esc]\n"
+"      o=user1 53655765 2353687637 IN IP[local_ip_type] [local_ip no_square_bracket]\n"
 "      s=-\n"
 "      c=IN IP[media_ip_type] [media_ip]\n"
 "      t=0 0\n"

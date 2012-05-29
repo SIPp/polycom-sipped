@@ -547,7 +547,7 @@ extern struct sipp_socket  *sockets[SIPP_MAXFDS];
 #  define SIPP_VERSION               SVN_VERSION
 # endif
 #else
-# define SIPP_VERSION               "unknown"
+# define SIPP_VERSION               "$Revision$"
 #endif
 
 

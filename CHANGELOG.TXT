@@ -1,4 +1,9 @@
 This file tracks changes responsible for version number updates.
+$Author $Date $Id $Revision
+
+3.2.38 May 29  2012  
+-fix some compiler warnings regarding initialization order, signed to unsigned comparisons, unused variables
+-change optional ipv6 ip address attribute from no_esc to no_square_brackets 
 
 3.2.37 May 18 2012
 - add optional attribute  no_esc  to local_ip remote_ip media_ip server_ip to remove ipv6 square brackets.

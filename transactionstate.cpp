@@ -27,8 +27,9 @@
 #include <iostream>
 
 
-TransactionState::TransactionState(const string &name) : name(name), branch(""), lastReceivedMessage(""), 
-                                   cseq(0), cseqMethod(""), client(false), lastResponseCode(0), transactionResponseHash(0), ackIndex(0)
+TransactionState::TransactionState(const string &name) : name(name), branch(""),  
+                                   client(false), cseq(0),  cseqMethod(""), lastReceivedMessage(""), 
+                                   lastResponseCode(0), transactionResponseHash(0), ackIndex(0)
 { 
   DEBUG_IN();
 }

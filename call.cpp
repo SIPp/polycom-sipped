@@ -5288,14 +5288,14 @@ string get_set_of_problematic_optional_messages(scenario * call_scenario){
       else{
         // look for next message in same dialog or nop or pause
         int next_relevant_msg = get_next_msg_in_same_or_default_dialog(counter, call_scenario);
-// uncomment if we want to enforce that the last message in a dialog cannot be optional
-// should not cause problems as other dialogs can trigger scenario to proceed past this optional
-        //if (next_relevant_msg <0){
-        //  // no other relevant messages to this message. Last message in dialog is an optional: opt-end
-        //  result += string("Optional Message ") + string(msg_number_str) + 
-        //  string("(") + string(dialog_number_str) + string(") is last message in this dialog. Last message of a dialog cannot be optional\n");
-        //  continue;
-        //}
+        if (next_relevant_msg <0){
+          // no other relevant messages to this dialog. Last message in dialog is an optional: opt-end
+            // uncomment if we want to enforce that the last message in a dialog cannot be optional
+            // should not cause problems as other dialogs can trigger scenario to proceed past this optional
+          //result += string("Optional Message ") + string(msg_number_str) + 
+          //  string("(") + string(dialog_number_str) + string(") is last message in this dialog. Last message of a dialog cannot be optional\n");
+          continue;
+        }
         if ((call_scenario->messages[next_relevant_msg]->optional == OPTIONAL_TRUE) ||
             ( call_scenario->messages[next_relevant_msg]->M_type == MSG_TYPE_RECV) ||
               ( call_scenario->messages[next_relevant_msg]->M_type == MSG_TYPE_RECVCMD)  ) {
@@ -5351,7 +5351,7 @@ string remove_ipv6_brackets_if_present(char* ip)
 string remove_ipv6_zone_if_present(char* ip)
 {
   string ipaddr(ip);
-  int zone_pos = ipaddr.find('%');
+  unsigned int zone_pos = ipaddr.find('%');
   if (zone_pos){
     while ((ipaddr.size() > zone_pos+1) && (ipaddr.at(zone_pos+1) != ']')){
       ipaddr.erase(zone_pos+1,1);

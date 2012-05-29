@@ -363,7 +363,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
   int replace_param_length = strlen(replace_param);
   const int XP_MAX_LOCAL_SUB_LIST_LEN = 26;
   unsigned local_sub_list[XP_MAX_LOCAL_SUB_LIST_LEN];
-  unsigned local_sub_length = 0;
+  int local_sub_length = 0;
 
   int comment_index = 0;  // used for both open and close
   const char* start_comment_tag = "<!--";
@@ -527,7 +527,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 else if ((toupper(number_str[0]) >= 'A') && (toupper(number_str[0]) <= 'Z') && 
                   (toupper(number_str[1]) == toupper(number_str[0])) && (number_len == 2)) {
                   d = number_str[0] - (int)'A';
-                  if (d >= sub_length) {
+                  if (d >= (int)sub_length) {
                     snprintf(err, MAXERRSIZE, "'Error in '%s': %s' => %d is greater than largest substitution available of %d.\r\n", filename, number_str, d+1, sub_length);
                     store_error_message(err);
                     store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
@@ -625,7 +625,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
         if (c == '"') {
           // convert to integer s = [AA => 0, BB => 1, etc]
           // Note: index is new spot; i-1 is ", i-2 & i-3 are the letters to replace
-          int sub_idx = toupper(xp_file[(*index)-2] ) - (int)'A';
+          unsigned int sub_idx = toupper(xp_file[(*index)-2] ) - (int)'A';
           if (sub_idx >= sub_length) {
             snprintf(err, MAXERRSIZE, "Error in '%s': not enough include parameters while attempting to substitute '%s'. This requires at least %d dialog id(s) specified with the include, but there were only %d.\r\n", filename, (char *) &xp_file[(*index)-(dialog_param_length+4)], sub_idx+1, sub_length);
             store_error_message(err);
@@ -686,7 +686,7 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
   xp_position[xp_stack] = xp_file;
 
   if (dumpxml)
-    printf("%s", &xp_file);
+    printf("%s", xp_file);
 
   if (!result){
     store_error_message("Failed to retrieve file " + string(filename) + "\r\n");

@@ -101,7 +101,7 @@ struct KeywordMap SimpleKeywords[] = {
 
 // Index of the last keyword in DialogSpecificKeywords that is also transaction-specific
 // Used to enforce rule that dialog= attribute may not be specified when use_txn is specified.
-const int HighestTransactionSpecificKeywordsIndex = 11;
+const unsigned int HighestTransactionSpecificKeywordsIndex = 11;
 
 /* These keywords take an optional dialog= parameter and an optional encoding= parameter. */
 // First keywords are also transaction-specific. See HighestTransactionSpecificKeywordsIndex
@@ -140,7 +140,7 @@ struct KeywordMap DialogSpecificKeywords[] = {
 #define KEYWORD_SIZE 256
 
 SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number, bool use_txn) : 
-  response(false), ack(false), cancel(false)
+  ack(false),cancel(false), response(false)
 {
   // should we parse out the _n portion of call here or later? Here would be faster and more
   // in keepin with the existing style, I suppose...
@@ -299,8 +299,8 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
               ( strlen(keyword)> strlen(IP_Keywords[i].keyword )) &&
               ( keyword[strlen(IP_Keywords[i].keyword)] ==  ' ')     )  ) {
               newcomp->type = IP_Keywords[i].type;
-              DEBUG("searching for no_esc attribte in  '%s' " , keyword);
-              if( strstr(keyword, "no_esc")  ) {
+              DEBUG("searching for no_square_bracket attribte in  '%s' " , keyword);
+              if( strstr(keyword, "no_square_bracket")  ) {
                 // want the no escape version of the ip address
                 
                 switch (IP_Keywords[i].type){

@@ -479,7 +479,8 @@ static int base64_val(char x)\
 
 char * base64_decode_string( const char *buf, unsigned int len, int *newlen )
 {
-	int i,j,x1,x2,x3,x4;
+  unsigned i,j;
+	int x1,x2,x3,x4;
 	char *out;
 	out = (char *)malloc( ( len * 3/4 ) + 8 );
 	for(i=0,j=0;i+3<len;i+=4){
