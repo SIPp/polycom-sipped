@@ -64,7 +64,7 @@
 				AdditionalDependencies="libdl.lib pthreadVC2.lib wpcap.lib ws2_32.lib"
 				ShowProgress="1"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -260,19 +260,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\sipp.cpp"
+				RelativePath=".\sipp_globals.cpp"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						ShowIncludes="true"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\sipp_globals.cpp"
+				RelativePath=".\sipp_stub.cpp"
 				>
 			</File>
 			<File
@@ -290,6 +282,18 @@
 			<File
 				RelativePath=".\stat.cpp"
 				>
+			</File>
+			<File
+				RelativePath=".\stat.hpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="/DWIN32&#x0D;&#x0A;"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\task.cpp"
@@ -408,18 +412,6 @@
 			<File
 				RelativePath=".\sslcommon.hpp"
 				>
-			</File>
-			<File
-				RelativePath=".\stat.hpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCustomBuildTool"
-						CommandLine="/DWIN32&#x0D;&#x0A;"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\task.hpp"

@@ -288,8 +288,8 @@ extern int                 resynch_send;
 extern int                 resynch_recv;
 extern unsigned long       rtp_pckts;
 extern unsigned long       rtp_bytes;
-extern unsigned long       rtp_pckts_pcap;
-extern unsigned long       rtp_bytes_pcap;
+extern volatile unsigned long       rtp_pckts_pcap;
+extern volatile unsigned long       rtp_bytes_pcap;
 extern unsigned long       rtp2_pckts;
 extern unsigned long       rtp2_bytes;
 extern unsigned long       rtp2_pckts_pcap;
@@ -431,11 +431,6 @@ int                        send_message(int s, void ** comp_state, char * msg);
 int                        send_message_tls(SSL *s, void ** comp_state, char * msg);
 #endif
 
-/* Socket Buffer Management. */
-#define NO_COPY 0
-#define DO_COPY 1
-struct socketbuf          *alloc_socketbuf(char *buffer, size_t size, int copy);
-void                       free_socketbuf(struct socketbuf *socketbuf);
 
 /* These buffers lets us read past the end of the message, and then split it if
  * required.  This eliminates the need for reading a message octet by octet and

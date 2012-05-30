@@ -1,6 +1,13 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
+3.2.40 May 30 2012
+- resolve some  msvc compiler errors 
+	- align decl/defn, remove extern declaration and use include sipp_globals
+	- move some socket decl out of sipp.hpp and sipp_globals.hpp into sipp.cpp (local use only)
+	- move function out from sipp.cpp into sipp_globals.cpp to break a dependancy on sipp.cpp
+
+
 3.2.39 May 29  2012  
 - enable checking of optional messages within dialog during call::init
 - for win32, removed dependancies on ncurses by defining clearscreen function, removing initscr

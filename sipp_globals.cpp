@@ -182,8 +182,6 @@ bool               socket_close            = true;
 bool               test_socket             = true;
 bool               maxSocketPresent        = false;
 
-//unsigned long getmilliseconds();
-//unsigned long long getmicroseconds();
 
 /************************ Statistics **************************/
 
@@ -198,8 +196,8 @@ int                resynch_send            = 0;
 int                resynch_recv            = 0;
 unsigned long      rtp_pckts               = 0;
 unsigned long      rtp_bytes               = 0;
-unsigned long      rtp_pckts_pcap          = 0;
-unsigned long      rtp_bytes_pcap          = 0;
+volatile unsigned long      rtp_pckts_pcap          = 0;
+volatile unsigned long      rtp_bytes_pcap          = 0;
 unsigned long      rtp2_pckts              = 0;
 unsigned long      rtp2_bytes              = 0;
 unsigned long      rtp2_pckts_pcap         = 0;
@@ -324,4 +322,26 @@ char               screen_last_error[32768];
 struct sipp_socket* sockets[SIPP_MAXFDS];
 
 
+/***************** System Portability Features *****************/
+
+unsigned long long getmicroseconds()
+{
+  struct timeval LS_system_time;
+  unsigned long long VI_micro;
+  static unsigned long long VI_micro_base = 0;
+
+  gettimeofday(&LS_system_time, NULL);
+  VI_micro = (((unsigned long long) LS_system_time.tv_sec) * 1000000LL) + LS_system_time.tv_usec;
+  if (!VI_micro_base) VI_micro_base = VI_micro - 1;
+  VI_micro = VI_micro - VI_micro_base;
+
+  clock_tick = VI_micro / 1000LL;
+
+  return VI_micro;
+}
+
+unsigned long getmilliseconds()
+{
+  return getmicroseconds() / 1000LL;
+}
 

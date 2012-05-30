@@ -65,6 +65,7 @@
 #include "send_packets.hpp"
 #include "screen.hpp"
 //
+#include "sipp_globals.hpp"
 #include "prepare_pcap.hpp"
 #include <fcntl.h>
 #include <pcap.h>
@@ -75,9 +76,7 @@
 
 
 
-extern volatile unsigned long rtp_pckts_pcap;
-extern volatile unsigned long rtp_bytes_pcap;
-extern int media_ip_is_ipv6;
+
 
 inline void
 timerdiv (struct timeval *tvp, float div)

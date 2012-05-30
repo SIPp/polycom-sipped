@@ -12,20 +12,17 @@ require './sipp_test'
 class LooseMessageSequencing < Test::Unit::TestCase
   def test_bla_register_and_subscribe_two_lines_short_in_sequence
     # messages delivered in order, no optional messages.
-#    test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_in_sequence", "-sf bla_register_and_subscribe_two_lines_short_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_in_sequence_server.sipp -mc")
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_in_sequence", "-sf bla_register_and_subscribe_two_lines_short_with_optional_and_notify_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_in_sequence_and_notify_server.sipp -mc")
     assert(test.run())
   end
   
   def test_bla_register_and_subscribe_two_lines_short_with_optional_client_messages_that_are_never_sent
-#    test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_with_optional_client_messages_that_are_never_sent", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_in_sequence_server.sipp -mc")
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_with_optional_client_messages_that_are_never_sent", "-sf bla_register_and_subscribe_two_lines_short_with_optional_and_notify_client.sipp  -mc", "-sf bla_register_and_subscribe_two_lines_short_in_sequence_and_notify_server.sipp -mc")
     assert(test.run())
   end  
 
 
   def test_bla_register_and_subscribe_two_lines_short_with_optional_client_messages_that_are_sent_several_times
-    #test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_with_optional_client_messages_that_are_sent_several_times", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_in_sequence_server_optional_messages_sent_server.sipp -mc")
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_with_optional_client_messages_that_are_sent_several_times", "-sf bla_register_and_subscribe_two_lines_short_with_optional_and_notify_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_in_sequence_server_optional_messages_sent_server.sipp -mc")
     assert(test.run())
   end  
@@ -46,13 +43,9 @@ class LooseMessageSequencing < Test::Unit::TestCase
   end    
  
   def test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_server_will_succeed
-   # test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_server_will_succeed", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_server.sipp -mc")
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_server_will_succeed", "-sf bla_register_and_subscribe_two_lines_short_with_optional_and_notify_client.sipp  -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_server.sipp -mc")
     assert(test.run())
   end    
-
-  
-# negative tests here...
 
 # 0 :    REGISTER(1 ) <----------    0 :    REGISTER(1 ) ---------->              
 # 1 :         200(1 ) ---------->    1 :         200(1 ) <----------              
@@ -78,10 +71,8 @@ class LooseMessageSequencing < Test::Unit::TestCase
 
 # tests failure and verifies failure message points to correct list of acceptable message indexes
   def test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail
-#    test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_server.sipp -mc")
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_will_fail", "-sf bla_register_and_subscribe_two_lines_short_with_optional_and_notify_client.sipp  -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_with_optional_too_early_server.sipp -mc")
     test.expected_exitstatus = 1
-#    test.expected_error_log = /Request \'RANDOM\' does not match any expected message.*Message index   6, 200\(2\).*Message index  10, SUBSCRIBE\(3\).*Message index   4, REGISTER\(4\).*Message index  14, NOTIFY\(5\)/m
     test.expected_error_log = /Request \'RANDOM\' does not match any expected message.*Message index   7, 200\(2\).*Message index  11, SUBSCRIBE\(3\).*Message index   4, REGISTER\(4\).*Message index  15, NOTIFY\(5\)/m
     assert(test.run())
   end    
@@ -113,6 +104,7 @@ class LooseMessageSequencing < Test::Unit::TestCase
     assert(test.run())
   
   end
+  
 # simplify base case by removing second phone  
   def test_bla_register_sub_no2nd
     test = SippTest.new("test_bla_register_sub_no2nd", "-sf test_bla_register_sub_client_no2nd.sipp  -mc", "-sf test_bla_register_sub_server_no2nd.sipp -mc")
@@ -203,8 +195,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
 
   def test_waiting_on_opt_recv_mand_same_dialog
     test = SippTest.new("test_waiting_on_opt_recv_mand_same_dialog", "-sf test_bla_register_sub_client_no2nd_optional200_wAck.sipp -mc", "-sf test_bla_register_sub_server_early_notify_wAck.sipp -mc")
-    #test.expected_exitstatus = 1
-    #test.expected_error_log = /<recv> before <send> sequence without a mandatory message/m
     assert(test.run())
   end
   
@@ -227,8 +217,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
 # 10:         200(3 ) ---------->    10:         200(3 ) <----------  
   def test_waiting_on_opt_recv_mand_other_dialog
     test = SippTest.new("test_waiting_on_opt_recv_mand_other_dialog", "-sf test_bla_register_sub_client_no2nd_optional200_wAck.sipp -mc", "-sf test_bla_register_sub_server_early_notify_wAck_earlySubscribe.sipp -mc")
-    #test.expected_exitstatus = 1
-    #test.expected_error_log = /<recv> before <send> sequence without a mandatory message/m
     assert(test.run())
   end
   
@@ -353,8 +341,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
 
   def test_all_one_dialog_ref
     test = SippTest.new("test_all_one_dialog_ref", "-sf test_advancing_prereceived_after_send_client.sipp -mc", "-sf test_advancing_prereceived_after_send_server.sipp  -mc")
-    #test.expected_exitstatus = 1
-    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'ACK\' does not match.*Message index   6.*Message index   5/m
     assert(test.run())
   end
 #         SERVER                            CLIENT      
@@ -418,8 +404,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
  
    def test_uas_uac
     test = SippTest.new("test_uas_uac", "-sf myuac.sipp -mc -m 10", "-sf myuas.sipp  -mc -m 10")
-    #test.expected_exitstatus = 1
-    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'REGISTER\' does not match.*Message index   5,\s*200\(1\)/m
     assert(test.run())
   end 
   
@@ -437,8 +421,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
  
    def test_uas_uac_dialog
     test = SippTest.new("test_uas_uac_dialog", "-sf myuac_dialog.sipp -mc -m 10", "-sf myuas_dialog.sipp  -mc -m 10")
-    #test.expected_exitstatus = 1
-    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 5\). Request \'REGISTER\' does not match.*Message index   5,\s*200\(1\)/m
     assert(test.run())
   end 
   
@@ -623,7 +605,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
 # 4 :         200(3 ) <----------     7 :      200(3 )    ---------->    
         
 
-
   def test_early_man_across_nop_pause_followed_by_send
     test = SippTest.new("test_early_man_across_nop_pause_followed_by_send", "-sf test_early_mandatory_across_noppause_followedbyoutgoing_client.sipp -mc ", "-sf test_early_mandatory_across_noppause_followedbyoutgoing_server.sipp  -mc ")
     assert(test.run())
@@ -645,7 +626,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
    def test_early_man_across_nop_pause_followed_by_send_late_200
     test = SippTest.new("test_early_man_across_nop_pause_followed_by_send_late_200", "-sf test_early_mandatory_across_noppause_followedbyoutgoing_client.sipp -mc ", "-sf test_early_mandatory_across_noppause_followedbyoutgoing_server_late_opt_200.sipp -mc ")
     test.expected_exitstatus = 1
-    #test.expected_error_log = /Aborting call on unexpected message for.*while pausing \(index 3\). Response \'200\' does not match.*Message index\s*6,\s*NOTIFY\(3\).*Message index\s*5, NOTIFY\(4\)/m
     test.expected_error_log = /Aborting call on unexpected message for.*while pausing \(index 2\). Response \'200\' does not match.*Message index\s*6,\s*200\(3\).*Message index\s*4, NOTIFY\(4\)/m
     assert(test.run())
   end   
@@ -692,7 +672,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
   def test_sendmessage_block_rx_future_message
     test = SippTest.new("test_sendmessage_block_rx_future_message", "-sf test_send_should_block_future_optionals_client.sipp -mc ", "-sf test_send_should_block_future_optionals_server.sipp -mc ")
     test.expected_exitstatus = 255
-    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 2\)\. Request \'SUBSCRIBE\' does not match any expected message.*Message index   8, 200\(1\) - SendingMessage.*Message index   7, 200\(2\)/m
     test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 2\)\. Request \'SUBSCRIBE\' does not match any expected message.*Message index   8, 100\(1\).*Message index   7, 200\(2\)/m
     assert(test.run())
   end   
@@ -720,6 +699,7 @@ class LooseMessageSequencing < Test::Unit::TestCase
 # 16:         202(1 ) <----------    11:         202(1 ) ---------->        
 #client message 6 in dialog 1 is an optional before message 8, a send message in same dialog. This can result in 
 # getting stuck in optionals if message 7 is received early.  Any optional followed by send in same dialog is illegal
+  
   def test_sendmessage_block_rx_future_message_illegal_opt_send_indialog
     test = SippTest.new("test_sendmessage_block_rx_future_message_illegal_opt_send_indialog", "-sf test_send_should_block_future_optionals_opt_send_client.sipp -mc ", "-sf test_send_should_block_future_optionals_opt_send_server.sipp -mc ")
     test.expected_exitstatus = 255
@@ -837,7 +817,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
 # 13:         200(1 ) ---------->    13:         200(1 ) <----------    
          
   def test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv
-    #test = SippTest.new("test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv", "-sf test_recv_advances_multiple_early_messages_wide_client_catchupTriggeredByrecv.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_catchupTriggeredByrecv.sipp -mc ")
     test = SippTest.new("test_recv_advances_multiple_early_messages_wide_catchupTriggeredByrecv", "-sf test_recv_advances_multiple_early_messages_wide_client_catchupTriggeredByrecv.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_catchupTriggeredByrecv.sipp -mc ")
     assert(test.run())
   end   
@@ -873,7 +852,6 @@ class LooseMessageSequencing < Test::Unit::TestCase
   def test_recv_advances_multiple_early_messages_wide_unexpectedRandom
     test = SippTest.new("test_recv_advances_multiple_early_messages_wide_unexpectedRandom", "-sf test_recv_advances_multiple_early_messages_wide_client_catchupTriggeredByrecv.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_unexpectedRandom.sipp -mc ")
     test.expected_exitstatus = 255
-    #test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'RANDOM\' does not match any expected message.*Message index   1, 200\(1\).*Message index   3, REGISTER\(2\).*Message index   4, NOTIFY\(3\).*Message index   5, ACK\(4\).*Message index   6, NOTIFY\(5\)/m
     test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'RANDOM\' does not match any expected message.*Message index   1, 200\(1\).*Message index   2, REGISTER\(2\).*Message index   3, NOTIFY\(3\).*Message index   4, ACK\(4\).*Message index   5, NOTIFY\(5\)/m
     assert(test.run())
   end  
@@ -902,16 +880,12 @@ class LooseMessageSequencing < Test::Unit::TestCase
   
   def test_optionalmsg_earlymsg_send_catchup
     test = SippTest.new("test_optionalmsg_earlymsg_send_catchup", "-sf test_recv_advances_multiple_early_messages_wide_multipleRandoms_client.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_multipleRandoms_server.sipp -mc ")
-    # test.expected_exitstatus = 255
-    # test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'RANDOM\' does not match any expected message.*Message index   1, 200\(1\).*Message index   3, REGISTER\(2\).*Message index   4, NOTIFY\(3\).*Message index   5, ACK\(4\).*Message index   6, NOTIFY\(5\)/m
     assert(test.run())
   end  
   
   
   def test_lastmessage_is_prereceived
     test = SippTest.new("test_optionalmsg_earlymsg_send_catchup", "-sf test_lasts_message_prereceived_client.sipp -mc ", "-sf test_recv_advances_multiple_early_messages_wide_reversedialogorder_server_unexpectedRandom.sipp -mc ")
-    # test.expected_exitstatus = 255
-    # test.expected_error_log = /Aborting call on unexpected message for.*while expecting \'200\' \(index 1\)\. Request \'RANDOM\' does not match any expected message.*Message index   1, 200\(1\).*Message index   3, REGISTER\(2\).*Message index   4, NOTIFY\(3\).*Message index   5, ACK\(4\).*Message index   6, NOTIFY\(5\)/m
     assert(test.run())
   end  
   

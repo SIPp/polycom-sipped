@@ -178,6 +178,20 @@ struct sipp_option {
 #define SIPP_OPTION_PLUGIN	  38
 #define SIPP_OPTION_NO_CALL_ID_CHECK 39
 
+/* Code moved in from sipp.hpp and sipp_globals.hpp because not needed globally.
+ * Keeping here for the time being in case we further refactor pieces of this 
+ * code out into another module separate from sipp.cpp (ie a sipp_socket.cpp) 
+ */
+
+/* Socket Buffer Management. */
+#define NO_COPY 0
+#define DO_COPY 1
+struct socketbuf          *alloc_socketbuf(char *buffer, size_t size, int copy);
+void                       free_socketbuf(struct socketbuf *socketbuf);
+
+/* End code moved from sipp.hpp and sipp_globals.hpp */
+
+
 /* Put Each option, its help text, and type in this table. */
 struct sipp_option options_table[] = {
 
@@ -442,27 +456,6 @@ struct sipp_option *find_option(const char *option) {
 };
 
 /***************** System Portability Features *****************/
-
-unsigned long long getmicroseconds()
-{
-  struct timeval LS_system_time;
-  unsigned long long VI_micro;
-  static unsigned long long VI_micro_base = 0;
-
-  gettimeofday(&LS_system_time, NULL);
-  VI_micro = (((unsigned long long) LS_system_time.tv_sec) * 1000000LL) + LS_system_time.tv_usec;
-  if (!VI_micro_base) VI_micro_base = VI_micro - 1;
-  VI_micro = VI_micro - VI_micro_base;
-
-  clock_tick = VI_micro / 1000LL;
-
-  return VI_micro;
-}
-
-unsigned long getmilliseconds()
-{
-  return getmicroseconds() / 1000LL;
-}
 
 bool file_exists(const string &filename)
 {
