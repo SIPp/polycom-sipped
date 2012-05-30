@@ -44,11 +44,7 @@
   #include <time.h>
   #include "win32_compatibility.hpp"
   #include <windows.h>
-//  #include <winsock2.h>
-//  #include <ws2tcpip.h>
 #else
-//  #include <arpa/inet.h>
-//  #include <netdb.h>
   #include <netinet/tcp.h>
   #include <sys/poll.h>
   #include <sys/resource.h>
@@ -56,11 +52,7 @@
   #include <errno.h>
 #endif
 
-#ifndef __SUNOS
-  #ifndef WIN32
-    #include <curses.h>
-  #endif
-#else
+#ifdef __SUNOS
   #include <stdarg.h>
 #endif
 
@@ -1580,10 +1572,10 @@ void print_statistics(int last)
     if(first) {
       first = 0;
       printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
-             "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     }
     if (command_mode) {
-	printf(SIPP_ENDL);
+      printf(SIPP_ENDL);
     }
     print_header_line(stdout,last);
     switch(currentScreenToDisplay) {
@@ -1600,8 +1592,8 @@ void print_statistics(int last)
         print_tdm_map();
         break;
       case DISPLAY_SECONDARY_REPARTITION_SCREEN :
-	display_scenario->stats->displayRtdRepartition(stdout, currentRepartitionToDisplay);
-	break;
+        display_scenario->stats->displayRtdRepartition(stdout, currentRepartitionToDisplay);
+        break;
       case DISPLAY_SCENARIO_SCREEN :
       default:
         print_stats_in_file(stdout, last);
@@ -1609,17 +1601,17 @@ void print_statistics(int last)
     }
     print_bottom_line(stdout,last);
     if (!last && screen_last_error[0]) {
-	char *errstart = jump_over_timestamp(screen_last_error);
-	if (strlen(errstart) > 60) {
-	  printf("Last Message: %.60s..." SIPP_ENDL, errstart);
-	} else {
-	  printf("Last Message: %s" SIPP_ENDL, errstart);
-	}
-  fflush(stdout);
+      char *errstart = jump_over_timestamp(screen_last_error);
+      if (strlen(errstart) > 60) {
+        printf("Last Message: %.60s..." SIPP_ENDL, errstart);
+      } else {
+        printf("Last Message: %s" SIPP_ENDL, errstart);
+      }
+      fflush(stdout);
     }
     if (command_mode) {
-	printf("Command: %s", command_buffer ? command_buffer : "");
-  fflush(stdout);
+      printf("Command: %s", command_buffer ? command_buffer : "");
+      fflush(stdout);
     }
     if(last) { fprintf(stdout,"\n"); }
   }
@@ -2089,35 +2081,31 @@ void handle_stdin_socket() {
     chars++;
     if (command_mode) {
       if (c == '\n') {
-	bool quit = process_command(command_buffer);
-	if (quit) {
-	  return;
-	}
-	command_buffer[0] = '\0';
-	command_mode = 0;
-	printf(SIPP_ENDL);
+        bool quit = process_command(command_buffer);
+        if (quit) {
+          return;
+        }
+        command_buffer[0] = '\0';
+        command_mode = 0;
+        printf(SIPP_ENDL);
       }
-#ifndef __SUNOS
-      else if (c == KEY_BACKSPACE || c == KEY_DC)
-#else
-      else if (c == 14)
-#endif
-      {
-	int command_len = strlen(command_buffer);
-	if (command_len > 0) {
-	  command_buffer[command_len--] = '\0';
-	}
+      else if (c == KEY_BACKSPACE_SIPP || c == KEY_DC_SIPP) {
+        // this code is hopeless broken, but we don't care.
+        int command_len = strlen(command_buffer);
+        if (command_len > 0) {
+          command_buffer[command_len--] = '\0';
+        }
       } else {
-	int command_len = strlen(command_buffer);
-	char * new_command_buffer = (char *)realloc(command_buffer, command_len + 2);
-  if (!new_command_buffer) {
-    REPORT_ERROR("Unable to allocate command buffer of size %d", command_len + 2);
-  }
-  command_buffer = new_command_buffer;
-	command_buffer[command_len++] = c;
-	command_buffer[command_len] = '\0';
-	putchar(c);
-	fflush(stdout);
+        int command_len = strlen(command_buffer);
+        char * new_command_buffer = (char *)realloc(command_buffer, command_len + 2);
+        if (!new_command_buffer) {
+          REPORT_ERROR("Unable to allocate command buffer of size %d", command_len + 2);
+        }
+        command_buffer = new_command_buffer;
+        command_buffer[command_len++] = c;
+        command_buffer[command_len] = '\0';
+        putchar(c);
+        fflush(stdout);
       }
     } else if (c == 'c') {
       command_mode = 1;
@@ -4431,7 +4419,7 @@ int main(int argc, char *argv[])
 	  }
 	  exit(EXIT_OTHER);
 	case SIPP_OPTION_VERSION:
-	  printf("\n SIPped v3.2.38"
+	  printf("\n SIPped v3.2.39"
 #ifdef _USE_OPENSSL
 	      "-TLS"
 #endif

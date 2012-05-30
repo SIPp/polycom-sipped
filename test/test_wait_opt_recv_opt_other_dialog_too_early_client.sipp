@@ -86,6 +86,8 @@ Content-Length: [len]
 ]]>
 </send>
 
+<recv response="200" dialog="3" crlf="true"></recv>
+
 <send dialog="3">
 <![CDATA[
 NOTIFY [next_url dialog="1"] SIP/2.0
@@ -107,6 +109,6 @@ Content-Length: [len]
 ]]>
 </send>
 
-<recv response="200" dialog="3" crlf="true"></recv>
+
 
 </scenario>

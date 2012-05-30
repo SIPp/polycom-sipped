@@ -54,11 +54,6 @@
 #include "stat.hpp"
 #include "win32_compatibility.hpp"
 
-// has to be after above to avoid interfering with macro def move
-#ifdef WIN32
-#include "curses.h"
-#endif
-
 extern bool    timeout_exit;
 
 unsigned long screen_errors;
@@ -81,11 +76,15 @@ void (*screen_exit_handler)();
  * sipp.cpp. */
 int screen_readkey()
 {
+#ifdef WIN32
+  return getch(); 
+#else
   int c = getch();
   if (c == ERR) {
     return -1;
   }
   return c;
+#endif
 }
 
 void screen_exit(int rc)
@@ -104,9 +103,12 @@ void screen_exit(int rc)
     already_exited = 1;
   }
   
-  if( backgroundMode == false ) 
-  endwin();
-  
+#ifndef WIN32
+  if( backgroundMode == false ) {
+    endwin();
+  }
+#endif
+
   if(screen_exit_handler) {
     screen_exit_handler();
   }
@@ -207,7 +209,11 @@ void manage_oversized_file()
 
 void screen_clear() 
 {
+#ifdef WIN32
+  ClearScreen();
+#else
   printf("\033[2J");
+#endif
 }
 
 void screen_set_exename(char * exe_name)
@@ -221,13 +227,15 @@ void screen_init(void (*exit_handler)())
   screen_inited = 1;
   screen_exit_handler = exit_handler;
 
+#ifndef WIN32
   if (backgroundMode == false) {
     /* Initializes curses and signals */
     initscr();
     /* Enhance performances and display */
     noecho();
   }
-  
+#endif
+
   /* Map exit handlers to curses reset procedure */
 #ifdef WIN32
   (void) signal(SIGTERM, win32_screen_quit);

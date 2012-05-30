@@ -6,6 +6,24 @@
 
 <recv request="SUBSCRIBE" dialog="3"></recv>
 
+
+
+<send dialog="3">
+<![CDATA[
+
+SIP/2.0 200 OK
+[last_via:]
+[last_From:]
+[last_To:];tag=[call_number]
+[last_Call-Id]
+[last_Cseq]
+User-Agent: SIPp
+[last_Contact:];expires=120
+Content-Length: [len]
+
+]]>
+</send>
+
 <send dialog="3">
 <![CDATA[
 NOTIFY sip:CA.cym.com SIP/2.0
@@ -27,23 +45,7 @@ Content-Length: [len]
 ]]>
 </send>
 
-<send dialog="3">
-<![CDATA[
-
-SIP/2.0 200 OK
-[last_via:]
-[last_From:]
-[last_To:];tag=[call_number]
-[last_Call-Id]
-[last_Cseq]
-User-Agent: SIPp
-[last_Contact:];expires=120
-Content-Length: [len]
-
-]]>
-</send>
-
-  <send dialog="4">
+<send dialog="4">
 <![CDATA[
 SUBSCRIBE [next_url dialog="1"] SIP/2.0
 From: State_Agent line1_to_uri <to@line1.com>;tag=a59ec025

@@ -1,6 +1,11 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
+3.2.39 May 29  2012  
+- enable checking of optional messages within dialog during call::init
+- for win32, removed dependancies on ncurses by defining clearscreen function, removing initscr
+	explictly defining KEY_BACKSPACE and KEY_DC for platforms. 
+
 3.2.38 May 29  2012  
 -fix some compiler warnings regarding initialization order, signed to unsigned comparisons, unused variables
 -change optional ipv6 ip address attribute from no_esc to no_square_brackets 

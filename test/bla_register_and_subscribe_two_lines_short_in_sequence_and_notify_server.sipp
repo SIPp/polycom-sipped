@@ -27,39 +27,6 @@ Content-Length: [len]
 <!-- Send line1 BLA subscription and send initial BLA state -->
 <recv request="SUBSCRIBE" dialog="2"></recv>
 
-<!-- Send optional message -->
-  <send dialog="7">
-    <![CDATA[
-
-      RANDOM sip:optional.cym.com SIP/2.0
-      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
-      From: ua2 <sip:ua2@nnl.cym:[local_port]>[local_tag_param]
-      To: ua1 <sip:ua2@nnl.cym:[local_port]>
-      Call-ID: [call_id]
-      CSeq: [cseq] RANDOM
-      Contact: sip:ua2@[local_ip]:[local_port]
-      Content-Length: 0
-      Expires: 300
-
-    ]]>
-  </send>
-
-<!-- Send optional message a second time -->
-  <send dialog="7">
-    <![CDATA[
-
-      RANDOM sip:optional.cym.com SIP/2.0
-      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
-      From: ua2 <sip:ua2@nnl.cym:[local_port]>[local_tag_param]
-      To: ua1 <sip:ua2@nnl.cym:[local_port]>
-      Call-ID: [call_id]
-      CSeq: [cseq] RANDOM
-      Contact: sip:ua2@[local_ip]:[local_port]
-      Content-Length: 0
-      Expires: 300
-
-    ]]>
-  </send>
 
 <!-- Accept line 2 registration -->
   <send dialog="4">
@@ -78,41 +45,8 @@ Content-Length: [len]
     ]]>
   </send>
 
-<!-- Send optional message -->
-  <send dialog="4">
-    <![CDATA[
 
-      RANDOM sip:optional.cym.com SIP/2.0
-      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
-      From: ua2 <sip:ua2@nnl.cym:[local_port]>[local_tag_param]
-      To: ua1 <sip:ua2@nnl.cym:[local_port]>
-      Call-ID: [call_id]
-      CSeq: [cseq] RANDOM
-      Contact: sip:ua2@[local_ip]:[local_port]
-      Content-Length: 0
-      Expires: 300
-
-    ]]>
-  </send>
-
-<!-- Send optional message a second time -->
-  <send dialog="4">
-    <![CDATA[
-
-      RANDOM sip:optional.cym.com SIP/2.0
-      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
-      From: ua2 <sip:ua2@nnl.cym:[local_port]>[local_tag_param]
-      To: ua1 <sip:ua2@nnl.cym:[local_port]>
-      Call-ID: [call_id]
-      CSeq: [cseq] RANDOM
-      Contact: sip:ua2@[local_ip]:[local_port]
-      Content-Length: 0
-      Expires: 300
-
-    ]]>
-  </send>
-  
-  <send dialog="4">
+<send dialog="4">
 <![CDATA[
 NOTIFY sip:CA.cym.com SIP/2.0
 Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
@@ -132,6 +66,8 @@ Content-Length: [len]
 </dialog-info>
 ]]>
 </send>
+
+  
   
 <send dialog="2">
 <![CDATA[

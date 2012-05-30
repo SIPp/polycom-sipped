@@ -446,10 +446,10 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   if (no_call_id_check && call_scenario->doesScenarioHaveOnlyLinearElements()) {
     DEBUG("Loose message sequence is enabled.");
     loose_message_sequence = true;
-    //string problems = get_set_of_problematic_optional_messages(call_scenario);
-    //if ( problems.length() > 0) {
-    //  REPORT_ERROR(problems.c_str());
-    //};
+    string problems = get_set_of_problematic_optional_messages(call_scenario);
+    if ( problems.length() > 0) {
+      REPORT_ERROR(problems.c_str());
+    };
   }
   else {
     DEBUG("Loose message sequence is disabled.");
@@ -5263,7 +5263,7 @@ int get_next_msg_in_same_or_default_dialog(int msgindex,scenario * call_scenario
 string get_set_of_problematic_optional_messages(scenario * call_scenario){
 
   string result;
-  int buffersize = 32;
+  const int buffersize = 32;
   char dialog_number_str[buffersize];
   char msg_number_str[buffersize];
   char temp_str[buffersize];
@@ -5290,8 +5290,10 @@ string get_set_of_problematic_optional_messages(scenario * call_scenario){
         int next_relevant_msg = get_next_msg_in_same_or_default_dialog(counter, call_scenario);
         if (next_relevant_msg <0){
           // no other relevant messages to this dialog. Last message in dialog is an optional: opt-end
-            // uncomment if we want to enforce that the last message in a dialog cannot be optional
-            // should not cause problems as other dialogs can trigger scenario to proceed past this optional
+              // uncomment result assignment if we want to enforce that the last message in a 
+              // dialog cannot be optional.  Should not cause problems as this is not the last message
+              // and there are other messages in other dialogs that follow this that can trigger 
+              // scenario to proceed past this optional
           //result += string("Optional Message ") + string(msg_number_str) + 
           //  string("(") + string(dialog_number_str) + string(") is last message in this dialog. Last message of a dialog cannot be optional\n");
           continue;
@@ -5303,7 +5305,7 @@ string get_set_of_problematic_optional_messages(scenario * call_scenario){
           continue;
         }
         else{
-          // optional message followed by a send pause or nop,  opt-pause, opt-nop, opt-send
+          // optional message followed by a send pause or nop, ie. opt-pause, opt-nop, opt-send
           sprintf(temp_str, "%d", next_relevant_msg);
           result += "Optional message " + string(msg_number_str) + "(" + string(dialog_number_str) + 
             ") followed by message " + string(temp_str) ;

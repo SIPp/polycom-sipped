@@ -21,22 +21,33 @@
     ]]>
   </send>
 
+  
+  
 <recv response="200" dialog="1"></recv>
 
+<!-- Send line1 BLA subscription and send initial BLA state -->
+<send dialog="2">
+<![CDATA[
+SUBSCRIBE [next_url dialog="1"] SIP/2.0
+From: State_Agent line1_to_uri <to@line1.com>;tag=a59ec025
+To: line1_from_uri <ugh@line1.com>
+CSeq: [cseq] SUBSCRIBE
+Call-Id: [call_id]
+Event: dialog;sla;include-session-description
+User-Agent: Sipp
+Contact: <sip:[local_ip]:[local_port]>
+Expires: 3600
+Max-Forwards: 20
+Via: SIP/2.0/UDP [local_ip];branch=[branch]
+Content-Length: [len]
+]]>
+</send>
+
+<!-- Receive phone's BLA subscription and sent initial BLA state -->
+<recv request="SUBSCRIBE" dialog="3"></recv>
 
 
-<!-- Accept line 2 registration -->
-<recv request="REGISTER" dialog="2">
-</recv>
-
-<recv request="NOTIFY" dialog="3"></recv>
-
-<recv request="ACK" dialog="4"></recv>
-
-<recv request="NOTIFY" dialog="5"></recv>
-
-
-<send dialog="1"> 
+<send dialog="3"> 
 <![CDATA[
 SIP/2.0 202 Accepted
 [last_From:]
@@ -53,7 +64,29 @@ Content-Length: 0
 
 </send>
 
-<send dialog="1">
+<recv response="200" dialog="3" optional="true"></recv>
+
+<recv request="NOTIFY" dialog="2" ></recv>
+
+<recv request="ACK" dialog="2" optional="true" crlf="true"></recv>
+
+<recv response="200" dialog="2" ></recv>
+
+<send dialog="2">
+<![CDATA[
+SIP/2.0 200 OK
+[last_From:]
+[last_To:]
+[last_cseq:]
+[last_call-id:]
+Contact: <sip:[local_ip]:[local_port]>
+Allow: INVITE, ACK, CANCEL, BYE, REFER, OPTIONS, NOTIFY
+[last_via:]
+Content-Length: [len]
+]]>
+</send>
+
+<send dialog="3">
 <![CDATA[
 NOTIFY [next_url dialog="1"] SIP/2.0
 Via: SIP/2.0/UDP [local_ip]:5060;branch=[branch]
@@ -74,11 +107,6 @@ Content-Length: [len]
 ]]>
 </send>
 
-<recv response="200" dialog="1" crlf="true"></recv>
-
-
-
-
-
+<recv response="200" dialog="3" crlf="true"></recv>
 
 </scenario>

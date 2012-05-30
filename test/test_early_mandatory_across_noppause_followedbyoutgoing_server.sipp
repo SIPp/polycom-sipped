@@ -27,6 +27,7 @@ Content-Length: [len]
 ]]>
 </send>
 
+<!--
 <send dialog="3">
 <![CDATA[
 
@@ -42,6 +43,7 @@ Content-Length: [len]
 
 ]]>
 </send>
+-->
 
   <send dialog="4">
 <![CDATA[

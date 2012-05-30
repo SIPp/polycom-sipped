@@ -21,7 +21,7 @@ Content-Length: [len]
 ]]>
 </send>
   
-  <recv response="200" dialog="3" optional="true"></recv>
+  <recv response="200" dialog="3" optional="false"></recv>
   
   <recv request="SUBSCRIBE" dialog="4"></recv>
   

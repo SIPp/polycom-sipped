@@ -110,6 +110,8 @@
   #define EDQUOT                  WSAEDQUOT
   #define ESTALE                  WSAESTALE
   #define EREMOTE                 WSAEREMOTE
+  
+  void ClearScreen();
 
 #else // Not WIN32
  //win32 compat above provides equiv methods to posix version below

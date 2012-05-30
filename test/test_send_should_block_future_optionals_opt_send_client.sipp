@@ -49,8 +49,6 @@
 
 <recv response="200" dialog="2"></recv>
 
-<recv response="100" dialog="1"></recv>
-
 <send dialog="1">
 <![CDATA[
 SIP/2.0 200 OK

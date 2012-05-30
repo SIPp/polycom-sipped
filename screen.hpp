@@ -46,7 +46,6 @@ void screen_init(void (*exit_handler)());
 void screen_clear();
 int  screen_readkey();
 void screen_exit(int rc);
-void screen_sigusr1(int /* not used */);
 
 #define EXIT_TEST_OK               0
 #define EXIT_TEST_FAILED           1
@@ -61,6 +60,17 @@ void screen_sigusr1(int /* not used */);
 #define EXIT_ARGUMENT_ERROR        -4
 
 #define MAX_ERROR_SIZE            1024
+
+#ifdef WIN32
+  const int KEY_BACKSPACE_SIPP = 8;
+  const int KEY_DC_SIPP = 127;
+#elif __SUNOS
+  const int KEY_BACKSPACE_SIPP = 14;
+  const int KEY_DC_SIPP = 14;
+#else
+  const int KEY_BACKSPACE_SIPP = 0x7e;
+  const int KEY_DC_SIPP = 0x7f;
+#endif
 
 #endif // __SCREEN_H__
 
