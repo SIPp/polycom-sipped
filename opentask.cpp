@@ -49,24 +49,29 @@ class opentask *opentask::instance = NULL;
 unsigned long opentask::calls_since_last_rate_change = 0;
 unsigned long opentask::last_rate_change_time = 0;
 
-void opentask::initialize() {
+void opentask::initialize()
+{
   assert(instance == NULL);
   instance = new opentask();
 }
 
-opentask::opentask() {
+opentask::opentask()
+{
   setRunning();
 }
 
-opentask::~opentask() {
+opentask::~opentask()
+{
   instance = NULL;
 }
 
-void opentask::dump() {
+void opentask::dump()
+{
   WARNING("Uniform rate call generation task: %d", rate);
 }
 
-unsigned int opentask::wake() {
+unsigned int opentask::wake()
+{
   if (paused) {
     return 0;
   } else if (users >= 0) {
@@ -78,7 +83,8 @@ unsigned int opentask::wake() {
   }
 }
 
-bool opentask::run() {
+bool opentask::run()
+{
   int calls_to_open = 0;
 
   if (quitting) {
@@ -99,8 +105,8 @@ bool opentask::run() {
     calls_to_open = ((l = (users - current_calls)) > 0) ? l : 0;
   } else {
     calls_to_open = (unsigned int)
-      ((l=(long)floor(((clock_tick - last_rate_change_time) * rate/rate_period_ms)
-		      - calls_since_last_rate_change))>0?l:0);
+                    ((l=(long)floor(((clock_tick - last_rate_change_time) * rate/rate_period_ms)
+                                    - calls_since_last_rate_change))>0?l:0);
   }
 
   if (total_calls + calls_to_open > stop_after) {
@@ -118,58 +124,57 @@ bool opentask::run() {
   unsigned int start_clock = getmilliseconds();
 
 
-  while(calls_to_open--)
-  {
-      /* Associate a user with this call, if we are in users mode. */
-      int userid = 0;
-      if (users >= 0) {
-	userid = freeUsers.back();
-	freeUsers.pop_back();
-      }
-
-      // adding a new OUTGOING CALL
-      main_scenario->stats->computeStat(CStat::E_CREATE_OUTGOING_CALL);
-      call * call_ptr = call::add_call(userid, is_ipv6, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
-      if(!call_ptr) {
-	REPORT_ERROR("Out of memory allocating call!");
-      }
-
-      calls_since_last_rate_change++;
-
-      outbound_congestion = false;
-
-      if (!multisocket) {
-	switch(transport) {
-	  case T_UDP:
-	    call_ptr->associate_socket(main_socket);
-	    main_socket->ss_count++;
-	    break;
-	  case T_TCP:
-	  case T_TLS:
-	    call_ptr->associate_socket(tcp_multiplex);
-	    tcp_multiplex->ss_count++;
-	    break;
-	}
-      }
-      if (getmilliseconds() > start_clock) {
-	break;
-      }
+  while(calls_to_open--) {
+    /* Associate a user with this call, if we are in users mode. */
+    int userid = 0;
+    if (users >= 0) {
+      userid = freeUsers.back();
+      freeUsers.pop_back();
     }
 
-    /* We can pause. */
-    if (calls_to_open <= 0) {
-      setPaused();
-    } else {
-      /* Stay running. */
+    // adding a new OUTGOING CALL
+    main_scenario->stats->computeStat(CStat::E_CREATE_OUTGOING_CALL);
+    call * call_ptr = call::add_call(userid, is_ipv6, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
+    if(!call_ptr) {
+      REPORT_ERROR("Out of memory allocating call!");
     }
 
-    // Quit after asked number of calls is reached
-    if(total_calls >= stop_after) {
-      quitting = 1;
-      return false;
-    }
+    calls_since_last_rate_change++;
 
-    return true;
+    outbound_congestion = false;
+
+    if (!multisocket) {
+      switch(transport) {
+      case T_UDP:
+        call_ptr->associate_socket(main_socket);
+        main_socket->ss_count++;
+        break;
+      case T_TCP:
+      case T_TLS:
+        call_ptr->associate_socket(tcp_multiplex);
+        tcp_multiplex->ss_count++;
+        break;
+      }
+    }
+    if (getmilliseconds() > start_clock) {
+      break;
+    }
+  }
+
+  /* We can pause. */
+  if (calls_to_open <= 0) {
+    setPaused();
+  } else {
+    /* Stay running. */
+  }
+
+  // Quit after asked number of calls is reached
+  if(total_calls >= stop_after) {
+    quitting = 1;
+    return false;
+  }
+
+  return true;
 }
 
 void opentask::set_paused(bool new_paused)
@@ -236,11 +241,11 @@ void opentask::set_users(int new_users)
     while (users < new_users) {
       int userid;
       if (!retiredUsers.empty()) {
-	userid = retiredUsers.back();
-	retiredUsers.pop_back();
+        userid = retiredUsers.back();
+        retiredUsers.pop_back();
       } else {
-	userid = users + 1;
-	userVarMap[userid] = new VariableTable(userVariables);
+        userid = users + 1;
+        userVarMap[userid] = new VariableTable(userVariables);
       }
       freeUsers.push_front(userid);
       users++;
@@ -257,7 +262,8 @@ void opentask::set_users(int new_users)
   instance->setRunning();
 }
 
-void opentask::freeUser(int userId) {
+void opentask::freeUser(int userId)
+{
   if (main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall) > open_calls_allowed) {
     retiredUsers.push_front(userId);
   } else {

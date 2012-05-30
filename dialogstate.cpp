@@ -24,9 +24,9 @@
 #include "logging.hpp"
 #include "screen.hpp"
 
-DialogState::DialogState(unsigned int base_cseq, const string &call_id) : call_id(call_id), 
-                         client_cseq(base_cseq), server_cseq(0), peer_tag(0), local_tag(0), 
-                         dialog_route_set(0), next_req_url(0), default_txn("") 
+DialogState::DialogState(unsigned int base_cseq, const string &call_id) : call_id(call_id),
+  client_cseq(base_cseq), server_cseq(0), peer_tag(0), local_tag(0),
+  dialog_route_set(0), next_req_url(0), default_txn("")
 {
   client_cseq_method[0] = '\0';
   server_cseq_method[0] = '\0';
@@ -38,8 +38,8 @@ DialogState::DialogState(unsigned int base_cseq, const string &call_id) : call_i
   from_uri[0] = 0;
 };
 
-DialogState::~DialogState() 
-{ 
+DialogState::~DialogState()
+{
   if(peer_tag) free(peer_tag);
   if(local_tag) free(local_tag);
 
@@ -55,10 +55,9 @@ TransactionState &DialogState::get_transaction(const string &name, int msg_index
   else {
     Name_Transaction_Map::iterator txn = transactions.find(name);
     if (txn == transactions.end()) {
-      REPORT_ERROR("Message %d is attempting to use transaction '%s' prior to it being started with start_txn (transaction not found).", msg_index, name.c_str()); 
-    } 
-    else if (txn->second.getBranch().empty()) {
-      REPORT_ERROR("Message %d is attempting to use transaction '%s' but aborting because the branch is empty (an invalid SIP message was associated with the start_txn message).", msg_index, name.c_str()); 
+      REPORT_ERROR("Message %d is attempting to use transaction '%s' prior to it being started with start_txn (transaction not found).", msg_index, name.c_str());
+    } else if (txn->second.getBranch().empty()) {
+      REPORT_ERROR("Message %d is attempting to use transaction '%s' but aborting because the branch is empty (an invalid SIP message was associated with the start_txn message).", msg_index, name.c_str());
     }
     DEBUG("Found %s", txn->second.trace().c_str());
 
@@ -77,9 +76,10 @@ TransactionState &DialogState::create_transaction(const string &name)
 }
 
 // set last message, from transaction or default if none specified. msg_index is used for error reporting only
-void DialogState::setLastReceivedMessage(const string &msg, const string &name, int msg_index){
+void DialogState::setLastReceivedMessage(const string &msg, const string &name, int msg_index)
+{
   DEBUG_IN("name = '%s' Message Length = %d", name.c_str(), msg.length());
-  
+
   // set default transactions's last message
   {
     TransactionState &txn = get_transaction("", msg_index);
@@ -95,7 +95,8 @@ void DialogState::setLastReceivedMessage(const string &msg, const string &name, 
 }
 
 // get last message, from transaction or default if none specified. msg_index is used for error reporting only
-const string &DialogState::getLastReceivedMessage(const string &name, int msg_index) {
+const string &DialogState::getLastReceivedMessage(const string &name, int msg_index)
+{
   DEBUG_IN("name = %s", name.c_str());
   TransactionState &txn = get_transaction(name, msg_index);
   return txn.getLastReceivedMessage();

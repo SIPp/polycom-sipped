@@ -22,7 +22,7 @@
  */
 
 /****
- * logging.hpp : Simple logfile encapsulation 
+ * logging.hpp : Simple logfile encapsulation
  */
 
 #ifndef __LOGGING__
@@ -58,16 +58,16 @@ struct logfile_id {
 };
 
 struct logfile_info {
-	const char *name;
-	bool check;
-	FILE *fptr;
-	int nfiles;
-	struct logfile_id *ftimes;
-	char file_name[MAX_PATH];
-	bool overwrite;
-	bool fixedname;
-	time_t starttime;
-	unsigned int count;
+  const char *name;
+  bool check;
+  FILE *fptr;
+  int nfiles;
+  struct logfile_id *ftimes;
+  char file_name[MAX_PATH];
+  bool overwrite;
+  bool fixedname;
+  time_t starttime;
+  unsigned int count;
 };
 
 

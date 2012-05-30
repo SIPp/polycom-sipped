@@ -18,7 +18,7 @@
  *            Olivier JACQUES
  *            Richard GAYRAUD
  *            From Hewlett Packard Company.
- *           
+ *
  */
 
 #include <assert.h>
@@ -197,7 +197,8 @@ CCallVariable::~CCallVariable()
 
 #define LEVEL_BITS 8
 
-VariableTable::VariableTable(VariableTable *parent, int size) {
+VariableTable::VariableTable(VariableTable *parent, int size)
+{
   if (parent) {
     level = parent->level + 1;
     assert(level < (1 << LEVEL_BITS));
@@ -225,7 +226,8 @@ VariableTable::VariableTable(VariableTable *parent, int size) {
   }
 }
 
-VariableTable::VariableTable(AllocVariableTable *src) {
+VariableTable::VariableTable(AllocVariableTable *src)
+{
   count = 1;
   this->level = src->level;
   if (src->parent) {
@@ -255,7 +257,8 @@ VariableTable::VariableTable(AllocVariableTable *src) {
   }
 }
 
-void VariableTable::expand(int size) {
+void VariableTable::expand(int size)
+{
   assert(size > this->size);
   if (size == this->size) {
     return;
@@ -276,7 +279,8 @@ void VariableTable::expand(int size) {
   this->size = size;
 }
 
-VariableTable::~VariableTable() {
+VariableTable::~VariableTable()
+{
   if (parent) {
     parent->putTable();
   }
@@ -286,41 +290,47 @@ VariableTable::~VariableTable() {
   free(variableTable);
 }
 
-VariableTable *VariableTable::getTable() {
+VariableTable *VariableTable::getTable()
+{
   count++;
   return this;
 }
 
-void VariableTable::putTable() {
+void VariableTable::putTable()
+{
   if (--count == 0) {
     delete this;
   }
 }
 
-CCallVariable *VariableTable::getVar(int i) {
+CCallVariable *VariableTable::getVar(int i)
+{
   int thisLevel  = i & ((1 << LEVEL_BITS) - 1);
   assert(thisLevel <= level);
   if (thisLevel == level) {
-	i = i >> LEVEL_BITS;
-	assert(i > 0);
-	assert(i <= size );
-	return variableTable[i - 1];
+    i = i >> LEVEL_BITS;
+    assert(i > 0);
+    assert(i <= size );
+    return variableTable[i - 1];
   }
   assert(parent);
   return parent->getVar(i);
 }
 
-AllocVariableTable::AllocVariableTable(AllocVariableTable *av_parent) : VariableTable((VariableTable *)av_parent, 0) {
+AllocVariableTable::AllocVariableTable(AllocVariableTable *av_parent) : VariableTable((VariableTable *)av_parent, 0)
+{
   this->av_parent = av_parent;
 }
 
-AllocVariableTable::~AllocVariableTable() {
+AllocVariableTable::~AllocVariableTable()
+{
   clear_str_int(variableMap);
   clear_int_str(variableRevMap);
   clear_int_int(variableReferences);
 }
 
-int AllocVariableTable::find(const char *varName, bool allocate) {
+int AllocVariableTable::find(const char *varName, bool allocate)
+{
   /* If this variable has already been used, then we have nothing to do. */
   str_int_map::iterator var_it = variableMap.find(varName);
   if (var_it != variableMap.end()) {
@@ -347,27 +357,30 @@ int AllocVariableTable::find(const char *varName, bool allocate) {
   return -1;
 }
 
-char *AllocVariableTable::getName(int i) {
+char *AllocVariableTable::getName(int i)
+{
   int thisLevel  = i & ((1 << LEVEL_BITS) - 1);
   assert(thisLevel <= level);
   if (thisLevel == level) {
-	return variableRevMap[i];
+    return variableRevMap[i];
   }
   assert(av_parent);
   return av_parent->getName(i);
 }
 
-void AllocVariableTable::dump() {
+void AllocVariableTable::dump()
+{
   if (av_parent) {
     av_parent->dump();
   }
   WARNING("%d level %d variables:", variableMap.size(), level);
   for (str_int_map::iterator i = variableMap.begin(); i != variableMap.end(); i++) {
-	WARNING("%s", i->first.c_str());
+    WARNING("%s", i->first.c_str());
   }
 }
 
-void AllocVariableTable::validate() {
+void AllocVariableTable::validate()
+{
   for (str_int_map::iterator var_it = variableMap.begin(); var_it != variableMap.end(); var_it++) {
     const char *varName = var_it->first.c_str();
     if (variableReferences[var_it->second] < 2) {
@@ -383,7 +396,8 @@ void AllocVariableTable::validate() {
   }
 }
 
-bool has_leading_zero(char *ptr) {
+bool has_leading_zero(char *ptr)
+{
   if(!ptr) return false;
   while(*ptr == ' ') ptr++;
   return *ptr == '0' || ((*ptr == '+' || *ptr == '-') && (ptr+1 && *(ptr+1) == '0'));

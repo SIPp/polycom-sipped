@@ -15,7 +15,7 @@
  *
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
- *	     Charles P. Wright from IBM Research
+ *       Charles P. Wright from IBM Research
  */
 #include <assert.h>
 #include <stdlib.h>
@@ -26,7 +26,8 @@
 
 listener_map listeners;
 
-listener::listener(const char *id, bool listening) {
+listener::listener(const char *id, bool listening)
+{
   this->id = strdup(id);
   this->listening = false;
   if (listening) {
@@ -34,13 +35,15 @@ listener::listener(const char *id, bool listening) {
   }
 }
 
-void listener::startListening() {
+void listener::startListening()
+{
   assert(!listening);
   listeners.insert(std::pair<listener_map::key_type,listener *>(listener_map::key_type(id),this));
   listening = true;
 }
 
-void listener::stopListening() {
+void listener::stopListening()
+{
   assert(listening);
 
   listener_map::iterator listener_it;
@@ -50,11 +53,13 @@ void listener::stopListening() {
   listening = false;
 }
 
-char *listener::getId() {
+char *listener::getId()
+{
   return id;
 }
 
-listener::~listener() {
+listener::~listener()
+{
   if (listening) {
     stopListening();
   }
@@ -63,7 +68,8 @@ listener::~listener() {
 
 }
 
-listener *get_listener(char *id) {
+listener *get_listener(char *id)
+{
   listener_map::iterator listener_it;
   if (id != NULL) {
     listener_it = listeners.find(listener_map::key_type(id));

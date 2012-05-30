@@ -51,17 +51,20 @@
 #include "send_packets.hpp"
 #endif
 
-deadcall::deadcall(char *id, const char *reason) : listener(id, true) {
+deadcall::deadcall(char *id, const char *reason) : listener(id, true)
+{
   this->expiration = clock_tick + deadcall_wait;
   this->reason = strdup(reason);
   setPaused();
 }
 
-deadcall::~deadcall() {
+deadcall::~deadcall()
+{
   free(reason);
 }
 
-bool deadcall::process_incoming(char * msg, struct sockaddr_storage *src, struct sipp_socket *socket) {
+bool deadcall::process_incoming(char * msg, struct sockaddr_storage *src, struct sipp_socket *socket)
+{
   char buffer[MAX_HEADER_LEN];
   DEBUG_IN();
 
@@ -74,8 +77,8 @@ bool deadcall::process_incoming(char * msg, struct sockaddr_storage *src, struct
   WARNING("%s, received '%s'", buffer, msg);
 
   TRACE_MSG("-----------------------------------------------\n"
-             "Dead call %s recieved a %s message:\n\n%s\n",
-	     id, TRANSPORT_TO_STRING(transport), msg);
+            "Dead call %s recieved a %s message:\n\n%s\n",
+            id, TRANSPORT_TO_STRING(transport), msg);
 
   expiration = clock_tick + deadcall_wait;
 
@@ -83,13 +86,15 @@ bool deadcall::process_incoming(char * msg, struct sockaddr_storage *src, struct
   return run();
 }
 
-bool deadcall::process_twinSippCom(char * msg) {
+bool deadcall::process_twinSippCom(char * msg)
+{
   CStat::globalStat(CStat::E_DEAD_CALL_MSGS);
   TRACE_MSG("Received twin message for dead (%s) call %s:%s\n", reason, id, msg);
   return true;
 }
 
-bool deadcall::run() {
+bool deadcall::run()
+{
   if (clock_tick > expiration) {
     delete this;
     return false;
@@ -99,11 +104,13 @@ bool deadcall::run() {
   }
 }
 
-unsigned int deadcall::wake() {
+unsigned int deadcall::wake()
+{
   return expiration;
 }
 
 /* Dump call info to error log. */
-void deadcall::dump() {
+void deadcall::dump()
+{
   WARNING("%s: Dead Call (%s) expiring at %lu", id, reason, expiration);
 }

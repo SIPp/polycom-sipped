@@ -18,7 +18,7 @@
  *            Olivier JACQUES
  *            Richard GAYRAUD
  *            From Hewlett Packard Company.
- *           
+ *
  */
 
 #ifndef _CVARIABLE
@@ -35,8 +35,7 @@ typedef std::map<int, int> int_int_map;
 #define MAX_MATCHING_EXPR 50
 #define REGEXP_PARAMS REG_EXTENDED
 
-enum T_VarType
-{
+enum T_VarType {
   E_VT_REGEXP = 0,
   E_VT_DOUBLE,
   E_VT_BOOL,
@@ -44,8 +43,7 @@ enum T_VarType
   E_VT_UNDEFINED
 };
 
-class CCallVariable
-{
+class CCallVariable {
 public:
   bool isSet();
   bool isDouble();
@@ -81,37 +79,35 @@ public:
   ~CCallVariable();
 
 private:
-  T_VarType	M_type;
-  char*		M_matchingValue;
-  int		M_nbOfMatchingValue;
-  double	M_double;
-  char*		M_stringValue;
-  bool		M_bool;
+  T_VarType M_type;
+  char*   M_matchingValue;
+  int   M_nbOfMatchingValue;
+  double  M_double;
+  char*   M_stringValue;
+  bool    M_bool;
 };
 
 class AllocVariableTable;
 
-class VariableTable
-{
+class VariableTable {
 public:
-	VariableTable(VariableTable *parent, int size);
-	VariableTable(AllocVariableTable *src);
-	VariableTable *getTable();
-	void putTable();
-	int size;
+  VariableTable(VariableTable *parent, int size);
+  VariableTable(AllocVariableTable *src);
+  VariableTable *getTable();
+  void putTable();
+  int size;
 
-	CCallVariable *getVar(int i);
+  CCallVariable *getVar(int i);
 protected:
-	virtual ~VariableTable();
-	void expand(int size);
-	int count;
-	int level;
-	CCallVariable **variableTable;
-	VariableTable *parent;
+  virtual ~VariableTable();
+  void expand(int size);
+  int count;
+  int level;
+  CCallVariable **variableTable;
+  VariableTable *parent;
 };
 
-class AllocVariableTable : public VariableTable
-{
+class AllocVariableTable : public VariableTable {
 public:
   AllocVariableTable(AllocVariableTable *av_parent);
   ~AllocVariableTable();

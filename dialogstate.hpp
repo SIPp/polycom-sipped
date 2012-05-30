@@ -65,10 +65,10 @@ public:
   unsigned int   server_cseq;
   char           server_cseq_method[MAX_HEADER_LEN];
 
-/*
-  // Last received message (expected, not optional, and not retransmitted)
-  char           * last_recv_msg;
-*/
+  /*
+    // Last received message (expected, not optional, and not retransmitted)
+    char           * last_recv_msg;
+  */
 
   // remote tag, populated by incoming responses. Referenced by [peer_tag], [remote_tag], [remote_tag_param]
   char           * peer_tag;
@@ -88,7 +88,7 @@ public:
   char           from_name_and_uri[MAX_HEADER_LEN];
   char           from_uri[MAX_HEADER_LEN];
 
-  // holds the route set 
+  // holds the route set
   char           * dialog_route_set;
   char           * next_req_url; // (contact header)
 

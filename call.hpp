@@ -15,7 +15,7 @@
  *
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
- *	     Charles P. Wright from IBM Research
+ *       Charles P. Wright from IBM Research
  *           Andy Aicken
  */
 
@@ -25,18 +25,18 @@
 #include <map>
 
 #ifdef WIN32
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
-  #include <stdio.h>
-  #include <process.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <stdio.h>
+#include <process.h>
 #else
-  #include <sys/socket.h>
-  #ifdef __CYGWIN
-    #include <stdio.h>
-    #include <process.h>
-  #else
-    #include <spawn.h>
-  #endif
+#include <sys/socket.h>
+#ifdef __CYGWIN
+#include <stdio.h>
+#include <process.h>
+#else
+#include <spawn.h>
+#endif
 #endif
 
 #ifdef _USE_OPENSSL
@@ -73,8 +73,8 @@
 #define MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS 20
 
 /* Retransmission check methods. */
-#define RTCHECK_FULL	1
-#define RTCHECK_LOOSE	2
+#define RTCHECK_FULL  1
+#define RTCHECK_LOOSE 2
 
 /* For keeping track of short and long form header */
 #define MAX_HEADER_NAME_LEN  18
@@ -87,10 +87,10 @@
 #define NUM_ARGS_FOR_SPAWN 4
 
 #ifdef __HPUX
-  extern int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * aka_OP, char * aka_AMF, char * aka_K, char * result);
+extern int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * aka_OP, char * aka_AMF, char * aka_K, char * result);
 #else
-  extern int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * aka_OP, char * aka_AMF, char * aka_K, char * result); 
-  int verifyAuthHeader(char * user, char * password, char * method, char * auth); 
+extern int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * aka_OP, char * aka_AMF, char * aka_K, char * result);
+int verifyAuthHeader(char * user, char * password, char * method, char * auth);
 #endif
 
 
@@ -99,7 +99,7 @@ typedef std::map<int, DialogState*> perDialogStateMap;
 
 class call : virtual public task, virtual public listener, public virtual socketowner {
 public:
-  // These are wrappers for various circumstances, (private) init does the real work. 
+  // These are wrappers for various circumstances, (private) init does the real work.
   call(char *p_id, bool use_ipv6, int userId, struct sockaddr_storage *dest);
   call(char *p_id, struct sipp_socket *socket, struct sockaddr_storage *dest);
   static call *add_call(int userId, bool ipv6, struct sockaddr_storage *dest);
@@ -124,16 +124,15 @@ public:
   virtual void dump();
 
   /* Automatic */
-  enum T_AutoMode
-    {
-      E_AM_DEFAULT,
-      E_AM_UNEXP_BYE,
-      E_AM_UNEXP_CANCEL,
-      E_AM_PING,
-      E_AM_AA,
-      E_AM_AA_REGISTER,
-      E_AM_OOCALL,
-    };
+  enum T_AutoMode {
+    E_AM_DEFAULT,
+    E_AM_UNEXP_BYE,
+    E_AM_UNEXP_CANCEL,
+    E_AM_PING,
+    E_AM_AA,
+    E_AM_AA_REGISTER,
+    E_AM_OOCALL,
+  };
 
   // set last message for default, per-dialog(if dialog_number) and (if msg_index specified) per-transaction structures.
   void setLastMsg(const string &msg, int dialog_number=-1, int message_index=-1);
@@ -169,8 +168,8 @@ private:
 
   unsigned int   tdm_map_number;
 
-  int		msg_index;
-  int		zombie;
+  int   msg_index;
+  int   zombie;
 
   /* store state associated with most recent messages */
   DialogState          *last_dialog_state;
@@ -181,14 +180,14 @@ private:
   /* Last message sent from scenario step (retransmitions do not
    * change this index. Only message sent from the scenario
    * are kept in this index.) */
-  int		          last_send_index;
+  int             last_send_index;
   char          * last_send_msg;
   int             last_send_len;
 
   /* How long until sending this message times out. */
   unsigned int    send_timeout;
 
-  /* Last received message (expected,  not optional, and not 
+  /* Last received message (expected,  not optional, and not
    * retransmitted) and the associated hash. Stills setted until a new
    * scenario steps sends a message */
   unsigned long    last_recv_hash;
@@ -213,7 +212,7 @@ private:
   void set_video_from_port(int port);
 #endif
 
-  
+
 #ifdef _USE_OPENSSL
   /* holds the auth header and if the challenge was 401 or 407 */
   char         * dialog_authentication;
@@ -221,7 +220,7 @@ private:
 #endif
 
   unsigned int   next_retrans;
-  int   	 nb_retrans;
+  int      nb_retrans;
   unsigned int   nb_last_delay;
 
   unsigned int   paused_until;
@@ -238,32 +237,31 @@ private:
   int            deleted;
 
   bool           call_established; // == true when the call is established
-                                   // ie ACK received or sent
-                                   // => init to false
+  // ie ACK received or sent
+  // => init to false
   bool           ack_is_pending;   // == true if an ACK is pending
-                                   // Needed to avoid abortCall sending a 
-                                   // CANCEL instead of BYE in some extreme
-                                   // cases for 3PCC scenario.
-                                   // => init to false
+  // Needed to avoid abortCall sending a
+  // CANCEL instead of BYE in some extreme
+  // cases for 3PCC scenario.
+  // => init to false
 
   /* Call Variable Table */
   VariableTable *M_callVariableTable;
 
   /* result of execute action */
-  enum T_ActionResult
-    {
-      E_AR_NO_ERROR = 0,
-      E_AR_REGEXP_DOESNT_MATCH,
-      E_AR_REGEXP_SHOULDNT_MATCH,
-      E_AR_STOP_CALL,
-      E_AR_CONNECT_FAILED,
-      E_AR_HDR_NOT_FOUND
-    };
+  enum T_ActionResult {
+    E_AR_NO_ERROR = 0,
+    E_AR_REGEXP_DOESNT_MATCH,
+    E_AR_REGEXP_SHOULDNT_MATCH,
+    E_AR_STOP_CALL,
+    E_AR_CONNECT_FAILED,
+    E_AR_HDR_NOT_FOUND
+  };
 
   /* Store the last action result to allow  */
   /* call to continue and mark it as failed */
   T_ActionResult last_action_result;
-  
+
   /* rc == true means call not deleted by processing */
   void formatNextReqUrl (char* next_req_url);
   void computeRouteSetAndRemoteTargetUri (char* rrList, char* contact, bool bRequestIncoming, DialogState *ds);
@@ -271,8 +269,8 @@ private:
 
   bool executeMessage(message *curmsg);
   T_ActionResult executeAction(char * msg, message *message);
-  void  extractSubMessage(char * msg, char * matchingString, char* result, bool case_indep, 
-							     int occurrence, bool headers); 
+  void  extractSubMessage(char * msg, char * matchingString, char* result, bool case_indep,
+                          int occurrence, bool headers);
   bool  rejectCall();
   double get_rhs(CAction *currentAction);
 
@@ -304,24 +302,24 @@ private:
   char* createSendingMessage(char * src, int P_index, bool skip_sanity = false);
   char* createSendingMessage(SendingMessage *src, int P_index, char *msg_buffer, int buflen, int *msgLen=NULL);
 
-  // method for the management of unexpected messages 
+  // method for the management of unexpected messages
   bool  checkInternalCmd(char* cmd);  // check of specific internal command
-                                      // received from the twin socket
-                                      // used for example to cancel the call
-                                      // of the third party
+  // received from the twin socket
+  // used for example to cancel the call
+  // of the third party
   bool  check_peer_src(char* msg,
-		int search_index);    // 3pcc extended mode:check if 
-				      // the twin message received
-				      // comes from the expected sender
+                       int search_index);    // 3pcc extended mode:check if
+  // the twin message received
+  // comes from the expected sender
   void   sendBuffer(char *buf, int len = 0);     // send a message out of a scenario
-                                      // execution
+  // execution
 
   T_AutoMode  checkAutomaticResponseMode(char * P_recv);
 
   int   sendCmdMessage(message *curmsg); // 3PCC
 
-  int   sendCmdBuffer(char* cmd); // for 3PCC, send a command out of a 
-                                  // scenario execution
+  int   sendCmdBuffer(char* cmd); // for 3PCC, send a command out of a
+  // scenario execution
 
   static void readInputFileContents(const char* fileName);
   static void dumpFileContents(void);
@@ -367,29 +365,28 @@ private:
   unsigned long hash(char * msg);
 
 //headers with short forms.
-enum T_compactHeaders
-{
-  E_CALL_ID_SHORT_FORM,
-  E_CONTACT_SHORT_FORM,
-  E_CONTENT_ENCODING_SHORT_FORM,
-  E_CONTENT_LENGTH_SHORT_FORM,
-  E_CONTENT_TYPE_SHORT_FORM,
-  E_FROM_SHORT_FORM,
-  E_SUBJECT_SHORT_FORM,
-  E_SUPPORTED_SHORT_FORM,
-  E_TO_SHORT_FORM,
-  E_VIA_SHORT_FORM,
-  E_CALL_ID_LONG_FORM,
-  E_CONTACT_LONG_FORM,
-  E_CONTENT_ENCODING_LONG_FORM,
-  E_CONTENT_LENGTH_LONG_FORM,
-  E_CONTENT_TYPE_LONG_FORM,
-  E_FROM_LONG_FORM,
-  E_SUBJECT_LONG_FORM,
-  E_SUPPORTED_LONG_FORM,
-  E_TO_LONG_FORM,
-  E_VIA_LONG_FORM,
-};
+  enum T_compactHeaders {
+    E_CALL_ID_SHORT_FORM,
+    E_CONTACT_SHORT_FORM,
+    E_CONTENT_ENCODING_SHORT_FORM,
+    E_CONTENT_LENGTH_SHORT_FORM,
+    E_CONTENT_TYPE_SHORT_FORM,
+    E_FROM_SHORT_FORM,
+    E_SUBJECT_SHORT_FORM,
+    E_SUPPORTED_SHORT_FORM,
+    E_TO_SHORT_FORM,
+    E_VIA_SHORT_FORM,
+    E_CALL_ID_LONG_FORM,
+    E_CONTACT_LONG_FORM,
+    E_CONTENT_ENCODING_LONG_FORM,
+    E_CONTENT_LENGTH_LONG_FORM,
+    E_CONTENT_TYPE_LONG_FORM,
+    E_FROM_LONG_FORM,
+    E_SUBJECT_LONG_FORM,
+    E_SUPPORTED_LONG_FORM,
+    E_TO_LONG_FORM,
+    E_VIA_LONG_FORM,
+  };
 
   typedef std::map <std::string, int> file_line_map;
   file_line_map *m_lineNumber;
@@ -421,7 +418,7 @@ enum T_compactHeaders
 
   // DialogState helper routines
 
-  // Returns dialog state associated with dialog_number.  
+  // Returns dialog state associated with dialog_number.
   // If no state exists for dialog_number, a new entry is created.
   DialogState *get_dialogState(int dialog_number);
 
@@ -439,8 +436,7 @@ void set_default_message(const char *which, char *message);
 
 char * get_call_id(char *msg);
 
-enum T_encoding
-{
+enum T_encoding {
   E_ENCODING_NONE,
   E_ENCODING_URI
 };

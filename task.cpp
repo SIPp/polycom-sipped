@@ -46,7 +46,7 @@
 #include <iostream>
 #include <iterator>
 #ifndef WIN32
-  #include <sys/wait.h>
+#include <sys/wait.h>
 #endif
 
 
@@ -55,12 +55,14 @@ task_list running_tasks;
 timewheel paused_tasks;
 
 
-task::task() {
+task::task()
+{
   this->taskit = all_tasks.insert(all_tasks.end(), this);
   add_to_runqueue();
 }
 
-task::~task() {
+task::~task()
+{
   if (running) {
     remove_from_runqueue();
   } else {
@@ -70,17 +72,20 @@ task::~task() {
 }
 
 /* Put this task in the run queue. */
-void task::add_to_runqueue() {
+void task::add_to_runqueue()
+{
   this->runit = running_tasks.insert(running_tasks.end(), this);
   this->running = true;
 }
 
-void task::add_to_paused_tasks(bool increment) {
+void task::add_to_paused_tasks(bool increment)
+{
   paused_tasks.add_paused_task(this, increment);
 }
 
 /* Remove this task from the run queue. */
-bool task::remove_from_runqueue() {
+bool task::remove_from_runqueue()
+{
   if (!this->running) {
     return false;
   }
@@ -95,22 +100,25 @@ task_list * get_running_tasks()
   return & running_tasks;
 }
 
-void abort_all_tasks() {
+void abort_all_tasks()
+{
   for (task_list::iterator task_it = all_tasks.begin();
-      task_it != all_tasks.end(); task_it = all_tasks.begin()) {
+       task_it != all_tasks.end(); task_it = all_tasks.begin()) {
     (*task_it)->abort();
   }
 }
 
-void dump_tasks() {
+void dump_tasks()
+{
   WARNING("---- %d Active Tasks ----\n", all_tasks.size());
   for (task_list::iterator task_it = all_tasks.begin();
-      task_it != all_tasks.end(); task_it++) {
+       task_it != all_tasks.end(); task_it++) {
     (*task_it)->dump();
   }
 }
 
-task_list *timewheel::task2list(task *task) {
+task_list *timewheel::task2list(task *task)
+{
   unsigned int wake = task->wake();
   unsigned int wake_sigbits = wake;
   unsigned int base_sigbits = wheel_base;
@@ -135,16 +143,19 @@ task_list *timewheel::task2list(task *task) {
   return &wheel_three[wake_sigbits];
 }
 
-int expire_paused_tasks() {
+int expire_paused_tasks()
+{
   return paused_tasks.expire_paused_tasks();
 }
-int paused_tasks_count() {
+int paused_tasks_count()
+{
   return paused_tasks.size();
 }
 
 /* Iterate through our sorted set of paused tasks, removing those that
  * should no longer be paused, and adding them to the run queue. */
-int timewheel::expire_paused_tasks() {
+int timewheel::expire_paused_tasks()
+{
   int found = 0;
 
   while (wheel_base < clock_tick) {
@@ -156,24 +167,24 @@ int timewheel::expire_paused_tasks() {
 
       /* If slot2 is also zero, we must migrate tasks from slot3 into slot2. */
       if (slot2 == 0) {
-	int slot3 = ((wheel_base / LEVEL_ONE_SLOTS) / LEVEL_TWO_SLOTS);
-	assert(slot3 < LEVEL_THREE_SLOTS);
+        int slot3 = ((wheel_base / LEVEL_ONE_SLOTS) / LEVEL_TWO_SLOTS);
+        assert(slot3 < LEVEL_THREE_SLOTS);
 
-	for (task_list::iterator l3it = wheel_three[slot3].begin();
-	     l3it != wheel_three[slot3].end();
-	     l3it++) {
-	  /* Migrate this task to wheel two. */
-	  (*l3it)->add_to_paused_tasks(false);
+        for (task_list::iterator l3it = wheel_three[slot3].begin();
+             l3it != wheel_three[slot3].end();
+             l3it++) {
+          /* Migrate this task to wheel two. */
+          (*l3it)->add_to_paused_tasks(false);
         }
 
-	wheel_three[slot3].clear();
+        wheel_three[slot3].clear();
       }
 
       for (task_list::iterator l2it = wheel_two[slot2].begin();
-	  l2it != wheel_two[slot2].end();
-	  l2it++) {
-	/* Migrate this task to wheel one. */
-	(*l2it)->add_to_paused_tasks(false);
+           l2it != wheel_two[slot2].end();
+           l2it++) {
+        /* Migrate this task to wheel one. */
+        (*l2it)->add_to_paused_tasks(false);
       }
 
       wheel_two[slot2].clear();
@@ -181,7 +192,7 @@ int timewheel::expire_paused_tasks() {
 
     found += wheel_one[slot1].size();
     for(task_list::iterator it = wheel_one[slot1].begin();
-	it != wheel_one[slot1].end(); it++) {
+        it != wheel_one[slot1].end(); it++) {
       (*it)->add_to_runqueue();
       count--;
     }
@@ -193,7 +204,8 @@ int timewheel::expire_paused_tasks() {
   return found;
 }
 
-void timewheel::add_paused_task(task *task, bool increment) {
+void timewheel::add_paused_task(task *task, bool increment)
+{
   task_list::iterator task_it;
   if (task->wake() && task->wake() < wheel_base) {
     task->add_to_runqueue();
@@ -208,29 +220,34 @@ void timewheel::add_paused_task(task *task, bool increment) {
   }
 }
 
-void timewheel::remove_paused_task(task *task) {
+void timewheel::remove_paused_task(task *task)
+{
   task_list *list = task->pauselist;
   list->erase(task->pauseit);
   count--;
 }
 
-timewheel::timewheel() {
+timewheel::timewheel()
+{
   count = 0;
   wheel_base = clock_tick;
 }
 
-int timewheel::size() {
+int timewheel::size()
+{
   return count;
 }
 
-void task::setRunning() {
+void task::setRunning()
+{
   if (!running) {
     paused_tasks.remove_paused_task(this);
     add_to_runqueue();
   }
 }
 
-void task::setPaused() {
+void task::setPaused()
+{
   if (running) {
     if (!remove_from_runqueue()) {
       WARNING("Tried to remove a running call that wasn't running!\n");
@@ -243,6 +260,7 @@ void task::setPaused() {
   add_to_paused_tasks(true);
 }
 
-void task::abort() {
+void task::abort()
+{
   delete this;
 }

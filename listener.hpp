@@ -15,7 +15,7 @@
  *
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
- *	     Charles P. Wright from IBM Research
+ *       Charles P. Wright from IBM Research
  */
 #ifndef __LISTENER__
 #define __LISTENER__
@@ -24,9 +24,9 @@
 #include <string>
 //
 #ifdef WIN32
-	#include <winsock2.h>
+#include <winsock2.h>
 #else
-	#include <sys/socket.h>
+#include <sys/socket.h>
 #endif
 
 class listener {
@@ -35,7 +35,7 @@ public:
   virtual ~listener();
   char *getId();
 //  virtual bool process_incoming(char * msg, struct sockaddr_storage *src) = 0;
- virtual bool process_incoming(char * msg, struct sockaddr_storage *src, struct sipp_socket *socket) = 0;
+  virtual bool process_incoming(char * msg, struct sockaddr_storage *src, struct sipp_socket *socket) = 0;
 
 
   virtual bool process_twinSippCom(char * msg) = 0;

@@ -20,16 +20,16 @@
  */
 
 /****
- * Screen.hpp : Simple curses & logfile encapsulation 
+ * Screen.hpp : Simple curses & logfile encapsulation
  */
 
 #ifndef __SCREEN_H__
 #define __SCREEN_H__
 
 #ifndef WIN32
-  void REPORT_ERROR(const char *fmt, ...) __attribute__ ((noreturn));
+void REPORT_ERROR(const char *fmt, ...) __attribute__ ((noreturn));
 #else
-  void REPORT_ERROR(const char *fmt, ...);
+void REPORT_ERROR(const char *fmt, ...);
 #endif
 void WARNING(const char *fmt, ...);
 void REPORT_ERROR_NO(const char *fmt, ...);
@@ -62,14 +62,14 @@ void screen_exit(int rc);
 #define MAX_ERROR_SIZE            1024
 
 #ifdef WIN32
-  const int KEY_BACKSPACE_SIPP = 8;
-  const int KEY_DC_SIPP = 127;
+const int KEY_BACKSPACE_SIPP = 8;
+const int KEY_DC_SIPP = 127;
 #elif __SUNOS
-  const int KEY_BACKSPACE_SIPP = 14;
-  const int KEY_DC_SIPP = 14;
+const int KEY_BACKSPACE_SIPP = 14;
+const int KEY_DC_SIPP = 14;
 #else
-  const int KEY_BACKSPACE_SIPP = 0x7e;
-  const int KEY_DC_SIPP = 0x7f;
+const int KEY_BACKSPACE_SIPP = 0x7e;
+const int KEY_DC_SIPP = 0x7f;
 #endif
 
 #endif // __SCREEN_H__

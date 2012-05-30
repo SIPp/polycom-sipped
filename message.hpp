@@ -111,50 +111,52 @@ typedef enum {
 } MessageCompType;
 
 class SendingMessage {
-  public:
-    SendingMessage(scenario *msg_scenario, const char *msg, bool skip_sanity = false, int dialog_number = -1, bool use_txn = false);
-    ~SendingMessage();
+public:
+  SendingMessage(scenario *msg_scenario, const char *msg, bool skip_sanity = false, int dialog_number = -1, bool use_txn = false);
+  ~SendingMessage();
 
-    struct MessageComponent *getComponent(int);
-    int numComponents();
+  struct MessageComponent *getComponent(int);
+  int numComponents();
 
-    char *getMethod();
-    int getCode();
+  char *getMethod();
+  int getCode();
 
-    bool isResponse();
-    bool isAck();
-    bool isCancel();
+  bool isResponse();
+  bool isAck();
+  bool isCancel();
 
-    int getDialogNumber() { return dialog_number; }
+  int getDialogNumber() {
+    return dialog_number;
+  }
 
-    static void parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword);
-    static void freeMessageComponent(struct MessageComponent *comp);
-  private:
-    std::vector <struct MessageComponent *> messageComponents;
+  static void parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword);
+  static void freeMessageComponent(struct MessageComponent *comp);
+private:
+  std::vector <struct MessageComponent *> messageComponents;
 
-    char *method;
-    int code;
+  char *method;
+  int code;
 
-    bool ack;
-    bool cancel;
-    bool response;
+  bool ack;
+  bool cancel;
+  bool response;
 
-    scenario *msg_scenario;
+  scenario *msg_scenario;
 
-    // Must store dialog number as many keywords will have different values depending on this
-    int dialog_number; 
+  // Must store dialog number as many keywords will have different values depending on this
+  int dialog_number;
 
-    // Get parameters from a [keyword]
-    static void getQuotedParam(char * dest, char * src, int * len);
-    static void getHexStringParam(char * dest, char * src, int * len);
-    static void getKeywordParam(char * src, const char * param, char * output);
+  // Get parameters from a [keyword]
+  static void getQuotedParam(char * dest, char * src, int * len);
+  static void getHexStringParam(char * dest, char * src, int * len);
+  static void getKeywordParam(char * src, const char * param, char * output);
 
-    // store dialog number in message component if specified with tag
-    // return value of true indicates dialog= keyword was found
-    bool parse_dialog_number(char * src, struct MessageComponent* newcomp);
-    bool parse_value_only (char * src, struct MessageComponent* newcomp);
-    void parse_encoding (char * src, struct MessageComponent* newcomp);
-    void parse_generated (char * src, struct MessageComponent* newcomp);
+  // store dialog number in message component if specified with tag
+  // return value of true indicates dialog= keyword was found
+  bool parse_dialog_number(char * src, struct MessageComponent* newcomp);
+  bool parse_value_only (char * src, struct MessageComponent* newcomp);
+  void parse_encoding (char * src, struct MessageComponent* newcomp);
+  void parse_generated (char * src, struct MessageComponent* newcomp);
 
 };
 

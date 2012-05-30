@@ -41,7 +41,7 @@
 #include "xp_parser.hpp"
 
 #ifdef WIN32
-  #define snprintf _snprintf
+#define snprintf _snprintf
 #include "win32_compatibility.hpp"
 #endif
 //
@@ -82,11 +82,12 @@ int xp_file_metadata_is_not_valid =0;
 
 void store_error_message(string message)
 {
-    xp_error_messages = xp_error_messages + message;
+  xp_error_messages = xp_error_messages + message;
 }
 
-string xp_get_errors() {
-    return xp_error_messages;
+string xp_get_errors()
+{
+  return xp_error_messages;
 }
 
 int xp_replace(char *source, char *dest, const char *search, const char *replace)
@@ -103,7 +104,7 @@ int xp_replace(char *source, char *dest, const char *search, const char *replace
   occurances = strstr(position, search);
   while (occurances) {
     strncat(dest, position, occurances - position);
-    strcat(dest, replace); 
+    strcat(dest, replace);
     position = occurances + strlen(search);
     occurances = strstr(position, search);
     number++;
@@ -123,21 +124,21 @@ char * xp_find_start_tag_end(char *ptr)
         if(!comment_end) return NULL;
         ptr = comment_end + 3;
       } else {
-	return NULL;
+        return NULL;
       }
     } else  if((*ptr == '/') && (*(ptr+1) == '>')) {
       return ptr;
     } else if (*ptr == '"') {
       ptr++;
       while(*ptr) {
-	if (*ptr == '\\') {
-	  ptr += 2;
-	} else if (*ptr=='"') {
-	  ptr++;
-	  break;
-	} else {
-	  ptr++;
-	}
+        if (*ptr == '\\') {
+          ptr += 2;
+        } else if (*ptr=='"') {
+          ptr++;
+          break;
+        } else {
+          ptr++;
+        }
       }
     } else if (*ptr == '>') {
       return ptr;
@@ -152,7 +153,7 @@ char * xp_find_local_end()
 {
   char * ptr = xp_position[xp_stack];
   int level = 0;
-  
+
   while(*ptr) {
     if (*ptr == '<') {
       if (!strncmp(ptr,"<![CDATA[", strlen("<![CDATA["))) {
@@ -175,12 +176,12 @@ char * xp_find_local_end()
     } else if (*ptr == '"') {
       ptr++;
       while(*ptr) {
-	if (*ptr == '\\') {
-	  ptr ++; /* Skip the slash. */
-	} else if (*ptr=='"') {
-	  break;
-	}
-	ptr++;
+        if (*ptr == '\\') {
+          ptr ++; /* Skip the slash. */
+        } else if (*ptr=='"') {
+          break;
+        }
+        ptr++;
       }
     }
     ptr++;
@@ -197,9 +198,8 @@ char * xp_find_local_end()
 string translate_envvar(string name, int idx)
 {
   char* value = getenv(name.c_str());
-  if (!value)
-  {
-    store_error_message( "Undefined Environment Variable : " + name + "\r\n" + 
+  if (!value) {
+    store_error_message( "Undefined Environment Variable : " + name + "\r\n" +
                          "Found at: \n" + convert_whereami_key_to_string(idx) +"\r\n");
     return "";
   }
@@ -207,7 +207,7 @@ string translate_envvar(string name, int idx)
   return string(value);
 }
 /**
- * input:path_and_fn 
+ * input:path_and_fn
  *        array containing filename with optional path and optional environment variable
  *        environment variable delimited by percentage char at start and end %NAME%
  * input:idx
@@ -228,38 +228,34 @@ int expand_env_var(char* path_and_fn,int idx)
   //int substitution_count = 0;
   string pathandfn = string(path_and_fn);
   startp = pathandfn.find(varMarker, 0 );
-    while (startp != pathandfn.npos)
-    {
-      //substitution_count++;
-      endp = pathandfn.find(varMarker, startp+1);
-      if (endp == pathandfn.npos )
-      {
-        store_error_message("Malformed environment environment variable - missing closing % \r\n" +
-                             string("Found at:\n ") + convert_whereami_key_to_string(idx) + string("\r\n"));
-        return -1;
-      }
-      string envvar = pathandfn.substr(startp+1,endp-startp-1); // stripped of leading and trailing varMarker
-      string envvalue = translate_envvar(envvar, idx);
-      if (envvalue.size()==0){
-        store_error_message("Environment Value not retrieved\r\n");
-        return -1; // unable to retrieve value for environment variable
-      }
-      pathandfn = pathandfn.substr(0,startp) + envvalue + pathandfn.substr(endp+1);
-      // look to see if there are anymore env variables
-      startp = pathandfn.find(varMarker, endp+1 );
+  while (startp != pathandfn.npos) {
+    //substitution_count++;
+    endp = pathandfn.find(varMarker, startp+1);
+    if (endp == pathandfn.npos ) {
+      store_error_message("Malformed environment environment variable - missing closing % \r\n" +
+                          string("Found at:\n ") + convert_whereami_key_to_string(idx) + string("\r\n"));
+      return -1;
     }
+    string envvar = pathandfn.substr(startp+1,endp-startp-1); // stripped of leading and trailing varMarker
+    string envvalue = translate_envvar(envvar, idx);
+    if (envvalue.size()==0) {
+      store_error_message("Environment Value not retrieved\r\n");
+      return -1; // unable to retrieve value for environment variable
+    }
+    pathandfn = pathandfn.substr(0,startp) + envvalue + pathandfn.substr(endp+1);
+    // look to see if there are anymore env variables
+    startp = pathandfn.find(varMarker, endp+1 );
+  }
 
-    if (pathandfn.size()+1 <= XP_MAX_NAME_LEN)
-    {
-      pathandfn.copy(path_and_fn, pathandfn.size(), 0 );
-      path_and_fn[pathandfn.size()]=0;
-      return pathandfn.size();
-    }else
-    {
-      store_error_message("Expanded path/filename larger than %d\r\n" +  XP_MAX_NAME_LEN +
-                           string("Found at:\n ") + convert_whereami_key_to_string(idx) +string("\r\n"));
-      return -1;  // array is not large enough to hold result
-    }
+  if (pathandfn.size()+1 <= XP_MAX_NAME_LEN) {
+    pathandfn.copy(path_and_fn, pathandfn.size(), 0 );
+    path_and_fn[pathandfn.size()]=0;
+    return pathandfn.size();
+  } else {
+    store_error_message("Expanded path/filename larger than %d\r\n" +  XP_MAX_NAME_LEN +
+                        string("Found at:\n ") + convert_whereami_key_to_string(idx) +string("\r\n"));
+    return -1;  // array is not large enough to hold result
+  }
 }
 
 /********************* Interface routines ********************/
@@ -268,9 +264,9 @@ int expand_env_var(char* path_and_fn,int idx)
 // Goal is to get the byte offset into xp_file that we are currently processing
 // output: byte offset into xp_file that is currently used by xp_parser. Valid
 //    after xp_file has been filled and is being parsed. (eg scenario pushes
-//    ptrs to parts of xp_file onto xp_position as a stack of 
+//    ptrs to parts of xp_file onto xp_position as a stack of
 //    pointers for parsing/processing
-//    
+//
 //    DO NOT USE THIS DURING INTIAL BUFFERING OF XP_FILE
 //    if you want location while xp_file is being initially buffered, USE
 //    index defined in xp_set_xml_buffer_from_file instead.
@@ -280,20 +276,20 @@ int expand_env_var(char* path_and_fn,int idx)
 //    you might want to use local ptr instead
 //    eg use  (ptr-xp_file) instead of this method to get
 //    index for input to convert_whereami_key_to_string
-unsigned int xp_get_whereami_key(){
-    //byte offset into xp_file
-    unsigned int index = xp_position[xp_stack] - xp_file;
-    return index;
+unsigned int xp_get_whereami_key()
+{
+  //byte offset into xp_file
+  unsigned int index = xp_position[xp_stack] - xp_file;
+  return index;
 }
 // input takes byte offset into xp_file
-string convert_whereami_key_to_string(unsigned int key) {
-    if (xp_file_metadata.getQtyStacks() !=0)
-    {
-      return xp_file_metadata.strStackFromIndex(key);
-    }
-    else{ // using a built-in scenario
-      return "(built-in scenario)";
-    }
+string convert_whereami_key_to_string(unsigned int key)
+{
+  if (xp_file_metadata.getQtyStacks() !=0) {
+    return xp_file_metadata.strStackFromIndex(key);
+  } else { // using a built-in scenario
+    return "(built-in scenario)";
+  }
 }
 // this is the most generic way to get location info while parsing
 // contents of xp_file.  Valid if xp_file has not yet been overwritten
@@ -327,8 +323,8 @@ int xp_set_xml_buffer_from_string(const char * str, int dumpxml)
 
   xp_stack = 0;
   xp_position[xp_stack] = xp_file;
-  
-  if (dumpxml) 
+
+  if (dumpxml)
     printf("%s", xp_file);
 
   if(strncmp(xp_position[xp_stack], "<?xml", strlen("<?xml"))) return 0;
@@ -349,7 +345,7 @@ int xp_get_start_index_of_filename(const char * filename)
 
 #define DEBUG(x, ...) { if (verbose) { printf(x, ##__VA_ARGS__); } }
 
-// return 1 on success, 0 on error 
+// return 1 on success, 0 on error
 int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsigned *sub_list, unsigned sub_length)
 {
   int include_index = 0;
@@ -376,7 +372,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
   char new_path[XP_MAX_NAME_LEN];
   char path_and_filename[XP_MAX_NAME_LEN];
 
-  // combine path and filename for file open if open without fails; 
+  // combine path and filename for file open if open without fails;
   // add file path to existing path (or replace if absolute) for recursive opens
   if ((filename[0] != '\\') && (filename[0] != '/') )
     snprintf(path_and_filename, XP_MAX_NAME_LEN, "%s%s", path, filename);
@@ -392,44 +388,40 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
   if (!f) {
     if ((filename[0] != '\\') && (filename[0] != '/') && (strlen(path)) ) {
       f = fopen(path_and_filename, "rb");
-        if(!f) { 
-          snprintf(err,MAXERRSIZE, "Unable to open file name '%s' directly or in '%s'\r\n", filename, new_path);
-          store_error_message(err);
-          return 0; 
-        }
-    }
-    else {
+      if(!f) {
+        snprintf(err,MAXERRSIZE, "Unable to open file name '%s' directly or in '%s'\r\n", filename, new_path);
+        store_error_message(err);
+        return 0;
+      }
+    } else {
       snprintf(err, MAXERRSIZE, "Unable to open file name '%s'\r\n", filename);
       store_error_message(err);
-      return 0; 
+      return 0;
     }
   } // if !f
 
   xp_file_metadata.includeFile(filename);   // for track nesting of include files and line numbers
   while((c = fgetc(f)) != EOF) {
-     // look for comment tags and set inside_comment flag when required
-    if (!inside_comment){ // not in comment, look for start tag
+    // look for comment tags and set inside_comment flag when required
+    if (!inside_comment) { // not in comment, look for start tag
       if (c == start_comment_tag[comment_index]) {
         comment_index++;
-      }
-      else {
+      } else {
         comment_index=0;
       }
       // matched all comment start chars, flag inside_comment
-      if (comment_index >= start_comment_length ){
+      if (comment_index >= start_comment_length ) {
         inside_comment = 1;
         comment_index = 0;
       }
-    }
-    else {  // we are inside a comment, scan for end_comment
-      if (c == end_comment_tag[comment_index]){
+    } else { // we are inside a comment, scan for end_comment
+      if (c == end_comment_tag[comment_index]) {
         comment_index++;
-      }
-      else{
+      } else {
         comment_index=0;
       }
       // matched all comment end chars,no longer  inside comment
-      if (comment_index >= end_comment_length){
+      if (comment_index >= end_comment_length) {
         inside_comment = 0;
         comment_index = 0;
       }
@@ -461,13 +453,13 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
         //  lets scan it for a environment variable marker and substitute if required
         //  Also adjust include_index to reflect new size of string
         include_index=expand_env_var(include_file_name, *index);
-        if (include_index<0){
+        if (include_index<0) {
           store_error_message("unable to get Environment variable value\r\n");
           return 0; // failed to expand env_var: not set , or value too long
         }
 
         c = getc(f);
-        while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace  
+        while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace
 
         if (c != '/') { // if not closing tab, specifying dialogs="1,2,3"
           DEBUG("dialogs parameter expected.\n");
@@ -478,7 +470,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
             c = fgetc(f);
             replace_index++;
           }
-          if (replace_index != replace_param_length) { 
+          if (replace_index != replace_param_length) {
             snprintf(err, MAXERRSIZE, "Error: only valid option to xi:include is 'dialogs=\"1,2,3\"'.\r\n");
             store_error_message(err);
             store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
@@ -501,8 +493,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 fclose(f);
                 return 0;
               }
-            }
-            else if (c == ',' || c == '"') {
+            } else if (c == ',' || c == '"') {
               if (number_len > 0) {
                 // add numbers / letters
                 int d;
@@ -523,9 +514,8 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                     fclose(f);
                     return 0;
                   }
-                }
-                else if ((toupper(number_str[0]) >= 'A') && (toupper(number_str[0]) <= 'Z') && 
-                  (toupper(number_str[1]) == toupper(number_str[0])) && (number_len == 2)) {
+                } else if ((toupper(number_str[0]) >= 'A') && (toupper(number_str[0]) <= 'Z') &&
+                           (toupper(number_str[1]) == toupper(number_str[0])) && (number_len == 2)) {
                   d = number_str[0] - (int)'A';
                   if (d >= (int)sub_length) {
                     snprintf(err, MAXERRSIZE, "'Error in '%s': %s' => %d is greater than largest substitution available of %d.\r\n", filename, number_str, d+1, sub_length);
@@ -536,8 +526,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                   }
                   DEBUG("number_str = %s => %d. sub_list[%d] = %d\n", number_str, d, d, sub_list[d]);
                   d = sub_list[d];
-                }
-                else {
+                } else {
                   snprintf(err, MAXERRSIZE, "Invalid dialogs parameter value '%s'.\r\n", number_str);
                   store_error_message(err);
                   store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
@@ -550,7 +539,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                 local_sub_length++;
                 number_len = 0;
               }
-              if (c == '"') 
+              if (c == '"')
                 break;
             } // if c== ',' || '"'
             else {
@@ -565,7 +554,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
 
           c = fgetc(f);
           while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace
-          
+
         } // if dialogs option specified
 
 
@@ -576,10 +565,10 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
           fclose(f);
           return 0;
         }
-        include_file_name[include_index] = 0;      
-       
-        if (!xp_open_and_buffer_file(include_file_name, new_path, index, local_sub_list, local_sub_length)) 
-          return 0;  
+        include_file_name[include_index] = 0;
+
+        if (!xp_open_and_buffer_file(include_file_name, new_path, index, local_sub_list, local_sub_length))
+          return 0;
         include_index = 0;
         local_sub_length = 0;
         c = '\r'; // don't add this letter if returning from recursive parse.
@@ -600,26 +589,26 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
       if (dialog_index < dialog_param_length) {
         if (dialog_param[dialog_index] == c)
           dialog_index++;
-        else 
+        else
           dialog_index = 0;
       } // dialog_index < dialog_param_length
       // check for 1st letter
       else if (dialog_index == dialog_param_length) {
-        if ((toupper(c) >= 'A') && (toupper(c) <= 'Z')) 
+        if ((toupper(c) >= 'A') && (toupper(c) <= 'Z'))
           dialog_index++;
         else
           dialog_index = 0;
       }
       // check 1st & second letters match each other (ie AA not AB)
       else if (dialog_index == dialog_param_length+1) {
-        if (xp_file[(*index)-2] == c) 
+        if (xp_file[(*index)-2] == c)
           dialog_index++;
         else
           dialog_index = 0;
       }
       // final quote: substitute number
       // Note this implementation replaces 2 letters with 2 digits, but algorithm could
-      // easily be extended to accomodate variable-length substitution as replacement 
+      // easily be extended to accomodate variable-length substitution as replacement
       // is performed inline.
       else if (dialog_index == dialog_param_length+2) {
         if (c == '"') {
@@ -631,7 +620,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
             store_error_message(err);
             store_error_message("Found at: \n" + convert_whereami_key_to_string(*index) +"\r\n");
             fclose(f);
-            return 0; 
+            return 0;
           }
 
           char str[3];
@@ -651,7 +640,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
       snprintf(err, MAXERRSIZE, "Error: XML scenario file too long (current maximum for all content including includes is %d bytes).\r\n", XP_MAX_FILE_LEN);
       store_error_message(err);
       fclose(f);
-      return 0; 
+      return 0;
     }
   }
   fclose(f);
@@ -668,7 +657,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
 
 
 
-// return 1 on success, 0 on error 
+// return 1 on success, 0 on error
 int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
 {
   int index = 0;
@@ -688,7 +677,7 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
   if (dumpxml)
     printf("%s", xp_file);
 
-  if (!result){
+  if (!result) {
     store_error_message("Failed to retrieve file " + string(filename) + "\r\n");
     return 0;
   }
@@ -697,16 +686,15 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
   if(!strstr(xp_position[xp_stack], "?>")) return 0;
   xp_position[xp_stack] = xp_position[xp_stack] + 2;
 
-  if (verbose){
+  if (verbose) {
     printf("xp_file metadata: stack images collected\n");
     printf("%s\n",xp_file_metadata.dumpStacks().c_str());
     printf("xp file metadata: map of newlines collected\n");
     xp_file_metadata.showLineOffsetMap();
     printf( "xp file metadata for newline sychroniziation is ");
-    if (xp_file_metadata.checkNewLineSynch(xp_file)){
+    if (xp_file_metadata.checkNewLineSynch(xp_file)) {
       printf(" good\n");
-    }
-    else{
+    } else {
       printf(" bad.  Not all stored newlines were found in source xp_file\n");
       printf(" Call Ed and have him send out a search party for missing newlines\n");
     }
@@ -721,14 +709,14 @@ char * xp_open_element(int index)
 
 char * debug_buffer(char * ptr)
 {
-    static char          buf[50];
-    int i=0;
+  static char          buf[50];
+  int i=0;
 
-    if (ptr) {
-      for (; (i<49&&ptr[i]!=0); i++) {
-        buf[i] = ptr[i];
-      }
+  if (ptr) {
+    for (; (i<49&&ptr[i]!=0); i++) {
+      buf[i] = ptr[i];
     }
+  }
   buf[i] = 0;
   return buf;
 }
@@ -747,13 +735,13 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
   while(*ptr) {
     if (*ptr == '<') {
       if (!strncmp(ptr,"<![CDATA[", strlen("<![CDATA["))) {
-          char * cdata_end = strstr(ptr, "]]>");
-          if(!cdata_end) return NULL;
-          ptr = cdata_end + 3;
+        char * cdata_end = strstr(ptr, "]]>");
+        if(!cdata_end) return NULL;
+        ptr = cdata_end + 3;
       } else if (!strncmp(ptr,"<!--", strlen("<!--"))) {
-          char * comment_end = strstr(ptr, "-->");
-          if(!comment_end) return NULL;
-          ptr = comment_end + 3;
+        char * comment_end = strstr(ptr, "-->");
+        if(!comment_end) return NULL;
+        ptr = comment_end + 3;
       } else if (!strncmp(ptr,"<?xml", strlen("<?xml"))) {
         char * xml_end = strstr(ptr, "?>");
         if(!xml_end) return NULL;
@@ -773,8 +761,7 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
           DEBUG("  Skipping over embedded </scenario> tag (%d bytes); level = %d, index = %d\n", scenario_end-ptr, level, index);
           if(!scenario_end) return NULL;
           ptr = scenario_end + 1;
-        }
-        else {
+        } else {
           level--;
           if(level < 0) return NULL;
         }
@@ -790,15 +777,25 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
             if(!end) return NULL;
 
             p = strchr(ptr, ' ');
-            if(p && (p < end))  { end = p; }
+            if(p && (p < end))  {
+              end = p;
+            }
             p = strchr(ptr, '\t');
-            if(p && (p < end))  { end = p; }
+            if(p && (p < end))  {
+              end = p;
+            }
             p = strchr(ptr, '\r');
-            if(p && (p < end))  { end = p; }
+            if(p && (p < end))  {
+              end = p;
+            }
             p = strchr(ptr, '\n');
-            if(p && (p < end))  { end = p; }
+            if(p && (p < end))  {
+              end = p;
+            }
             p = strchr(ptr, '/');
-            if(p && (p < end))  { end = p; }
+            if(p && (p < end))  {
+              end = p;
+            }
 
             memcpy(name, ptr + 1, end-ptr-1);
             name[end-ptr-1] = 0;
@@ -842,9 +839,9 @@ void xp_root()
 char * xp_get_value(const char * name)
 {
   int         index = 0;
-  static char buffer[XP_MAX_FILE_LEN + 1]; 
+  static char buffer[XP_MAX_FILE_LEN + 1];
   char      * ptr, *end, *check;
-  
+
   end = xp_find_start_tag_end(xp_position[xp_stack] + 1);
   if(!end) return NULL;
 
@@ -859,59 +856,64 @@ char * xp_get_value(const char * name)
     // so the use of strstr as it is is not enough.
     // we should check that the retrieved word is not a piece of another one.
     check = ptr-1;
-    if(check >= xp_position[xp_stack])
-    {
-      if((*check != '\r') && 
-         (*check != '\n') && 
-         (*check != '\t') && 
-         (*check != ' ' )) { ptr += strlen(name); continue; }
-    }
-    else
+    if(check >= xp_position[xp_stack]) {
+      if((*check != '\r') &&
+          (*check != '\n') &&
+          (*check != '\t') &&
+          (*check != ' ' )) {
+        ptr += strlen(name);
+        continue;
+      }
+    } else
       return(NULL);
 
     ptr += strlen(name);
-    while((*ptr == '\r') || 
-          (*ptr == '\n') || 
-          (*ptr == '\t') || 
-          (*ptr == ' ' )    ) { ptr ++; }
+    while((*ptr == '\r') ||
+          (*ptr == '\n') ||
+          (*ptr == '\t') ||
+          (*ptr == ' ' )    ) {
+      ptr ++;
+    }
     if(*ptr != '=') continue;
     ptr ++;
-    while((*ptr == '\r') || 
-          (*ptr == '\n') || 
-          (*ptr == '\t') || 
-          (*ptr ==  ' ')    ) { ptr ++; }
+    while((*ptr == '\r') ||
+          (*ptr == '\n') ||
+          (*ptr == '\t') ||
+          (*ptr ==  ' ')    ) {
+      ptr ++;
+    }
     ptr++;
     if(*ptr) {
       while(*ptr) {
-	if (*ptr == '\\') {
-	  ptr++;
-	  switch(*ptr) {
-	    case '\\':
-	      buffer[index++] = '\\';
-	      break;
-	    case '"':
-	      buffer[index++] = '\"';
-	      break;
-	    case 'n':
-	      buffer[index++] = '\n';
-	      break;
-	    case 't':
-	      buffer[index++] = '\t';
-	      break;
-	    case 'r':
-	      buffer[index++] = '\r';
-	      break;
-	    default:
-	      buffer[index++] = '\\';
-	      buffer[index++] = *ptr;
-	      break;
-	  }
-	  ptr++;
-	} else if (*ptr=='"') {
-	  break;
-	} else {
-	  buffer[index++] = *ptr++;
-	}
+        if (*ptr == '\\') {
+          ptr++;
+          switch(*ptr) {
+          case '\\':
+            buffer[index++] = '\\';
+            break;
+          case '"':
+            buffer[index++] = '\"';
+            break;
+          case 'n':
+            buffer[index++] = '\n';
+            break;
+          case 't':
+            buffer[index++] = '\t';
+            break;
+          case 'r':
+            buffer[index++] = '\r';
+            break;
+          default:
+            buffer[index++] = '\\';
+            buffer[index++] = *ptr;
+            break;
+          }
+          ptr++;
+        } else if (*ptr=='"') {
+          break;
+        } else {
+          buffer[index++] = *ptr++;
+        }
         if(index > XP_MAX_FILE_LEN) return NULL;
       }
       buffer[index] = 0;
@@ -924,34 +926,41 @@ char * xp_get_value(const char * name)
 
 char * xp_get_cdata()
 {
-  static char buffer[XP_MAX_FILE_LEN + 1]; 
+  static char buffer[XP_MAX_FILE_LEN + 1];
   char      * end = xp_find_local_end();
   char      * ptr;
-  
+
   ptr = strstr(xp_position[xp_stack],"<![CDATA[");
-  if(!ptr) { return NULL; }
+  if(!ptr) {
+    return NULL;
+  }
   ptr += 9;
   if(ptr > end) return NULL;
   end = strstr(ptr, "]]>");
-  if(!end) { return NULL; }
+  if(!end) {
+    return NULL;
+  }
   if((end -ptr) > XP_MAX_FILE_LEN) return NULL;
   memcpy(buffer, ptr, (end-ptr));
   buffer[end-ptr] = 0;
   return buffer;
 }
 
-int xp_get_content_length(char * P_buffer) 
+int xp_get_content_length(char * P_buffer)
 {
   char * L_ctl_hdr;
-  int    L_content_length = -1 ; 
+  int    L_content_length = -1 ;
   unsigned char   short_form;
 
   short_form = 0;
 
   L_ctl_hdr = strcasestr(P_buffer, "\nContent-Length:");
-  if(!L_ctl_hdr) {L_ctl_hdr = strstr(P_buffer, "\nl:"); short_form = 1;}
+  if(!L_ctl_hdr) {
+    L_ctl_hdr = strstr(P_buffer, "\nl:");
+    short_form = 1;
+  }
 
-  if( L_ctl_hdr ){
+  if( L_ctl_hdr ) {
     if (short_form) {
       L_ctl_hdr += 3;
     } else {
@@ -959,9 +968,9 @@ int xp_get_content_length(char * P_buffer)
     }
     while(isspace(*L_ctl_hdr)) L_ctl_hdr++;
     sscanf(L_ctl_hdr, "%d", &L_content_length);
-  } 
+  }
   // L_content_length = -1 the message does not contain content-length
-  return (L_content_length); 
+  return (L_content_length);
 }
 
 /* convert &lt; (<), &amp; (&), &gt; (>), &quot; ("), and &apos; (') */
@@ -1010,7 +1019,7 @@ void xp_convert_special_characters(char * buffer)
 
 string xp_get_xmlbuffer()
 {
-    return string(xp_file);
+  return string(xp_file);
 }
 
 void set_xp_parser_verbose(int value)
@@ -1025,8 +1034,7 @@ CompositeDocument build_xp_file_metadata(string sippFile, int dumpxml)
   xp_file_metadata_is_not_valid =0;
   if (xp_set_xml_buffer_from_file(sippFile.c_str(),dumpxml))
     return xp_file_metadata;
-  else
-  {
+  else {
     // return an empty composite document if we failed to load file
     printf("failed to load file into buffer\n");
     CompositeDocument cdoc;

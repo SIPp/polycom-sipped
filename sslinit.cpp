@@ -20,7 +20,8 @@
 #define SSL_MAIN
 #include "sslcommon.hpp"
 
-int init_OpenSSL(void) {
+int init_OpenSSL(void)
+{
   if (!Thread_setup() || !SSL_library_init() ) {
     return (-1) ;
   }
@@ -29,7 +30,8 @@ int init_OpenSSL(void) {
 }
 
 
-SSL_CTX *setup_ssl_context(SSL_METHOD *method) {
+SSL_CTX *setup_ssl_context(SSL_METHOD *method)
+{
   SSL_CTX *ctx;
 
   if ((ctx = SSL_CTX_new(method)) == NULL) {
@@ -39,7 +41,8 @@ SSL_CTX *setup_ssl_context(SSL_METHOD *method) {
   return ctx;
 }
 
-int  SSL_ERROR(void) {
+int  SSL_ERROR(void)
+{
   int                   flags;
   int                   line;
   const char            *data;

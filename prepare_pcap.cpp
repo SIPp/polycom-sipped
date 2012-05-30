@@ -56,14 +56,14 @@ typedef struct _sll_hdr {
 } sll_hdr;
 
 typedef struct _radio_hdr {
-    char dontcare[58];
-    u_int16_t radio_type;
+  char dontcare[58];
+  u_int16_t radio_type;
 } radio_hdr;
 
 typedef struct _ipv6_hdr {
-    char dontcare[6];
-    u_int8_t nxt_header; /* we only need the next header, so we can determine, if the next header is UDP or not */
-    char dontcare2[33];
+  char dontcare[6];
+  u_int8_t nxt_header; /* we only need the next header, so we can determine, if the next header is UDP or not */
+  char dontcare2[33];
 } ipv6_hdr;
 
 typedef struct _vlan_hdr {
@@ -72,9 +72,11 @@ typedef struct _vlan_hdr {
 } vlan_hdr;
 
 #ifdef __HPUX
-int check(u_int16_t *buffer, int len){
+int check(u_int16_t *buffer, int len)
+{
 #else
-inline int check(u_int16_t *buffer, int len){
+inline int check(u_int16_t *buffer, int len)
+{
 #endif
   int sum;
   int i;
@@ -90,19 +92,22 @@ inline int check(u_int16_t *buffer, int len){
 }
 
 #ifdef __HPUX
-u_int16_t checksum_carry(int s) {
+u_int16_t checksum_carry(int s)
+{
 #else
-inline u_int16_t checksum_carry(int s) {
+inline u_int16_t checksum_carry(int s)
+{
 #endif
-	int s_c = (s >> 16) + (s & 0xffff);
-	return (~(s_c + (s_c >> 16)) & 0xffff);
+  int s_c = (s >> 16) + (s & 0xffff);
+  return (~(s_c + (s_c >> 16)) & 0xffff);
 }
 
 char errbuf[PCAP_ERRBUF_SIZE];
 
 /* prepare a pcap file
  */
-int prepare_pkts(char *file, pcap_pkts *pkts) {
+int prepare_pkts(char *file, pcap_pkts *pkts)
+{
   pcap_t *pcap;
   struct pcap_pkthdr *pkthdr = NULL;
   u_char *pktdata = NULL;
@@ -121,12 +126,11 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
   pkts->pkts = NULL;
 
   pcap = pcap_open_offline(file, errbuf);
-  if (!pcap) 
+  if (!pcap)
     REPORT_ERROR("Can't open PCAP file '%s'. pcap_open_offline returned error: '%s'", file, errbuf);
 
 #if HAVE_PCAP_NEXT_EX
-  while (pcap_next_ex (pcap, &pkthdr, (const u_char **) &pktdata) == 1)
-  {
+  while (pcap_next_ex (pcap, &pkthdr, (const u_char **) &pktdata) == 1) {
 #else
 #ifdef __HPUX
   pkthdr = (pcap_pkthdr *) malloc (sizeof (*pkthdr));
@@ -137,26 +141,22 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
     REPORT_ERROR("Can't allocate memory for pcap pkthdr");
   int num_of_non_ip_packets = 0;
   int num_of_non_udp_packets = 0;
-  while ((pktdata = (u_char *) pcap_next (pcap, pkthdr)) != NULL)
-  {
+  while ((pktdata = (u_char *) pcap_next (pcap, pkthdr)) != NULL) {
 #endif
     int link_type = pcap_datalink(pcap);
     if(link_type == DLT_EN10MB) {
       ether_hdr* ethhdr = (ether_hdr *)pktdata;
       ip_type = ethhdr->ether_type;
       frame_size = sizeof(*ethhdr);
-    }
-    else if(link_type == DLT_LINUX_SLL) {
+    } else if(link_type == DLT_LINUX_SLL) {
       sll_hdr* sllhdr = (sll_hdr *)pktdata;
       ip_type = sllhdr->sll_type;
       frame_size = sizeof(*sllhdr);
-    }
-    else if(link_type == DLT_IEEE802_11_RADIO) {
+    } else if(link_type == DLT_IEEE802_11_RADIO) {
       radio_hdr* radiohdr = (radio_hdr *)pktdata;
       ip_type = radiohdr->radio_type;
       frame_size = sizeof(*radiohdr);
-    }
-    else {
+    } else {
       REPORT_ERROR("Unrecognized link layer type");
     }
     int num_of_vlan_headers = 0;
@@ -167,22 +167,20 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
         num_of_vlan_headers ++;
         vlanhdr = (vlan_hdr *)((char*)vlanhdr + sizeof(*vlanhdr));
       }
-      if(num_of_vlan_headers > 2){
+      if(num_of_vlan_headers > 2) {
         WARNING("%d VLAN headers detected. There should be at most 2", num_of_vlan_headers);
       }
       if (ntohs(vlanhdr->vlan_type) != 0x0800 /* IPv4 */
-          && ntohs(vlanhdr->vlan_type) != 0x86dd) /* IPv6 */ {
+          && ntohs(vlanhdr->vlan_type) != 0x86dd) { /* IPv6 */
         num_of_non_ip_packets ++;
         continue;
       }
       iphdr = (struct iphdr *)((char *)vlanhdr + sizeof(*vlanhdr));
-    }
-    else if (ntohs(ip_type) != 0x0800 /* IPv4 */
-          && ntohs(ip_type) != 0x86dd) /* IPv6 */ {
+    } else if (ntohs(ip_type) != 0x0800 /* IPv4 */
+               && ntohs(ip_type) != 0x86dd) { /* IPv6 */
       num_of_non_ip_packets ++;
       continue;
-    }
-    else {
+    } else {
       iphdr = (struct iphdr *)((char *)pktdata + frame_size);
     }
     if (iphdr && iphdr->version == 6) {
@@ -191,7 +189,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
       ip6hdr = (ipv6_hdr *)(void *) iphdr;
       if (ip6hdr->nxt_header != IPPROTO_UDP) {
         DEBUG("prepare_pcap.c: Ignoring non UDP packet!\n");
-	     continue;
+        continue;
       }
       udphdr = (struct udphdr *)((char *)ip6hdr + sizeof(*ip6hdr));
     } else {
@@ -221,20 +219,20 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
     pkt_index->pktlen = pktlen;
     pkt_index->ts = pkthdr->ts;
     pkt_index->data = (unsigned char *) malloc(pktlen);
-    if (!pkt_index->data) 
+    if (!pkt_index->data)
       REPORT_ERROR("Can't allocate memory for pcap pkt data");
     // copy data, skipping over udp header itself
     memcpy(pkt_index->data, (char *)udphdr+(sizeof(struct udphdr)), pktlen);
 
 #if defined(__HPUX) || defined(__DARWIN) || (defined __CYGWIN) || defined(__FreeBSD__)
-    udphdr->uh_sum = 0 ;      
+    udphdr->uh_sum = 0 ;
 #else
     udphdr->check = 0;
 #endif
 
-      // compute a partial udp checksum
-      // not including port that will be changed
-      // when sending RTP
+    // compute a partial udp checksum
+    // not including port that will be changed
+    // when sending RTP
 #if defined(__HPUX) || defined(__DARWIN) || (defined __CYGWIN) || defined(__FreeBSD__)
     pkt_index->partial_check = check((u_int16_t *) &udphdr->uh_ulen, pktlen - 4) + ntohs(IPPROTO_UDP + pktlen);
 #else
@@ -268,7 +266,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts) {
 }
 
 /*
-FIXME: this is broken, and never used 
+FIXME: this is broken, and never used
 void free_pkts(pcap_pkts *pkts) {
   pcap_pkt *pkt_index;
   while (pkt_index < pkts->max) {

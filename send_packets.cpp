@@ -1,5 +1,5 @@
 /*
- * send_packets.c: from tcpreplay tools by Aaron Turner 
+ * send_packets.c: from tcpreplay tools by Aaron Turner
  * http://tcpreplay.sourceforge.net/
  * send_packets.c is under BSD license (see below)
  * SIPp is under GPL license
@@ -160,38 +160,36 @@ send_packets (play_args_t * play_args)
     if (sock < 0) {
       REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
-    DEBUG("IPv6 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
-      ntohs(((struct sockaddr_in6 *)(void *) from )->sin6_port), 
-      ((struct sockaddr_in6 *)(void *) from )->sin6_addr.s6_addr, 
-      ntohs(((struct sockaddr_in6 *)(void *) to )->sin6_port), 
-      ((struct sockaddr_in6 *)(void *) to )->sin6_addr.s6_addr);
-  }
-  else {
+    DEBUG("IPv6 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x",
+          ntohs(((struct sockaddr_in6 *)(void *) from )->sin6_port),
+          ((struct sockaddr_in6 *)(void *) from )->sin6_addr.s6_addr,
+          ntohs(((struct sockaddr_in6 *)(void *) to )->sin6_port),
+          ((struct sockaddr_in6 *)(void *) to )->sin6_addr.s6_addr);
+  } else {
     sock = socket(PF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
       REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
     }
-    DEBUG("IPv4 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x", 
-      ntohs(((struct sockaddr_in *)(void *) from )->sin_port), 
-      ((struct sockaddr_in *)(void *) from )->sin_addr.s_addr, 
-      ntohs(((struct sockaddr_in *)(void *) to )->sin_port), 
-      ((struct sockaddr_in *)(void *) to )->sin_addr.s_addr);
+    DEBUG("IPv4 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x",
+          ntohs(((struct sockaddr_in *)(void *) from )->sin_port),
+          ((struct sockaddr_in *)(void *) from )->sin_addr.s_addr,
+          ntohs(((struct sockaddr_in *)(void *) to )->sin_port),
+          ((struct sockaddr_in *)(void *) to )->sin_addr.s_addr);
   }
   int sock_opt = 1;
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt, sizeof (sock_opt)) == -1) {
     REPORT_ERROR_NO("setsockopt(sock, SO_REUSEADDR) failed");
   }
-	
+
   if (!media_ip_is_ipv6) {
-    if (bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0){
+    if (bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0) {
       char ip[INET_ADDRSTRLEN];
 
       inet_ntop(AF_INET, &(((struct sockaddr_in *) from)->sin_addr), ip, INET_ADDRSTRLEN);
       REPORT_ERROR_NO("Could not bind RTP traffic socket to %s:%hu", ip, ntohs(((struct sockaddr_in *) from)->sin_port));
     }
-  }
-  else {
-    if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0){
+  } else {
+    if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0) {
       char ip[INET6_ADDRSTRLEN];
 
       inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) from)->sin6_addr), ip, INET_ADDRSTRLEN);
@@ -213,7 +211,7 @@ send_packets (play_args_t * play_args)
 
   pkt_index = pkts->pkts;
   pkt_max = pkts->max;
-	
+
   if (media_ip_is_ipv6) {
     memset(&to6, 0, sizeof(to6));
     memset(&from6, 0, sizeof(from6));
@@ -239,15 +237,13 @@ send_packets (play_args_t * play_args)
 #ifdef MSG_DONTWAIT
     if (!media_ip_is_ipv6) {
       ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
-    }
-    else {
+    } else {
       ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
     }
 #else
     if (!media_ip_is_ipv6) {
       ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
-    }
-    else {
+    } else {
       ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
     }
 #endif
@@ -277,52 +273,44 @@ void do_sleep (struct timeval *time, struct timeval *last, struct timeval *didsl
 {
   struct timeval nap, now, delta;
 
-  if (gettimeofday (&now, NULL) < 0)
-    {
-      WARNING("Error gettimeofday: %s\n", strerror (errno));
-    }
+  if (gettimeofday (&now, NULL) < 0) {
+    WARNING("Error gettimeofday: %s\n", strerror (errno));
+  }
 
   /* First time through for this file */
-  if (!timerisset (last))
-    {
-      *start = now;
-      timerclear (&delta);
-      timerclear (didsleep);
-    }
-  else
-    {
-      timersub (&now, start, &delta);
-    }
+  if (!timerisset (last)) {
+    *start = now;
+    timerclear (&delta);
+    timerclear (didsleep);
+  } else {
+    timersub (&now, start, &delta);
+  }
 
-  if (timerisset (last) && timercmp (time, last, >))
-    {
-      timersub (time, last, &nap);
-    }
-  else
-    {
-      /* 
-       * Don't sleep if this is our first packet, or if the
-       * this packet appears to have been sent before the 
-       * last packet.
-       */
-      timerclear (&nap);
-    }
+  if (timerisset (last) && timercmp (time, last, >)) {
+    timersub (time, last, &nap);
+  } else {
+    /*
+     * Don't sleep if this is our first packet, or if the
+     * this packet appears to have been sent before the
+     * last packet.
+     */
+    timerclear (&nap);
+  }
 
   timeradd (didsleep, &nap, didsleep);
 
-  if (timercmp (didsleep, &delta, >))
-    {
-      timersub (didsleep, &delta, &nap);
+  if (timercmp (didsleep, &delta, >)) {
+    timersub (didsleep, &delta, &nap);
 
 #ifdef WIN32
-      usleep(nap.tv_sec*1000000+nap.tv_usec);
+    usleep(nap.tv_sec*1000000+nap.tv_usec);
 #else
-      struct timespec sleep;
-      sleep.tv_sec = nap.tv_sec;
-      sleep.tv_nsec = nap.tv_usec * 1000;	/* convert us to ns */
-      while ((nanosleep (&sleep, &sleep) == -1) && (errno == -EINTR));
+    struct timespec sleep;
+    sleep.tv_sec = nap.tv_sec;
+    sleep.tv_nsec = nap.tv_usec * 1000; /* convert us to ns */
+    while ((nanosleep (&sleep, &sleep) == -1) && (errno == -EINTR));
 #endif
-    }
+  }
 }
 
 

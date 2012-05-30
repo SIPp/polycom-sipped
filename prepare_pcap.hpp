@@ -16,7 +16,7 @@
  *  Author : Guillaume TEISSIER from FTR&D 02/02/2006
  */
 #ifndef PREPARE_PCAP_H
-#define PREPARE_PCAP_H	1
+#define PREPARE_PCAP_H  1
 #include <pcap.h>
 
 #ifdef WIN32
@@ -33,40 +33,37 @@
 #define u_int16_t uint16_t
 #define u_int32_t uint32_t
 
-struct iphdr
-  {
+struct iphdr {
 #ifdef _HPUX_LI
-    unsigned int ihl:4;
-    unsigned int version:4;
+  unsigned int ihl:4;
+  unsigned int version:4;
 #else
-    unsigned int version:4;
-    unsigned int ihl:4;
+  unsigned int version:4;
+  unsigned int ihl:4;
 #endif
-    u_int8_t tos;
-    u_int16_t tot_len;
-    u_int16_t id;
-    u_int16_t frag_off;
-    u_int8_t ttl;
-    u_int8_t protocol;
-    u_int16_t check;
-    u_int32_t saddr;
-    u_int32_t daddr;
-    /*The options start here. */
-  };
-   
+  u_int8_t tos;
+  u_int16_t tot_len;
+  u_int16_t id;
+  u_int16_t frag_off;
+  u_int8_t ttl;
+  u_int8_t protocol;
+  u_int16_t check;
+  u_int32_t saddr;
+  u_int32_t daddr;
+  /*The options start here. */
+};
+
 #endif
 
-typedef struct
-{
+typedef struct {
   u_char *data;
   u_long pktlen;
   struct timeval ts;
   int partial_check;
 } pcap_pkt;
 
-#define PCAP_MAXPACKET	1500
-typedef struct
-{
+#define PCAP_MAXPACKET  1500
+typedef struct {
   char *file;
   u_int16_t base;
   u_long max_length;

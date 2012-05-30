@@ -18,7 +18,7 @@
  *            Olivier JACQUES
  *            Richard GAYRAUD
  *            From Hewlett Packard Company.
- *           
+ *
  */
 
 #ifndef __STAT_H__
@@ -31,12 +31,12 @@
 
 #define MAX_CHAR_BUFFER_SIZE          1024
 
-#include <ctime> 
+#include <ctime>
 #ifdef WIN32
 #include <winsock2.h>
 # include <time.h>
 #else
-# include <sys/time.h> 
+# include <sys/time.h>
 #endif
 
 #include <fstream>
@@ -60,41 +60,38 @@ __________________________________________________________________________
 __________________________________________________________________________
 */
 
-  /**
-   * This class provides some means to compute and display statistics.
-   * This is a singleton class.
-   */
+/**
+ * This class provides some means to compute and display statistics.
+ * This is a singleton class.
+ */
 
 class CStat {
 public:
 
-  /* 
+  /*
    * This struct is used for repartition table
    * border max is the max value allow for this range
    * nbInThisBorder is the counter of value in this range
    */
-  typedef struct _T_dynamicalRepartition
-  {
+  typedef struct _T_dynamicalRepartition {
     unsigned int  borderMax;
-    unsigned long nbInThisBorder; 
-  } T_dynamicalRepartition; 
+    unsigned long nbInThisBorder;
+  } T_dynamicalRepartition;
 
-  typedef struct _T_value_rtt 
-  {
+  typedef struct _T_value_rtt {
     double  date ;
     int  rtd_no ;
     double  rtt  ;
-  } T_value_rtt, *T_pValue_rtt ; 
+  } T_value_rtt, *T_pValue_rtt ;
 
   /**
    * Actions on counters
    */
-  enum E_Action
-  {
+  enum E_Action {
     E_NO_ACTION,
     E_CREATE_OUTGOING_CALL,
     E_CREATE_INCOMING_CALL,
-    E_CALL_FAILED, 
+    E_CALL_FAILED,
     E_CALL_SUCCESSFULLY_ENDED,
     E_RESET_C_COUNTERS,
     E_RESET_PD_COUNTERS,
@@ -127,146 +124,145 @@ public:
   /**
    * Counters management
    */
-  enum E_CounterName
-  {
-  // Per-Scenario Counters
-  // Cumulative counters
-  CPT_C_IncomingCallCreated,
-  CPT_C_OutgoingCallCreated,
-  CPT_C_SuccessfulCall,
-  CPT_C_FailedCall,
-  CPT_C_CurrentCall,
-  CPT_C_CurrentCallPeak,
-  CPT_C_CurrentCallPeakTime,
-  CPT_C_NbOfCallUsedForAverageCallLength,
-  CPT_C_AverageCallLength_Sum,
-  CPT_C_AverageCallLength_Squares,
-  CPT_C_FailedCallCannotSendMessage,
-  CPT_C_FailedCallMaxUdpRetrans,
-  CPT_C_FailedCallTcpConnect,
-  CPT_C_FailedCallTcpClosed,
-  CPT_C_FailedCallUnexpectedMessage,
-  CPT_C_FailedCallCallRejected,
-  CPT_C_FailedCallCmdNotSent,
-  CPT_C_FailedCallRegexpDoesntMatch,
-  CPT_C_FailedCallRegexpShouldntMatch,
-  CPT_C_FailedCallRegexpHdrNotFound,
-  CPT_C_FailedOutboundCongestion,
-  CPT_C_FailedTimeoutOnRecv,
-  CPT_C_FailedTimeoutOnSend,
-  CPT_C_Retransmissions,
+  enum E_CounterName {
+    // Per-Scenario Counters
+    // Cumulative counters
+    CPT_C_IncomingCallCreated,
+    CPT_C_OutgoingCallCreated,
+    CPT_C_SuccessfulCall,
+    CPT_C_FailedCall,
+    CPT_C_CurrentCall,
+    CPT_C_CurrentCallPeak,
+    CPT_C_CurrentCallPeakTime,
+    CPT_C_NbOfCallUsedForAverageCallLength,
+    CPT_C_AverageCallLength_Sum,
+    CPT_C_AverageCallLength_Squares,
+    CPT_C_FailedCallCannotSendMessage,
+    CPT_C_FailedCallMaxUdpRetrans,
+    CPT_C_FailedCallTcpConnect,
+    CPT_C_FailedCallTcpClosed,
+    CPT_C_FailedCallUnexpectedMessage,
+    CPT_C_FailedCallCallRejected,
+    CPT_C_FailedCallCmdNotSent,
+    CPT_C_FailedCallRegexpDoesntMatch,
+    CPT_C_FailedCallRegexpShouldntMatch,
+    CPT_C_FailedCallRegexpHdrNotFound,
+    CPT_C_FailedOutboundCongestion,
+    CPT_C_FailedTimeoutOnRecv,
+    CPT_C_FailedTimeoutOnSend,
+    CPT_C_Retransmissions,
 
-  // Periodic Display counter
-  CPT_PD_IncomingCallCreated, // must be first (RESET_PD_COUNTER macro)
-  CPT_PD_OutgoingCallCreated,
-  CPT_PD_SuccessfulCall,
-  CPT_PD_FailedCall,
-  CPT_PD_CurrentCallPeak,
-  CPT_PD_CurrentCallPeakTime,
-  CPT_PD_NbOfCallUsedForAverageCallLength,
-  CPT_PD_AverageCallLength_Sum,
-  CPT_PD_AverageCallLength_Squares,
-  CPT_PD_NbOfCallUsedForAverageResponseTime,
-  CPT_PD_NbOfCallUsedForAverageResponseTime_2, // This must match or exceed MAX_RTD_INFO
-  CPT_PD_NbOfCallUsedForAverageResponseTime_3, // This must match or exceed MAX_RTD_INFO
-  CPT_PD_NbOfCallUsedForAverageResponseTime_4, // This must match or exceed MAX_RTD_INFO
-  CPT_PD_NbOfCallUsedForAverageResponseTime_5, // This must match or exceed MAX_RTD_INFO
-  CPT_PD_AverageResponseTime_Sum,
-  CPT_PD_AverageResponseTime_Sum_2,
-  CPT_PD_AverageResponseTime_Sum_3,
-  CPT_PD_AverageResponseTime_Sum_4,
-  CPT_PD_AverageResponseTime_Sum_5,
-  CPT_PD_AverageResponseTime_Squares,
-  CPT_PD_AverageResponseTime_Squares_2,
-  CPT_PD_AverageResponseTime_Squares_3,
-  CPT_PD_AverageResponseTime_Squares_4,
-  CPT_PD_AverageResponseTime_Squares_5,
-  CPT_PD_FailedCallCannotSendMessage,
-  CPT_PD_FailedCallMaxUdpRetrans,
-  CPT_PD_FailedCallTcpConnect,
-  CPT_PD_FailedCallTcpClosed,
-  CPT_PD_FailedCallUnexpectedMessage,
-  CPT_PD_FailedCallCallRejected,
-  CPT_PD_FailedCallCmdNotSent,
-  CPT_PD_FailedCallRegexpDoesntMatch,
-  CPT_PD_FailedCallRegexpShouldntMatch,
-  CPT_PD_FailedCallRegexpHdrNotFound,
-  CPT_PD_FailedOutboundCongestion,
-  CPT_PD_FailedTimeoutOnRecv,
-  CPT_PD_FailedTimeoutOnSend,
-  CPT_PD_Retransmissions,
+    // Periodic Display counter
+    CPT_PD_IncomingCallCreated, // must be first (RESET_PD_COUNTER macro)
+    CPT_PD_OutgoingCallCreated,
+    CPT_PD_SuccessfulCall,
+    CPT_PD_FailedCall,
+    CPT_PD_CurrentCallPeak,
+    CPT_PD_CurrentCallPeakTime,
+    CPT_PD_NbOfCallUsedForAverageCallLength,
+    CPT_PD_AverageCallLength_Sum,
+    CPT_PD_AverageCallLength_Squares,
+    CPT_PD_NbOfCallUsedForAverageResponseTime,
+    CPT_PD_NbOfCallUsedForAverageResponseTime_2, // This must match or exceed MAX_RTD_INFO
+    CPT_PD_NbOfCallUsedForAverageResponseTime_3, // This must match or exceed MAX_RTD_INFO
+    CPT_PD_NbOfCallUsedForAverageResponseTime_4, // This must match or exceed MAX_RTD_INFO
+    CPT_PD_NbOfCallUsedForAverageResponseTime_5, // This must match or exceed MAX_RTD_INFO
+    CPT_PD_AverageResponseTime_Sum,
+    CPT_PD_AverageResponseTime_Sum_2,
+    CPT_PD_AverageResponseTime_Sum_3,
+    CPT_PD_AverageResponseTime_Sum_4,
+    CPT_PD_AverageResponseTime_Sum_5,
+    CPT_PD_AverageResponseTime_Squares,
+    CPT_PD_AverageResponseTime_Squares_2,
+    CPT_PD_AverageResponseTime_Squares_3,
+    CPT_PD_AverageResponseTime_Squares_4,
+    CPT_PD_AverageResponseTime_Squares_5,
+    CPT_PD_FailedCallCannotSendMessage,
+    CPT_PD_FailedCallMaxUdpRetrans,
+    CPT_PD_FailedCallTcpConnect,
+    CPT_PD_FailedCallTcpClosed,
+    CPT_PD_FailedCallUnexpectedMessage,
+    CPT_PD_FailedCallCallRejected,
+    CPT_PD_FailedCallCmdNotSent,
+    CPT_PD_FailedCallRegexpDoesntMatch,
+    CPT_PD_FailedCallRegexpShouldntMatch,
+    CPT_PD_FailedCallRegexpHdrNotFound,
+    CPT_PD_FailedOutboundCongestion,
+    CPT_PD_FailedTimeoutOnRecv,
+    CPT_PD_FailedTimeoutOnSend,
+    CPT_PD_Retransmissions,
 
-  // Periodic logging counter
-  CPT_PL_IncomingCallCreated, // must be first (RESET_PL_COUNTER macro)
-  CPT_PL_OutgoingCallCreated,
-  CPT_PL_SuccessfulCall,
-  CPT_PL_FailedCall,
-  CPT_PL_CurrentCallPeak,
-  CPT_PL_CurrentCallPeakTime,
-  CPT_PL_NbOfCallUsedForAverageCallLength,
-  CPT_PL_AverageCallLength_Sum,
-  /* The squares let us compute the standard deviation. */
-  CPT_PL_AverageCallLength_Squares,
-  CPT_PL_NbOfCallUsedForAverageResponseTime,
-  CPT_PL_NbOfCallUsedForAverageResponseTime_2,
-  CPT_PL_NbOfCallUsedForAverageResponseTime_3,
-  CPT_PL_NbOfCallUsedForAverageResponseTime_4,
-  CPT_PL_NbOfCallUsedForAverageResponseTime_5,
-  CPT_PL_AverageResponseTime_Sum,
-  CPT_PL_AverageResponseTime_Sum_2,
-  CPT_PL_AverageResponseTime_Sum_3,
-  CPT_PL_AverageResponseTime_Sum_4,
-  CPT_PL_AverageResponseTime_Sum_5,
-  CPT_PL_AverageResponseTime_Squares,
-  CPT_PL_AverageResponseTime_Squares_2,
-  CPT_PL_AverageResponseTime_Squares_3,
-  CPT_PL_AverageResponseTime_Squares_4,
-  CPT_PL_AverageResponseTime_Squares_5,
-  CPT_PL_FailedCallCannotSendMessage,
-  CPT_PL_FailedCallMaxUdpRetrans,
-  CPT_PL_FailedCallTcpConnect,
-  CPT_PL_FailedCallTcpClosed,
-  CPT_PL_FailedCallUnexpectedMessage,
-  CPT_PL_FailedCallCallRejected,
-  CPT_PL_FailedCallCmdNotSent,
-  CPT_PL_FailedCallRegexpDoesntMatch,
-  CPT_PL_FailedCallRegexpShouldntMatch,
-  CPT_PL_FailedCallRegexpHdrNotFound,
-  CPT_PL_FailedOutboundCongestion,
-  CPT_PL_FailedTimeoutOnRecv,
-  CPT_PL_FailedTimeoutOnSend,
-  CPT_PL_Retransmissions,
+    // Periodic logging counter
+    CPT_PL_IncomingCallCreated, // must be first (RESET_PL_COUNTER macro)
+    CPT_PL_OutgoingCallCreated,
+    CPT_PL_SuccessfulCall,
+    CPT_PL_FailedCall,
+    CPT_PL_CurrentCallPeak,
+    CPT_PL_CurrentCallPeakTime,
+    CPT_PL_NbOfCallUsedForAverageCallLength,
+    CPT_PL_AverageCallLength_Sum,
+    /* The squares let us compute the standard deviation. */
+    CPT_PL_AverageCallLength_Squares,
+    CPT_PL_NbOfCallUsedForAverageResponseTime,
+    CPT_PL_NbOfCallUsedForAverageResponseTime_2,
+    CPT_PL_NbOfCallUsedForAverageResponseTime_3,
+    CPT_PL_NbOfCallUsedForAverageResponseTime_4,
+    CPT_PL_NbOfCallUsedForAverageResponseTime_5,
+    CPT_PL_AverageResponseTime_Sum,
+    CPT_PL_AverageResponseTime_Sum_2,
+    CPT_PL_AverageResponseTime_Sum_3,
+    CPT_PL_AverageResponseTime_Sum_4,
+    CPT_PL_AverageResponseTime_Sum_5,
+    CPT_PL_AverageResponseTime_Squares,
+    CPT_PL_AverageResponseTime_Squares_2,
+    CPT_PL_AverageResponseTime_Squares_3,
+    CPT_PL_AverageResponseTime_Squares_4,
+    CPT_PL_AverageResponseTime_Squares_5,
+    CPT_PL_FailedCallCannotSendMessage,
+    CPT_PL_FailedCallMaxUdpRetrans,
+    CPT_PL_FailedCallTcpConnect,
+    CPT_PL_FailedCallTcpClosed,
+    CPT_PL_FailedCallUnexpectedMessage,
+    CPT_PL_FailedCallCallRejected,
+    CPT_PL_FailedCallCmdNotSent,
+    CPT_PL_FailedCallRegexpDoesntMatch,
+    CPT_PL_FailedCallRegexpShouldntMatch,
+    CPT_PL_FailedCallRegexpHdrNotFound,
+    CPT_PL_FailedOutboundCongestion,
+    CPT_PL_FailedTimeoutOnRecv,
+    CPT_PL_FailedTimeoutOnSend,
+    CPT_PL_Retransmissions,
 
-  E_NB_COUNTER,
+    E_NB_COUNTER,
 
-  // Global Counters
-  // Cumulative counters
-  CPT_G_C_OutOfCallMsgs,
-  CPT_G_C_DeadCallMsgs,
-  CPT_G_C_FatalErrors,
-  CPT_G_C_Warnings,
-  CPT_G_C_WatchdogMajor,
-  CPT_G_C_WatchdogMinor,
-  CPT_G_C_AutoAnswered,
-  // Periodic Display counter
-  CPT_G_PD_OutOfCallMsgs,
-  CPT_G_PD_DeadCallMsgs,
-  CPT_G_PD_FatalErrors,
-  CPT_G_PD_Warnings,
-  CPT_G_PD_WatchdogMajor,
-  CPT_G_PD_WatchdogMinor,
-  CPT_G_PD_AutoAnswered, // must be last (RESET_PD_COUNTER)
+    // Global Counters
+    // Cumulative counters
+    CPT_G_C_OutOfCallMsgs,
+    CPT_G_C_DeadCallMsgs,
+    CPT_G_C_FatalErrors,
+    CPT_G_C_Warnings,
+    CPT_G_C_WatchdogMajor,
+    CPT_G_C_WatchdogMinor,
+    CPT_G_C_AutoAnswered,
+    // Periodic Display counter
+    CPT_G_PD_OutOfCallMsgs,
+    CPT_G_PD_DeadCallMsgs,
+    CPT_G_PD_FatalErrors,
+    CPT_G_PD_Warnings,
+    CPT_G_PD_WatchdogMajor,
+    CPT_G_PD_WatchdogMinor,
+    CPT_G_PD_AutoAnswered, // must be last (RESET_PD_COUNTER)
 
-  // Periodic logging counter
-  CPT_G_PL_OutOfCallMsgs,
-  CPT_G_PL_DeadCallMsgs,
-  CPT_G_PL_FatalErrors,
-  CPT_G_PL_Warnings,
-  CPT_G_PL_WatchdogMajor,
-  CPT_G_PL_WatchdogMinor,
-  CPT_G_PL_AutoAnswered, // must be last (RESET_PL_COUNTER)
+    // Periodic logging counter
+    CPT_G_PL_OutOfCallMsgs,
+    CPT_G_PL_DeadCallMsgs,
+    CPT_G_PL_FatalErrors,
+    CPT_G_PL_Warnings,
+    CPT_G_PL_WatchdogMajor,
+    CPT_G_PL_WatchdogMinor,
+    CPT_G_PL_AutoAnswered, // must be last (RESET_PL_COUNTER)
 
-  E_NB_G_COUNTER,
+    E_NB_G_COUNTER,
 
   };
 
@@ -291,7 +287,7 @@ public:
    * Only one instance of CStat exists in the component. This
    * instance is deleted when the close method is called.
    */
-  void close (); 
+  void close ();
 
   /**
    * ComputeStat Methods are used to modify counter value
@@ -318,7 +314,7 @@ public:
    * @return the counter value
    **/
   unsigned long long GetStat (E_CounterName P_counter);
-  
+
   /* Get the current start time. */
   void getStartTime(struct timeval *t);
 
@@ -334,20 +330,20 @@ public:
   static char* formatTime (struct timeval* P_tv, bool microseconds = false);
 
   /**
-   * setRepartitionCallLength 
-   * - set the unsigned int table passed in parameter as the repartition table 
-   *   for call length. This is done by calling the initRepartition methode on 
+   * setRepartitionCallLength
+   * - set the unsigned int table passed in parameter as the repartition table
+   *   for call length. This is done by calling the initRepartition methode on
    *   the M_CallLengthRepartition variable.
-   * - set the char* list of int (must be separeted with coma as the 
+   * - set the char* list of int (must be separeted with coma as the
    *   repartition table for call length
-   *   This is done by calling the createIntegerTable to transform the char* 
-   *   list into unsigned int list. Then the initRepartition methode is 
-   *   call with the created unsigned int list and the M_CallLengthRepartition 
+   *   This is done by calling the createIntegerTable to transform the char*
+   *   list into unsigned int list. Then the initRepartition methode is
+   *   call with the created unsigned int list and the M_CallLengthRepartition
    *   variable
    *
    * setRepartitionResponseTime
    *   Same than setRepartitionCallLength with the variable
-   *  M_ResponseTimeRepartition variableinstead of M_CallLengthRepartition 
+   *  M_ResponseTimeRepartition variableinstead of M_CallLengthRepartition
    *  variable
    */
   void setRepartitionCallLength   (unsigned int* repartition, int nombre);
@@ -430,22 +426,22 @@ private:
 #define GENERIC_PD 1
 #define GENERIC_PL 2
 #define GENERIC_TYPES 3
-  unsigned long long	   *M_genericCounters;
+  unsigned long long     *M_genericCounters;
 
-  str_int_map		   M_genericMap;
-  int_str_map		   M_revGenericMap;
-  int_str_map		   M_genericDisplay;
+  str_int_map      M_genericMap;
+  int_str_map      M_revGenericMap;
+  int_str_map      M_genericDisplay;
 
-  str_int_map		   rtd_started;
-  str_int_map		   rtd_stopped;
+  str_int_map      rtd_started;
+  str_int_map      rtd_stopped;
 
 #define RTD_COUNT 0
 #define RTD_SUM 1
 #define RTD_SUMSQ 2
 #define RTD_TYPES 3
-  unsigned long long	   *M_rtdInfo;
-  str_int_map		   M_rtdMap;
-  int_str_map		   M_revRtdMap;
+  unsigned long long     *M_rtdInfo;
+  str_int_map      M_rtdMap;
+  int_str_map      M_revRtdMap;
 
   T_dynamicalRepartition** M_ResponseTimeRepartition;
   T_dynamicalRepartition*  M_CallLengthRepartition;
@@ -470,33 +466,33 @@ private:
 
   /**
    * initRepartition
-   * This methode is used to create the repartition table with a table of 
-   * unsigned int the reparition is created like following, with Vi the given 
+   * This methode is used to create the repartition table with a table of
+   * unsigned int the reparition is created like following, with Vi the given
    * value in the table
-   * 0    <= x <  V1  
-   * V1   <= x <  V2 
+   * 0    <= x <  V1
+   * V1   <= x <  V2
    *  ...
    * Vn-1 <= x <  Vn
    *         x >= Vn
-   * So the repartition table have the size n+1 if the given table has a size 
+   * So the repartition table have the size n+1 if the given table has a size
    * of n */
   void  initRepartition(unsigned int* repartition, int nombre,
                         T_dynamicalRepartition ** tabRepartition, int* nbTab);
-  
+
   /**
    * createIntegerTable
-   * this method try to create a table of unsigned int with the list of char* 
+   * this method try to create a table of unsigned int with the list of char*
    * passed in parameters
    * if it succed, it's return true (1)
    * else it's return false (0)
    */
-  int  createIntegerTable(char * P_listeStr, 
-                          unsigned int ** listeInteger, 
+  int  createIntegerTable(char * P_listeStr,
+                          unsigned int ** listeInteger,
                           int * sizeOfList);
 
   /**
    * isWellFormed
-   * this method check if the char* passed in parameter in really a list of  
+   * this method check if the char* passed in parameter in really a list of
    * integer separated with comma.
    * if yes, it's return true (1)
    * else, it's return false (0)
@@ -508,8 +504,8 @@ private:
    * The method looks for the place to set the value passed in parameter
    * Once found, the associated counter is incremented
    */
-  void  updateRepartition( T_dynamicalRepartition* tabRepart, 
-                           int sizeOfTab, 
+  void  updateRepartition( T_dynamicalRepartition* tabRepart,
+                           int sizeOfTab,
                            unsigned long value);
 
   /**
@@ -523,28 +519,28 @@ private:
    * Display the repartition passed in parameter at the screen
    */
   void  displayRepartition(FILE *f,
-                           T_dynamicalRepartition * tabRepartition, 
+                           T_dynamicalRepartition * tabRepartition,
                            int sizeOfTab);
 
   /**
    * sRepartitionHeader
    * return a string with the range description of the given repartition
    */
-  char* sRepartitionHeader(T_dynamicalRepartition * tabRepartition, 
+  char* sRepartitionHeader(T_dynamicalRepartition * tabRepartition,
                            int sizeOfTab,
                            char* P_repartitionName);
 
   /**
    * sRepartitionInfo
-   * return a string with the number of value in the differente range of the 
+   * return a string with the number of value in the differente range of the
    * given repartition
    */
-  char* sRepartitionInfo(T_dynamicalRepartition * tabRepartition, 
+  char* sRepartitionInfo(T_dynamicalRepartition * tabRepartition,
                          int sizeOfTab);
 
   /**
    * UpdateAverageCounter
-   * This methode compute the real moyenne with the passed value on the given 
+   * This methode compute the real moyenne with the passed value on the given
    * counter
    */
   void updateAverageCounter(E_CounterName P_SumCounter,
@@ -558,15 +554,15 @@ private:
    * and recorded mean square.
    */
   double computeStdev(E_CounterName P_SumCounter,
-                             E_CounterName P_NbOfCallUsed,
-                             E_CounterName P_Squares);
+                      E_CounterName P_NbOfCallUsed,
+                      E_CounterName P_Squares);
 
   /**
    * computeMean
    * This method computes the recorded sum and count.
    */
   double computeMean(E_CounterName P_SumCounter,
-                             E_CounterName P_NbOfCallUsed);
+                     E_CounterName P_NbOfCallUsed);
 
   double computeRtdMean(int which, int type);
   double computeRtdStdev(int which, int type);
@@ -577,7 +573,7 @@ private:
    * To prevent public copy ctor usage: no implementation
    */
   CStat (const CStat&);
-  
+
   /**
    * Effective C++
    *
@@ -591,150 +587,150 @@ private:
  */
 class CSample {
 public:
-	virtual double sample() = 0;
-	virtual int textDescr(char *s, int len) = 0;
-	virtual int timeDescr(char *s, int len) = 0;
-	virtual double cdfInv(double percentile) = 0;
-	virtual ~CSample();
+  virtual double sample() = 0;
+  virtual int textDescr(char *s, int len) = 0;
+  virtual int timeDescr(char *s, int len) = 0;
+  virtual double cdfInv(double percentile) = 0;
+  virtual ~CSample();
 private:
 };
 
 /* Always return a fixed value for the sample. */
 class CFixed : public CSample {
 public:
-	CFixed(double value);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CFixed(double value);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 private:
-	double value;
+  double value;
 };
 
 /* Return the default scenario duration. */
 class CDefaultPause : public CSample {
 public:
-	CDefaultPause();
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CDefaultPause();
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 private:
 };
 
 /* Uniform distribution. */
 class CUniform : public CSample {
 public:
-	CUniform(double min, double max);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CUniform(double min, double max);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 private:
-	double min, max;
+  double min, max;
 };
 
 #ifdef HAVE_GSL
 /* Normal distribution. */
 class CNormal : public CSample {
 public:
-	CNormal(double mean, double stdev);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CNormal(double mean, double stdev);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 protected:
-	double mean, stdev;
-	gsl_rng *rng;
+  double mean, stdev;
+  gsl_rng *rng;
 };
 
 /* Lognormal distribution. */
 class CLogNormal : public CNormal {
 public:
-	CLogNormal(double mean, double stdev) : CNormal(mean, stdev) {};
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CLogNormal(double mean, double stdev) : CNormal(mean, stdev) {};
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 };
 
 /* Exponential distribution. */
 class CExponential : public CSample {
 public:
-	CExponential(double mean);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CExponential(double mean);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 private:
-	double mean;
-	gsl_rng *rng;
+  double mean;
+  gsl_rng *rng;
 };
 
 /* Weibull distribution. */
 class CWeibull : public CSample {
 public:
-	CWeibull(double lambda, double k);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CWeibull(double lambda, double k);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 private:
-	double lambda, k;
-	gsl_rng *rng;
+  double lambda, k;
+  gsl_rng *rng;
 };
 
 /* Pareto distribution. */
 class CPareto : public CSample {
 public:
-	CPareto(double k, double xsubm);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CPareto(double k, double xsubm);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 protected:
-	double k, xsubm;
-	gsl_rng *rng;
+  double k, xsubm;
+  gsl_rng *rng;
 };
 
 /* Generalized Pareto distribution. */
 class CGPareto : public CSample {
 public:
-	CGPareto(double shape, double scale, double location);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CGPareto(double shape, double scale, double location);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 protected:
-	double shape, scale, location;
-	gsl_rng *rng;
+  double shape, scale, location;
+  gsl_rng *rng;
 };
 
 
 /* Gamma distribution. */
 class CGamma : public CSample {
 public:
-	CGamma(double k, double theta);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CGamma(double k, double theta);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 protected:
-	double k, theta;
-	gsl_rng *rng;
+  double k, theta;
+  gsl_rng *rng;
 };
 
 /* Negative Binomial distribution. */
 class CNegBin : public CSample {
 public:
-	CNegBin(double p, double n);
-	double sample();
-	int textDescr(char *s, int len);
-	int timeDescr(char *s, int len);
-	double cdfInv(double percentile);
+  CNegBin(double p, double n);
+  double sample();
+  int textDescr(char *s, int len);
+  int timeDescr(char *s, int len);
+  double cdfInv(double percentile);
 protected:
-	double p, n;
-	gsl_rng *rng;
+  double p, n;
+  gsl_rng *rng;
 };
 #endif
 

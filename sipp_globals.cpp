@@ -10,9 +10,9 @@
 #include "socketowner.hpp"
 #include "variables.hpp"
 #ifdef WIN32
-  #include <winsock2.h>
+#include <winsock2.h>
 #else
-  #include <netdb.h>
+#include <netdb.h>
 #endif
 #include <stdio.h>
 #include <stddef.h>  // RTCHECK_FULL  MAX_LOCAL_TWIN_SOCKETS
@@ -227,9 +227,9 @@ unsigned long      watchdog_reset          = 600000;
 
 
 /********************* dynamic Id ************************* */
- int               maxDynamicId            = 12000;  // max value for dynamicId; this value is reached
- int               startDynamicId          = 10000;  // offset for first dynamicId  FIXME:in CmdLine
- int               stepDynamicId           = 4;      // step of increment for dynamicId
+int               maxDynamicId            = 12000;  // max value for dynamicId; this value is reached
+int               startDynamicId          = 10000;  // offset for first dynamicId  FIXME:in CmdLine
+int               stepDynamicId           = 4;      // step of increment for dynamicId
 
 /**
 #define GET_TIME(clock)       \

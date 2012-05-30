@@ -22,21 +22,21 @@ bool is_in_addr_equal(const struct sockaddr_storage *left, const struct sockaddr
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr_storage *sa)
 {
-    if (sa->ss_family == AF_INET) {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
-    }
+  if (sa->ss_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
 
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
 // get port, IPv4 or IPv6:
 unsigned short get_in_port(struct sockaddr_storage *sa)
 {
-    if (sa->ss_family == AF_INET) {
-        return ntohs(((struct sockaddr_in*)sa)->sin_port);
-    }
+  if (sa->ss_family == AF_INET) {
+    return ntohs(((struct sockaddr_in*)sa)->sin_port);
+  }
 
-    return ntohs(((struct sockaddr_in6*)sa)->sin6_port);
+  return ntohs(((struct sockaddr_in6*)sa)->sin6_port);
 }
 
 string socket_to_ip_string(struct sockaddr_storage *socket)

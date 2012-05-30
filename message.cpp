@@ -32,7 +32,7 @@
  *           Jan Andres from Freenet
  *           Ben Evans from Open Cloud
  *           Marc Van Diest from Belgacom
- *	     Stefan Esser
+ *       Stefan Esser
  *           Andy Aicken
  */
 
@@ -52,14 +52,14 @@
 
 
 struct KeywordMap {
-	const char *keyword;
-	MessageCompType type;
+  const char *keyword;
+  MessageCompType type;
 };
 
 typedef std::map<std::string, customKeyword> kw_map;
 kw_map keyword_map;
 
-/* these keywords may optionally specify noesc or esc (default value if no option specified) 
+/* these keywords may optionally specify noesc or esc (default value if no option specified)
     to allow control of wether [] surround ipv6 addresses. if used with ipv4, no effect.
     */
 struct KeywordMap IP_Keywords[] = {
@@ -139,7 +139,7 @@ struct KeywordMap DialogSpecificKeywords[] = {
 
 #define KEYWORD_SIZE 256
 
-SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number, bool use_txn) : 
+SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool skip_sanity, int dialog_number, bool use_txn) :
   ack(false),cancel(false), response(false)
 {
   // should we parse out the _n portion of call here or later? Here would be faster and more
@@ -201,14 +201,18 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       if (literalLen) {
         *dest = '\0';
         literal = (char *)realloc(literal, literalLen + 1);
-        if (!literal) { REPORT_ERROR("Out of memory!"); }
+        if (!literal) {
+          REPORT_ERROR("Out of memory!");
+        }
 
         MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-        if (!newcomp) { REPORT_ERROR("Out of memory!"); }
+        if (!newcomp) {
+          REPORT_ERROR("Out of memory!");
+        }
 
         newcomp->type = E_Message_Literal;
         newcomp->literal = literal;
-        newcomp->literalLen = literalLen; // length without the terminator 
+        newcomp->literalLen = literalLen; // length without the terminator
         newcomp->dialog_number = dialog_number;
         messageComponents.push_back(newcomp);
       } else {
@@ -221,7 +225,9 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
 
       /* Now lets determine which keyword we have. */
       MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-      if (!newcomp) { REPORT_ERROR("Out of memory!"); }
+      if (!newcomp) {
+        REPORT_ERROR("Out of memory!");
+      }
 
       newcomp->dialog_number = dialog_number;
 
@@ -239,14 +245,14 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         if (*key == ']')
           break;
       }
-      if (*key == '\n') 
+      if (*key == '\n')
         REPORT_ERROR("Cannot have end of line characters in the middle of keywords. Possibly a missing ']' or a duplicate 'CDATA[' section in scenario while parsing '%s'.", current_line);
 
       if (*key != ']') {
         key = NULL;
       }
 
-      if((!key) || ((key - src) > KEYWORD_SIZE) || (!(key - src))){
+      if((!key) || ((key - src) > KEYWORD_SIZE) || (!(key - src))) {
         REPORT_ERROR("Syntax error or invalid [keyword] in scenario while parsing '%s'", current_line);
       }
       memcpy(keyword, src,  key - src);
@@ -255,7 +261,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       // allow +/-n for numeric variables
       newcomp->offset = 0;
 
-      if ((strncmp(keyword, "authentication", strlen("authentication")) && strncmp(keyword, "tdmmap", strlen("tdmmap")))){
+      if ((strncmp(keyword, "authentication", strlen("authentication")) && strncmp(keyword, "tdmmap", strlen("tdmmap")))) {
         newcomp->offset = parseOffset(keyword);
         /* end the string before the +/- sign so that the parser doesn't read it as an unrecognized keyword */
         if(((key = strchr(keyword,'+')) || (key = strchr(keyword,'-'))) && isdigit(*(key+1))) *key = 0;
@@ -287,42 +293,41 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           break;
         }
       }
-      
+
       // check ip addresses for optional specifier for ipv6 esc
       bool ip_keyword = false;
-      if (!simple_keyword)
-      {
+      if (!simple_keyword) {
         for (unsigned int i = 0; i< sizeof(IP_Keywords)/sizeof(IP_Keywords[0]); i++) {
-          //exact match  or contains full keyword and a space 
-          if ( !strcmp(keyword, IP_Keywords[i].keyword) ||  
-              ( !strncmp(keyword, IP_Keywords[i].keyword, strlen(IP_Keywords[i].keyword) ) &&
-              ( strlen(keyword)> strlen(IP_Keywords[i].keyword )) &&
-              ( keyword[strlen(IP_Keywords[i].keyword)] ==  ' ')     )  ) {
-              newcomp->type = IP_Keywords[i].type;
-              DEBUG("searching for no_square_bracket attribte in  '%s' " , keyword);
-              if( strstr(keyword, "no_square_bracket")  ) {
-                // want the no escape version of the ip address
-                
-                switch (IP_Keywords[i].type){
-                  case (E_Message_Remote_IP):
-                    newcomp->type = E_Message_Remote_IP_noesc;
-                    break;
-                  case (E_Message_Local_IP):
-                    newcomp->type = E_Message_Local_IP_noesc;
-                    break;
-                  case (E_Message_Server_IP):
-                    newcomp->type = E_Message_Server_IP_noesc;
-                    break;
-                  case(E_Message_Media_IP):
-                    newcomp->type = E_Message_Media_IP_noesc;
-                    break;
-                  default:
-                    REPORT_ERROR("Unknown ip address specifier type %d while building message to send", IP_Keywords[i].keyword);
-                    break;
-                }
+          //exact match  or contains full keyword and a space
+          if ( !strcmp(keyword, IP_Keywords[i].keyword) ||
+               ( !strncmp(keyword, IP_Keywords[i].keyword, strlen(IP_Keywords[i].keyword) ) &&
+                 ( strlen(keyword)> strlen(IP_Keywords[i].keyword )) &&
+                 ( keyword[strlen(IP_Keywords[i].keyword)] ==  ' ')     )  ) {
+            newcomp->type = IP_Keywords[i].type;
+            DEBUG("searching for no_square_bracket attribte in  '%s' " , keyword);
+            if( strstr(keyword, "no_square_bracket")  ) {
+              // want the no escape version of the ip address
+
+              switch (IP_Keywords[i].type) {
+              case (E_Message_Remote_IP):
+                newcomp->type = E_Message_Remote_IP_noesc;
+                break;
+              case (E_Message_Local_IP):
+                newcomp->type = E_Message_Local_IP_noesc;
+                break;
+              case (E_Message_Server_IP):
+                newcomp->type = E_Message_Server_IP_noesc;
+                break;
+              case(E_Message_Media_IP):
+                newcomp->type = E_Message_Media_IP_noesc;
+                break;
+              default:
+                REPORT_ERROR("Unknown ip address specifier type %d while building message to send", IP_Keywords[i].keyword);
+                break;
               }
-              ip_keyword = true;
-              break;
+            }
+            ip_keyword = true;
+            break;
           }
         }//for
       }
@@ -341,9 +346,9 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         }
       }
 
-       if (newcomp->type == E_Message_Peer_Tag_Param || newcomp->type == E_Message_Remote_Tag_Param || newcomp->type == E_Message_Remote_Tag ) {
-         parse_generated(keyword, newcomp);
-       }
+      if (newcomp->type == E_Message_Peer_Tag_Param || newcomp->type == E_Message_Remote_Tag_Param || newcomp->type == E_Message_Remote_Tag ) {
+        parse_generated(keyword, newcomp);
+      }
 
       if (simple_keyword || dialog_keyword || ip_keyword) {
         messageComponents.push_back(newcomp);
@@ -425,20 +430,17 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
           const char *diagptr = strstr(keyword, "dialog=");
           const char *valueptr = strstr(keyword, "value_only=");
           const char *index;
-          if(diagptr){
+          if(diagptr) {
             // if both pointers exist start from the one closer to the beginning
             if(valueptr) index = (diagptr < valueptr) ? diagptr : valueptr;
             else index = diagptr;
-          }
-          else if (valueptr){
+          } else if (valueptr) {
             index = valueptr;
-          }
-          else REPORT_ERROR("Incorrect formatting of options in \"last_\" header");
+          } else REPORT_ERROR("Incorrect formatting of options in \"last_\" header");
           //Back up the pointer to the end of the last_* so we can extract * correctly
           while ((index > keyword) && (*(index-1) == ' ')) index--;
           newcomp->literal = strndup(keyword + strlen("last_"), index - keyword - strlen("last_"));
-        }
-        else
+        } else
           newcomp->literal = strdup(keyword + strlen("last_"));
         newcomp->literalLen = strlen(newcomp->literal);
 
@@ -447,10 +449,10 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       }
 #ifndef PCAPPLAY
       else if(!strcmp(keyword, "auto_media_port") ||
-        !strcmp(keyword, "media_port") ||
-        !strcmp(keyword, "media_ip") ||
-        !strcmp(keyword, "media_ip_type")) {
-          REPORT_ERROR("The %s keyword requires PCAPPLAY.\n", keyword);
+              !strcmp(keyword, "media_port") ||
+              !strcmp(keyword, "media_ip") ||
+              !strcmp(keyword, "media_ip_type")) {
+        REPORT_ERROR("The %s keyword requires PCAPPLAY.\n", keyword);
       }
 #endif
 #ifndef _USE_OPENSSL
@@ -475,7 +477,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
         }
         if (!generic[i]) {
           REPORT_ERROR("Unsupported keyword '%s' in xml scenario file",
-            keyword);
+                       keyword);
         }
       }
 
@@ -486,10 +488,14 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
     *dest++ = '\0';
     literalLen = dest - literal;
     literal = (char *)realloc(literal, literalLen);
-    if (!literal) { REPORT_ERROR("Out of memory!"); }
+    if (!literal) {
+      REPORT_ERROR("Out of memory!");
+    }
 
     MessageComponent *newcomp = (MessageComponent *)calloc(1, sizeof(MessageComponent));
-    if (!newcomp) { REPORT_ERROR("Out of memory!"); }
+    if (!newcomp) {
+      REPORT_ERROR("Out of memory!");
+    }
 
     newcomp->type = E_Message_Literal;
     newcomp->literal = literal;
@@ -521,7 +527,9 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
     REPORT_ERROR("You can not use a keyword for the METHOD or to generate \"SIP/2.0\" to ensure proper [cseq] operation!%s\n", osrc);
   }
   *q++ = '\0';
-  while (isspace(*q)) { q++; }
+  while (isspace(*q)) {
+    q++;
+  }
   if (!strcmp(method, "SIP/2.0")) {
     char *endptr;
     code = strtol(q, &endptr, 10);
@@ -541,25 +549,43 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
       memmove(method, p, strlen(p) + 1);
     }
     method = (char *)realloc(method, strlen(method) + 1);
-    if (!method) { REPORT_ERROR("Out of memory"); }
+    if (!method) {
+      REPORT_ERROR("Out of memory");
+    }
     ack = (!strcmp(method, "ACK"));
     cancel = (!strcmp(method, "CANCEL"));
     response = false;
   }
 }
 
-SendingMessage::~SendingMessage() {
+SendingMessage::~SendingMessage()
+{
   for (int i = 0; i < numComponents(); i++) {
     freeMessageComponent(messageComponents[i]);
   }
   free(method);
 }
 
-bool SendingMessage::isAck() { return ack; }
-bool SendingMessage::isCancel() { return cancel; }
-bool SendingMessage::isResponse() { return response; }
-char *SendingMessage::getMethod() { return method; }
-int SendingMessage::getCode() { return code; }
+bool SendingMessage::isAck()
+{
+  return ack;
+}
+bool SendingMessage::isCancel()
+{
+  return cancel;
+}
+bool SendingMessage::isResponse()
+{
+  return response;
+}
+char *SendingMessage::getMethod()
+{
+  return method;
+}
+int SendingMessage::getCode()
+{
+  return code;
+}
 
 void SendingMessage::getQuotedParam(char * dest, char * src, int * len)
 {
@@ -567,21 +593,21 @@ void SendingMessage::getQuotedParam(char * dest, char * src, int * len)
   /* Allows any hex coded string like '0x5B07F6' */
   while (char c = *src++) {
     switch(c) {
-      case '"':
-	*len++;
-	*dest = '\0';
-	return;
-      case '\\':
-	c = *src++;
-	*len++;
-	if (c == 0) {
-	  *dest = '\0';
-	  return;
-	}
-	/* Fall-Through. */
-      default:
-	*dest++ = c;
-	*len++;
+    case '"':
+      *len++;
+      *dest = '\0';
+      return;
+    case '\\':
+      c = *src++;
+      *len++;
+      if (c == 0) {
+        *dest = '\0';
+        return;
+      }
+      /* Fall-Through. */
+    default:
+      *dest++ = c;
+      *len++;
     }
   }
   *dest = '\0';
@@ -650,11 +676,11 @@ bool SendingMessage::parse_dialog_number(char* src, struct MessageComponent* new
     if (endptr == dialogNumber)
       REPORT_ERROR("Invalid dialog number specified in last_ tag.");
     return true;
-  }
-  else return false;
+  } else return false;
 }
 
-bool SendingMessage::parse_value_only(char* src, struct MessageComponent* newcomp) {
+bool SendingMessage::parse_value_only(char* src, struct MessageComponent* newcomp)
+{
   char valueOnly[KEYWORD_SIZE];
   getKeywordParam(src, "value_only=", valueOnly);
   if (valueOnly[0] != '\0') {
@@ -664,10 +690,11 @@ bool SendingMessage::parse_value_only(char* src, struct MessageComponent* newcom
   return false;
 }
 
-void SendingMessage::parse_encoding(char* src, struct MessageComponent* newcomp) {
+void SendingMessage::parse_encoding(char* src, struct MessageComponent* newcomp)
+{
   char encoding[KEYWORD_SIZE];
   getKeywordParam(src, "encoding=", encoding);
-  if(encoding[0]!='\0'){
+  if(encoding[0]!='\0') {
     if (!strcasecmp(encoding, "uri"))
       newcomp->encoding = E_ENCODING_URI;
     else
@@ -677,17 +704,19 @@ void SendingMessage::parse_encoding(char* src, struct MessageComponent* newcomp)
   }
 }
 
-void SendingMessage::parse_generated(char* src, struct MessageComponent* newcomp) {
+void SendingMessage::parse_generated(char* src, struct MessageComponent* newcomp)
+{
   char generated[KEYWORD_SIZE];
   getKeywordParam(src, "generated=", generated);
-  if (generated[0]!='\0'){
+  if (generated[0]!='\0') {
     newcomp->auto_generate_remote_tag = get_bool(generated, "Generated");
   } else {
     newcomp->auto_generate_remote_tag = false;
   }
 }
 
-void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword) {
+void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword)
+{
   char my_auth_user[KEYWORD_SIZE + 1];
   char my_auth_pass[KEYWORD_SIZE + 1];
   char my_aka[KEYWORD_SIZE + 1];
@@ -712,7 +741,7 @@ void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct M
 
   /* add aka_OP, aka_AMF, aka_K */
   getKeywordParam(keyword, "aka_K=", my_aka);
-  if (my_aka[0]==0){
+  if (my_aka[0]==0) {
     memcpy(my_aka,my_auth_pass,16);
     my_aka[16]=0;
   }
@@ -724,7 +753,8 @@ void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct M
   dst->comp_param.auth_param.aka_AMF = new SendingMessage(msg_scenario, my_aka, true);
 }
 
-void SendingMessage::freeMessageComponent(struct MessageComponent *comp) {
+void SendingMessage::freeMessageComponent(struct MessageComponent *comp)
+{
   free(comp->literal);
   if (comp->type == E_Message_Authentication) {
     if (comp->comp_param.auth_param.auth_user) {
@@ -748,7 +778,8 @@ void SendingMessage::freeMessageComponent(struct MessageComponent *comp) {
   free(comp);
 }
 
-int SendingMessage::numComponents() {
+int SendingMessage::numComponents()
+{
   return messageComponents.size();
 }
 struct MessageComponent *SendingMessage::getComponent(int i) {
@@ -756,10 +787,11 @@ struct MessageComponent *SendingMessage::getComponent(int i) {
 }
 
 /* This is very simplistic and does not yet allow any arguments, but it is a start. */
-int registerKeyword(char *keyword, customKeyword fxn) {
-	if (keyword_map.find(keyword) != keyword_map.end()) {
-		REPORT_ERROR("Can not register keyword '%s', already registered!\n", keyword);
-	}
-	keyword_map[keyword] = fxn;
-	return 0;
+int registerKeyword(char *keyword, customKeyword fxn)
+{
+  if (keyword_map.find(keyword) != keyword_map.end()) {
+    REPORT_ERROR("Can not register keyword '%s', already registered!\n", keyword);
+  }
+  keyword_map[keyword] = fxn;
+  return 0;
 }

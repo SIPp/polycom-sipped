@@ -15,7 +15,7 @@
  *
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
- *	     Charles P. Wright from IBM Research
+ *       Charles P. Wright from IBM Research
  */
 #ifndef __TASK__
 #define __TASK__
@@ -44,29 +44,29 @@ typedef std::list<task *> task_list;
  * article (based on their 1987 SOSP paper). */
 class timewheel {
 public:
-	timewheel();
+  timewheel();
 
-	int expire_paused_tasks();
-	/* Add a paused task and increment count. */
-	void add_paused_task(task *task, bool increment);
-	void remove_paused_task(task *task);
-	int size();
+  int expire_paused_tasks();
+  /* Add a paused task and increment count. */
+  void add_paused_task(task *task, bool increment);
+  void remove_paused_task(task *task);
+  int size();
 private:
-	/* How many task are in this wheel. */
-	int count;
+  /* How many task are in this wheel. */
+  int count;
 
-	unsigned int wheel_base;
+  unsigned int wheel_base;
 
-	/* The actual wheels. */
-	task_list wheel_one[LEVEL_ONE_SLOTS];
-	task_list wheel_two[LEVEL_TWO_SLOTS];
-	task_list wheel_three[LEVEL_THREE_SLOTS];
+  /* The actual wheels. */
+  task_list wheel_one[LEVEL_ONE_SLOTS];
+  task_list wheel_two[LEVEL_TWO_SLOTS];
+  task_list wheel_three[LEVEL_THREE_SLOTS];
 
-	/* Calls that are paused indefinitely. */
-	task_list forever_list;
+  /* Calls that are paused indefinitely. */
+  task_list forever_list;
 
-	/* Turn a task into a list (based on wakeup). */
-	task_list *task2list(task *task);
+  /* Turn a task into a list (based on wakeup). */
+  task_list *task2list(task *task);
 };
 
 class task {

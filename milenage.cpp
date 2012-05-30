@@ -32,7 +32,7 @@
  *
  *-----------------------------------------------------------------*/
 
-void f1    ( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2], 
+void f1    ( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
              u8 mac_a[8], u8 op[16] )
 {
   u8 op_c[16];
@@ -50,13 +50,11 @@ void f1    ( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
     rijndaelInput[i] = rand[i] ^ op_c[i];
   RijndaelEncrypt( rijndaelInput, temp );
 
-  for (i=0; i<6; i++)
-  {
+  for (i=0; i<6; i++) {
     in1[i]    = sqn[i];
     in1[i+8]  = sqn[i];
   }
-  for (i=0; i<2; i++)
-  {
+  for (i=0; i<2; i++) {
     in1[i+6]  = amf[i];
     in1[i+14] = amf[i];
   }
@@ -71,7 +69,7 @@ void f1    ( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
 
   for (i=0; i<16; i++)
     rijndaelInput[i] ^= temp[i];
-  
+
   RijndaelEncrypt( rijndaelInput, out1 );
   for (i=0; i<16; i++)
     out1[i] ^= op_c[i];
@@ -83,7 +81,7 @@ void f1    ( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
 } /* end of function f1 */
 
 
-  
+
 /*-------------------------------------------------------------------
  *                            Algorithms f2-f5
  *-------------------------------------------------------------------
@@ -160,7 +158,7 @@ void f2345 ( u8 k[16], u8 rand[16],
   return;
 } /* end of function f2345 */
 
-  
+
 /*-------------------------------------------------------------------
  *                            Algorithm f1*
  *-------------------------------------------------------------------
@@ -171,7 +169,7 @@ void f2345 ( u8 k[16], u8 rand[16],
  *
  *-----------------------------------------------------------------*/
 
-void f1star( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2], 
+void f1star( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
              u8 mac_s[8], u8 op[16] )
 {
   u8 op_c[16];
@@ -189,13 +187,11 @@ void f1star( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
     rijndaelInput[i] = rand[i] ^ op_c[i];
   RijndaelEncrypt( rijndaelInput, temp );
 
-  for (i=0; i<6; i++)
-  {
+  for (i=0; i<6; i++) {
     in1[i]    = sqn[i];
     in1[i+8]  = sqn[i];
   }
-  for (i=0; i<2; i++)
-  {
+  for (i=0; i<2; i++) {
     in1[i+6]  = amf[i];
     in1[i+14] = amf[i];
   }
@@ -210,7 +206,7 @@ void f1star( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
 
   for (i=0; i<16; i++)
     rijndaelInput[i] ^= temp[i];
-  
+
   RijndaelEncrypt( rijndaelInput, out1 );
   for (i=0; i<16; i++)
     out1[i] ^= op_c[i];
@@ -221,7 +217,7 @@ void f1star( u8 k[16], u8 rand[16], u8 sqn[6], u8 amf[2],
   return;
 } /* end of function f1star */
 
-  
+
 /*-------------------------------------------------------------------
  *                            Algorithm f5*
  *-------------------------------------------------------------------
@@ -266,7 +262,7 @@ void f5star( u8 k[16], u8 rand[16],
   return;
 } /* end of function f5star */
 
-  
+
 /*-------------------------------------------------------------------
  *  Function to compute OPc from OP and K.  Assumes key schedule has
     already been performed.
@@ -275,7 +271,7 @@ void f5star( u8 k[16], u8 rand[16],
 void ComputeOPc( u8 op_c[16], u8 op[16] )
 {
   u8 i;
-  
+
   RijndaelEncrypt( op, op_c );
   for (i=0; i<16; i++)
     op_c[i] ^= op[i];

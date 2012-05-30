@@ -45,35 +45,41 @@
 class stattask *stattask::instance = NULL;
 class screentask *screentask::instance = NULL;
 
-void stattask::initialize() {
+void stattask::initialize()
+{
   assert(instance == NULL);
   if (dumpInFile || useCountf || rate_increase) {
     instance = new stattask();
   }
 }
 
-void screentask::initialize() {
+void screentask::initialize()
+{
   assert(instance == NULL);
   if (report_freq) {
     instance = new screentask();
   }
 }
 
-void stattask::dump() {
+void stattask::dump()
+{
   WARNING("Statistics reporting task.");
 }
-void screentask::dump() {
+void screentask::dump()
+{
   WARNING("Screen update task.");
 }
 
-void screentask::report(bool last) {
-    print_statistics(last);
-    display_scenario->stats->computeStat(CStat::E_RESET_PD_COUNTERS);
-    last_report_time  = getmilliseconds();
-    scheduling_loops = 0;
+void screentask::report(bool last)
+{
+  print_statistics(last);
+  display_scenario->stats->computeStat(CStat::E_RESET_PD_COUNTERS);
+  last_report_time  = getmilliseconds();
+  scheduling_loops = 0;
 }
 
-bool screentask::run() {
+bool screentask::run()
+{
   if (quitting > 11) {
     delete this;
     return false;
@@ -87,32 +93,35 @@ bool screentask::run() {
   return true;
 }
 
-unsigned int screentask::wake() {
+unsigned int screentask::wake()
+{
   return last_report_time + report_freq;
 }
 
-void stattask::report() {
-    if(dumpInFile) {
-      main_scenario->stats->dumpData();
-    }
-    if (useCountf) {
-      print_count_file(countf, 0);
-    }
+void stattask::report()
+{
+  if(dumpInFile) {
+    main_scenario->stats->dumpData();
+  }
+  if (useCountf) {
+    print_count_file(countf, 0);
+  }
 
-    main_scenario->stats->computeStat(CStat::E_RESET_PL_COUNTERS);
-    last_dump_time = clock_tick;
+  main_scenario->stats->computeStat(CStat::E_RESET_PL_COUNTERS);
+  last_dump_time = clock_tick;
 }
 
-bool stattask::run() {
+bool stattask::run()
+{
   /* Statistics Logs. */
   if((getmilliseconds() - last_dump_time) >= report_freq_dumpLog)  {
     if (rate_increase) {
       rate += rate_increase;
       if (rate_max && (rate > rate_max)) {
-	rate = rate_max;
-	if (rate_quit) {
-	  quitting += 10;
-	}
+        rate = rate_max;
+        if (rate_quit) {
+          quitting += 10;
+        }
       }
       opentask::set_rate(rate);
     }
@@ -122,6 +131,7 @@ bool stattask::run() {
   return true;
 }
 
-unsigned int stattask::wake() {
+unsigned int stattask::wake()
+{
   return last_dump_time + report_freq_dumpLog;
 }

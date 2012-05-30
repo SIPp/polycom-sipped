@@ -44,7 +44,7 @@
 #include <iostream>
 #include <iterator>
 #ifndef WIN32
-  #include <sys/wait.h>
+#include <sys/wait.h>
 #endif
 
 
@@ -70,18 +70,21 @@ struct sipp_socket *socketowner::dissociate_socket() {
 
 unsigned long socketowner::nextownerid = 1;
 
-socketowner::socketowner() {
+socketowner::socketowner()
+{
   this->call_socket = NULL;
   this->ownerid = socketowner::nextownerid++;
 }
 
-socketowner::~socketowner() {
+socketowner::~socketowner()
+{
   if (this->call_socket) {
     sipp_close_socket(dissociate_socket());
   }
 }
 
-void socketowner::add_owner_to_socket(struct sipp_socket *socket) {
+void socketowner::add_owner_to_socket(struct sipp_socket *socket)
+{
   socket_owner_map_map::iterator map_it = socket_to_owners.find(socket);
   /* No map defined for this socket. */
   if (map_it == socket_to_owners.end()) {
@@ -90,11 +93,12 @@ void socketowner::add_owner_to_socket(struct sipp_socket *socket) {
     assert(map_it != socket_to_owners.end());
   }
 
- owner_map *socket_owner_map = (owner_map *) map_it->second;
- socket_owner_map->insert(long_owner_pair(this->ownerid, this));
+  owner_map *socket_owner_map = (owner_map *) map_it->second;
+  socket_owner_map->insert(long_owner_pair(this->ownerid, this));
 }
 
-void socketowner::remove_owner_from_socket(struct sipp_socket *socket) {
+void socketowner::remove_owner_from_socket(struct sipp_socket *socket)
+{
   socket_owner_map_map::iterator map_it = socket_to_owners.find(socket);
   /* We must have  a map for this socket. */
   assert(map_it != socket_to_owners.end());
@@ -113,7 +117,8 @@ void socketowner::remove_owner_from_socket(struct sipp_socket *socket) {
 }
 
 /* The caller must delete this list. */
-owner_list *get_owners_for_socket(struct sipp_socket *socket) {
+owner_list *get_owners_for_socket(struct sipp_socket *socket)
+{
   owner_list *l = new owner_list;
 
   socket_owner_map_map::iterator map_it = socket_to_owners.find(socket);
@@ -129,7 +134,7 @@ owner_list *get_owners_for_socket(struct sipp_socket *socket) {
   for (owner_it = socket_owner_map->begin();
        owner_it != socket_owner_map->end();
        owner_it++) {
-	l->insert(l->end(), owner_it->second);
+    l->insert(l->end(), owner_it->second);
   }
 
   return l;

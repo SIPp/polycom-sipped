@@ -1,7 +1,7 @@
-#ifndef	_COMPOSITEDOCUMENT_HPP
-#define	_COMPOSITEDOCUMENT_HPP
+#ifndef _COMPOSITEDOCUMENT_HPP
+#define _COMPOSITEDOCUMENT_HPP
 
-#include	<vector>
+#include  <vector>
 #include  <string>
 
 using namespace std;
@@ -141,4 +141,4 @@ public:
   vector<int> getLineOffsetMap();
 };
 
-#endif	
+#endif

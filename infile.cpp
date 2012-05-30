@@ -16,7 +16,7 @@
  *
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
- *	     Charles P. Wright from IBM Research
+ *       Charles P. Wright from IBM Research
  */
 
 #include <assert.h>
@@ -32,7 +32,8 @@
 /* Read MAX_CHAR_BUFFER_SIZE size lines from the "fileName" and populate it in
  * the fileContents vector. Each line should be terminated with a '\n'
  */
-FileContents::FileContents(const char *fileName) {
+FileContents::FileContents(const char *fileName)
+{
   ifstream *inFile    = new ifstream(fileName);
   char      line[MAX_CHAR_BUFFER_SIZE];
   int virtualLines = 0;
@@ -48,19 +49,19 @@ FileContents::FileContents(const char *fileName) {
   printfFile = false;
   printfOffset = 0;
   printfMultiple = 1;
-  
+
 
   line[0] = '\0';
   inFile->getline(line, MAX_CHAR_BUFFER_SIZE);
 
   if (NULL != strstr(line, "RANDOM")) {
-      usage = InputFileRandomOrder;
+    usage = InputFileRandomOrder;
   } else if (NULL != strstr(line, "SEQUENTIAL")) {
-      usage = InputFileSequentialOrder;
+    usage = InputFileSequentialOrder;
   } else if (NULL != strstr(line, "USER")) {
-      usage = InputFileUser;
+    usage = InputFileUser;
   } else {
-      REPORT_ERROR("Unknown file type (valid values are RANDOM, SEQUENTIAL, and USER) for %s:%s\n", fileName, line);
+    REPORT_ERROR("Unknown file type (valid values are RANDOM, SEQUENTIAL, and USER) for %s:%s\n", fileName, line);
   }
 
   char *useprintf;
@@ -69,7 +70,7 @@ FileContents::FileContents(const char *fileName) {
      * string for printf with the line number. */
     useprintf += strlen("PRINTF");
     if (*useprintf != '=') {
-	REPORT_ERROR("Invalid file printf specification (requires =) for %s:%s\n", fileName, line);
+      REPORT_ERROR("Invalid file printf specification (requires =) for %s:%s\n", fileName, line);
     }
     useprintf++;
     char *endptr;
@@ -86,7 +87,7 @@ FileContents::FileContents(const char *fileName) {
   if ((useprintf = strstr(line, "PRINTFOFFSET"))) {
     useprintf += strlen("PRINTFOFFSET");
     if (*useprintf != '=') {
-	REPORT_ERROR("Invalid file PRINTFOFFSET specification (requires =) for %s:%s\n", fileName, line);
+      REPORT_ERROR("Invalid file PRINTFOFFSET specification (requires =) for %s:%s\n", fileName, line);
     }
     useprintf++;
     char *endptr;
@@ -99,7 +100,7 @@ FileContents::FileContents(const char *fileName) {
   if ((useprintf = strstr(line, "PRINTFMULTIPLE"))) {
     useprintf += strlen("PRINTFMULTIPLE");
     if (*useprintf != '=') {
-	REPORT_ERROR("Invalid PRINTFMULTIPLE specification (requires =) for %s:%s\n", fileName, line);
+      REPORT_ERROR("Invalid PRINTFMULTIPLE specification (requires =) for %s:%s\n", fileName, line);
     }
     useprintf++;
     char *endptr;
@@ -138,14 +139,16 @@ FileContents::FileContents(const char *fileName) {
   indexField = -1;
 }
 
-int FileContents::getLine(int line, char *dest, int len) {
+int FileContents::getLine(int line, char *dest, int len)
+{
   if (printfFile) {
     line %= realLinesInFile;
   }
   return snprintf(dest, len, "%s", fileLines[line].c_str());
 }
 
-int FileContents::getField(int lineNum, int field, char *dest, int len) {
+int FileContents::getField(int lineNum, int field, char *dest, int len)
+{
   int curfield = field;
   int curline = lineNum;
 
@@ -155,7 +158,7 @@ int FileContents::getField(int lineNum, int field, char *dest, int len) {
   }
 
   if (printfFile) {
-	curline %= realLinesInFile;
+    curline %= realLinesInFile;
   }
   const string & line = fileLines[curline];
 
@@ -181,8 +184,8 @@ int FileContents::getField(int lineNum, int field, char *dest, int len) {
 
 
   if (curfield) {
-      WARNING("Field %d not found in the file %s", field, fileName);
-      return 0;
+    WARNING("Field %d not found in the file %s", field, fileName);
+    return 0;
   }
 
 
@@ -202,34 +205,34 @@ int FileContents::getField(int lineNum, int field, char *dest, int len) {
       int l = strlen(s);
       int copied = 0;
       for (int i = 0; i < l; i++) {
-	if (s[i] == '%') {
-	  if (s[i + 1] == '%') {
-	    dest[copied++] = s[i];
-	  } else {
-	    const char *format = s + i;
-	    i++;
-	    while (s[i] != 'd') {
-	      if (i == l) {
-		REPORT_ERROR("Invalid printf injection field (ran off end of line): %s", s);
-	      }
-	      if (!(isdigit(s[i]) || s[i] == '.' || s[i] == '-')) {
-		REPORT_ERROR("Invalid printf injection field (only decimal values allowed '%c'): %s", s[i], s);
-	      }
-	      i++;
-	    }
-	    assert(s[i] == 'd');
-	    char *tmp = (char *)malloc(s + i + 2 - format);
-	    if (!tmp) {
-	      REPORT_ERROR("Out of memory!\n");
-	    }
+        if (s[i] == '%') {
+          if (s[i + 1] == '%') {
+            dest[copied++] = s[i];
+          } else {
+            const char *format = s + i;
+            i++;
+            while (s[i] != 'd') {
+              if (i == l) {
+                REPORT_ERROR("Invalid printf injection field (ran off end of line): %s", s);
+              }
+              if (!(isdigit(s[i]) || s[i] == '.' || s[i] == '-')) {
+                REPORT_ERROR("Invalid printf injection field (only decimal values allowed '%c'): %s", s[i], s);
+              }
+              i++;
+            }
+            assert(s[i] == 'd');
+            char *tmp = (char *)malloc(s + i + 2 - format);
+            if (!tmp) {
+              REPORT_ERROR("Out of memory!\n");
+            }
             memcpy(tmp, format, s + i + 1 - format);
-	    tmp[s + i + 1 - format] = '\0';
-	    copied += sprintf(dest + copied, tmp, printfOffset + (lineNum * printfMultiple));
-	    free(tmp);
-	  }
-	} else {
-	  dest[copied++] = s[i];
-	}
+            tmp[s + i + 1 - format] = '\0';
+            copied += sprintf(dest + copied, tmp, printfOffset + (lineNum * printfMultiple));
+            free(tmp);
+          }
+        } else {
+          dest[copied++] = s[i];
+        }
       }
       dest[copied] = '\0';
       return copied;
@@ -241,48 +244,50 @@ int FileContents::getField(int lineNum, int field, char *dest, int len) {
   }
 }
 
-int FileContents::numLines() {
+int FileContents::numLines()
+{
   return numLinesInFile;
 }
 
-int FileContents::nextLine(int userId) {
+int FileContents::nextLine(int userId)
+{
   switch(usage) {
-    case InputFileRandomOrder:
-      return rand() % numLinesInFile;
-    case InputFileSequentialOrder:
-      {
-	int ret = lineCounter;
-	lineCounter = (lineCounter + 1) % numLinesInFile;
-	return ret;
-      }
-    case InputFileUser:
-      if (userId == 0) {
-	return -1;
-      }
-      if ((userId  - 1) >= numLinesInFile) {
-	REPORT_ERROR("%s has only %d lines, yet user %d was requested.", fileName, numLinesInFile, userId);
-      }
-      return userId - 1;
-    default:
-      REPORT_ERROR("Internal error: unknown file usage mode!");
+  case InputFileRandomOrder:
+    return rand() % numLinesInFile;
+  case InputFileSequentialOrder: {
+    int ret = lineCounter;
+    lineCounter = (lineCounter + 1) % numLinesInFile;
+    return ret;
+  }
+  case InputFileUser:
+    if (userId == 0) {
       return -1;
+    }
+    if ((userId  - 1) >= numLinesInFile) {
+      REPORT_ERROR("%s has only %d lines, yet user %d was requested.", fileName, numLinesInFile, userId);
+    }
+    return userId - 1;
+  default:
+    REPORT_ERROR("Internal error: unknown file usage mode!");
+    return -1;
   }
 }
 
 void FileContents::dump(void)
 {
-    WARNING("Line choosing strategy is [%s]. m_counter [%d] numLinesInFile [%d] realLinesInFile [%d]",
-               usage == InputFileSequentialOrder ? "SEQUENTIAL" :
-		usage == InputFileRandomOrder ? "RANDOM" :
-		usage == InputFileUser ? "USER" : "UNKNOWN",
-               lineCounter, numLinesInFile, realLinesInFile);
+  WARNING("Line choosing strategy is [%s]. m_counter [%d] numLinesInFile [%d] realLinesInFile [%d]",
+          usage == InputFileSequentialOrder ? "SEQUENTIAL" :
+          usage == InputFileRandomOrder ? "RANDOM" :
+          usage == InputFileUser ? "USER" : "UNKNOWN",
+          lineCounter, numLinesInFile, realLinesInFile);
 
-    for (int i = 0; i < realLinesInFile && fileLines[i][0]; i++) {
-        WARNING("%s:%d reads [%s]", fileName, i, fileLines[i].c_str());
-    }
+  for (int i = 0; i < realLinesInFile && fileLines[i][0]; i++) {
+    WARNING("%s:%d reads [%s]", fileName, i, fileLines[i].c_str());
+  }
 }
 
-void FileContents::index(int field) {
+void FileContents::index(int field)
+{
   this->indexField = field;
 
   indexMap = new str_int_map;
@@ -291,7 +296,8 @@ void FileContents::index(int field) {
   }
 }
 
-int FileContents::lookup(char *key) {
+int FileContents::lookup(char *key)
+{
   if (indexField == -1) {
     REPORT_ERROR("Invalid Index File: %s", fileName);
   }
@@ -307,7 +313,8 @@ int FileContents::lookup(char *key) {
 }
 
 
-void FileContents::insert(char *value) {
+void FileContents::insert(char *value)
+{
   if (printfFile) {
     REPORT_ERROR("Can not insert or replace into a printf file: %s", fileName);
   }
@@ -323,7 +330,8 @@ void FileContents::insert(char *value) {
   getField(realLinesInFile - 1, 0, tmp, sizeof(tmp));
 }
 
-void FileContents::replace(int line, char *value) {
+void FileContents::replace(int line, char *value)
+{
   if (printfFile) {
     REPORT_ERROR("Can not insert or replace into a printf file: %s", fileName);
   }
@@ -335,7 +343,8 @@ void FileContents::replace(int line, char *value) {
   reIndex(line);
 }
 
-void FileContents::reIndex(int line) {
+void FileContents::reIndex(int line)
+{
   if (indexField == -1) {
     return;
   }
@@ -351,7 +360,8 @@ void FileContents::reIndex(int line) {
   indexMap->insert(pair<str_int_map::key_type,int>(str_int_map::key_type(tmp), line));
 }
 
-void FileContents::deIndex(int line) {
+void FileContents::deIndex(int line)
+{
   if (indexField == -1) {
     return;
   }

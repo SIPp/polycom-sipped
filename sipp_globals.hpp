@@ -28,14 +28,14 @@
 
 /* Std C includes */
 #ifdef WIN32
-  //#include <time.h>
-  //#include <windows.h>
-  //#include <winsock2.h>
-  //#include <ws2tcpip.h>
+//#include <time.h>
+//#include <windows.h>
+//#include <winsock2.h>
+//#include <ws2tcpip.h>
 #else
-  #include <sys/socket.h>     // sockaddr_storage
-  #include <unistd.h>
-  #include <sys/types.h>
+#include <sys/socket.h>     // sockaddr_storage
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 
 #include <list>
@@ -86,7 +86,7 @@
 
 #define MAX_PEER_SIZE              4096  /* 3pcc extended mode: max size of peer names */
 #define MAX_LOCAL_TWIN_SOCKETS     10    /*3pcc extended mode:max number of peers from which
-                                           cmd messages are received */
+cmd messages are received */
 
 /******************** Default parameters ***********************/
 
@@ -364,7 +364,7 @@ typedef struct _T_peer_infos {
   struct sockaddr_storage  peer_sockaddr;
   char                     peer_ip[40];
   struct sipp_socket      *peer_socket ;
-  }                        T_peer_infos;
+}                        T_peer_infos;
 
 typedef std::map<std::string, char * > peer_addr_map;
 extern peer_addr_map       peer_addrs;
@@ -380,11 +380,10 @@ extern struct sockaddr_storage remote_sockaddr;
 extern short               use_remote_sending_addr;
 extern struct sockaddr_storage remote_sending_sockaddr;
 
-enum E_Alter_YesNo
-  {
-    E_ALTER_YES=0,
-    E_ALTER_NO
-  };
+enum E_Alter_YesNo {
+  E_ALTER_YES=0,
+  E_ALTER_NO
+};
 
 /************************** Trace Files ***********************/
 

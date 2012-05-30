@@ -18,7 +18,7 @@
  */
 
 /****
- * Screen.cpp : Simple curses & logfile encapsulation 
+ * Screen.cpp : Simple curses & logfile encapsulation
  */
 
 #include <assert.h>
@@ -77,7 +77,7 @@ void (*screen_exit_handler)();
 int screen_readkey()
 {
 #ifdef WIN32
-  return getch(); 
+  return getch();
 #else
   int c = getch();
   if (c == ERR) {
@@ -94,7 +94,7 @@ void screen_exit(int rc)
 
   /* Some signals may be delivered twice during exit() execution,
    * and we must prevent all this from beeing done twice */
-  
+
   {
     static int already_exited = 0;
     if(already_exited) {
@@ -102,7 +102,7 @@ void screen_exit(int rc)
     }
     already_exited = 1;
   }
-  
+
 #ifndef WIN32
   if( backgroundMode == false ) {
     endwin();
@@ -118,13 +118,13 @@ void screen_exit(int rc)
     fprintf(stderr, "%s", errstart);
     if(screen_errors > 1) {
       if (screen_logfile[0] != (char)0) {
-        fprintf(stderr, 
-              "%s: There were more errors, see '%s' file\n",
-              screen_exename, screen_logfile);
+        fprintf(stderr,
+                "%s: There were more errors, see '%s' file\n",
+                screen_exename, screen_logfile);
       } else {
-          fprintf(stderr,
-              "%s: There were more errors, enable -trace_err to log them.\n",
-              screen_exename);
+        fprintf(stderr,
+                "%s: There were more errors, enable -trace_err to log them.\n",
+                screen_exename);
       }
     }
     fflush(stderr);
@@ -169,12 +169,12 @@ void screen_exit(int rc)
 
 void screen_quit()
 {
-   WARNING("Test killed by signal");
-   screen_exit(EXIT_TEST_KILLED);
+  WARNING("Test killed by signal");
+  screen_exit(EXIT_TEST_KILLED);
 }
 
 // Win32 signal passes the signal as a parameter
-void win32_screen_quit(int signum) 
+void win32_screen_quit(int signum)
 {
   screen_quit();
 }
@@ -194,12 +194,12 @@ void manage_oversized_file()
 
   sprintf (L_file_name, "%s_%d_traces_oversized.log", scenario_file, getpid());
   f = fopen(L_file_name, "w");
-  if(!f) REPORT_ERROR_NO("Unable to open special error file\n"); 
+  if(!f) REPORT_ERROR_NO("Unable to open special error file\n");
   GET_TIME (&currentTime);
   fprintf(f,
           "-------------------------------------------- %s\n"
           "Max file size reached - no more logs\n",
-           CStat::formatTime(&currentTime));
+          CStat::formatTime(&currentTime));
   fflush(f);
   stop_all_traces();
   print_all_responses = 0;
@@ -207,7 +207,7 @@ void manage_oversized_file()
 }
 
 
-void screen_clear() 
+void screen_clear()
 {
 #ifdef WIN32
   ClearScreen();
@@ -223,7 +223,7 @@ void screen_set_exename(char * exe_name)
 
 void screen_init(void (*exit_handler)())
 {
-  
+
   screen_inited = 1;
   screen_exit_handler = exit_handler;
 
@@ -249,7 +249,7 @@ void screen_init(void (*exit_handler)())
   (*(void **)(&(action_file_size_exceeded.sa_handler)))=(void *)manage_oversized_file;
   sigaction(SIGTERM, &action_quit, NULL);
   sigaction(SIGINT, &action_quit, NULL);
-  sigaction(SIGKILL, &action_quit, NULL);  
+  sigaction(SIGKILL, &action_quit, NULL);
   sigaction(SIGXFSZ, &action_file_size_exceeded, NULL);   // avoid core dump if the max file size is exceeded
 #endif
 
@@ -258,7 +258,8 @@ void screen_init(void (*exit_handler)())
   }
 }
 
-static void _set_last_msg (const char *fmt, va_list ap) {
+static void _set_last_msg (const char *fmt, va_list ap)
+{
   char* c = screen_last_error;
   struct timeval currentTime;
   GET_TIME (&currentTime);
@@ -294,7 +295,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     if(!error_lfi.fptr) {
       char tmp[MAX_ERROR_SIZE];
       snprintf(tmp, MAX_ERROR_SIZE, "%s: Unable to create '%s': %s.\n",
-        screen_exename, screen_logfile, strerror(errno));
+               screen_exename, screen_logfile, strerror(errno));
       char * new_msg = (char*)realloc(msg, strlen(msg) + strlen(tmp) + 1);
       if (!new_msg) {
         fprintf(stderr, "Could not realloc memory for the error message!");
@@ -306,7 +307,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     } else {
       DEBUG("%s: The following events occurred:\n", screen_exename);
       fprintf(error_lfi.fptr, "%s: The following events occurred:\n",
-        screen_exename);
+              screen_exename);
       fflush(error_lfi.fptr);
     }
   }
@@ -356,7 +357,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
 }
 
 
-void REPORT_ERROR(const char *fmt, ...) {
+void REPORT_ERROR(const char *fmt, ...)
+{
   va_list ap;
   va_start(ap, fmt);
   _screen_error(true, false, 0, fmt, ap);
@@ -364,28 +366,32 @@ void REPORT_ERROR(const char *fmt, ...) {
   assert(0);
 }
 
-void REPORT_ERROR_NO(const char *fmt, ...) {
+void REPORT_ERROR_NO(const char *fmt, ...)
+{
   va_list ap;
   va_start(ap, fmt);
   _screen_error(true, true, errno, fmt, ap);
   va_end(ap);
 }
 
-void WARNING(const char *fmt, ...) {
+void WARNING(const char *fmt, ...)
+{
   va_list ap;
   va_start(ap, fmt);
   _screen_error(false, false, 0, fmt, ap);
   va_end(ap);
 }
 
-void WARNING_NO(const char *fmt, ...) {
+void WARNING_NO(const char *fmt, ...)
+{
   va_list ap;
   va_start(ap, fmt);
   _screen_error(false, true, errno, fmt, ap);
   va_end(ap);
 }
 
-void MESSAGE(const char *fmt, ...) {
+void MESSAGE(const char *fmt, ...)
+{
   va_list ap;
   va_start(ap, fmt);
   _set_last_msg(fmt, ap);
@@ -393,7 +399,8 @@ void MESSAGE(const char *fmt, ...) {
 }
 
 
-int _TRACE_EXEC(const char *fmt, ...) {
+int _TRACE_EXEC(const char *fmt, ...)
+{
   int ret;
   va_list ap;
 
@@ -403,13 +410,11 @@ int _TRACE_EXEC(const char *fmt, ...) {
     int retry_count = 0;
     while (!rotatef(&exec_lfi) && (retry_count++ < 10)) {
       WARNING("Unable to open exec log file, probably because previous exec command is still running.  Attempt %d of a maximum 11 tries", retry_count);
-      if(retry_count == 0){
-         usleep(250000);
-      }
-      else if(retry_count < 6){
-         usleep(1000000);
-      }
-      else {
+      if(retry_count == 0) {
+        usleep(250000);
+      } else if(retry_count < 6) {
+        usleep(1000000);
+      } else {
         usleep(5000000);
       }
     }

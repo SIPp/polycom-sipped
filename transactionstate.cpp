@@ -27,20 +27,20 @@
 #include <iostream>
 
 
-TransactionState::TransactionState(const string &name) : name(name), branch(""),  
-                                   client(false), cseq(0),  cseqMethod(""), lastReceivedMessage(""), 
-                                   lastResponseCode(0), transactionResponseHash(0), ackIndex(0)
-{ 
+TransactionState::TransactionState(const string &name) : name(name), branch(""),
+  client(false), cseq(0),  cseqMethod(""), lastReceivedMessage(""),
+  lastResponseCode(0), transactionResponseHash(0), ackIndex(0)
+{
   DEBUG_IN();
 }
 
-TransactionState::~TransactionState() 
-{ 
+TransactionState::~TransactionState()
+{
   DEBUG_IN();
 }
 
 
-void TransactionState::start(bool pIsClient, const string &pBranch, int pCseq, const string &pCseqMethod) 
+void TransactionState::start(bool pIsClient, const string &pBranch, int pCseq, const string &pCseqMethod)
 {
   client = pIsClient;
   branch = pBranch;
@@ -53,20 +53,23 @@ void TransactionState::start(bool pIsClient, const string &pBranch, int pCseq, c
   DEBUG("%s", trace().c_str());
 }
 
-string TransactionState::trace() const {
+string TransactionState::trace() const
+{
   std::stringstream ss;
-  ss << (client ? "Client" : "Server") << " Transaction '" << name << 
-                          "': branch:'" << branch << "'; cseq: " << cseq << " " << cseqMethod << 
-                          " ; lastResponseCode: " << lastResponseCode << "; transactionResponseHash: " << transactionResponseHash <<
-                          " ; ackIndex: " << ackIndex << "; lastReceivedMessage: " << lastReceivedMessage.length();
+  ss << (client ? "Client" : "Server") << " Transaction '" << name <<
+     "': branch:'" << branch << "'; cseq: " << cseq << " " << cseqMethod <<
+     " ; lastResponseCode: " << lastResponseCode << "; transactionResponseHash: " << transactionResponseHash <<
+     " ; ackIndex: " << ackIndex << "; lastReceivedMessage: " << lastReceivedMessage.length();
   return ss.str();
 }
 
-void TransactionState::startClient(const string &branch, int cseq, const string &cseq_method) { 
+void TransactionState::startClient(const string &branch, int cseq, const string &cseq_method)
+{
   start(true, branch, cseq, cseq_method);
 }
 
-void TransactionState::startServer(const string &branch, int cseq, const string &cseq_method) { 
+void TransactionState::startServer(const string &branch, int cseq, const string &cseq_method)
+{
   start(false, branch, cseq, cseq_method);
 }
 

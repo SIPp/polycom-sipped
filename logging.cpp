@@ -20,7 +20,7 @@
  */
 
 /****
- * logging.cpp : Simple logfile encapsulation 
+ * logging.cpp : Simple logfile encapsulation
  */
 
 #include "logging.hpp"
@@ -36,14 +36,14 @@
 
 
 
-// Variables set by configuration parameters 
+// Variables set by configuration parameters
 unsigned long long max_log_size = 0;
 unsigned long long ringbuffer_size = 0;
 int ringbuffer_files = 0;
 
 // Log file name set by configuration parameters
 #define LOGFILE(name, s, check) \
-	struct logfile_info name = { s, check, NULL, 0, NULL, "", true, false, 0, 0};
+  struct logfile_info name = { s, check, NULL, 0, NULL, "", true, false, 0, 0};
 LOGFILE(calldebug_lfi, "calldebug", true);
 LOGFILE(message_lfi, "messages", true);
 LOGFILE(shortmessage_lfi, "shortmessages", true);
@@ -68,7 +68,8 @@ void set_logging_scenario_file_name(char *name)
 }
 
 // return true if log file opened, false if not.
-int rotatef(struct logfile_info *lfi) {
+int rotatef(struct logfile_info *lfi)
+{
   char L_rotate_file_name [MAX_PATH];
 
   if (!lfi->fixedname) {
@@ -79,7 +80,7 @@ int rotatef(struct logfile_info *lfi) {
     if (!lfi->ftimes) {
       lfi->ftimes = (struct logfile_id *)calloc(ringbuffer_files, sizeof(struct logfile_id));
     }
-    // We need to rotate away an existing file. 
+    // We need to rotate away an existing file.
     if (lfi->nfiles == ringbuffer_files) {
       if ((lfi->ftimes)[0].n) {
         sprintf(L_rotate_file_name, "%s_%d_%s_%lu.%d.log", scenario_file_name, getpid(), lfi->name, (lfi->ftimes)[0].start, (lfi->ftimes)[0].n);
@@ -93,7 +94,7 @@ int rotatef(struct logfile_info *lfi) {
     if (lfi->starttime) {
       (lfi->ftimes)[lfi->nfiles].start = lfi->starttime;
       (lfi->ftimes)[lfi->nfiles].n = 0;
-      // If we have the same time, then we need to append an identifier. 
+      // If we have the same time, then we need to append an identifier.
       if (lfi->nfiles && ((lfi->ftimes)[lfi->nfiles].start == (lfi->ftimes)[lfi->nfiles - 1].start)) {
         (lfi->ftimes)[lfi->nfiles].n = (lfi->ftimes)[lfi->nfiles - 1].n + 1;
       }
@@ -115,53 +116,61 @@ int rotatef(struct logfile_info *lfi) {
     lfi->fptr = fopen(lfi->file_name, "w");
   } else {
     lfi->fptr = fopen(lfi->file_name, "a");
-    if (lfi->fptr) 
+    if (lfi->fptr)
       lfi->overwrite = true; // only set 'overwrite' if open was successful.
   }
   if(lfi->check && !lfi->fptr) {
-    // We can not use the error functions from this function, as we may be rotating the error log itself! 
+    // We can not use the error functions from this function, as we may be rotating the error log itself!
     printf("\nERROR: Unable to open/create '%s'\n", lfi->file_name);
     assert(0);
   }
   return (lfi->fptr != 0);
 }
 
-void rotate_calldebugf() {
+void rotate_calldebugf()
+{
   rotatef(&calldebug_lfi);
 }
 
-void rotate_messagef() {
+void rotate_messagef()
+{
   rotatef(&message_lfi);
 }
 
 
-void rotate_shortmessagef() {
+void rotate_shortmessagef()
+{
   rotatef(&shortmessage_lfi);
 }
 
 
-void rotate_logfile() {
+void rotate_logfile()
+{
   rotatef(&log_lfi);
 }
 
-void rotate_errorf() {
+void rotate_errorf()
+{
   rotatef(&error_lfi);
   strcpy(screen_logfile, error_lfi.file_name);
 }
 
-void rotate_debugf() {
+void rotate_debugf()
+{
   rotatef(&debug_lfi);
   setvbuf(debug_lfi.fptr, (char *)NULL, _IONBF, 0);
 }
 
-void rotate_execf() {
+void rotate_execf()
+{
   rotatef(&exec_lfi);
   setvbuf(exec_lfi.fptr, (char *)NULL, _IONBF, 0);
 }
 
 
 
-int _trace (struct logfile_info *lfi, const char *fmt, va_list ap) {
+int _trace (struct logfile_info *lfi, const char *fmt, va_list ap)
+{
   int ret = 0;
   if(lfi->fptr) {
     ret = vfprintf(lfi->fptr, fmt, ap);
@@ -182,7 +191,8 @@ int _trace (struct logfile_info *lfi, const char *fmt, va_list ap) {
   return ret;
 }
 
-int _DEBUG_LOG(const char *fmt, ...) {
+int _DEBUG_LOG(const char *fmt, ...)
+{
   int ret;
   va_list ap;
 
@@ -193,7 +203,8 @@ int _DEBUG_LOG(const char *fmt, ...) {
   return ret;
 }
 
-int _TRACE_MSG(const char *fmt, ...) {
+int _TRACE_MSG(const char *fmt, ...)
+{
   int ret;
   va_list ap;
 
@@ -204,7 +215,8 @@ int _TRACE_MSG(const char *fmt, ...) {
   return ret;
 }
 
-int _TRACE_SHORTMSG(const char *fmt, ...) {
+int _TRACE_SHORTMSG(const char *fmt, ...)
+{
   int ret;
   va_list ap;
 
@@ -215,7 +227,8 @@ int _TRACE_SHORTMSG(const char *fmt, ...) {
   return ret;
 }
 
-int _LOG_MSG(const char *fmt, ...) {
+int _LOG_MSG(const char *fmt, ...)
+{
   int ret;
   va_list ap;
 
@@ -226,7 +239,8 @@ int _LOG_MSG(const char *fmt, ...) {
   return ret;
 }
 
-int _TRACE_CALLDEBUG(const char *fmt, ...) {
+int _TRACE_CALLDEBUG(const char *fmt, ...)
+{
   int ret;
   va_list ap;
 

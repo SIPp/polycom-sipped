@@ -8,14 +8,17 @@
 
 using namespace std;
 
-CompositeDocument::CompositeDocument() {
+CompositeDocument::CompositeDocument()
+{
 }
 
-CompositeDocument::~CompositeDocument() {
+CompositeDocument::~CompositeDocument()
+{
   //cout << "deleting CompositeDocument\n";
 }
 // get the current compositeLineNumber
-int CompositeDocument::getCompositeLineNumber() {
+int CompositeDocument::getCompositeLineNumber()
+{
   DocStack currDocStack = compositeDocument.back();
   return currDocStack.getCompositeLineNumber();
 }
@@ -23,7 +26,8 @@ int CompositeDocument::getCompositeLineNumber() {
 //
 // create copy of current DocumentStack, push new file on top
 // add new copy of Documentstack to CompositeDocument
-void CompositeDocument::includeFile(string includeFileName) {
+void CompositeDocument::includeFile(string includeFileName)
+{
   DocStack newDocStack;
   if (compositeDocument.size() == 0) {
     newDocStack.push(includeFileName);
@@ -46,12 +50,14 @@ void CompositeDocument::includeFile(string includeFileName) {
  * @param:  index is the byte offset into the global document buffer that the new line appears at
  * @return: local line number
  */
-int CompositeDocument::incr_line(int index) {
+int CompositeDocument::incr_line(int index)
+{
   lineToOffset.push_back(index);
   return compositeDocument.back().nextline();
 }
 
-void CompositeDocument::endIncludeFile() {
+void CompositeDocument::endIncludeFile()
+{
   DocStack currDocStack = compositeDocument.back();
   DocStack newDocStack(currDocStack);
   newDocStack.pop();
@@ -69,7 +75,8 @@ void CompositeDocument::endIncludeFile() {
  * by the same amount
  */
 CompositeDocument::DocStack CompositeDocument::docStackFromCompositeLineNumber(
-    int targetCompLineNu) {
+  int targetCompLineNu)
+{
   DocStack target;
   unsigned int i = 0; // compositeDocument.size() -1;
   bool found = false;
@@ -83,7 +90,7 @@ CompositeDocument::DocStack CompositeDocument::docStackFromCompositeLineNumber(
       if ((i>0) && (compositeDocument[i].getDocsInStack() < compositeDocument[i-1].getDocsInStack())&&
           (compositeDocument[i-1].getCompositeLineNumber() == targetCompLineNu )) {
         target = DocStack(compositeDocument[i-1]);
-      }else{
+      } else {
         // have stack with compositeLineNumber>target, decr comp and local until target reached
         target = DocStack(compositeDocument[i]);
         // adjust comp and local line numbers so that comp line = target
@@ -102,33 +109,39 @@ CompositeDocument::DocStack CompositeDocument::docStackFromCompositeLineNumber(
   return target;
 }
 
-string CompositeDocument::strStackFromCompositeLineNumber(int targetCompLineNu) {
+string CompositeDocument::strStackFromCompositeLineNumber(int targetCompLineNu)
+{
   DocStack target = docStackFromCompositeLineNumber(targetCompLineNu);
   return target.showStack();
 }
 
 // get the name of the document that is currently being processed = document on top of stack
-string CompositeDocument::getCurrDoc() {
+string CompositeDocument::getCurrDoc()
+{
   return compositeDocument.back().topDoc();
 }
 
 // get the most recent image of the stack of documents that is currently being processed
-CompositeDocument::DocStack CompositeDocument::getCurrStack() {
+CompositeDocument::DocStack CompositeDocument::getCurrStack()
+{
   return compositeDocument.back();
 }
 
 // how many bookmarks in current/latest DocStack image
-int CompositeDocument::currStackSize() {
+int CompositeDocument::currStackSize()
+{
   return getCurrStack().getDocsInStack();
 }
 
 // how many DocStack Images have we collected
-int CompositeDocument::getQtyStacks() {
+int CompositeDocument::getQtyStacks()
+{
   return compositeDocument.size();
 }
 
 // show all stacks that we have collected
-string CompositeDocument::dumpStacks() {
+string CompositeDocument::dumpStacks()
+{
   string result ="";
   int i;
   char buf[256];
@@ -143,9 +156,10 @@ string CompositeDocument::dumpStacks() {
 }
 
 // show byte offset of all newlines in the composite document (xp_file)
-void CompositeDocument::showLineOffsetMap() {
+void CompositeDocument::showLineOffsetMap()
+{
   cout << "--------showing line to index map (Byte offset of newlines)----"
-      << endl;
+       << endl;
   for (unsigned int i = 0; i < lineToOffset.size(); i++) {
     cout << "\t" << setw(4) << i << ", " << setw(6) << lineToOffset[i];
     if (!((i + 1) % 5))
@@ -156,14 +170,16 @@ void CompositeDocument::showLineOffsetMap() {
 }
 
 //
-vector<int> CompositeDocument::getLineOffsetMap(){
+vector<int> CompositeDocument::getLineOffsetMap()
+{
   return lineToOffset;
 }
 /**
  * @param: given a byte offset into the composite document
  * @return: the composite line number of within the composite document
  */
-int CompositeDocument::compositeLineNumberFromIndex(int index) {
+int CompositeDocument::compositeLineNumberFromIndex(int index)
+{
   unsigned int i = 0; // incr line no until byte
   // lineToOffset is 0 based, so actual lineno is +1
   while ((lineToOffset[i] < index) && (i < lineToOffset.size())) {
@@ -172,7 +188,7 @@ int CompositeDocument::compositeLineNumberFromIndex(int index) {
   if (i >= lineToOffset.size())
     cout << "Search for line from index failed";
   return i+1;  //zero based linetooffset since we just push onto vector
-               // line number is +1
+  // line number is +1
 
 }
 
@@ -181,19 +197,19 @@ int CompositeDocument::compositeLineNumberFromIndex(int index) {
  * @output stringified equivalent DocStack at given byte offset
  * @precondition line number has less than maxdigits digits
  */
-string CompositeDocument::strStackFromIndex( int index) {
+string CompositeDocument::strStackFromIndex( int index)
+{
   const int maxdigits = 256;
   char buf[maxdigits];
   string result = "";
   int compLineNumber = compositeLineNumberFromIndex(index);
-  if (index > lineToOffset[lineToOffset.size()-1])
-  {
+  if (index > lineToOffset[lineToOffset.size()-1]) {
     // we are probably reporting an erro while building xp_file
     // give the latest stack since we havent finished building
     // current stack yet
     //result += strStackFromCompositeLineNumber(lineToOffset[lineToOffset.size()-1]);
     result += getCurrStack().showStack();
-  }else{
+  } else {
     result += strStackFromCompositeLineNumber(compLineNumber);
   }
 //cout << __FILE__ << __LINE__ << result << endl;
@@ -210,7 +226,8 @@ string CompositeDocument::strStackFromIndex( int index) {
 
 // walk collection of newline byte offsets in buffer file and confirm all
 // saved newlines are found.
-bool CompositeDocument::checkNewLineSynch(const char* xp_file) {
+bool CompositeDocument::checkNewLineSynch(const char* xp_file)
+{
   unsigned int i = 0;
   while (i < lineToOffset.size()) {
     if (xp_file[lineToOffset[i]] == '\n') {
@@ -234,10 +251,10 @@ bool CompositeDocument::checkNewLineSynch(const char* xp_file) {
 
 void CompositeDocument::reset()
 {
-  while (compositeDocument.size() > 0){
+  while (compositeDocument.size() > 0) {
     compositeDocument.pop_back();
   }
-  while (lineToOffset.size() > 0){
+  while (lineToOffset.size() > 0) {
     lineToOffset.pop_back();
   }
 }
@@ -247,45 +264,52 @@ void CompositeDocument::reset()
 
 
 CompositeDocument::DocStack::DocStack(string docname) :
-  compositeLineNumber(1) {
+  compositeLineNumber(1)
+{
   string rootdoc(docname);
   push(rootdoc);
 }
 
 // note that line number is 1 based
 CompositeDocument::DocStack::DocStack() :
-  compositeLineNumber(1) {
+  compositeLineNumber(1)
+{
 
 }
 
-CompositeDocument::DocStack::~DocStack() {
+CompositeDocument::DocStack::~DocStack()
+{
   while (docs.size() != 0) {
     docs.pop_back();
   }
 }
 
-//	each line increments the compoiste linenumber counter in the composite document
+//  each line increments the compoiste linenumber counter in the composite document
 //  and only the local line number in the top document on the document stack.
 //  Containing Documents remain on their the current local line number ( the xi include line)
-int CompositeDocument::DocStack::nextline() {
+int CompositeDocument::DocStack::nextline()
+{
   int newlinenumber = docs.back().incr_localline();
   compositeLineNumber++;
   return newlinenumber;
 }
 
-int CompositeDocument::DocStack::getCompositeLineNumber() {
+int CompositeDocument::DocStack::getCompositeLineNumber()
+{
   return compositeLineNumber;
 }
 
 // add a bookmark to the documentstack
-void CompositeDocument::DocStack::push(string doc) {
+void CompositeDocument::DocStack::push(string doc)
+{
   BookMark mark(doc);
   docs.push_back(mark);
 }
 
 // remove a bookmark from the document stack
 // return the name of the file popped
-string CompositeDocument::DocStack::pop() {
+string CompositeDocument::DocStack::pop()
+{
   BookMark amark = docs.back();
   string docname = amark.docname();
   docs.pop_back();
@@ -293,7 +317,8 @@ string CompositeDocument::DocStack::pop() {
 }
 
 // stringify the document stack, (list of bookmarks)
-string CompositeDocument::DocStack::showStack() {
+string CompositeDocument::DocStack::showStack()
+{
   stringstream ss;
   int i;
   string docstack = "";
@@ -313,7 +338,8 @@ string CompositeDocument::DocStack::showStack() {
 }
 
 // what is the current file that is on top of the document stack
-string CompositeDocument::DocStack::topDoc() {
+string CompositeDocument::DocStack::topDoc()
+{
   if (docs.size() > 0)
     return docs.back().docname();
   else
@@ -321,7 +347,8 @@ string CompositeDocument::DocStack::topDoc() {
 }
 
 // how many files are in the document stack
-int CompositeDocument::DocStack::getDocsInStack() {
+int CompositeDocument::DocStack::getDocsInStack()
+{
   return docs.size();
 }
 
@@ -331,9 +358,9 @@ int CompositeDocument::DocStack::getDocsInStack() {
  *  line number larger than/equalto the target line number, otherwise we are using the
  *  wrong DocStack as the basis for getting correct image at target line number
  */
-void CompositeDocument::DocStack::reduceBothLineNumBy(int delta) {
-  if (delta<0)
-  {
+void CompositeDocument::DocStack::reduceBothLineNumBy(int delta)
+{
+  if (delta<0) {
     cerr << "DocStack received negative adjustment request, value = ";
     cerr << delta;
     cerr << " Reported Document locations will be incorrect!!! ";

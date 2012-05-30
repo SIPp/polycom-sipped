@@ -53,7 +53,7 @@
 #define MODE_CLIENT        0
 #define MODE_SERVER        1
 
-#define MODE_3PCC_NONE		0
+#define MODE_3PCC_NONE          0
 #define MODE_3PCC_CONTROLLER_A  2
 #define MODE_3PCC_CONTROLLER_B  3
 #define MODE_3PCC_A_PASSIVE     4
@@ -72,14 +72,14 @@ class message {
 public:
   /* If this is a pause */
   CSample        *pause_distribution;
-  int		 pause_variable;
+  int    pause_variable;
   /* This string is used for the display screen. */
-  char		 *pause_desc;
+  char     *pause_desc;
   /* Is this a final pause, intended for catching retransmissions? */
-  bool		timewait;
+  bool    timewait;
 
   /* Number of sessions in a pause */
-  int            sessions; 
+  int            sessions;
 
   /* should collect route set? */
   bool           bShouldRecordRoutes;
@@ -95,14 +95,14 @@ public:
   /* The receive/send timeout. */
   unsigned int   timeout;
 
- /* 3pcc extended mode: if this is a sendCmd */
+  /* 3pcc extended mode: if this is a sendCmd */
   char         * peer_dest;
 
- /* 3pcc extended mode: if this is a recvCmd */
+  /* 3pcc extended mode: if this is a recvCmd */
   char         * peer_src;
 
   /* If this is a recv */
-  int   	       recv_response;
+  int            recv_response;
   char         * recv_request;
   int            optional;
   bool           advance_state;
@@ -129,7 +129,7 @@ public:
 
   /* user can specify messages as belonging to a particular dialog via the dialog="n" attribute */
   /* default to -1, if set, state (cseq, call-id, to, from, etc) will be based only on messages with same id set */
-	int            dialog_number; 
+  int            dialog_number;
 
   /* Statistics */
   unsigned long   nb_sent;
@@ -149,41 +149,67 @@ public:
   unsigned long   M_nbCmdRecv;
 
   typedef enum {
-      ContentLengthNoPresent = 0,
-      ContentLengthValueZero,
-      ContentLengthValueNoZero
-  }ContentLengthFlag;
-  
+    ContentLengthNoPresent = 0,
+    ContentLengthValueZero,
+    ContentLengthValueNoZero
+  } ContentLengthFlag;
+
   ContentLengthFlag   content_length_flag ;
 
   // *ALL* possible methods are appended to this string for matching when a response is received.
-  char           *recv_response_for_cseq_method_list; 
+  char           *recv_response_for_cseq_method_list;
 
   int            index;
   const char *         desc;
   message(int index, const char *desc);
   ~message();
 
-  bool isSend() { return M_type == MSG_TYPE_SEND; }
-  bool isRecv() { return M_type == MSG_TYPE_RECV; }
-  bool isResponse() { return isSend() ? send_scheme->isResponse() : (recv_response != 0); }
-  bool isRequest() { return !isResponse(); }
-  bool isCancel() { return isRequest() && (isSend() ? send_scheme->isCancel() : !strcmp(recv_request, "CANCEL")); }
-  bool isAck() { return isRequest() && (isSend() ? send_scheme->isAck() : !strcmp(recv_request, "ACK")); }
+  bool isSend() {
+    return M_type == MSG_TYPE_SEND;
+  }
+  bool isRecv() {
+    return M_type == MSG_TYPE_RECV;
+  }
+  bool isResponse() {
+    return isSend() ? send_scheme->isResponse() : (recv_response != 0);
+  }
+  bool isRequest() {
+    return !isResponse();
+  }
+  bool isCancel() {
+    return isRequest() && (isSend() ? send_scheme->isCancel() : !strcmp(recv_request, "CANCEL"));
+  }
+  bool isAck() {
+    return isRequest() && (isSend() ? send_scheme->isAck() : !strcmp(recv_request, "ACK"));
+  }
 
-  void startTransaction(const string &name) { start_txn = true; txn_name = checkTransactionName(name); }
-  void useTransaction(const string &name) { start_txn = false; txn_name = checkTransactionName(name); };
+  void startTransaction(const string &name) {
+    start_txn = true;
+    txn_name = checkTransactionName(name);
+  }
+  void useTransaction(const string &name) {
+    start_txn = false;
+    txn_name = checkTransactionName(name);
+  };
 
-  string getTransactionName() { return txn_name; }
-  bool isStartTxn()  { return start_txn; }
-  bool isUseTxn()    { return !start_txn && !txn_name.empty(); }
-  
+  string getTransactionName() {
+    return txn_name;
+  }
+  bool isStartTxn()  {
+    return start_txn;
+  }
+  bool isUseTxn()    {
+    return !start_txn && !txn_name.empty();
+  }
+
 
 
   void set_source_location(unsigned int byteOffset);
 
   //unsigned int get_source_offset(){return xp_file_byte_offset;}
-  string get_source_location(){return source_file_location;}
+  string get_source_location() {
+    return source_file_location;
+  }
 
 
 private:
@@ -269,7 +295,7 @@ extern int           thirdPartyMode;
 
 extern message::ContentLengthFlag  content_length_flag;
 
-void load_scenario(char * filename, 
+void load_scenario(char * filename,
                    int    deflt);
 
 /* 3pcc extended mode */
@@ -277,11 +303,11 @@ void parse_slave_cfg();
 
 void getActionForThisMessage();
 CSample *parse_distribution(bool oldstyle);
-int  createIntegerTable(char          * P_listeStr, 
-                        unsigned int ** listeInteger, 
+int  createIntegerTable(char          * P_listeStr,
+                        unsigned int ** listeInteger,
                         int           * sizeOfList);
 
-int  isWellFormed(char * P_listeStr, 
+int  isWellFormed(char * P_listeStr,
                   int  * nombre);
 
 /* String table functions. */
