@@ -2231,6 +2231,9 @@ int call::sendCmdMessage(message *curmsg)
     peer_dest = curmsg->peer_dest;
     if(peer_dest) {
       peer_socket = get_peer_socket(peer_dest);
+      if (peer_socket == NULL) {
+        REPORT_ERROR("get_peer_socket: Peer %s not found\n", peer_dest);
+      }
       rc = write_socket(*peer_socket, dest, strlen(dest), WS_BUFFER, &call_peer);
     } else {
       rc = write_socket(twinSippSocket, dest, strlen(dest), WS_BUFFER, &call_peer);

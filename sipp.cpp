@@ -789,75 +789,6 @@ void get_host_and_port(char * addr, char * host, int * port)
   }
 }
 
-static unsigned char tolower_table[256];
-
-void init_tolower_table()
-{
-  for (int i = 0; i < 256; i++) {
-    tolower_table[i] = tolower(i);
-  }
-}
-
-/* This is simpler than doing a regular tolower, because there are no branches.
- * We also inline it, so that we don't have function call overheads.
- *
- * An alternative to a table would be to do (c | 0x20), but that only works if
- * we are sure that we are searching for characters (or don't care if they are
- * not characters. */
-unsigned char inline mytolower(unsigned char c)
-{
-  return tolower_table[c];
-}
-
-char * strcasestr2(const char *s, const char *find)
-{
-  char c, sc;
-  size_t len;
-
-  if ((c = *find++) != 0) {
-    c = mytolower((unsigned char)c);
-    len = strlen(find);
-    do {
-      do {
-        if ((sc = *s++) == 0)
-          return (NULL);
-      } while ((char)mytolower((unsigned char)sc) != c);
-    } while (strncasecmp(s, find, len) != 0);
-    s--;
-  }
-  return ((char *)s);
-}
-
-char * strncasestr(char *s, const char *find, size_t n)
-{
-  char *end = s + n;
-  char c, sc;
-  size_t len;
-
-  if ((c = *find++) != 0) {
-    c = mytolower((unsigned char)c);
-    len = strlen(find);
-    end -= (len - 1);
-    do {
-      do {
-        if ((sc = *s++) == 0)
-          return (NULL);
-        if (s >= end)
-          return (NULL);
-      } while ((char)mytolower((unsigned char)sc) != c);
-    } while (strncasecmp(s, find, len) != 0);
-    s--;
-  }
-  return ((char *)s);
-}
-
-int get_decimal_from_hex(char hex)
-{
-  if (isdigit(hex))
-    return hex - '0';
-  else
-    return tolower(hex) - 'a' + 10;
-}
 
 
 /******************** Recv Poll Processing *********************/
@@ -2718,6 +2649,42 @@ static int write_error(struct sipp_socket *socket, int ret)
   return -1;
 }
 
+
+void close_peer_sockets()
+{
+  peer_map::iterator peer_it;
+  T_peer_infos infos;
+
+  for(peer_it = peers.begin(); peer_it != peers.end(); peer_it++) {
+    infos = peer_it->second;
+    sipp_close_socket(infos.peer_socket);
+    infos.peer_socket = NULL ;
+    peers[std::string(peer_it->first)] = infos;
+  }
+
+  peers_connected = 0;
+}
+
+
+void close_local_sockets()
+{
+  for (int i = 0; i< local_nb; i++) {
+    sipp_close_socket(local_sockets[i]);
+    local_sockets[i] = NULL;
+  }
+}
+
+
+void free_peer_addr_map()
+{
+  peer_addr_map::iterator peer_addr_it;
+  for (peer_addr_it = peer_addrs.begin(); peer_addr_it != peer_addrs.end(); peer_addr_it++) {
+    free(peer_addr_it->second);
+  }
+}
+
+
+
 static int read_error(struct sipp_socket *socket, int ret)
 {
   const char *errstring = strerror(errno);
@@ -3094,6 +3061,9 @@ static int check_for_message(struct sipp_socket *socket)
   } while (1);
 }
 
+
+
+
 /* Pull up to tcp_readsize data bytes out of the socket into our local buffer. */
 static int empty_socket(struct sipp_socket *socket)
 {
@@ -3149,6 +3119,7 @@ static int empty_socket(struct sipp_socket *socket)
   return ret;
 }
 
+
 void sipp_socket_invalidate(struct sipp_socket *socket)
 {
   int pollidx;
@@ -3202,6 +3173,7 @@ void sipp_close_socket (struct sipp_socket *socket)
   sipp_socket_invalidate(socket);
   free(socket);
 }
+
 
 static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, struct sockaddr_storage *src)
 {
@@ -3259,6 +3231,84 @@ static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, s
 
   DEBUG_OUT();
   return avail;
+}
+
+
+
+void connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *peer_sockaddr, char *peer_ip, struct sipp_socket **peer_socket)
+{
+
+  /* Resolving the  peer IP */
+  printf("Resolving peer address : %s...\n",peer_host);
+  struct addrinfo   hints;
+  struct addrinfo * local_addr;
+  memset((char*)&hints, 0, sizeof(hints));
+  hints.ai_flags  = AI_PASSIVE;
+  hints.ai_family = PF_UNSPEC;
+  is_ipv6 = false;
+  /* Resolving twin IP */
+  if (getaddrinfo(peer_host,
+                  NULL,
+                  &hints,
+                  &local_addr) != 0) {
+
+    REPORT_ERROR("Unknown peer host '%s'.\n"
+                 "Use 'sipp -h' for details", peer_host);
+  }
+
+  memcpy(peer_sockaddr,
+         local_addr->ai_addr,
+         SOCK_ADDR_SIZE(
+           _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
+
+  freeaddrinfo(local_addr);
+
+  if (peer_sockaddr->ss_family == AF_INET) {
+    (_RCAST(struct sockaddr_in *,peer_sockaddr))->sin_port =
+      htons((short)peer_port);
+  } else {
+    (_RCAST(struct sockaddr_in6 *,peer_sockaddr))->sin6_port =
+      htons((short)peer_port);
+    is_ipv6 = true;
+  }
+  strcpy(peer_ip, get_inet_address(peer_sockaddr));
+  if((*peer_socket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
+    REPORT_ERROR_NO("Unable to get a twin sipp TCP socket");
+  }
+
+  /* Mark this as a control socket. */
+  (*peer_socket)->ss_control = 1;
+
+  if(sipp_connect_socket(*peer_socket, peer_sockaddr)) {
+    if(errno == EINVAL) {
+      /* This occurs sometime on HPUX but is not a true INVAL */
+      REPORT_ERROR_NO("Unable to connect a twin sipp TCP socket\n "
+                      ", remote peer error.\n"
+                      "Use 'sipp -h' for details");
+    } else {
+      REPORT_ERROR_NO("Unable to connect a twin sipp socket "
+                      "\n"
+                      "Use 'sipp -h' for details");
+    }
+  }
+
+  sipp_customize_socket(*peer_socket);
+}
+
+
+
+void connect_to_all_peers()
+{
+  peer_map::iterator peer_it;
+  T_peer_infos infos;
+  for (peer_it = peers.begin(); peer_it != peers.end(); peer_it++) {
+    infos = peer_it->second;
+    get_host_and_port(infos.peer_host, infos.peer_host, &infos.peer_port);
+    connect_to_peer(infos.peer_host, infos.peer_port,&(infos.peer_sockaddr), infos.peer_ip, &(infos.peer_socket));
+    peer_sockets[infos.peer_socket] = peer_it->first;
+    peers[std::string(peer_it->first)] = infos;
+  }
+  peers_connected = 1;
 }
 
 void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, struct sockaddr_storage *src)
@@ -4028,13 +4078,6 @@ void releaseGlobalAllocations()
   delete globalVariables;
 }
 
-void stop_all_traces()
-{
-  message_lfi.fptr = NULL;
-  log_lfi.fptr = NULL;
-  if(dumpInRtt) dumpInRtt = 0;
-  if(dumpInFile) dumpInFile = 0;
-}
 
 static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd, int accepting) {
   struct sipp_socket *ret = NULL;
@@ -4474,7 +4517,7 @@ int main(int argc, char *argv[])
         }
         exit(EXIT_OTHER);
       case SIPP_OPTION_VERSION:
-        printf("\n SIPped v3.2.40"
+        printf("\n SIPped v3.2.41 BETA"
 #ifdef _USE_OPENSSL
                "-TLS"
 #endif
@@ -5031,7 +5074,7 @@ int main(int argc, char *argv[])
 #endif
 
   if (!dump_xml && !dump_sequence_diagram)
-    screen_init(print_last_stats);
+    screen_init(print_last_stats, releaseGlobalAllocations);
 
 // OPENING FILES HERE
 
@@ -5611,6 +5654,76 @@ void determine_remote_and_local_ip()
   determine_local_ip();
 } // determine_remote_and_local_ip
 
+
+
+void connect_local_twin_socket(char * twinSippHost)
+{
+  /* Resolving the listener IP */
+  printf("Resolving listener address : %s...\n", twinSippHost);
+  struct addrinfo   hints;
+  struct addrinfo * local_addr;
+  memset((char*)&hints, 0, sizeof(hints));
+  hints.ai_flags  = AI_PASSIVE;
+  hints.ai_family = PF_UNSPEC;
+  is_ipv6 = false;
+
+  /* Resolving twin IP */
+  if (getaddrinfo(twinSippHost,
+                  NULL,
+                  &hints,
+                  &local_addr) != 0) {
+    REPORT_ERROR("Unknown twin host '%s'.\n"
+                 "Use 'sipp -h' for details", twinSippHost);
+  }
+  memcpy(&twinSipp_sockaddr,
+         local_addr->ai_addr,
+         SOCK_ADDR_SIZE(
+           _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
+
+  if (twinSipp_sockaddr.ss_family == AF_INET) {
+    (_RCAST(struct sockaddr_in *,&twinSipp_sockaddr))->sin_port =
+      htons((short)twinSippPort);
+  } else {
+    (_RCAST(struct sockaddr_in6 *,&twinSipp_sockaddr))->sin6_port =
+      htons((short)twinSippPort);
+    is_ipv6 = true;
+  }
+  strcpy(twinSippIp, get_inet_address(&twinSipp_sockaddr));
+
+  if((localTwinSippSocket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
+    REPORT_ERROR_NO("Unable to get a listener TCP socket ");
+  }
+
+  memset(&localTwin_sockaddr, 0, sizeof(struct sockaddr_storage));
+  if (!is_ipv6) {
+    localTwin_sockaddr.ss_family = AF_INET;
+    (_RCAST(struct sockaddr_in *,&localTwin_sockaddr))->sin_port =
+      htons((short)twinSippPort);
+  } else {
+    localTwin_sockaddr.ss_family = AF_INET6;
+    (_RCAST(struct sockaddr_in6 *,&localTwin_sockaddr))->sin6_port =
+      htons((short)twinSippPort);
+  }
+
+  // add socket option to allow the use of it without the TCP timeout
+  // This allows to re-start the controller B (or slave) without timeout after its exit
+  int reuse = 1;
+  setsockopt(localTwinSippSocket->ss_fd,SOL_SOCKET,SO_REUSEADDR,SETSOCKOPT_TYPE &reuse,sizeof(reuse));
+  sipp_customize_socket(localTwinSippSocket);
+
+  if(sipp_bind_socket(localTwinSippSocket, &localTwin_sockaddr, 0)) {
+    REPORT_ERROR_NO("Unable to bind twin sipp socket ");
+  }
+
+  if(listen(localTwinSippSocket->ss_fd, 100)) {
+    REPORT_ERROR_NO("Unable to listen twin sipp socket in ");
+  }
+}
+
+
+
+
+
 int open_connections()
 {
   DEBUG_IN();
@@ -5850,12 +5963,20 @@ int open_connections()
     }
   } else if (extendedTwinSippMode) {
     if (thirdPartyMode == MODE_MASTER || thirdPartyMode == MODE_MASTER_PASSIVE) {
-      strcpy(twinSippHost,get_peer_addr(master_name));
+      char *temp_peer_addr = get_peer_addr(master_name);
+      if (temp_peer_addr == NULL) {
+        REPORT_ERROR("get_peer_addr: Peer %s not found\n", master_name);
+      }
+      strcpy(twinSippHost, temp_peer_addr);
       get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
       connect_local_twin_socket(twinSippHost);
       connect_to_all_peers();
     } else if(thirdPartyMode == MODE_SLAVE) {
-      strcpy(twinSippHost,get_peer_addr(slave_number));
+      char *temp_peer_addr = get_peer_addr(slave_number);
+      if (temp_peer_addr == NULL) {
+        REPORT_ERROR("get_peer_addr: Peer %s not found\n", slave_number);
+      }
+      strcpy(twinSippHost, temp_peer_addr);
       get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
       connect_local_twin_socket(twinSippHost);
     } else {
@@ -5875,206 +5996,11 @@ int open_connections()
 } // open_connections
 
 
-void connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *peer_sockaddr, char *peer_ip, struct sipp_socket **peer_socket)
-{
 
-  /* Resolving the  peer IP */
-  printf("Resolving peer address : %s...\n",peer_host);
-  struct addrinfo   hints;
-  struct addrinfo * local_addr;
-  memset((char*)&hints, 0, sizeof(hints));
-  hints.ai_flags  = AI_PASSIVE;
-  hints.ai_family = PF_UNSPEC;
-  is_ipv6 = false;
-  /* Resolving twin IP */
-  if (getaddrinfo(peer_host,
-                  NULL,
-                  &hints,
-                  &local_addr) != 0) {
 
-    REPORT_ERROR("Unknown peer host '%s'.\n"
-                 "Use 'sipp -h' for details", peer_host);
-  }
 
-  memcpy(peer_sockaddr,
-         local_addr->ai_addr,
-         SOCK_ADDR_SIZE(
-           _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
 
-  freeaddrinfo(local_addr);
 
-  if (peer_sockaddr->ss_family == AF_INET) {
-    (_RCAST(struct sockaddr_in *,peer_sockaddr))->sin_port =
-      htons((short)peer_port);
-  } else {
-    (_RCAST(struct sockaddr_in6 *,peer_sockaddr))->sin6_port =
-      htons((short)peer_port);
-    is_ipv6 = true;
-  }
-  strcpy(peer_ip, get_inet_address(peer_sockaddr));
-  if((*peer_socket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-    REPORT_ERROR_NO("Unable to get a twin sipp TCP socket");
-  }
-
-  /* Mark this as a control socket. */
-  (*peer_socket)->ss_control = 1;
-
-  if(sipp_connect_socket(*peer_socket, peer_sockaddr)) {
-    if(errno == EINVAL) {
-      /* This occurs sometime on HPUX but is not a true INVAL */
-      REPORT_ERROR_NO("Unable to connect a twin sipp TCP socket\n "
-                      ", remote peer error.\n"
-                      "Use 'sipp -h' for details");
-    } else {
-      REPORT_ERROR_NO("Unable to connect a twin sipp socket "
-                      "\n"
-                      "Use 'sipp -h' for details");
-    }
-  }
-
-  sipp_customize_socket(*peer_socket);
-}
-
-struct sipp_socket **get_peer_socket(char * peer) {
-  struct sipp_socket **peer_socket;
-  T_peer_infos infos;
-  peer_map::iterator peer_it;
-  peer_it = peers.find(peer_map::key_type(peer));
-  if(peer_it != peers.end()) {
-    infos = peer_it->second;
-    peer_socket = &(infos.peer_socket);
-    return peer_socket;
-  } else {
-    REPORT_ERROR("get_peer_socket: Peer %s not found\n", peer);
-  }
-  return NULL;
-}
-
-char * get_peer_addr(char * peer)
-{
-  char * addr;
-  peer_addr_map::iterator peer_addr_it;
-  peer_addr_it = peer_addrs.find(peer_addr_map::key_type(peer));
-  if(peer_addr_it != peer_addrs.end()) {
-    addr =  peer_addr_it->second;
-    return addr;
-  } else {
-    REPORT_ERROR("get_peer_addr: Peer %s not found\n", peer);
-  }
-  return NULL;
-}
-
-bool is_a_peer_socket(struct sipp_socket *peer_socket)
-{
-  peer_socket_map::iterator peer_socket_it;
-  peer_socket_it = peer_sockets.find(peer_socket_map::key_type(peer_socket));
-  if(peer_socket_it == peer_sockets.end()) {
-    return false;
-  } else {
-    return true;
-  }
-}
-
-void connect_local_twin_socket(char * twinSippHost)
-{
-  /* Resolving the listener IP */
-  printf("Resolving listener address : %s...\n", twinSippHost);
-  struct addrinfo   hints;
-  struct addrinfo * local_addr;
-  memset((char*)&hints, 0, sizeof(hints));
-  hints.ai_flags  = AI_PASSIVE;
-  hints.ai_family = PF_UNSPEC;
-  is_ipv6 = false;
-
-  /* Resolving twin IP */
-  if (getaddrinfo(twinSippHost,
-                  NULL,
-                  &hints,
-                  &local_addr) != 0) {
-    REPORT_ERROR("Unknown twin host '%s'.\n"
-                 "Use 'sipp -h' for details", twinSippHost);
-  }
-  memcpy(&twinSipp_sockaddr,
-         local_addr->ai_addr,
-         SOCK_ADDR_SIZE(
-           _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
-
-  if (twinSipp_sockaddr.ss_family == AF_INET) {
-    (_RCAST(struct sockaddr_in *,&twinSipp_sockaddr))->sin_port =
-      htons((short)twinSippPort);
-  } else {
-    (_RCAST(struct sockaddr_in6 *,&twinSipp_sockaddr))->sin6_port =
-      htons((short)twinSippPort);
-    is_ipv6 = true;
-  }
-  strcpy(twinSippIp, get_inet_address(&twinSipp_sockaddr));
-
-  if((localTwinSippSocket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-    REPORT_ERROR_NO("Unable to get a listener TCP socket ");
-  }
-
-  memset(&localTwin_sockaddr, 0, sizeof(struct sockaddr_storage));
-  if (!is_ipv6) {
-    localTwin_sockaddr.ss_family = AF_INET;
-    (_RCAST(struct sockaddr_in *,&localTwin_sockaddr))->sin_port =
-      htons((short)twinSippPort);
-  } else {
-    localTwin_sockaddr.ss_family = AF_INET6;
-    (_RCAST(struct sockaddr_in6 *,&localTwin_sockaddr))->sin6_port =
-      htons((short)twinSippPort);
-  }
-
-  // add socket option to allow the use of it without the TCP timeout
-  // This allows to re-start the controller B (or slave) without timeout after its exit
-  int reuse = 1;
-  setsockopt(localTwinSippSocket->ss_fd,SOL_SOCKET,SO_REUSEADDR,SETSOCKOPT_TYPE &reuse,sizeof(reuse));
-  sipp_customize_socket(localTwinSippSocket);
-
-  if(sipp_bind_socket(localTwinSippSocket, &localTwin_sockaddr, 0)) {
-    REPORT_ERROR_NO("Unable to bind twin sipp socket ");
-  }
-
-  if(listen(localTwinSippSocket->ss_fd, 100)) {
-    REPORT_ERROR_NO("Unable to listen twin sipp socket in ");
-  }
-}
-
-void close_peer_sockets()
-{
-  peer_map::iterator peer_it;
-  T_peer_infos infos;
-
-  for(peer_it = peers.begin(); peer_it != peers.end(); peer_it++) {
-    infos = peer_it->second;
-    sipp_close_socket(infos.peer_socket);
-    infos.peer_socket = NULL ;
-    peers[std::string(peer_it->first)] = infos;
-  }
-
-  peers_connected = 0;
-}
-
-void close_local_sockets()
-{
-  for (int i = 0; i< local_nb; i++) {
-    sipp_close_socket(local_sockets[i]);
-    local_sockets[i] = NULL;
-  }
-}
-
-void connect_to_all_peers()
-{
-  peer_map::iterator peer_it;
-  T_peer_infos infos;
-  for (peer_it = peers.begin(); peer_it != peers.end(); peer_it++) {
-    infos = peer_it->second;
-    get_host_and_port(infos.peer_host, infos.peer_host, &infos.peer_port);
-    connect_to_peer(infos.peer_host, infos.peer_port,&(infos.peer_sockaddr), infos.peer_ip, &(infos.peer_socket));
-    peer_sockets[infos.peer_socket] = peer_it->first;
-    peers[std::string(peer_it->first)] = infos;
-  }
-  peers_connected = 1;
-}
 
 bool is_a_local_socket(struct sipp_socket *s)
 {
@@ -6084,27 +6010,5 @@ bool is_a_local_socket(struct sipp_socket *s)
   return (false);
 }
 
-void free_peer_addr_map()
-{
-  peer_addr_map::iterator peer_addr_it;
-  for (peer_addr_it = peer_addrs.begin(); peer_addr_it != peer_addrs.end(); peer_addr_it++) {
-    free(peer_addr_it->second);
-  }
-}
 
-char *jump_over_timestamp(char *src)
-{
-  char* tmp = src;
-  int colonsleft = 4;/* We want to skip the time. */
-  while (*tmp && colonsleft) {
-    if (*tmp == ':') {
-      colonsleft--;
-    }
-    tmp++;
-  }
-  while (isspace(*tmp)) {
-    tmp++;
-  }
-  return tmp;
-}
 

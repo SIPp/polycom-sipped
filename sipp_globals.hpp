@@ -501,6 +501,8 @@ void                         sipp_close_socket(struct sipp_socket *socket);
 
 /********************* Utilities functions  *******************/
 
+void                       init_tolower_table(); // must call befure using strcasestrX routines
+char                      *strncasestr(char *s, const char *find, size_t n);
 char                      *strcasestr2 ( const char *__haystack, const char *__needle);
 char                      *get_peer_addr(char *);
 int                        get_decimal_from_hex(char hex);
@@ -516,21 +518,19 @@ void                        determine_remote_and_local_ip();
 
 char                      *jump_over_timestamp(char *src);
 
+
+
 /* extended 3PCC mode */
 struct sipp_socket       **get_peer_socket(char *);
 bool                       is_a_peer_socket(struct sipp_socket *);
 bool                       is_a_local_socket(struct sipp_socket *);
-void                       connect_to_peer (char *, int , sockaddr_storage *, char *, struct sipp_socket **);
-void                       connect_to_all_peers ();
-void                       connect_local_twin_socket(char *);
-void                       close_peer_sockets();
-void                       close_local_sockets();
-void                       free_peer_addr_map();
 
 /******************** Recv Poll Processing *********************/
 
 extern struct sipp_socket  *sockets[SIPP_MAXFDS];
 
+/******************** Hacky things done to segregate sipp.cpp ******/
+void stop_all_traces();
 
 /************************** Constants **************************/
 

@@ -31,6 +31,7 @@
 # include <signal.h>
 #include <curses.h>
 #else
+# pragma warning (disable: 4003; disable: 4996)
 # include <time.h>
 # include <csignal>
 #include <conio.h>  //getch
@@ -54,16 +55,14 @@
 #include "stat.hpp"
 #include "win32_compatibility.hpp"
 
-extern bool    timeout_exit;
+extern void   stop_all_traces();
 
 unsigned long screen_errors;
 int           screen_inited = 0;
 char          screen_exename[255];
-extern void   releaseGlobalAllocations();
-extern void   stop_all_traces();
-extern bool   backgroundMode;
 
-void (*screen_exit_handler)();
+void (*screen_exit_handler)() = 0;
+void (*releaseGlobalAllocations)() = 0;
 
 /* Clock must be a pointer to struct timeval */
 #define GET_TIME(clock)       \
@@ -136,7 +135,9 @@ void screen_exit(int rc)
     counter_value_success = display_scenario->stats->GetStat (CStat::CPT_C_SuccessfulCall);
   }
 
-  releaseGlobalAllocations();
+  if(releaseGlobalAllocations) {
+    releaseGlobalAllocations();
+  }
 
   if (rc != EXIT_TEST_RES_UNKNOWN) {
     // Exit is not a normal exit. Just use the passed exit code.
@@ -221,11 +222,12 @@ void screen_set_exename(char * exe_name)
   strcpy(screen_exename, exe_name);
 }
 
-void screen_init(void (*exit_handler)())
+void screen_init(void (*exit_handler)(), void (*releaseGlobalAllocations_handler)())
 {
 
   screen_inited = 1;
   screen_exit_handler = exit_handler;
+  releaseGlobalAllocations = releaseGlobalAllocations_handler;
 
 #ifndef WIN32
   if (backgroundMode == false) {
@@ -431,3 +433,8 @@ int _TRACE_EXEC(const char *fmt, ...)
   return ret;
 }
 
+
+// routines to help unit test
+string get_screen_exename(){
+  return string(screen_exename);
+}

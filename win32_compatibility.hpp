@@ -29,7 +29,7 @@ struct timezone {
 int gettimeofday(struct timeval *tv, struct timezone *tz);
 
 int strcasecmp(const char *str1, const char *str2);
-int strncasecmp(const char *str1, const char *str2, int n);
+int strncasecmp(const char *str1, const char *str2, size_t n);
 const char *strcasestr(const char *s, const char *pattern);
 char *strcasestr(char *s, const char *pattern);
 

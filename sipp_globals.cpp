@@ -335,13 +335,149 @@ unsigned long long getmicroseconds()
   if (!VI_micro_base) VI_micro_base = VI_micro - 1;
   VI_micro = VI_micro - VI_micro_base;
 
-  clock_tick = VI_micro / 1000LL;
+  clock_tick = (unsigned long) (VI_micro / 1000LL);
 
   return VI_micro;
 }
 
 unsigned long getmilliseconds()
 {
-  return getmicroseconds() / 1000LL;
+  return (unsigned long) (getmicroseconds() / 1000LL);
 }
 
+static unsigned char tolower_table[256];
+
+void init_tolower_table()
+{
+  for (int i = 0; i < 256; i++) {
+    tolower_table[i] = tolower(i);
+  }
+}
+
+/* This is simpler than doing a regular tolower, because there are no branches.
+ * We also inline it, so that we don't have function call overheads.
+ *
+ * An alternative to a table would be to do (c | 0x20), but that only works if
+ * we are sure that we are searching for characters (or don't care if they are
+ * not characters. */
+unsigned char inline mytolower(unsigned char c)
+{
+  return tolower_table[c];
+}
+
+char * strncasestr(char *s, const char *find, size_t n)
+{
+  char *end = s + n;
+  char c, sc;
+  size_t len;
+
+  if ((c = *find++) != 0) {
+    c = mytolower((unsigned char)c);
+    len = strlen(find);
+    end -= (len - 1);
+    do {
+      do {
+        if ((sc = *s++) == 0)
+          return (NULL);
+        if (s >= end)
+          return (NULL);
+      } while ((char)mytolower((unsigned char)sc) != c);
+    } while (strncasecmp(s, find, len) != 0);
+    s--;
+  }
+  return ((char *)s);
+}
+
+char * strcasestr2(const char *s, const char *find)
+{
+  char c, sc;
+  size_t len;
+
+  if ((c = *find++) != 0) {
+    c = mytolower((unsigned char)c);
+    len = strlen(find);
+    do {
+      do {
+        if ((sc = *s++) == 0)
+          return (NULL);
+      } while ((char)mytolower((unsigned char)sc) != c);
+    } while (strncasecmp(s, find, len) != 0);
+    s--;
+  }
+  return ((char *)s);
+}
+
+char *jump_over_timestamp(char *src)
+{
+  char* tmp = src;
+  int colonsleft = 4;/* We want to skip the time. */
+  while (*tmp && colonsleft) {
+    if (*tmp == ':') {
+      colonsleft--;
+    }
+    tmp++;
+  }
+  while (isspace(*tmp)) {
+    tmp++;
+  }
+  return tmp;
+}
+
+
+int get_decimal_from_hex(char hex)
+{
+  if (isdigit(hex))
+    return hex - '0';
+  else
+    return tolower(hex) - 'a' + 10;
+}
+
+
+// Socket helper routines moved from sipp.cpp
+
+
+struct sipp_socket **get_peer_socket(char * peer) {
+  struct sipp_socket **peer_socket;
+  T_peer_infos infos;
+  peer_map::iterator peer_it;
+  peer_it = peers.find(peer_map::key_type(peer));
+  if(peer_it != peers.end()) {
+    infos = peer_it->second;
+    peer_socket = &(infos.peer_socket);
+    return peer_socket;
+  }
+  return NULL;
+}
+
+char * get_peer_addr(char * peer)
+{
+  char * addr;
+  peer_addr_map::iterator peer_addr_it;
+  peer_addr_it = peer_addrs.find(peer_addr_map::key_type(peer));
+  if(peer_addr_it != peer_addrs.end()) {
+    addr =  peer_addr_it->second;
+    return addr;
+  }
+  return NULL;
+}
+
+bool is_a_peer_socket(struct sipp_socket *peer_socket)
+{
+  peer_socket_map::iterator peer_socket_it;
+  peer_socket_it = peer_sockets.find(peer_socket_map::key_type(peer_socket));
+  if(peer_socket_it == peer_sockets.end()) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+// Hacky stuff 
+
+void stop_all_traces()
+{
+  message_lfi.fptr = NULL;
+  log_lfi.fptr = NULL;
+  if(dumpInRtt) dumpInRtt = 0;
+  if(dumpInFile) dumpInFile = 0;
+}

@@ -1,6 +1,10 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
+3.2.41 Jun 01 2012
+- msvc gtest fixes
+- refactoring of screen, call, sipp in prep for win32 port
+
 3.2.40 May 30 2012
 - reformatted all modules using  
 	astlye --style=stroustrup --indent=spaces=2 --convert-tabs *.cpp *.hpp 

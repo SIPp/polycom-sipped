@@ -41,7 +41,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -61,9 +61,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="gtestd.lib gtest_maind.lib transactionstate.obj Logging.obj"
+				AdditionalDependencies="gtestd.lib gtest_maind.lib ws2_32.lib regex.lib win32_compatibility.obj sipp_globals.obj transactionstate.obj Logging.obj CompositeDocument.obj xp_parser.obj screen.obj stat.obj scenario.obj actions.obj message.obj variables.obj call.obj socketowner.obj listener.obj task.obj"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\msvc\gtest\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\Debug&quot;"
+				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\msvc\gtest\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib\&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -178,11 +178,11 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\SIPpedTest.cpp"
+				RelativePath=".\screen.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\tester.cpp"
+				RelativePath=".\SIPpedTest.cpp"
 				>
 			</File>
 			<File
