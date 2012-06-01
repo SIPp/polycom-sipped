@@ -51,6 +51,14 @@
 #include <map>
 #include <string>
 #include "logging.hpp"
+#ifdef WIN32
+#include <Winsock2.h>
+#define ssize_t int
+#else
+#include <sys/socket.h>
+#endif
+
+
 #include <stdio.h>
 #include <stddef.h>
 
@@ -422,6 +430,7 @@ char                      *get_tag_from_to(char *msg);
 char                      *get_tag_from_from(char *msg);
 unsigned long int          get_cseq_value(const char *msg);
 unsigned long              get_reply_code(const char *msg);
+char                      *get_call_id(char *msg);
 
 /********************** Network Interfaces ********************/
 

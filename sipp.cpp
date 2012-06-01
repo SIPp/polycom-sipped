@@ -1797,15 +1797,7 @@ void process_set(char *what)
   }
 }
 
-void log_off(struct logfile_info *lfi)
-{
-  if (lfi->fptr) {
-    fflush(lfi->fptr);
-    fclose(lfi->fptr);
-    lfi->fptr = NULL;
-    lfi->overwrite = false;
-  }
-}
+
 
 void process_trace(char *what)
 {
@@ -2346,42 +2338,6 @@ char * get_call_id(char *msg)
   return (char *) call_id;
 }
 
-unsigned long int get_cseq_value(const char *msg)
-{
-  char *ptr1;
-
-  // there is no short form for CSeq:
-  ptr1 = strcasestr2(msg, "\r\nCSeq:");
-  if(!ptr1) {
-    WARNING("No valid Cseq header in request %s", msg);
-    return 0;
-  }
-
-  ptr1 += 7;
-
-  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
-    ++ptr1;
-  }
-
-  if(!(*ptr1)) {
-    WARNING("No valid Cseq data in header");
-    return 0;
-  }
-
-  return strtoul(ptr1, NULL, 10);
-}
-
-unsigned long get_reply_code(const char *msg)
-{
-  while((msg) && (*msg != ' ') && (*msg != '\t')) msg ++;
-  while((msg) && ((*msg == ' ') || (*msg == '\t'))) msg ++;
-
-  if ((msg) && (strlen(msg)>0)) {
-    return atol(msg);
-  } else {
-    return 0;
-  }
-}
 
 /*************************** I/O functions ***************************/
 

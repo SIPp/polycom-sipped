@@ -273,6 +273,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\socket_helper.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\socketowner.cpp"
 				>
 			</File>
@@ -408,6 +412,10 @@
 			</File>
 			<File
 				RelativePath=".\sipp_globals.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\socket_helper.hpp"
 				>
 			</File>
 			<File

@@ -1,8 +1,15 @@
 #include "socket_helper.hpp"
 
 #include <cstring>      //memcmp
+#ifdef WIN32
+#include <winsock2.h>
+#include <Ws2tcpip.h>  // Ws2_32.lib   getnameinfo 
+#else
 #include <netinet/in.h> //sockadr_in, in_addr, ntohs
 #include <arpa/inet.h>  //inet_ntop
+// #include <sys/socket.h>
+// #include <netdb.h>    // for getnameinfo
+#endif
 #include <stdio.h>      //snprintf
 
 // return true if address is equal, false if not
@@ -43,8 +50,14 @@ string socket_to_ip_string(struct sockaddr_storage *socket)
 {
   char ip[INET6_ADDRSTRLEN];
   ip[0] = 0;
-
+#ifdef WIN32
+  int flag = NI_NUMERICHOST;
+  int err = getnameinfo((struct sockaddr *) socket,sizeof(struct sockaddr_storage), ip, sizeof(ip), NULL, 0, flag );
+  if (err)
+    perror("getnameinfo");
+#else
   inet_ntop(socket->ss_family, get_in_addr(socket), ip, sizeof(ip));
+#endif
   return string(ip);
 }
 
@@ -54,11 +67,18 @@ string socket_to_ip_port_string(struct sockaddr_storage *socket)
   char ip_and_port[BUFFER_LENGTH];
   char ip[INET6_ADDRSTRLEN];
   ip[0] = 0;
-
+#ifdef WIN32
+  int flag = NI_NUMERICHOST;
+  int err = getnameinfo((struct sockaddr *) socket,sizeof(struct sockaddr_storage), ip, sizeof(ip), NULL, 0, flag );
+  if (err)
+    perror("getnameinfo");
+  _snprintf(ip_and_port, sizeof(ip_and_port), "%s:%hu", ip, get_in_port(socket));
+#else
   inet_ntop(socket->ss_family, get_in_addr(socket), ip, sizeof(ip));
   snprintf(ip_and_port, sizeof(ip_and_port), "%s:%hu", ip, get_in_port(socket));
+#endif
+  
 
   return string(ip_and_port);
 }
-
 

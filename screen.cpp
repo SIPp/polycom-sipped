@@ -31,11 +31,10 @@
 # include <signal.h>
 #include <curses.h>
 #else
-# pragma warning (disable: 4003; disable: 4996)
-# include <time.h>
-# include <csignal>
+#pragma warning (disable: 4003; disable: 4996)
+#include <time.h>
+#include <csignal>
 #include <conio.h>  //getch
-
 //#include <errno.h>
 #endif
 

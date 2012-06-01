@@ -434,7 +434,6 @@ void free_default_messages();
 SendingMessage *get_default_message(const char *which);
 void set_default_message(const char *which, char *message);
 
-char * get_call_id(char *msg);
 
 enum T_encoding {
   E_ENCODING_NONE,

@@ -31,8 +31,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef WIN32
 #include <unistd.h>
-
+#endif
 
 /* This is a fun sample of creating your own extensible keyword. */
 int fortune(call *call, MessageComponent *comp, char *buf, int len)

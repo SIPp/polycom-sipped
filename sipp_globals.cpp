@@ -5,10 +5,10 @@
  *      Author: rlum
  */
 #include "sipp_globals.hpp"
-#include "call.hpp"
+#include "call.hpp"  // required for 6 constants
 //
-#include "socketowner.hpp"
-#include "variables.hpp"
+//#include "socketowner.hpp"
+//#include "variables.hpp"
 #ifdef WIN32
 #include <winsock2.h>
 #else
@@ -19,8 +19,8 @@
 #ifdef _USE_OPENSSL
 #include "sslcommon.hpp"
 #endif
-
-
+#include "logging.hpp"
+#include "win32_compatibility.hpp"
 
 int                duration                = 0;
 double             rate                    = DEFAULT_RATE;
@@ -158,6 +158,8 @@ file_map           inFiles;
 //typedef std::map<string, str_int_map *> file_index;
 char              *ip_file                 = NULL;
 char              *default_file            = NULL;
+
+using namespace std;
 
 // free user id list
 list<int>          freeUsers;
@@ -433,6 +435,45 @@ int get_decimal_from_hex(char hex)
 }
 
 
+// mini parser routines
+unsigned long int get_cseq_value(const char *msg)
+{
+  char *ptr1;
+
+  // there is no short form for CSeq:
+  ptr1 = strcasestr2(msg, "\r\nCSeq:");
+  if(!ptr1) {
+    //WARNING("No valid Cseq header in request %s", msg);
+    return 0;
+  }
+
+  ptr1 += 7;
+
+  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
+    ++ptr1;
+  }
+
+  if(!(*ptr1)) {
+    //WARNING("No valid Cseq data in header");
+    return 0;
+  }
+
+  return strtoul(ptr1, NULL, 10);
+}
+
+unsigned long get_reply_code(const char *msg)
+{
+  while((msg) && (*msg != ' ') && (*msg != '\t')) msg ++;
+  while((msg) && ((*msg == ' ') || (*msg == '\t'))) msg ++;
+
+  if ((msg) && (strlen(msg)>0)) {
+    return atol(msg);
+  } else {
+    return 0;
+  }
+}
+
+
 // Socket helper routines moved from sipp.cpp
 
 
@@ -480,4 +521,15 @@ void stop_all_traces()
   log_lfi.fptr = NULL;
   if(dumpInRtt) dumpInRtt = 0;
   if(dumpInFile) dumpInFile = 0;
+}
+
+
+void log_off(struct logfile_info *lfi)
+{
+  if (lfi->fptr) {
+    fflush(lfi->fptr);
+    fclose(lfi->fptr);
+    lfi->fptr = NULL;
+    lfi->overwrite = false;
+  }
 }
