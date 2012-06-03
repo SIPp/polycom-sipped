@@ -5,7 +5,7 @@
  *      Author: rlum
  */
 #include "sipp_globals.hpp"
-#include "call.hpp"  // required for 6 constants
+//#include "call.hpp"  // required for 6 constants
 //
 //#include "socketowner.hpp"
 //#include "variables.hpp"
@@ -21,6 +21,7 @@
 #endif
 #include "logging.hpp"
 #include "win32_compatibility.hpp"
+
 
 int                duration                = 0;
 double             rate                    = DEFAULT_RATE;

@@ -42,7 +42,7 @@
 
 #ifdef WIN32
 #include <time.h>
-#include "win32_compatibility.hpp"
+
 #include <windows.h>
 #else
 #include <netinet/tcp.h>
@@ -51,6 +51,7 @@
 #include <dlfcn.h>
 #include <errno.h>
 #endif
+#include "win32_compatibility.hpp"
 
 #ifdef __SUNOS
 #include <stdarg.h>

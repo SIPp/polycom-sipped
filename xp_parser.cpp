@@ -42,9 +42,10 @@
 
 #ifdef WIN32
 #define snprintf _snprintf
-#include "win32_compatibility.hpp"
+
 #endif
 //
+#include "win32_compatibility.hpp"
 #include <ctype.h>
 #include <string>
 #include <stddef.h>

@@ -50,8 +50,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+
 //#ifdef WIN32
-//#include "win32_compatibility.cpp" //strndup, strcasecmp
+#include "win32_compatibility.hpp" //strndup, strcasecmp
 //#endif
 
 struct KeywordMap {

@@ -50,7 +50,7 @@
 #include "infile.hpp"   // FileContents
 #include <map>
 #include <string>
-#include "logging.hpp"
+//#include "logging.hpp"
 #ifdef WIN32
 #include <Winsock2.h>
 #define ssize_t int
@@ -95,6 +95,22 @@
 #define MAX_PEER_SIZE              4096  /* 3pcc extended mode: max size of peer names */
 #define MAX_LOCAL_TWIN_SOCKETS     10    /*3pcc extended mode:max number of peers from which
 cmd messages are received */
+
+
+
+/****** moved from call.hpp to remove sipp_globals.cpp depenancy on call.hpp   */
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#define RTCHECK_FULL  1
+#define UDP_MAX_RETRANS_INVITE_TRANSACTION 5
+#define UDP_MAX_RETRANS MAX(UDP_MAX_RETRANS_INVITE_TRANSACTION, UDP_MAX_RETRANS_NON_INVITE_TRANSACTION)
+#define UDP_MAX_RETRANS_NON_INVITE_TRANSACTION 9
+#define DEFAULT_T2_TIMER_VALUE  4000
+#define DEFAULT_AUTO_ANSWER_EXPIRES 3600
+
+//
 
 /******************** Default parameters ***********************/
 
