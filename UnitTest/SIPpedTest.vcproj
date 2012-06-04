@@ -61,7 +61,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="gtestd.lib gtest_maind.lib ws2_32.lib regex.lib win32_compatibility.obj sipp_globals.obj transactionstate.obj Logging.obj CompositeDocument.obj xp_parser.obj screen.obj stat.obj scenario.obj actions.obj message.obj variables.obj call.obj task.obj listener.obj socketowner.obj infile.obj dialogstate.obj"
+				AdditionalDependencies="gtestd.lib gtest_maind.lib ws2_32.lib regex.lib win32_compatibility.obj sipp_globals.obj transactionstate.obj Logging.obj CompositeDocument.obj xp_parser.obj screen.obj stat.obj scenario.obj actions.obj message.obj variables.obj call.obj opentask.obj deadcall.obj dialogstate.obj socketowner.obj infile.obj listener.obj task.obj"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\msvc\gtest\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib\&quot;"
 				GenerateDebugInformation="true"

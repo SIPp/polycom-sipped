@@ -21,6 +21,7 @@
 #endif
 #include "logging.hpp"
 #include "win32_compatibility.hpp"
+#include "common.hpp"  //MAX_HEADER_LEN
 
 
 int                duration                = 0;
@@ -186,6 +187,7 @@ bool               test_socket             = true;
 bool               maxSocketPresent        = false;
 
 
+
 /************************ Statistics **************************/
 
 unsigned long      last_report_calls       = 0;
@@ -297,6 +299,9 @@ struct sockaddr_storage remote_sending_sockaddr;
 //    E_ALTER_YES=0,
 //    E_ALTER_NO
 //  };
+
+//moved from sipp.cpp
+map<string, struct sipp_socket *>     map_perip_fd;
 
 /************************** Trace Files ***********************/
 
@@ -473,6 +478,173 @@ unsigned long get_reply_code(const char *msg)
     return 0;
   }
 }
+
+
+
+//moved from sipp.cpp
+char * get_call_id(char *msg)
+{
+  static char call_id[MAX_HEADER_LEN];
+  char * ptr1, * ptr2, * ptr3, backup;
+  bool short_form;
+
+  call_id[0] = '\0';
+
+  short_form = false;
+
+  ptr1 = strcasestr(msg, "Call-ID:");
+  // For short form, we need to make sure we start from beginning of line
+  // For others, no need to
+  if(!ptr1) {
+    ptr1 = strstr(msg, "\r\ni:");
+    short_form = true;
+  }
+  if(!ptr1) {
+    //WARNING("(1) No valid Call-ID: header in message '%s'", msg);
+    //return call_id;
+    return NULL;
+  }
+
+  if (short_form) {
+    ptr1 += 4;
+  } else {
+    ptr1 += 8;
+  }
+
+  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
+    ptr1++;
+  }
+
+  if(!(*ptr1)) {
+    //WARNING("(2) No valid Call-ID: header in message");
+    //return call_id;
+    return NULL;
+  }
+
+  ptr2 = ptr1;
+
+  while((*ptr2) &&
+        (*ptr2 != ' ') &&
+        (*ptr2 != '\t') &&
+        (*ptr2 != '\r') &&
+        (*ptr2 != '\n')) {
+    ptr2 ++;
+  }
+
+  if(!*ptr2) {
+ /*   WARNING("(3) No valid Call-ID: header in message");
+    return call_id;*/
+    return NULL;
+  }
+
+  backup = *ptr2;
+  *ptr2 = 0;
+  if ((ptr3 = strstr(ptr1, "///")) != 0) ptr1 = ptr3+3;
+  strcpy(call_id, ptr1);
+  *ptr2 = backup;
+  return (char *) call_id;
+}
+
+
+
+
+/*************************** Mini SIP parser ***************************/
+const int  errstringsize = 256;
+const char* errflag = "ERROR";
+char errorstring[errstringsize]; 
+char * get_to_or_from_tag(char *msg, bool toHeader)
+{
+  char        * hdr;
+  char        * ptr;
+  char        * end_ptr;
+  static char   tag[MAX_HEADER_LEN];
+  int           tag_i = 0;
+
+  strcpy(errorstring,errflag);
+  if (toHeader) {
+    hdr = strcasestr(msg, "\r\nTo:");
+    if(!hdr) hdr = strstr(msg, "\r\nt:");
+    if(!hdr) {
+      //REPORT_ERROR("No valid To: header in reply");
+      strncat(errorstring, "No valid To: header in reply",errstringsize-7); 
+      return errorstring;
+    }
+  } else {
+    hdr = strcasestr(msg, "\r\nFrom:");
+    if(!hdr) hdr = strstr(msg, "\r\nf:");
+    if(!hdr) {
+      //REPORT_ERROR("No valid From: header in message");
+      strncat(errorstring, "No valid From: header in message",errstringsize-7);
+      return errorstring;
+    }
+  }
+
+
+  // Remove CRLF
+  hdr += 2;
+
+  end_ptr = strchr(hdr,'\n');
+
+  ptr = strchr(hdr, '>');
+  if (!ptr) {
+    return NULL;
+  }
+
+  ptr = strchr(hdr, ';');
+
+  if(!ptr) {
+    return NULL;
+  }
+
+  hdr = ptr;
+
+  ptr = strcasestr(hdr, "tag");
+
+  if(!ptr) {
+    return NULL;
+  }
+
+  if (ptr>end_ptr) {
+    return NULL ;
+  }
+
+  ptr = strchr(ptr, '=');
+
+  if(!ptr) {
+    //REPORT_ERROR("Invalid tag param in header");
+    strncat(errorstring, "Invalid tag param in header",errstringsize-7);
+    return errorstring;
+  }
+
+  ptr ++;
+
+  while((*ptr)         &&
+        (*ptr != ' ')  &&
+        (*ptr != ';')  &&
+        (*ptr != '\t') &&
+        (*ptr != '\t') &&
+        (*ptr != '\r') &&
+        (*ptr != '\n') &&
+        (*ptr)) {
+    tag[tag_i++] = *(ptr++);
+  }
+  tag[tag_i] = 0;
+
+  return tag;
+}
+
+char * get_tag_from_to(char *msg)
+{
+  return get_to_or_from_tag(msg, true);
+}
+
+char * get_tag_from_from(char *msg)
+{
+  return get_to_or_from_tag(msg, false);
+}
+
+
+
 
 
 // Socket helper routines moved from sipp.cpp

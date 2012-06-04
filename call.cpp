@@ -82,7 +82,8 @@ extern  struct pollfd        pollfiles[];
 extern  SSL_CTX             *sip_trp_ssl_ctx;
 #endif
 
-extern  map<string, struct sipp_socket *>     map_perip_fd;
+// moved to sipp_globals.hpp
+//extern  map<string, struct sipp_socket *>     map_perip_fd;
 
 char short_and_long_headers[NUM_OF_SHORT_FORM_HEADERS * 2][MAX_HEADER_NAME_LEN] = {
   "i:", "m:", "e:", "l:", "c:", "f:", "s:", "k:", "t:", "v:",
@@ -1698,6 +1699,8 @@ bool call::executeMessage(message *curmsg)
     // store it based on what was sent here.
     if (ds->call_id.empty()) {
       ds->call_id = get_call_id(last_send_msg);
+      if (ds->call_id.empty())
+        WARNING("(1) No valid Call-ID: header in message '%s'", last_send_msg);
       DEBUG("Storing manually specified call_id '%s' with dialog %d as extracted from sent message", ds->call_id.c_str(), curmsg->dialog_number);
     }
     // update client cseq method for sent requests (ie client transactions) for non-transaction case
@@ -3900,8 +3903,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   /* Update peer_tag (remote_tag) */
   if (reply_code){
     ptr = get_tag_from_to(msg);
+    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
+      REPORT_ERROR(ptr);
   }else{
     ptr = get_tag_from_from(msg);
+    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
+      REPORT_ERROR(ptr);
   }
   if (ptr) {
     if(strlen(ptr) > (MAX_HEADER_LEN - 1))
@@ -3921,8 +3928,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   /* Update local_tag */
   if (reply_code){
     ptr = get_tag_from_from(msg);
+    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
+      REPORT_ERROR(ptr);
   }else{
     ptr = get_tag_from_to(msg);
+    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
+      REPORT_ERROR(ptr);
   }
   if (ptr) {
     if(strlen(ptr) > (MAX_HEADER_LEN - 1))

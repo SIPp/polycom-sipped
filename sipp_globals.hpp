@@ -40,6 +40,8 @@
 
 #include <list>
 #include <set>
+#include <map>
+#include <string>
 
 #include "variables.hpp" // VariableTable
 
@@ -408,6 +410,8 @@ enum E_Alter_YesNo {
   E_ALTER_YES=0,
   E_ALTER_NO
 };
+//moved from call.cpp
+extern  std::map<std::string, struct sipp_socket *>     map_perip_fd;
 
 /************************** Trace Files ***********************/
 
@@ -440,7 +444,7 @@ void                       print_count_file(FILE *f, int header);
 
 
 /********************* Mini-Parser Routines *******************/
-
+extern const char*        errflag;
 int                        get_method(char *msg);
 char                      *get_tag_from_to(char *msg);
 char                      *get_tag_from_from(char *msg);

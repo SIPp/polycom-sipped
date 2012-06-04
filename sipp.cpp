@@ -799,7 +799,8 @@ struct pollfd        pollfiles[SIPP_MAXFDS];
 
 static int pending_messages = 0;
 
-map<string, struct sipp_socket *>     map_perip_fd;
+// moved to sipp_globals.cpp, originally def in sipp.cpp, decl in call.cpp
+// map<string, struct sipp_socket *>     map_perip_fd;
 
 /***************** Check of the message received ***************/
 
@@ -2090,91 +2091,93 @@ void handle_stdin_socket()
   }
 }
 
-/*************************** Mini SIP parser ***************************/
-
-char * get_to_or_from_tag(char *msg, bool toHeader)
-{
-  char        * hdr;
-  char        * ptr;
-  char        * end_ptr;
-  static char   tag[MAX_HEADER_LEN];
-  int           tag_i = 0;
-
-  if (toHeader) {
-    hdr = strcasestr(msg, "\r\nTo:");
-    if(!hdr) hdr = strstr(msg, "\r\nt:");
-    if(!hdr) {
-      REPORT_ERROR("No valid To: header in reply");
-    }
-  } else {
-    hdr = strcasestr(msg, "\r\nFrom:");
-    if(!hdr) hdr = strstr(msg, "\r\nf:");
-    if(!hdr) {
-      REPORT_ERROR("No valid From: header in message");
-    }
-  }
-
-
-  // Remove CRLF
-  hdr += 2;
-
-  end_ptr = strchr(hdr,'\n');
-
-  ptr = strchr(hdr, '>');
-  if (!ptr) {
-    return NULL;
-  }
-
-  ptr = strchr(hdr, ';');
-
-  if(!ptr) {
-    return NULL;
-  }
-
-  hdr = ptr;
-
-  ptr = strcasestr(hdr, "tag");
-
-  if(!ptr) {
-    return NULL;
-  }
-
-  if (ptr>end_ptr) {
-    return NULL ;
-  }
-
-  ptr = strchr(ptr, '=');
-
-  if(!ptr) {
-    REPORT_ERROR("Invalid tag param in header");
-  }
-
-  ptr ++;
-
-  while((*ptr)         &&
-        (*ptr != ' ')  &&
-        (*ptr != ';')  &&
-        (*ptr != '\t') &&
-        (*ptr != '\t') &&
-        (*ptr != '\r') &&
-        (*ptr != '\n') &&
-        (*ptr)) {
-    tag[tag_i++] = *(ptr++);
-  }
-  tag[tag_i] = 0;
-
-  return tag;
-}
-
-char * get_tag_from_to(char *msg)
-{
-  return get_to_or_from_tag(msg, true);
-}
-
-char * get_tag_from_from(char *msg)
-{
-  return get_to_or_from_tag(msg, false);
-}
+//
+//
+///*************************** Mini SIP parser ***************************/
+//
+//char * get_to_or_from_tag(char *msg, bool toHeader)
+//{
+//  char        * hdr;
+//  char        * ptr;
+//  char        * end_ptr;
+//  static char   tag[MAX_HEADER_LEN];
+//  int           tag_i = 0;
+//
+//  if (toHeader) {
+//    hdr = strcasestr(msg, "\r\nTo:");
+//    if(!hdr) hdr = strstr(msg, "\r\nt:");
+//    if(!hdr) {
+//      REPORT_ERROR("No valid To: header in reply");
+//    }
+//  } else {
+//    hdr = strcasestr(msg, "\r\nFrom:");
+//    if(!hdr) hdr = strstr(msg, "\r\nf:");
+//    if(!hdr) {
+//      REPORT_ERROR("No valid From: header in message");
+//    }
+//  }
+//
+//
+//  // Remove CRLF
+//  hdr += 2;
+//
+//  end_ptr = strchr(hdr,'\n');
+//
+//  ptr = strchr(hdr, '>');
+//  if (!ptr) {
+//    return NULL;
+//  }
+//
+//  ptr = strchr(hdr, ';');
+//
+//  if(!ptr) {
+//    return NULL;
+//  }
+//
+//  hdr = ptr;
+//
+//  ptr = strcasestr(hdr, "tag");
+//
+//  if(!ptr) {
+//    return NULL;
+//  }
+//
+//  if (ptr>end_ptr) {
+//    return NULL ;
+//  }
+//
+//  ptr = strchr(ptr, '=');
+//
+//  if(!ptr) {
+//    REPORT_ERROR("Invalid tag param in header");
+//  }
+//
+//  ptr ++;
+//
+//  while((*ptr)         &&
+//        (*ptr != ' ')  &&
+//        (*ptr != ';')  &&
+//        (*ptr != '\t') &&
+//        (*ptr != '\t') &&
+//        (*ptr != '\r') &&
+//        (*ptr != '\n') &&
+//        (*ptr)) {
+//    tag[tag_i++] = *(ptr++);
+//  }
+//  tag[tag_i] = 0;
+//
+//  return tag;
+//}
+//
+//char * get_tag_from_to(char *msg)
+//{
+//  return get_to_or_from_tag(msg, true);
+//}
+//
+//char * get_tag_from_from(char *msg)
+//{
+//  return get_to_or_from_tag(msg, false);
+//}
 
 char * get_incoming_header_content(char* message, char * name)
 {
@@ -2278,66 +2281,66 @@ char * get_incoming_first_line(char * message)
   return last_header;
 }
 
-
-char * get_call_id(char *msg)
-{
-  static char call_id[MAX_HEADER_LEN];
-  char * ptr1, * ptr2, * ptr3, backup;
-  bool short_form;
-
-  call_id[0] = '\0';
-
-  short_form = false;
-
-  ptr1 = strcasestr(msg, "Call-ID:");
-  // For short form, we need to make sure we start from beginning of line
-  // For others, no need to
-  if(!ptr1) {
-    ptr1 = strstr(msg, "\r\ni:");
-    short_form = true;
-  }
-  if(!ptr1) {
-    WARNING("(1) No valid Call-ID: header in message '%s'", msg);
-    return call_id;
-  }
-
-  if (short_form) {
-    ptr1 += 4;
-  } else {
-    ptr1 += 8;
-  }
-
-  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
-    ptr1++;
-  }
-
-  if(!(*ptr1)) {
-    WARNING("(2) No valid Call-ID: header in message");
-    return call_id;
-  }
-
-  ptr2 = ptr1;
-
-  while((*ptr2) &&
-        (*ptr2 != ' ') &&
-        (*ptr2 != '\t') &&
-        (*ptr2 != '\r') &&
-        (*ptr2 != '\n')) {
-    ptr2 ++;
-  }
-
-  if(!*ptr2) {
-    WARNING("(3) No valid Call-ID: header in message");
-    return call_id;
-  }
-
-  backup = *ptr2;
-  *ptr2 = 0;
-  if ((ptr3 = strstr(ptr1, "///")) != 0) ptr1 = ptr3+3;
-  strcpy(call_id, ptr1);
-  *ptr2 = backup;
-  return (char *) call_id;
-}
+//
+//char * get_call_id(char *msg)
+//{
+//  static char call_id[MAX_HEADER_LEN];
+//  char * ptr1, * ptr2, * ptr3, backup;
+//  bool short_form;
+//
+//  call_id[0] = '\0';
+//
+//  short_form = false;
+//
+//  ptr1 = strcasestr(msg, "Call-ID:");
+//  // For short form, we need to make sure we start from beginning of line
+//  // For others, no need to
+//  if(!ptr1) {
+//    ptr1 = strstr(msg, "\r\ni:");
+//    short_form = true;
+//  }
+//  if(!ptr1) {
+//    WARNING("(1) No valid Call-ID: header in message '%s'", msg);
+//    return call_id;
+//  }
+//
+//  if (short_form) {
+//    ptr1 += 4;
+//  } else {
+//    ptr1 += 8;
+//  }
+//
+//  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
+//    ptr1++;
+//  }
+//
+//  if(!(*ptr1)) {
+//    WARNING("(2) No valid Call-ID: header in message");
+//    return call_id;
+//  }
+//
+//  ptr2 = ptr1;
+//
+//  while((*ptr2) &&
+//        (*ptr2 != ' ') &&
+//        (*ptr2 != '\t') &&
+//        (*ptr2 != '\r') &&
+//        (*ptr2 != '\n')) {
+//    ptr2 ++;
+//  }
+//
+//  if(!*ptr2) {
+//    WARNING("(3) No valid Call-ID: header in message");
+//    return call_id;
+//  }
+//
+//  backup = *ptr2;
+//  *ptr2 = 0;
+//  if ((ptr3 = strstr(ptr1, "///")) != 0) ptr1 = ptr3+3;
+//  strcpy(call_id, ptr1);
+//  *ptr2 = backup;
+//  return (char *) call_id;
+//}
 
 
 /*************************** I/O functions ***************************/
@@ -3280,6 +3283,8 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   }
 
   char *call_id = get_call_id(msg);
+  if (call_id == NULL)
+    WARNING("(1) No valid Call-ID: header in message '%s'", msg);
   if (call_id[0] == '\0') {
     WARNING("SIP message without Call-ID discarded");
     return;
@@ -4474,7 +4479,7 @@ int main(int argc, char *argv[])
         }
         exit(EXIT_OTHER);
       case SIPP_OPTION_VERSION:
-        printf("\n SIPped v3.2.41 BETA"
+        printf("\n SIPped v3.2.42 BETA"
 #ifdef _USE_OPENSSL
                "-TLS"
 #endif
