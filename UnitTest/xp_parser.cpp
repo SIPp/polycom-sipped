@@ -237,7 +237,7 @@ TEST(xp_parser, xp_set_xml_buffer_from_file_w_include_inside_comment){
 
   ASSERT_EQ(1, xp_set_xml_buffer_from_file(sipp_file_commented_xiinclude.c_str(), dumpxml)) << "Failed to set buffer - unable to proceed";
   EXPECT_EQ(get_file_as_string(sipp_file_commented_xiinclude), xp_get_xmlbuffer()) << "xmlbuffer should be identical to input string. xp_file size = " <<
-        (unsigned) xp_get_xmlbuffer().length() << " input_file_size = " << inputfilesize << ". target include file size = " << get_file_length(include_target_file) ;
+        xp_get_xmlbuffer().length() << " input_file_size = " << inputfilesize << ". target include file size = " << get_file_length(include_target_file) ;
 
   // file a has include b; file b has commented include c. file c contents should not be in result
   string valid_xi_include_file = "valid_xi_include.xml";

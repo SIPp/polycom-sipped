@@ -51,11 +51,6 @@
 #include <string.h>
 
 
-
-//#ifdef WIN32
-#include "win32_compatibility.hpp" //strndup, strcasecmp
-//#endif
-
 struct KeywordMap {
   const char *keyword;
   MessageCompType type;
@@ -309,6 +304,7 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
                  ( strlen(keyword)> strlen(IP_Keywords[i].keyword )) &&
                  ( keyword[strlen(IP_Keywords[i].keyword)] ==  ' ')     )  ) {
             newcomp->type = IP_Keywords[i].type;
+            DEBUG("searching for no_square_bracket attribte in  '%s' " , keyword);
             if( strstr(keyword, "no_square_bracket")  ) {
               // want the no escape version of the ip address
 

@@ -25,16 +25,14 @@
 #include "sipp_globals.hpp"
 #include "logging.hpp" //SIPP_MAX_MSG_SIZE
 //
-
+#include "comp.hpp" //comp
 #include "message.hpp"  //MessageComponent
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#ifndef WIN32
 #include <unistd.h>
-#include "comp.hpp" //comp
-#endif
+
 
 /* This is a fun sample of creating your own extensible keyword. */
 int fortune(call *call, MessageComponent *comp, char *buf, int len)

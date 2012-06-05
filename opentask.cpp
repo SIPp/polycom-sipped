@@ -264,12 +264,12 @@ void opentask::set_users(int new_users)
 
 void opentask::freeUser(int userId)
 {
-  if (main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall) > open_calls_allowed) { //scenario.cpp
-    retiredUsers.push_front(userId);  //sipp_globals.cpp
+  if (main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall) > open_calls_allowed) {
+    retiredUsers.push_front(userId);
   } else {
-    freeUsers.push_front(userId);   //sipp_globals.cpp
+    freeUsers.push_front(userId);
     /* Wake up the call creation thread. */
-    if (instance) {                 // opentask.hpp private, static class opentask
+    if (instance) {
       instance->setRunning();
     }
   }

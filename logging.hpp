@@ -31,9 +31,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
-//#ifdef WIN32
 #include "win32_compatibility.hpp"
-//#endif
+
 
 void set_logging_scenario_file_name(char *name);
 

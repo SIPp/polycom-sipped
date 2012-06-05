@@ -5,10 +5,10 @@
  *      Author: rlum
  */
 #include "sipp_globals.hpp"
-//#include "call.hpp"  // required for 6 constants
+#include "call.hpp"
 //
-//#include "socketowner.hpp"
-//#include "variables.hpp"
+#include "socketowner.hpp"
+#include "variables.hpp"
 #ifdef WIN32
 #include <winsock2.h>
 #else
@@ -19,9 +19,7 @@
 #ifdef _USE_OPENSSL
 #include "sslcommon.hpp"
 #endif
-#include "logging.hpp"
-#include "win32_compatibility.hpp"
-#include "common.hpp"  //MAX_HEADER_LEN
+
 
 
 int                duration                = 0;
@@ -161,8 +159,6 @@ file_map           inFiles;
 char              *ip_file                 = NULL;
 char              *default_file            = NULL;
 
-using namespace std;
-
 // free user id list
 list<int>          freeUsers;
 list<int>          retiredUsers;
@@ -185,7 +181,6 @@ int                select_socket           = 0;
 bool               socket_close            = true;
 bool               test_socket             = true;
 bool               maxSocketPresent        = false;
-
 
 
 /************************ Statistics **************************/
@@ -300,9 +295,6 @@ struct sockaddr_storage remote_sending_sockaddr;
 //    E_ALTER_NO
 //  };
 
-//moved from sipp.cpp
-map<string, struct sipp_socket *>     map_perip_fd;
-
 /************************** Trace Files ***********************/
 
 FILE *             screenf                 = 0;
@@ -343,374 +335,13 @@ unsigned long long getmicroseconds()
   if (!VI_micro_base) VI_micro_base = VI_micro - 1;
   VI_micro = VI_micro - VI_micro_base;
 
-  clock_tick = (unsigned long) (VI_micro / 1000LL);
+  clock_tick = VI_micro / 1000LL;
 
   return VI_micro;
 }
 
 unsigned long getmilliseconds()
 {
-  return (unsigned long) (getmicroseconds() / 1000LL);
+  return getmicroseconds() / 1000LL;
 }
 
-static unsigned char tolower_table[256];
-
-void init_tolower_table()
-{
-  for (int i = 0; i < 256; i++) {
-    tolower_table[i] = tolower(i);
-  }
-}
-
-/* This is simpler than doing a regular tolower, because there are no branches.
- * We also inline it, so that we don't have function call overheads.
- *
- * An alternative to a table would be to do (c | 0x20), but that only works if
- * we are sure that we are searching for characters (or don't care if they are
- * not characters. */
-unsigned char inline mytolower(unsigned char c)
-{
-  return tolower_table[c];
-}
-
-char * strncasestr(char *s, const char *find, size_t n)
-{
-  char *end = s + n;
-  char c, sc;
-  size_t len;
-
-  if ((c = *find++) != 0) {
-    c = mytolower((unsigned char)c);
-    len = strlen(find);
-    end -= (len - 1);
-    do {
-      do {
-        if ((sc = *s++) == 0)
-          return (NULL);
-        if (s >= end)
-          return (NULL);
-      } while ((char)mytolower((unsigned char)sc) != c);
-    } while (strncasecmp(s, find, len) != 0);
-    s--;
-  }
-  return ((char *)s);
-}
-
-char * strcasestr2(const char *s, const char *find)
-{
-  char c, sc;
-  size_t len;
-
-  if ((c = *find++) != 0) {
-    c = mytolower((unsigned char)c);
-    len = strlen(find);
-    do {
-      do {
-        if ((sc = *s++) == 0)
-          return (NULL);
-      } while ((char)mytolower((unsigned char)sc) != c);
-    } while (strncasecmp(s, find, len) != 0);
-    s--;
-  }
-  return ((char *)s);
-}
-
-char *jump_over_timestamp(char *src)
-{
-  char* tmp = src;
-  int colonsleft = 4;/* We want to skip the time. */
-  while (*tmp && colonsleft) {
-    if (*tmp == ':') {
-      colonsleft--;
-    }
-    tmp++;
-  }
-  while (isspace(*tmp)) {
-    tmp++;
-  }
-  return tmp;
-}
-
-
-int get_decimal_from_hex(char hex)
-{
-  if (isdigit(hex))
-    return hex - '0';
-  else
-    return tolower(hex) - 'a' + 10;
-}
-
-
-// mini parser routines
-unsigned long int get_cseq_value(const char *msg)
-{
-  char *ptr1;
-
-  // there is no short form for CSeq:
-  ptr1 = strcasestr2(msg, "\r\nCSeq:");
-  if(!ptr1) {
-    //WARNING("No valid Cseq header in request %s", msg);
-    return 0;
-  }
-
-  ptr1 += 7;
-
-  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
-    ++ptr1;
-  }
-
-  if(!(*ptr1)) {
-    //WARNING("No valid Cseq data in header");
-    return 0;
-  }
-
-  return strtoul(ptr1, NULL, 10);
-}
-
-unsigned long get_reply_code(const char *msg)
-{
-  while((msg) && (*msg != ' ') && (*msg != '\t')) msg ++;
-  while((msg) && ((*msg == ' ') || (*msg == '\t'))) msg ++;
-
-  if ((msg) && (strlen(msg)>0)) {
-    return atol(msg);
-  } else {
-    return 0;
-  }
-}
-
-
-
-//moved from sipp.cpp
-char * get_call_id(char *msg)
-{
-  static char call_id[MAX_HEADER_LEN];
-  char * ptr1, * ptr2, * ptr3, backup;
-  bool short_form;
-
-  call_id[0] = '\0';
-
-  short_form = false;
-
-  ptr1 = strcasestr(msg, "Call-ID:");
-  // For short form, we need to make sure we start from beginning of line
-  // For others, no need to
-  if(!ptr1) {
-    ptr1 = strstr(msg, "\r\ni:");
-    short_form = true;
-  }
-  if(!ptr1) {
-    //WARNING("(1) No valid Call-ID: header in message '%s'", msg);
-    //return call_id;
-    return NULL;
-  }
-
-  if (short_form) {
-    ptr1 += 4;
-  } else {
-    ptr1 += 8;
-  }
-
-  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
-    ptr1++;
-  }
-
-  if(!(*ptr1)) {
-    //WARNING("(2) No valid Call-ID: header in message");
-    //return call_id;
-    return NULL;
-  }
-
-  ptr2 = ptr1;
-
-  while((*ptr2) &&
-        (*ptr2 != ' ') &&
-        (*ptr2 != '\t') &&
-        (*ptr2 != '\r') &&
-        (*ptr2 != '\n')) {
-    ptr2 ++;
-  }
-
-  if(!*ptr2) {
- /*   WARNING("(3) No valid Call-ID: header in message");
-    return call_id;*/
-    return NULL;
-  }
-
-  backup = *ptr2;
-  *ptr2 = 0;
-  if ((ptr3 = strstr(ptr1, "///")) != 0) ptr1 = ptr3+3;
-  strcpy(call_id, ptr1);
-  *ptr2 = backup;
-  return (char *) call_id;
-}
-
-
-
-
-/*************************** Mini SIP parser ***************************/
-const int  errstringsize = 256;
-const char* errflag = "ERROR";
-char errorstring[errstringsize]; 
-char * get_to_or_from_tag(char *msg, bool toHeader)
-{
-  char        * hdr;
-  char        * ptr;
-  char        * end_ptr;
-  static char   tag[MAX_HEADER_LEN];
-  int           tag_i = 0;
-
-  strcpy(errorstring,errflag);
-  if (toHeader) {
-    hdr = strcasestr(msg, "\r\nTo:");
-    if(!hdr) hdr = strstr(msg, "\r\nt:");
-    if(!hdr) {
-      //REPORT_ERROR("No valid To: header in reply");
-      strncat(errorstring, "No valid To: header in reply",errstringsize-7); 
-      return errorstring;
-    }
-  } else {
-    hdr = strcasestr(msg, "\r\nFrom:");
-    if(!hdr) hdr = strstr(msg, "\r\nf:");
-    if(!hdr) {
-      //REPORT_ERROR("No valid From: header in message");
-      strncat(errorstring, "No valid From: header in message",errstringsize-7);
-      return errorstring;
-    }
-  }
-
-
-  // Remove CRLF
-  hdr += 2;
-
-  end_ptr = strchr(hdr,'\n');
-
-  ptr = strchr(hdr, '>');
-  if (!ptr) {
-    return NULL;
-  }
-
-  ptr = strchr(hdr, ';');
-
-  if(!ptr) {
-    return NULL;
-  }
-
-  hdr = ptr;
-
-  ptr = strcasestr(hdr, "tag");
-
-  if(!ptr) {
-    return NULL;
-  }
-
-  if (ptr>end_ptr) {
-    return NULL ;
-  }
-
-  ptr = strchr(ptr, '=');
-
-  if(!ptr) {
-    //REPORT_ERROR("Invalid tag param in header");
-    strncat(errorstring, "Invalid tag param in header",errstringsize-7);
-    return errorstring;
-  }
-
-  ptr ++;
-
-  while((*ptr)         &&
-        (*ptr != ' ')  &&
-        (*ptr != ';')  &&
-        (*ptr != '\t') &&
-        (*ptr != '\t') &&
-        (*ptr != '\r') &&
-        (*ptr != '\n') &&
-        (*ptr)) {
-    tag[tag_i++] = *(ptr++);
-  }
-  tag[tag_i] = 0;
-
-  return tag;
-}
-
-char * get_tag_from_to(char *msg)
-{
-  return get_to_or_from_tag(msg, true);
-}
-
-char * get_tag_from_from(char *msg)
-{
-  return get_to_or_from_tag(msg, false);
-}
-
-
-
-
-
-// Socket helper routines moved from sipp.cpp
-
-
-struct sipp_socket **get_peer_socket(char * peer) {
-  struct sipp_socket **peer_socket;
-  T_peer_infos infos;
-  peer_map::iterator peer_it;
-  peer_it = peers.find(peer_map::key_type(peer));
-  if(peer_it != peers.end()) {
-    infos = peer_it->second;
-    peer_socket = &(infos.peer_socket);
-    return peer_socket;
-  }
-  return NULL;
-}
-
-char * get_peer_addr(char * peer)
-{
-  char * addr;
-  peer_addr_map::iterator peer_addr_it;
-  peer_addr_it = peer_addrs.find(peer_addr_map::key_type(peer));
-  if(peer_addr_it != peer_addrs.end()) {
-    addr =  peer_addr_it->second;
-    return addr;
-  }
-  return NULL;
-}
-
-bool is_a_peer_socket(struct sipp_socket *peer_socket)
-{
-  peer_socket_map::iterator peer_socket_it;
-  peer_socket_it = peer_sockets.find(peer_socket_map::key_type(peer_socket));
-  if(peer_socket_it == peer_sockets.end()) {
-    return false;
-  } else {
-    return true;
-  }
-}
-
-bool reconnect_allowed()
-{
-  if (reset_number == -1) {
-    return true;
-  }
-  return (reset_number > 0);
-}
-
-// Hacky stuff 
-
-void stop_all_traces()
-{
-  message_lfi.fptr = NULL;
-  log_lfi.fptr = NULL;
-  if(dumpInRtt) dumpInRtt = 0;
-  if(dumpInFile) dumpInFile = 0;
-}
-
-
-void log_off(struct logfile_info *lfi)
-{
-  if (lfi->fptr) {
-    fflush(lfi->fptr);
-    fclose(lfi->fptr);
-    lfi->fptr = NULL;
-    lfi->overwrite = false;
-  }
-}

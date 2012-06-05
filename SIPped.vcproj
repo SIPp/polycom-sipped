@@ -40,8 +40,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\OpenSSL-Win32\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;.;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\include&quot;;.\pthreads_w32.2\include;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS"
+				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\include&quot;;.;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\include&quot;;.\pthreads_w32.2\include;&quot;$(TA_DIR)\SIPped\SIPped\src\OpenSSL-Win32\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -49,7 +49,6 @@
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
-				ShowIncludes="false"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -62,10 +61,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pthreadVC2.lib wpcap.lib ws2_32.lib regex.lib"
+				AdditionalDependencies="libdl.lib pthreadVC2.lib wpcap.lib ws2_32.lib"
 				ShowProgress="1"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -192,6 +191,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\comp.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CompositeDocument.cpp"
 				>
 			</File>
@@ -205,10 +208,6 @@
 			</File>
 			<File
 				RelativePath=".\infile.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\listener.cpp"
 				>
 			</File>
 			<File
@@ -266,10 +265,6 @@
 			</File>
 			<File
 				RelativePath=".\sipp_stub.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\socket_helper.cpp"
 				>
 			</File>
 			<File
@@ -343,6 +338,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\comp.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CompositeDocument.hpp"
 				>
 			</File>
@@ -404,10 +403,6 @@
 			</File>
 			<File
 				RelativePath=".\sipp_globals.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\socket_helper.hpp"
 				>
 			</File>
 			<File

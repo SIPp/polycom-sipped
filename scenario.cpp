@@ -1067,11 +1067,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           {
             T_peer_infos infos;
             infos.peer_socket = 0;
-            char *temp_peer_addr = get_peer_addr(peer);
-            if (temp_peer_addr == NULL) {
-              REPORT_ERROR("get_peer_addr: Peer %s not found\n", peer);
-            }
-            strcpy(infos.peer_host, temp_peer_addr);
+            strcpy(infos.peer_host, get_peer_addr(peer));
             peers[std::string(peer)] = infos;
           }
         } else if (extendedTwinSippMode) {

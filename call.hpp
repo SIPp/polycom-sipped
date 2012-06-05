@@ -58,24 +58,22 @@
 #include "transactionstate.hpp"
 #include "variables.hpp"
 
-// moved to sipp_globals.hpp
-//#ifndef MAX
-//#define MAX(a, b) ((a) > (b) ? (a) : (b))
-//#endif
-//#define UDP_MAX_RETRANS_INVITE_TRANSACTION 5
-//#define UDP_MAX_RETRANS_NON_INVITE_TRANSACTION 9
-//#define UDP_MAX_RETRANS MAX(UDP_MAX_RETRANS_INVITE_TRANSACTION, UDP_MAX_RETRANS_NON_INVITE_TRANSACTION)
-//#define DEFAULT_T2_TIMER_VALUE  4000
-//#define DEFAULT_AUTO_ANSWER_EXPIRES 3600
-#define MAX_SUB_MESSAGE_LENGTH  2049
-#define SIP_TRANSACTION_TIMEOUT 32000
 
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+#define UDP_MAX_RETRANS_INVITE_TRANSACTION 5
+#define UDP_MAX_RETRANS_NON_INVITE_TRANSACTION 9
+#define UDP_MAX_RETRANS MAX(UDP_MAX_RETRANS_INVITE_TRANSACTION, UDP_MAX_RETRANS_NON_INVITE_TRANSACTION)
+#define MAX_SUB_MESSAGE_LENGTH  2049
+#define DEFAULT_T2_TIMER_VALUE  4000
+#define SIP_TRANSACTION_TIMEOUT 32000
+#define DEFAULT_AUTO_ANSWER_EXPIRES 3600
 
 #define MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS 20
 
 /* Retransmission check methods. */
-// moved to sipp_globals.hpp
-//#define RTCHECK_FULL  1
+#define RTCHECK_FULL  1
 #define RTCHECK_LOOSE 2
 
 /* For keeping track of short and long form header */
@@ -436,6 +434,7 @@ void free_default_messages();
 SendingMessage *get_default_message(const char *which);
 void set_default_message(const char *which, char *message);
 
+char * get_call_id(char *msg);
 
 enum T_encoding {
   E_ENCODING_NONE,

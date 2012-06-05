@@ -65,7 +65,7 @@
 // directly referenced but by covered by above
 #include "actions.hpp"
 #include "common.hpp"
-#include "infile.hpp" // FileContents -> FileMap infile
+#include "infile.hpp"
 #include "message.hpp"
 #include "prepare_pcap.hpp"
 #include "stat.hpp"
@@ -82,8 +82,7 @@ extern  struct pollfd        pollfiles[];
 extern  SSL_CTX             *sip_trp_ssl_ctx;
 #endif
 
-// moved to sipp_globals.hpp
-//extern  map<string, struct sipp_socket *>     map_perip_fd;
+extern  map<string, struct sipp_socket *>     map_perip_fd;
 
 char short_and_long_headers[NUM_OF_SHORT_FORM_HEADERS * 2][MAX_HEADER_NAME_LEN] = {
   "i:", "m:", "e:", "l:", "c:", "f:", "s:", "k:", "t:", "v:",
@@ -647,11 +646,11 @@ call::~call()
 {
   DEBUG_IN();
   computeStat(CStat::E_ADD_CALL_DURATION, clock_tick - start_time);
-#ifndef WIN32
+
   if(comp_state) {
     comp_free(&comp_state);
   }
-#endif
+
   if (call_remote_socket && (call_remote_socket != main_remote_socket)) {
     sipp_close_socket(call_remote_socket);
   }
@@ -930,11 +929,10 @@ int call::send_raw(char * msg, int index, int len)
   if((index!=-1) && (lost(index))) {
     TRACE_MSG("%s message voluntary lost (while sending).", TRANSPORT_TO_STRING(transport));
     callDebug("%s message voluntary lost (while sending) (index %d, hash %u).\n", TRANSPORT_TO_STRING(transport), index, hash(msg));
-#ifndef WIN32
+
     if(comp_state) {
       comp_free(&comp_state);
     }
-#endif
     call_scenario->messages[index] -> nb_lost++;
     return 0;
   }
@@ -1677,10 +1675,7 @@ bool call::executeMessage(message *curmsg)
       assert(!curmsg->send_scheme->isResponse()); // not allowed to use start_txn with responses
       TransactionState &txn = ds->create_transaction(curmsg->getTransactionName());
       // extract branch and cseq from sent message rather than internal variables in case they were specified manually
-      unsigned long int cseq = get_cseq_value(last_send_msg);
-      if (cseq == 0) 
-        WARNING("No valid Cseq in message %d", curmsg->index);
-      txn.startClient(extract_branch(last_send_msg), cseq, extract_cseq_method(last_send_msg));
+      txn.startClient(extract_branch(last_send_msg), get_cseq_value(last_send_msg), extract_cseq_method(last_send_msg));
     }
 
     // store the message index of this message in the transaction (for error checking)
@@ -1700,8 +1695,6 @@ bool call::executeMessage(message *curmsg)
     // store it based on what was sent here.
     if (ds->call_id.empty()) {
       ds->call_id = get_call_id(last_send_msg);
-      if (ds->call_id.empty())
-        WARNING("(1) No valid Call-ID: header in message '%s'", last_send_msg);
       DEBUG("Storing manually specified call_id '%s' with dialog %d as extracted from sent message", ds->call_id.c_str(), curmsg->dialog_number);
     }
     // update client cseq method for sent requests (ie client transactions) for non-transaction case
@@ -2238,9 +2231,6 @@ int call::sendCmdMessage(message *curmsg)
     peer_dest = curmsg->peer_dest;
     if(peer_dest) {
       peer_socket = get_peer_socket(peer_dest);
-      if (peer_socket == NULL) {
-        REPORT_ERROR("get_peer_socket: Peer %s not found\n", peer_dest);
-      }
       rc = write_socket(*peer_socket, dest, strlen(dest), WS_BUFFER, &call_peer);
     } else {
       rc = write_socket(twinSippSocket, dest, strlen(dest), WS_BUFFER, &call_peer);
@@ -2830,11 +2820,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     }
     case E_Message_Last_CSeq_Number: {
       DEBUG("[last_CSeq_Number] %s", txn.trace().c_str());
-      unsigned long int cseq = get_cseq_value(txn.getLastReceivedMessage().c_str());
-      if (cseq == 0) 
-        WARNING("No valid Cseq in message");
-      //dest += sprintf(dest, "%ld", get_cseq_value(txn.getLastReceivedMessage().c_str()) + comp->offset);
-      dest += sprintf(dest, "%ld", cseq + comp->offset);
+      dest += sprintf(dest, "%ld", get_cseq_value(txn.getLastReceivedMessage().c_str()) + comp->offset);
       break;
     }
     case E_Message_Last_Branch: {
@@ -3494,11 +3480,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
         TRACE_MSG("%s message (retrans) lost (recv).",
                   TRANSPORT_TO_STRING(transport));
         callDebug("%s message (retrans) lost (recv) (hash %u)\n", TRANSPORT_TO_STRING(transport), hash(msg));
-#ifndef WIN32
+
         if(comp_state) {
           comp_free(&comp_state);
         }
-#endif
         call_scenario->messages[recv_retrans_recv_index] -> nb_lost++;
         return true;
       }
@@ -3894,26 +3879,19 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
     TRACE_MSG("%s message lost (recv).",
               TRANSPORT_TO_STRING(transport));
     callDebug("%s message lost (recv) (hash %u).\n",
-      TRANSPORT_TO_STRING(transport), hash(msg));
-#ifndef WIN32
+              TRANSPORT_TO_STRING(transport), hash(msg));
     if(comp_state) {
       comp_free(&comp_state);
     }
-#endif
     call_scenario->messages[search_index] -> nb_lost++;
     return true;
   }
 
   /* Update peer_tag (remote_tag) */
-  if (reply_code){
+  if (reply_code)
     ptr = get_tag_from_to(msg);
-    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
-      REPORT_ERROR(ptr);
-  }else{
+  else
     ptr = get_tag_from_from(msg);
-    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
-      REPORT_ERROR(ptr);
-  }
   if (ptr) {
     if(strlen(ptr) > (MAX_HEADER_LEN - 1))
       REPORT_ERROR("Peer tag too long. Change MAX_HEADER_LEN and recompile sipp");
@@ -3930,15 +3908,10 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
 
   }
   /* Update local_tag */
-  if (reply_code){
+  if (reply_code)
     ptr = get_tag_from_from(msg);
-    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
-      REPORT_ERROR(ptr);
-  }else{
+  else
     ptr = get_tag_from_to(msg);
-    if (ptr && (strncmp(ptr,errflag, strlen(errflag)) == 0))
-      REPORT_ERROR(ptr);
-  }
   if (ptr) {
     if(strlen(ptr) > (MAX_HEADER_LEN - 1))
       REPORT_ERROR("Local tag too long. Change MAX_HEADER_LEN and recompile sipp");
@@ -3964,10 +3937,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   // If start_txn then we need to store all the interesting per-transactions values
   if (call_scenario->messages[search_index]->isStartTxn()) {
     TransactionState &txn = ds->create_transaction(call_scenario->messages[search_index]->getTransactionName());
-    unsigned long int cseq = get_cseq_value(msg);
-    if (cseq == 0) 
-      WARNING("No valid Cseq in message");
-    txn.startServer(extract_branch(msg), cseq, extract_cseq_method(msg));
+    txn.startServer(extract_branch(msg), get_cseq_value(msg), extract_cseq_method(msg));
   }
 
   // If we are part of a transaction, mark this as the final response.
@@ -4010,8 +3980,6 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   if (reply_code == 0) {
     // update server_* only for requests
     ds->server_cseq = get_cseq_value(msg);
-    if (ds->server_cseq == 0)
-      WARNING("No valid Cseq in message");
     extract_cseq_method (ds->server_cseq_method, msg);
   }
 

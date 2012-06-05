@@ -29,7 +29,7 @@ struct timezone {
 int gettimeofday(struct timeval *tv, struct timezone *tz);
 
 int strcasecmp(const char *str1, const char *str2);
-int strncasecmp(const char *str1, const char *str2, size_t n);
+int strncasecmp(const char *str1, const char *str2, int n);
 const char *strcasestr(const char *s, const char *pattern);
 char *strcasestr(char *s, const char *pattern);
 
@@ -120,12 +120,9 @@ void ClearScreen();
 #include <sys/time.h>   //gettimeofday
 #include <strings.h>    //strcasecmp strncasecmp
 #include <string.h>     //strndup,strcasestr
-#include <limits.h>     //PATH_MAX
-#include <unistd.h>     // usleep
-
 #define SETSOCKOPT_TYPE (void *)
-#define MAX_PATH              PATH_MAX
-//#define MAX_PATH                   260
+
+#define MAX_PATH                   260
 
 #endif
 

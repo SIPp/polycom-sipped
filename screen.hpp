@@ -42,7 +42,7 @@ int _TRACE_EXEC(const char *fmt, ...);
 #define TRACE_EXEC(x, ...)  { _TRACE_EXEC(x, ##__VA_ARGS__); _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
 
 void screen_set_exename(char * exe_name);
-void screen_init(void (*exit_handler)(), void (*releaseGlobalAllocations_handler)());
+void screen_init(void (*exit_handler)());
 void screen_clear();
 int  screen_readkey();
 void screen_exit(int rc);

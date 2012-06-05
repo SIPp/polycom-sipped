@@ -13,7 +13,7 @@ if not exist c:\cygwin (
 if exist C:\TA_Config\SIPped\rsipp\rsipp.config.xml (
   copy /Y  C:\TA_Config\SIPped\rsipp\rsipp.config.xml "%TA_DIR%\SIPped\rsipp\" ) 
   
-REM cd "%TA_DIR%\SIPped\SIPped\src"
+#cd "%TA_DIR%\SIPped\SIPped\src"
 
 IF  /I "X%1"=="Xhelp" goto :HELP
 IF  /I "X%1"=="X?" goto :HELP

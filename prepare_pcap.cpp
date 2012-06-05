@@ -20,7 +20,7 @@
 #ifdef WIN32
 # include <winsock2.h>
 # include <ws2tcpip.h>
-
+# include "win32_compatibility.hpp"
 #else
 # include <netinet/in.h>
 # include <netinet/udp.h>
@@ -38,7 +38,6 @@
 #include "logging.hpp"
 //
 #include <pcap.h>
-#include "win32_compatibility.hpp"
 
 /* We define our own structures for Ethernet Header and IPv6 Header as they are not available on CYGWIN.
  * We only need the fields, which are necessary to determine the type of the next header.

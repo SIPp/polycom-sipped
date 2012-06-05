@@ -40,8 +40,6 @@
 
 #include <list>
 #include <set>
-#include <map>
-#include <string>
 
 #include "variables.hpp" // VariableTable
 
@@ -52,15 +50,7 @@
 #include "infile.hpp"   // FileContents
 #include <map>
 #include <string>
-//#include "logging.hpp"
-#ifdef WIN32
-#include <Winsock2.h>
-#define ssize_t int
-#else
-#include <sys/socket.h>
-#endif
-
-
+#include "logging.hpp"
 #include <stdio.h>
 #include <stddef.h>
 
@@ -97,22 +87,6 @@
 #define MAX_PEER_SIZE              4096  /* 3pcc extended mode: max size of peer names */
 #define MAX_LOCAL_TWIN_SOCKETS     10    /*3pcc extended mode:max number of peers from which
 cmd messages are received */
-
-
-
-/****** moved from call.hpp to remove sipp_globals.cpp depenancy on call.hpp   */
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-#define RTCHECK_FULL  1
-#define UDP_MAX_RETRANS_INVITE_TRANSACTION 5
-#define UDP_MAX_RETRANS MAX(UDP_MAX_RETRANS_INVITE_TRANSACTION, UDP_MAX_RETRANS_NON_INVITE_TRANSACTION)
-#define UDP_MAX_RETRANS_NON_INVITE_TRANSACTION 9
-#define DEFAULT_T2_TIMER_VALUE  4000
-#define DEFAULT_AUTO_ANSWER_EXPIRES 3600
-
-//
 
 /******************** Default parameters ***********************/
 
@@ -410,8 +384,6 @@ enum E_Alter_YesNo {
   E_ALTER_YES=0,
   E_ALTER_NO
 };
-//moved from call.cpp
-extern  std::map<std::string, struct sipp_socket *>     map_perip_fd;
 
 /************************** Trace Files ***********************/
 
@@ -444,13 +416,12 @@ void                       print_count_file(FILE *f, int header);
 
 
 /********************* Mini-Parser Routines *******************/
-extern const char*        errflag;
+
 int                        get_method(char *msg);
 char                      *get_tag_from_to(char *msg);
 char                      *get_tag_from_from(char *msg);
 unsigned long int          get_cseq_value(const char *msg);
 unsigned long              get_reply_code(const char *msg);
-char                      *get_call_id(char *msg);
 
 /********************** Network Interfaces ********************/
 
@@ -530,8 +501,6 @@ void                         sipp_close_socket(struct sipp_socket *socket);
 
 /********************* Utilities functions  *******************/
 
-void                       init_tolower_table(); // must call befure using strcasestrX routines
-char                      *strncasestr(char *s, const char *find, size_t n);
 char                      *strcasestr2 ( const char *__haystack, const char *__needle);
 char                      *get_peer_addr(char *);
 int                        get_decimal_from_hex(char hex);
@@ -547,19 +516,21 @@ void                        determine_remote_and_local_ip();
 
 char                      *jump_over_timestamp(char *src);
 
-
-
 /* extended 3PCC mode */
 struct sipp_socket       **get_peer_socket(char *);
 bool                       is_a_peer_socket(struct sipp_socket *);
 bool                       is_a_local_socket(struct sipp_socket *);
+void                       connect_to_peer (char *, int , sockaddr_storage *, char *, struct sipp_socket **);
+void                       connect_to_all_peers ();
+void                       connect_local_twin_socket(char *);
+void                       close_peer_sockets();
+void                       close_local_sockets();
+void                       free_peer_addr_map();
 
 /******************** Recv Poll Processing *********************/
 
 extern struct sipp_socket  *sockets[SIPP_MAXFDS];
 
-/******************** Hacky things done to segregate sipp.cpp ******/
-void stop_all_traces();
 
 /************************** Constants **************************/
 

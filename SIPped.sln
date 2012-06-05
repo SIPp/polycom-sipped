@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 9.00
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SIPped", "SIPped.vcproj", "{26C78237-A4F2-405E-A9A9-433447C94C21}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SIPpedTest", "UnitTest\SIPpedTest.vcproj", "{604E29AD-F531-4176-B9D6-9FBE1978EB37}"
+	ProjectSection(ProjectDependencies) = postProject
+		{26C78237-A4F2-405E-A9A9-433447C94C21} = {26C78237-A4F2-405E-A9A9-433447C94C21}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
