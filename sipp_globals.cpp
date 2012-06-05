@@ -686,6 +686,14 @@ bool is_a_peer_socket(struct sipp_socket *peer_socket)
   }
 }
 
+bool reconnect_allowed()
+{
+  if (reset_number == -1) {
+    return true;
+  }
+  return (reset_number > 0);
+}
+
 // Hacky stuff 
 
 void stop_all_traces()

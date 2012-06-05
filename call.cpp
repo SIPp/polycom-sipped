@@ -647,11 +647,11 @@ call::~call()
 {
   DEBUG_IN();
   computeStat(CStat::E_ADD_CALL_DURATION, clock_tick - start_time);
-
+#ifndef WIN32
   if(comp_state) {
     comp_free(&comp_state);
   }
-
+#endif
   if (call_remote_socket && (call_remote_socket != main_remote_socket)) {
     sipp_close_socket(call_remote_socket);
   }
@@ -930,10 +930,11 @@ int call::send_raw(char * msg, int index, int len)
   if((index!=-1) && (lost(index))) {
     TRACE_MSG("%s message voluntary lost (while sending).", TRANSPORT_TO_STRING(transport));
     callDebug("%s message voluntary lost (while sending) (index %d, hash %u).\n", TRANSPORT_TO_STRING(transport), index, hash(msg));
-
+#ifndef WIN32
     if(comp_state) {
       comp_free(&comp_state);
     }
+#endif
     call_scenario->messages[index] -> nb_lost++;
     return 0;
   }
@@ -3493,10 +3494,11 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
         TRACE_MSG("%s message (retrans) lost (recv).",
                   TRANSPORT_TO_STRING(transport));
         callDebug("%s message (retrans) lost (recv) (hash %u)\n", TRANSPORT_TO_STRING(transport), hash(msg));
-
+#ifndef WIN32
         if(comp_state) {
           comp_free(&comp_state);
         }
+#endif
         call_scenario->messages[recv_retrans_recv_index] -> nb_lost++;
         return true;
       }
@@ -3892,10 +3894,12 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
     TRACE_MSG("%s message lost (recv).",
               TRANSPORT_TO_STRING(transport));
     callDebug("%s message lost (recv) (hash %u).\n",
-              TRANSPORT_TO_STRING(transport), hash(msg));
+      TRANSPORT_TO_STRING(transport), hash(msg));
+#ifndef WIN32
     if(comp_state) {
       comp_free(&comp_state);
     }
+#endif
     call_scenario->messages[search_index] -> nb_lost++;
     return true;
   }

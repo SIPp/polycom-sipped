@@ -1,6 +1,16 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
+3.2.43
+- disabled compression to eliminate dependancy on dlfcn for win32
+- minor socket helping functions rearranged.
+
+3.2.42 Jun 04 2012
+- msvc refactoring in prep for windows port
+- moved some sipp mini parser methods to sipp_globals (get_tag_from_from, get_tag_from_to, get_call_id
+- moved perip_fd to sipp_globals
+
+
 3.2.41 Jun 01 2012
 - msvc gtest fixes
 - refactoring of screen, call, sipp in prep for win32 port

@@ -66,10 +66,11 @@
 #ifdef WIN32
 # include <io.h>
 # include <process.h>
+#else
+#include "comp.hpp"
 #endif
 
 #include "call.hpp"
-#include "comp.hpp"
 #include "logging.hpp"
 #include "opentask.hpp"
 #include "reporttask.hpp"
@@ -397,8 +398,8 @@ struct sipp_option options_table[] = {
     "- tn: TCP with one socket per call,\n"
     "- l1: TLS with one socket,\n"
     "- ln: TLS with one socket per call,\n"
-    "- c1: u1 + compression (only if compression plugin loaded),\n"
-    "- cn: un + compression (only if compression plugin loaded).  This plugin is not provided with sipp.\n"
+    "- c1: u1 + compression (only if compression plugin loaded),DISABLED\n"
+    "- cn: un + compression (only if compression plugin loaded).  This plugin is not provided with sipp.DISABLED\n"
     , SIPP_OPTION_TRANSPORT, NULL, 1
   },
 
@@ -926,11 +927,13 @@ void print_stats_in_file(FILE * f, int last, int diagram_only=0)
     }
     fprintf(f,SIPP_ENDL);
 
+#ifndef WIN32
     if(compression) {
       fprintf(f,"  Comp resync: %d sent, %d recv" ,
               resynch_send, resynch_recv);
       fprintf(f,SIPP_ENDL);
     }
+#endif
 
     /* 4th line , sockets and optional errors */
     sprintf(temp_str,"%d open sockets",
@@ -2382,6 +2385,7 @@ void free_socketbuf(struct socketbuf *socketbuf)
 
 size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
 {
+#ifndef WIN32
   DEBUG_IN();
   if(compression && len) {
     if (useMessagef == 1) {
@@ -2430,6 +2434,9 @@ size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
     }
   }
   DEBUG_OUT();
+#else
+  REPORT_ERROR("Cannot Decompress. Compression is not enabled in this build");
+#endif
   return len;
 }
 
@@ -2522,6 +2529,7 @@ static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, 
     break;
   case T_UDP:
     if(compression) {
+#ifndef WIN32
       static char comp_msg[SIPP_MAX_MSG_SIZE];
       strcpy(comp_msg, buffer);
       if(comp_compress(&socket->ss_comp_state,
@@ -2532,6 +2540,9 @@ static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, 
       buffer = (char *)comp_msg;
 
       TRACE_MSG("---\nCompressed message len: %d\n", len);
+#else
+      REPORT_ERROR("Cannot Compress.  Compression is not enabled in this build");
+#endif
     }
 
     DEBUG("sendto(%d, buffer, %d, 0, %s:%hu [&=%p], %d)", socket->ss_fd, len, inet_ntoa( ((struct sockaddr_in*)dest)->sin_addr ), ntohs(((struct sockaddr_in*)dest)->sin_port), dest, SOCK_ADDR_SIZE(dest));
@@ -4479,7 +4490,7 @@ int main(int argc, char *argv[])
         }
         exit(EXIT_OTHER);
       case SIPP_OPTION_VERSION:
-        printf("\n SIPped v3.2.42 BETA"
+        printf("\n SIPped v3.2.43 BETA"
 #ifdef _USE_OPENSSL
                "-TLS"
 #endif
@@ -4641,11 +4652,15 @@ int main(int argc, char *argv[])
 #endif
           break;
         case 'c':
+#ifndef WIN32
           if(strlen(comp_error)) {
             REPORT_ERROR("No " COMP_PLUGGIN " pluggin available:\n%s", comp_error);
           }
           transport = T_UDP;
           compression = 1;
+#else
+          REPORT_ERROR("Compression is not supported in this build of sipp");
+#endif
         }
         switch(argv[argi][1]) {
         case '1':
@@ -5440,13 +5455,13 @@ int main(int argc, char *argv[])
 }
 
 
-bool reconnect_allowed()
-{
-  if (reset_number == -1) {
-    return true;
-  }
-  return (reset_number > 0);
-}
+//bool reconnect_allowed()
+//{
+//  if (reset_number == -1) {
+//    return true;
+//  }
+//  return (reset_number > 0);
+//}
 
 void reset_connection(struct sipp_socket *socket)
 {
