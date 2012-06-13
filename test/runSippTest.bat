@@ -8,7 +8,7 @@ set SIPPED=%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped
 set CYGWIN=nodosfilewarning
 
 rem copy /Y  C:\TA_Config\SIPped\rsipp\rsipp.config.xml "%TA_DIR%\SIPped\rsipp\"
-copy /Y  c:\TA_config\CI-TA-01\SIPped\rsipp\rsipp.config.xml "%TA_DIR%\SIPped\rsipp\"
+copy /Y  %TA_DIR%\tmp\rsipp.config.xml "%TA_DIR%\SIPped\rsipp\"
 
 cat "%TA_DIR%\SIPped\rsipp\rsipp.config.xml"
 
