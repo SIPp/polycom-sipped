@@ -40,7 +40,7 @@ REM IF (%argC%) EQU (0) (set pathname=%CD%)
 IF (%argC%) EQU (0) (set pathname="`pwd`") 
 
 REM PATH to make, rm, and other makefile commands
-c:\cygwin\bin\bash   -c 'PATH="/usr/local/bin:/usr/bin:${PATH}";export PATH;cd %pathname%;make debug_pcap_ossl_cygwin; make unit_test;'
+c:\cygwin\bin\bash   -c 'PATH="/usr/local/bin:/usr/bin:${PATH}";export PATH;cd %pathname%;make clean;make debug_pcap_ossl_cygwin; make unit_test;'
 
 
 REM --rcfile doesnt seem to process profile, no change to path 
