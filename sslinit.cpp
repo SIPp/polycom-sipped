@@ -17,9 +17,11 @@
  *           From Hewlett Packard Company.
  */
 
+
 #define SSL_MAIN
 #include "sslcommon.hpp"
 
+#ifdef _USE_OPENSSL
 int init_OpenSSL(void)
 {
   if (!Thread_setup() || !SSL_library_init() ) {
@@ -64,4 +66,4 @@ int  SSL_ERROR(void)
   }
   return 1;
 }
-
+#endif

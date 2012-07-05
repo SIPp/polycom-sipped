@@ -45,7 +45,7 @@
 #ifndef __PACKET32
 #define __PACKET32
 
-#include <winsock2.h>
+#include <WinSock2.h>
 
 #ifdef HAVE_AIRPCAP_API
 #include <airpcap.h>

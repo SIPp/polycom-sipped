@@ -83,42 +83,6 @@ SQN sqn_he= {0x00,0x00,0x00,0x00,0x00,0x00};
 
 /* end AKA */
 
-
-int createAuthHeaderMD5(char * user, char * password, int password_len, char * method,
-                        char * uri, char * msgbody, char * auth,
-                        char * algo, char * result);
-int createAuthHeaderAKAv1MD5(char * user, char * OP,
-                             char * AMF,
-                             char * K,
-                             char * method,
-                             char * uri, char * msgbody, char * auth, char *algo,
-                             char * result);
-
-
-/* This function is from RFC 2617 Section 5 */
-
-void hashToHex (unsigned char *_b, unsigned char *_h)
-{
-  unsigned short i;
-  unsigned char j;
-
-  for (i = 0; i < MD5_HASH_SIZE; i++) {
-    j = (_b[i] >> 4) & 0xf;
-    if (j <= 9) {
-      _h[i * 2] = (j + '0');
-    } else {
-      _h[i * 2] = (j + 'a' - 10);
-    }
-    j = _b[i] & 0xf;
-    if (j <= 9) {
-      _h[i * 2 + 1] = (j + '0');
-    } else {
-      _h[i * 2 + 1] = (j + 'a' - 10);
-    }
-  };
-  _h[HASH_HEX_SIZE] = '\0';
-}
-
 char *stristr (const char *s1, const char *s2)
 {
   char *cp = (char*) s1;
@@ -144,48 +108,6 @@ char *stristr (const char *s1, const char *s2)
     cp++;
   }
   return 0;
-}
-
-int createAuthHeader(char * user, char * password, char * method,
-                     char * uri, char * msgbody, char * auth,
-                     char * aka_OP,
-                     char * aka_AMF,
-                     char * aka_K,
-                     char * result)
-{
-
-  char algo[32]="MD5";
-  char *start, *end;
-
-  if ((start = stristr(auth, "Digest")) == NULL) {
-    sprintf(result, "createAuthHeader: authentication must be digest");
-    return 0;
-  }
-
-  if ((start = stristr(auth, "algorithm=")) != NULL) {
-    start = start + strlen("algorithm=");
-    if (*start == '"') {
-      start++;
-    }
-    end = start + strcspn(start, " ,\"\r\n");
-    strncpy(algo, start, end - start);
-    algo[end - start] ='\0';
-
-  }
-
-  if (strncasecmp(algo, "MD5", 3)==0) {
-    return createAuthHeaderMD5(user,password,strlen(password),method,uri,msgbody,auth,algo,result);
-  } else if (strncasecmp(algo, "AKAv1-MD5", 9)==0) {
-    return createAuthHeaderAKAv1MD5(user, aka_OP,
-                                    aka_AMF,
-                                    aka_K,
-                                    method,uri,msgbody,auth,algo,result);
-  } else {
-    sprintf(result, "createAuthHeader: authentication must use MD5 or AKAv1-MD5");
-    return 0;
-  }
-
-
 }
 
 
@@ -223,6 +145,32 @@ int getAuthParameter(char *name, char *header, char *result, int len)
   return end - start;
 }
 
+
+/* This function is from RFC 2617 Section 5 */
+
+void hashToHex (unsigned char *_b, unsigned char *_h)
+{
+  unsigned short i;
+  unsigned char j;
+
+  for (i = 0; i < MD5_HASH_SIZE; i++) {
+    j = (_b[i] >> 4) & 0xf;
+    if (j <= 9) {
+      _h[i * 2] = (j + '0');
+    } else {
+      _h[i * 2] = (j + 'a' - 10);
+    }
+    j = _b[i] & 0xf;
+    if (j <= 9) {
+      _h[i * 2 + 1] = (j + '0');
+    } else {
+      _h[i * 2 + 1] = (j + 'a' - 10);
+    }
+  };
+  _h[HASH_HEX_SIZE] = '\0';
+}
+
+#ifdef _USE_OPENSSL
 int createAuthHeaderMD5(char * user, char * password, int password_len, char * method,
                         char * uri, char * msgbody, char * auth,
                         char * algo, char * result)
@@ -331,85 +279,7 @@ int createAuthHeaderMD5(char * user, char * password, int password_len, char * m
   return 1;
 }
 
-int createAuthResponseMD5(char * user, char * password, int password_len, char * method,
-                          char * uri, char * realm, char *nonce, unsigned char * result)
-{
-  unsigned char ha1[MD5_HASH_SIZE], ha2[MD5_HASH_SIZE];
-  unsigned char resp[MD5_HASH_SIZE];
-  unsigned char ha1_hex[HASH_HEX_SIZE+1], ha2_hex[HASH_HEX_SIZE+1];
-  char tmp[MAX_HEADER_LEN];
-  MD5_CTX Md5Ctx;
-
-  // Load in A1
-  MD5_Init(&Md5Ctx);
-  MD5_Update(&Md5Ctx, user, strlen(user));
-  MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, realm, strlen(realm));
-  MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, password, password_len);
-  MD5_Final(ha1, &Md5Ctx);
-  hashToHex(&ha1[0], &ha1_hex[0]);
-
-  if (auth_uri) {
-    sprintf(tmp, "sip:%s", auth_uri);
-  } else {
-    strcpy(tmp, uri);
-  }
-
-  // Load in A2
-  MD5_Init(&Md5Ctx);
-  MD5_Update(&Md5Ctx, method, strlen(method));
-  MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, tmp, strlen(tmp));
-  MD5_Final(ha2, &Md5Ctx);
-  hashToHex(&ha2[0], &ha2_hex[0]);
-
-  MD5_Init(&Md5Ctx);
-  MD5_Update(&Md5Ctx, &ha1_hex, HASH_HEX_SIZE);
-  MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, nonce, strlen(nonce));
-  MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, &ha2_hex, HASH_HEX_SIZE);
-  MD5_Final(resp, &Md5Ctx);
-  hashToHex(&resp[0], result);
-
-  return 1;
-}
-
-int verifyAuthHeader(char * user, char * password, char * method, char * auth)
-{
-  char algo[MAX_HEADER_LEN];
-  unsigned char result[HASH_HEX_SIZE];
-  char response[HASH_HEX_SIZE + 2];
-  char realm[MAX_HEADER_LEN];
-  char nonce[MAX_HEADER_LEN];
-  char uri[MAX_HEADER_LEN];
-  char *start;
-  int len;
-
-  if ((start = stristr(auth, "Digest")) == NULL) {
-    WARNING("verifyAuthHeader: authentication must be digest is %s", auth);
-    return 0;
-  }
-
-  len = getAuthParameter("algorithm", auth, algo, sizeof(algo));
-  if (algo[0] == '\0') {
-    strcpy(algo, "MD5");
-  }
-  if (strncasecmp(algo, "MD5", 3)==0) {
-    getAuthParameter("realm", auth, realm, sizeof(realm));
-    getAuthParameter("uri", auth, uri, sizeof(uri));
-    getAuthParameter("nonce", auth, nonce, sizeof(nonce));
-    createAuthResponseMD5(user,password,strlen(password),method,uri,realm,nonce,result);
-    getAuthParameter("response", auth, response, sizeof(response));
-    return !strcmp((char *)result, response);
-  } else {
-    WARNING("createAuthHeader: authentication must use MD5 or AKAv1-MD5, value is '%s'", algo);
-    return 0;
-  }
-}
-
-
+#endif
 
 /*"
 ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";*/
@@ -549,6 +419,7 @@ static int base64_val(char x) {
   return 0;
 }
 
+
 char * base64_decode_string( const char *buf, unsigned int len, int *newlen )
 {
   unsigned i,j;
@@ -594,82 +465,8 @@ char * base64_decode_string( const char *buf, unsigned int len, int *newlen )
   return out;
 }
 
-char base64[65]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-char * base64_encode_string( const char *buf, unsigned int len, int *newlen )
-{
-  int i,k;
-  int triplets,rest;
-  char *out,*ptr;
 
-  triplets = len/3;
-  rest = len%3;
-  out = (char *)malloc( ( triplets * 4 ) + 8 );
-
-  ptr = out;
-  for(i=0; i<triplets*3; i+=3) {
-    k = (((unsigned char) buf[i])&0xFC)>>2;
-    *ptr=base64[k];
-    ptr++;
-
-    k = (((unsigned char) buf[i])&0x03)<<4;
-    k |=(((unsigned char) buf[i+1])&0xF0)>>4;
-    *ptr=base64[k];
-    ptr++;
-
-    k = (((unsigned char) buf[i+1])&0x0F)<<2;
-    k |=(((unsigned char) buf[i+2])&0xC0)>>6;
-    *ptr=base64[k];
-    ptr++;
-
-    k = (((unsigned char) buf[i+2])&0x3F);
-    *ptr=base64[k];
-    ptr++;
-  }
-  i=triplets*3;
-  switch(rest) {
-  case 0:
-    break;
-  case 1:
-    k = (((unsigned char) buf[i])&0xFC)>>2;
-    *ptr=base64[k];
-    ptr++;
-
-    k = (((unsigned char) buf[i])&0x03)<<4;
-    *ptr=base64[k];
-    ptr++;
-
-    *ptr='=';
-    ptr++;
-
-    *ptr='=';
-    ptr++;
-    break;
-  case 2:
-    k = (((unsigned char) buf[i])&0xFC)>>2;
-    *ptr=base64[k];
-    ptr++;
-
-    k = (((unsigned char) buf[i])&0x03)<<4;
-    k |=(((unsigned char) buf[i+1])&0xF0)>>4;
-    *ptr=base64[k];
-    ptr++;
-
-    k = (((unsigned char) buf[i+1])&0x0F)<<2;
-    *ptr=base64[k];
-    ptr++;
-
-    *ptr='=';
-    ptr++;
-    break;
-  }
-  // fprintf(stderr,"base64=%.*s >> %d\n",ptr-out,out,ptr-out);
-  *newlen = ptr-out;
-  return out;
-}
-
-
-
-
+#ifdef _USE_OPENSSL
 char hexa[17]="0123456789abcdef";
 int createAuthHeaderAKAv1MD5(char * user, char * aka_OP,
                              char * aka_AMF,
@@ -777,5 +574,210 @@ int createAuthHeaderAKAv1MD5(char * user, char * aka_OP,
   free(nonce);
   return 1;
 }
+
+
+int createAuthHeader(char * user, char * password, char * method,
+                     char * uri, char * msgbody, char * auth,
+                     char * aka_OP,
+                     char * aka_AMF,
+                     char * aka_K,
+                     char * result)
+{
+
+  char algo[32]="MD5";
+  char *start, *end;
+
+  if ((start = stristr(auth, "Digest")) == NULL) {
+    sprintf(result, "createAuthHeader: authentication must be digest");
+    return 0;
+  }
+
+  if ((start = stristr(auth, "algorithm=")) != NULL) {
+    start = start + strlen("algorithm=");
+    if (*start == '"') {
+      start++;
+    }
+    end = start + strcspn(start, " ,\"\r\n");
+    strncpy(algo, start, end - start);
+    algo[end - start] ='\0';
+
+  }
+
+  if (strncasecmp(algo, "MD5", 3)==0) {
+    return createAuthHeaderMD5(user,password,strlen(password),method,uri,msgbody,auth,algo,result);
+  } else if (strncasecmp(algo, "AKAv1-MD5", 9)==0) {
+    return createAuthHeaderAKAv1MD5(user, aka_OP,
+                                    aka_AMF,
+                                    aka_K,
+                                    method,uri,msgbody,auth,algo,result);
+  } else {
+    sprintf(result, "createAuthHeader: authentication must use MD5 or AKAv1-MD5");
+    return 0;
+  }
+
+
+}
+
+
+
+int createAuthResponseMD5(char * user, char * password, int password_len, char * method,
+                          char * uri, char * realm, char *nonce, unsigned char * result)
+{
+  unsigned char ha1[MD5_HASH_SIZE], ha2[MD5_HASH_SIZE];
+  unsigned char resp[MD5_HASH_SIZE];
+  unsigned char ha1_hex[HASH_HEX_SIZE+1], ha2_hex[HASH_HEX_SIZE+1];
+  char tmp[MAX_HEADER_LEN];
+  MD5_CTX Md5Ctx;
+
+  // Load in A1
+  MD5_Init(&Md5Ctx);
+  MD5_Update(&Md5Ctx, user, strlen(user));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, realm, strlen(realm));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, password, password_len);
+  MD5_Final(ha1, &Md5Ctx);
+  hashToHex(&ha1[0], &ha1_hex[0]);
+
+  if (auth_uri) {
+    sprintf(tmp, "sip:%s", auth_uri);
+  } else {
+    strcpy(tmp, uri);
+  }
+
+  // Load in A2
+  MD5_Init(&Md5Ctx);
+  MD5_Update(&Md5Ctx, method, strlen(method));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, tmp, strlen(tmp));
+  MD5_Final(ha2, &Md5Ctx);
+  hashToHex(&ha2[0], &ha2_hex[0]);
+
+  MD5_Init(&Md5Ctx);
+  MD5_Update(&Md5Ctx, &ha1_hex, HASH_HEX_SIZE);
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, nonce, strlen(nonce));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, &ha2_hex, HASH_HEX_SIZE);
+  MD5_Final(resp, &Md5Ctx);
+  hashToHex(&resp[0], result);
+
+  return 1;
+}
+#endif
+
+#ifdef _USE_OPENSSL
+int verifyAuthHeader(char * user, char * password, char * method, char * auth)
+{
+  char algo[MAX_HEADER_LEN];
+  unsigned char result[HASH_HEX_SIZE];
+  char response[HASH_HEX_SIZE + 2];
+  char realm[MAX_HEADER_LEN];
+  char nonce[MAX_HEADER_LEN];
+  char uri[MAX_HEADER_LEN];
+  char *start;
+  int len;
+
+  if ((start = stristr(auth, "Digest")) == NULL) {
+    WARNING("verifyAuthHeader: authentication must be digest is %s", auth);
+    return 0;
+  }
+
+  len = getAuthParameter("algorithm", auth, algo, sizeof(algo));
+  if (algo[0] == '\0') {
+    strcpy(algo, "MD5");
+  }
+  if (strncasecmp(algo, "MD5", 3)==0) {
+    getAuthParameter("realm", auth, realm, sizeof(realm));
+    getAuthParameter("uri", auth, uri, sizeof(uri));
+    getAuthParameter("nonce", auth, nonce, sizeof(nonce));
+    createAuthResponseMD5(user,password,strlen(password),method,uri,realm,nonce,result);
+    getAuthParameter("response", auth, response, sizeof(response));
+    return !strcmp((char *)result, response);
+  } else {
+    WARNING("createAuthHeader: authentication must use MD5 or AKAv1-MD5, value is '%s'", algo);
+    return 0;
+  }
+}
+#endif
+
+
+
+
+char base64[65]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+char * base64_encode_string( const char *buf, unsigned int len, int *newlen )
+{
+  int i,k;
+  int triplets,rest;
+  char *out,*ptr;
+
+  triplets = len/3;
+  rest = len%3;
+  out = (char *)malloc( ( triplets * 4 ) + 8 );
+
+  ptr = out;
+  for(i=0; i<triplets*3; i+=3) {
+    k = (((unsigned char) buf[i])&0xFC)>>2;
+    *ptr=base64[k];
+    ptr++;
+
+    k = (((unsigned char) buf[i])&0x03)<<4;
+    k |=(((unsigned char) buf[i+1])&0xF0)>>4;
+    *ptr=base64[k];
+    ptr++;
+
+    k = (((unsigned char) buf[i+1])&0x0F)<<2;
+    k |=(((unsigned char) buf[i+2])&0xC0)>>6;
+    *ptr=base64[k];
+    ptr++;
+
+    k = (((unsigned char) buf[i+2])&0x3F);
+    *ptr=base64[k];
+    ptr++;
+  }
+  i=triplets*3;
+  switch(rest) {
+  case 0:
+    break;
+  case 1:
+    k = (((unsigned char) buf[i])&0xFC)>>2;
+    *ptr=base64[k];
+    ptr++;
+
+    k = (((unsigned char) buf[i])&0x03)<<4;
+    *ptr=base64[k];
+    ptr++;
+
+    *ptr='=';
+    ptr++;
+
+    *ptr='=';
+    ptr++;
+    break;
+  case 2:
+    k = (((unsigned char) buf[i])&0xFC)>>2;
+    *ptr=base64[k];
+    ptr++;
+
+    k = (((unsigned char) buf[i])&0x03)<<4;
+    k |=(((unsigned char) buf[i+1])&0xF0)>>4;
+    *ptr=base64[k];
+    ptr++;
+
+    k = (((unsigned char) buf[i+1])&0x0F)<<2;
+    *ptr=base64[k];
+    ptr++;
+
+    *ptr='=';
+    ptr++;
+    break;
+  }
+  // fprintf(stderr,"base64=%.*s >> %d\n",ptr-out,out,ptr-out);
+  *newlen = ptr-out;
+  return out;
+}
+
+
+
 
 

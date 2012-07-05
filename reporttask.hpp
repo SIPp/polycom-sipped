@@ -59,3 +59,12 @@ private:
 };
 
 #endif
+
+
+/* Screen/Statistics Printing Functions. */
+int                        print_statistics(int last);
+void                       print_header_line(FILE *f, int last);
+int                        print_stats_in_file(FILE * f, int last, int diagram_only=0);
+int                        print_bottom_line(FILE *f, int last);
+int                        print_count_file(FILE *f, int header);
+

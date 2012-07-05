@@ -18,9 +18,9 @@
 
 #include <stdlib.h>
 #ifdef WIN32
-# include <winsock2.h>
+# include <WinSock2.h>
 # include <ws2tcpip.h>
-# include "win32_compatibility.hpp"
+
 #else
 # include <netinet/in.h>
 # include <netinet/udp.h>
@@ -38,6 +38,7 @@
 #include "logging.hpp"
 //
 #include <pcap.h>
+#include "win32_compatibility.hpp"
 
 /* We define our own structures for Ethernet Header and IPv6 Header as they are not available on CYGWIN.
  * We only need the fields, which are necessary to determine the type of the next header.
@@ -159,7 +160,6 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
     } else {
       REPORT_ERROR("Unrecognized link layer type");
     }
-    int num_of_vlan_headers = 0;
     if (ntohs(ip_type) == 0x8100 /* VLAN */) {
       int num_of_vlan_headers = 1;
       vlanhdr = (vlan_hdr *)((char *)pktdata + frame_size);

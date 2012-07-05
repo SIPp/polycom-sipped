@@ -26,17 +26,17 @@
 #include <iostream>
 #include <math.h>
 
-
-#include "scenario.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
-//
 #include "stat.hpp"
 #include "win32_compatibility.hpp"
 #include <stdlib.h>
 #include <iomanip>
 #include <fstream>
 
+#ifdef WIN32
+#include <time.h>
+#endif
 
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>

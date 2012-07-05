@@ -40,16 +40,16 @@
 #include "call.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
-//
 #include "common.hpp"
 #include "message.hpp"
 #include "scenario.hpp"
+#include "win32_compatibility.hpp" //strndup, strcasecmp
+
 #include <map>
 #include <string>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 struct KeywordMap {
   const char *keyword;
@@ -304,7 +304,6 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
                  ( strlen(keyword)> strlen(IP_Keywords[i].keyword )) &&
                  ( keyword[strlen(IP_Keywords[i].keyword)] ==  ' ')     )  ) {
             newcomp->type = IP_Keywords[i].type;
-            DEBUG("searching for no_square_bracket attribte in  '%s' " , keyword);
             if( strstr(keyword, "no_square_bracket")  ) {
               // want the no escape version of the ip address
 

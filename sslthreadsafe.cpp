@@ -51,6 +51,7 @@ unsigned long id_function(void)
 int
 Thread_setup(void)
 {
+#ifdef _USE_OPENSSL
   int i;
   mutex_buf = (MUTEX_TYPE *)malloc(sizeof(MUTEX_TYPE) * CRYPTO_num_locks());
 
@@ -70,6 +71,9 @@ Thread_setup(void)
   CRYPTO_set_dynlock_destroy_callback(dyn_destroy_function);
 #endif
   return 1;
+#else
+  return -1;
+#endif
 
 }
 
@@ -80,6 +84,7 @@ Thread_setup(void)
 int
 Thread_cleanup(void)
 {
+#ifdef _USE_OPENSSL
   int i;
 
   if (!mutex_buf)
@@ -99,8 +104,12 @@ Thread_cleanup(void)
 
   mutex_buf = NULL ;
   return 1;
+#else
+  return -1;
+#endif
 }
 
+#ifdef _USE_OPENSSL
 #ifdef   _DYNAMIC_LOCKING_MECHANISM_
 
 struct CRYPTO_dynlock_value *
@@ -134,4 +143,5 @@ dyn_destroy_function( struct CRYPTO_dynlock_value *val,\
   MUTEX_CLEANUP(val -> mutex);
 }
 
+#endif
 #endif

@@ -40,8 +40,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\include&quot;;.;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\include&quot;;.\pthreads_w32.2\include;&quot;$(TA_DIR)\SIPped\SIPped\src\OpenSSL-Win32\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_"
+				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\OpenSSL-Win32\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;.;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\include&quot;;.\pthreads_w32.2\include;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -49,6 +49,7 @@
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
+				ShowIncludes="false"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -61,10 +62,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="libdl.lib pthreadVC2.lib wpcap.lib ws2_32.lib"
+				AdditionalDependencies="pthreadVC2.lib wpcap.lib ws2_32.lib regex.lib"
 				ShowProgress="1"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\dlfcn-win32\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -174,6 +175,150 @@
 	</References>
 	<Files>
 		<Filter
+			Name="Header Files"
+			Filter="h;hpp;hxx;hm;inl;inc;xsd"
+			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
+			>
+			<File
+				RelativePath=".\actions.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\call.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\common.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CompositeDocument.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\deadcall.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\dialogstate.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\infile.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\listener.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\logging.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\message.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\milenage.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\opentask.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\prepare_pcap.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\reporttask.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\rijndael.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\scenario.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\screen.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\send_packets.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sipp.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sipp_globals.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sipp_sockethandler.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\socket_helper.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\socketowner.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sslcommon.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\stat.hpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="/DWIN32&#x0D;&#x0A;"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\task.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\transactionstate.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\variables.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\watchdog.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\win32_compatibility.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\xp_parser.hpp"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="Resource Files"
+			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
+			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
+			>
+		</Filter>
+		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
@@ -191,10 +336,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\comp.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CompositeDocument.cpp"
 				>
 			</File>
@@ -208,6 +349,10 @@
 			</File>
 			<File
 				RelativePath=".\infile.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\listener.cpp"
 				>
 			</File>
 			<File
@@ -260,11 +405,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\sipp.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\sipp_globals.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\sipp_stub.cpp"
+				RelativePath=".\sipp_sockethandler.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\socket_helper.cpp"
 				>
 			</File>
 			<File
@@ -282,18 +435,6 @@
 			<File
 				RelativePath=".\stat.cpp"
 				>
-			</File>
-			<File
-				RelativePath=".\stat.hpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCustomBuildTool"
-						CommandLine="/DWIN32&#x0D;&#x0A;"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\task.cpp"
@@ -319,130 +460,6 @@
 				RelativePath=".\xp_parser.cpp"
 				>
 			</File>
-		</Filter>
-		<Filter
-			Name="Header Files"
-			Filter="h;hpp;hxx;hm;inl;inc;xsd"
-			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
-			>
-			<File
-				RelativePath=".\actions.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\call.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\common.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\comp.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CompositeDocument.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\deadcall.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\dialogstate.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\infile.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\listener.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\message.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\milenage.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\opentask.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\prepare_pcap.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\reporttask.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\rijndael.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\scenario.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\screen.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\send_packets.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\sipp.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\sipp_globals.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\socketowner.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\sslcommon.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\task.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\transactionstate.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\variables.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\watchdog.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\win32_compatibility.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\xp_parser.hpp"
-				>
-			</File>
-		</Filter>
-		<Filter
-			Name="Resource Files"
-			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
-			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
-			>
 		</Filter>
 		<File
 			RelativePath=".\ReadMe.txt"

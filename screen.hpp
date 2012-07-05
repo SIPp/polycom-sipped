@@ -42,13 +42,14 @@ int _TRACE_EXEC(const char *fmt, ...);
 #define TRACE_EXEC(x, ...)  { _TRACE_EXEC(x, ##__VA_ARGS__); _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
 
 void screen_set_exename(char * exe_name);
-void screen_init(void (*exit_handler)());
+void screen_init(void (*exit_handler)(), void (*releaseGlobalAllocations_handler)());
 void screen_clear();
 int  screen_readkey();
 void screen_exit(int rc);
 
 #define EXIT_TEST_OK               0
 #define EXIT_TEST_FAILED           1
+#define EXIT_SCREEN_UNITTEST       94
 #define EXIT_TEST_MANUALLY_STOPPED 95
 #define EXIT_TEST_KILLED           96
 #define EXIT_TEST_RES_INTERNAL     97

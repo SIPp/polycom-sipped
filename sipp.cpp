@@ -42,8 +42,7 @@
 
 #ifdef WIN32
 #include <time.h>
-#include "win32_compatibility.hpp"
-#include <windows.h>
+#include <pthread.h>
 #else
 #include <netinet/tcp.h>
 #include <sys/poll.h>
@@ -51,6 +50,10 @@
 #include <dlfcn.h>
 #include <errno.h>
 #endif
+#include "win32_compatibility.hpp"
+
+
+
 
 #ifdef __SUNOS
 #include <stdarg.h>
@@ -65,18 +68,21 @@
 #ifdef WIN32
 # include <io.h>
 # include <process.h>
+#else
+#include "comp.hpp"
 #endif
 
 #include "call.hpp"
-#include "comp.hpp"
 #include "logging.hpp"
 #include "opentask.hpp"
 #include "reporttask.hpp"
 #include "screen.hpp"
 #include "sipp_globals.hpp"
-#include "sipp.hpp"   // some CYGWIN WIN32 stuff that may be needed
+#include "sipp.hpp"
 #include "watchdog.hpp"
 #include "socket_helper.hpp"
+#include "sipp_sockethandler.hpp"
+#include <stdexcept>
 
 #ifndef __CYGWIN
 #ifndef FD_SETSIZE
@@ -90,14 +96,9 @@
 
 #ifdef WIN32
 #pragma warning (disable: 4003; disable: 4996)
-#else
-#define SocketError() errno
 #endif
 
 #ifdef _USE_OPENSSL
-SSL_CTX  *sip_trp_ssl_ctx = NULL; /* For SSL cserver context */
-SSL_CTX  *sip_trp_ssl_ctx_client = NULL; /* For SSL cserver context */
-SSL_CTX  *twinSipp_sip_trp_ssl_ctx_client = NULL; /* For SSL cserver context */
 
 enum ssl_init_status {
   SSL_INIT_NORMAL, /* 0   Normal completion    */
@@ -114,15 +115,8 @@ int passwd_call_back_routine(char  *buf , int size , int flag, void *passwd)
 }
 #endif
 
-bool do_hide = true;
-bool show_index = true;
-
-static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd, int accepting);
 struct sipp_socket *ctrl_socket = NULL;  // ctrl_socket is network socket for remote control of SIPp
 struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket for use in SIPp poll loop
-
-int command_mode = 0;
-char *command_buffer = NULL;
 
 /* These could be local to main, but for the option processing table. */
 static int argiFileName;
@@ -177,20 +171,6 @@ struct sipp_option {
 #define SIPP_OPTION_LFOVERWRITE   37
 #define SIPP_OPTION_PLUGIN        38
 #define SIPP_OPTION_NO_CALL_ID_CHECK 39
-
-/* Code moved in from sipp.hpp and sipp_globals.hpp because not needed globally.
- * Keeping here for the time being in case we further refactor pieces of this
- * code out into another module separate from sipp.cpp (ie a sipp_socket.cpp)
- */
-
-/* Socket Buffer Management. */
-#define NO_COPY 0
-#define DO_COPY 1
-struct socketbuf          *alloc_socketbuf(char *buffer, size_t size, int copy);
-void                       free_socketbuf(struct socketbuf *socketbuf);
-
-/* End code moved from sipp.hpp and sipp_globals.hpp */
-
 
 /* Put Each option, its help text, and type in this table. */
 struct sipp_option options_table[] = {
@@ -396,8 +376,8 @@ struct sipp_option options_table[] = {
     "- tn: TCP with one socket per call,\n"
     "- l1: TLS with one socket,\n"
     "- ln: TLS with one socket per call,\n"
-    "- c1: u1 + compression (only if compression plugin loaded),\n"
-    "- cn: un + compression (only if compression plugin loaded).  This plugin is not provided with sipp.\n"
+    "- c1: u1 + compression (only if compression plugin loaded),DISABLED\n"
+    "- cn: un + compression (only if compression plugin loaded).  This plugin is not provided with sipp.DISABLED\n"
     , SIPP_OPTION_TRANSPORT, NULL, 1
   },
 
@@ -518,39 +498,9 @@ string prepend_environment_if_needed(const string &name, const string &message=s
 }
 
 
-
 #ifdef _USE_OPENSSL
-/****** SSL error handling                         *************/
-const char *sip_tls_error_string(SSL *ssl, int size)
-{
-  int err;
-  err=SSL_get_error(ssl, size);
-  switch(err) {
-  case SSL_ERROR_NONE:
-    return "No error";
-  case SSL_ERROR_ZERO_RETURN:
-    return "SSL_read returned SSL_ERROR_ZERO_RETURN (the TLS/SSL connection has been closed)";
-  case SSL_ERROR_WANT_WRITE:
-    return "SSL_read returned SSL_ERROR_WANT_WRITE";
-  case SSL_ERROR_WANT_READ:
-    return "SSL_read returned SSL_ERROR_WANT_READ";
-  case SSL_ERROR_WANT_CONNECT:
-    return "SSL_read returned SSL_ERROR_WANT_CONNECT";
-  case SSL_ERROR_WANT_ACCEPT:
-    return "SSL_read returned SSL_ERROR_WANT_ACCEPT";
-  case SSL_ERROR_WANT_X509_LOOKUP:
-    return "SSL_read returned SSL_ERROR_WANT_X509_LOOKUP";
-  case SSL_ERROR_SYSCALL:
-    if(size<0) { /* not EOF */
-      return strerror(errno);
-    } else { /* EOF */
-      return "SSL socket closed on SSL_read";
-    }
-  case SSL_ERROR_SSL:
-    return "SSL_read returned SSL_ERROR_SSL. One possibility is that the underlying TCP connection was unexpectedly closed.";
-  }
-  return "Unknown SSL Error.";
-}
+///****** SSL error handling                         *************/
+// moved to sipp_sockethandler to satisfy write_error flush_socket 
 
 /****** Certificate Verification Callback FACILITY *************/
 int sip_tls_verify_callback(int ok , X509_STORE_CTX *store)
@@ -677,197 +627,14 @@ static ssl_init_status FI_init_ssl_context (void)
   return SSL_INIT_NORMAL;
 }
 
-int send_nowait_tls(SSL *ssl, const void *msg, int len, int flags)
-{
-  int initial_fd_flags;
-  int rc;
-  int fd;
-  int fd_flags;
-  if ( (fd = SSL_get_fd(ssl)) == -1 ) {
-    return (-1);
-  }
-  fd_flags = fcntl(fd, F_GETFL , NULL);
-  initial_fd_flags = fd_flags;
-  fd_flags |= O_NONBLOCK;
-  fcntl(fd, F_SETFL , fd_flags);
-  rc = SSL_write(ssl,msg,len);
-  if ( rc <= 0 ) {
-    return(rc);
-  }
-  fcntl(fd, F_SETFL , initial_fd_flags);
-  return rc;
-}
+//int send_nowait_tls(SSL *ssl, const void *msg, int len, int flags)
+// moved to sipp_sockethandler, used by sipp_socket_handler::socket_write_primitive
+
 #endif
 
-int send_nowait(int s, const void *msg, int len, int flags)
-{
-#if defined(MSG_DONTWAIT) && !defined(__SUNOS)
-  return send(s, msg, len, flags | MSG_DONTWAIT);
-#else
-
-// ********
-// TESTME  this reads the existing value, but windows doesn't really support this with ioctlsocket.  Is this ok?
-
-# ifdef WIN32
-  int iMode = 1;
-  ioctlsocket(s, FIONBIO, (u_long FAR*) &iMode);
-# else
-  int fd_flags = fcntl(s, F_GETFL , NULL);
-  int initial_fd_flags;
-
-  initial_fd_flags = fd_flags;
-  //  fd_flags &= ~O_ACCMODE; // Remove the access mode from the value
-  fd_flags |= O_NONBLOCK;
-  fcntl(s, F_SETFL , fd_flags);
-# endif
-  int rc = send(s, (const char *)msg, len, flags);
-
-# ifdef WIN32
-  iMode = 0; // We really should be setting back to previous mode rather than resetting entirely.
-  ioctlsocket(s, FIONBIO, (u_long FAR*) &iMode);
-# else
-  fcntl(s, F_SETFL , initial_fd_flags);
-# endif
-
-  return rc;
-#endif
-}
-
-char * get_inet_address(struct sockaddr_storage * addr)
-{
-  static char * ip_addr = NULL;
-
-  if (!ip_addr) {
-    ip_addr = (char *)malloc(1024*sizeof(char));
-  }
-  if (getnameinfo(_RCAST(struct sockaddr *, addr),
-                  SOCK_ADDR_SIZE(addr),
-                  ip_addr,
-                  1024,
-                  NULL,
-                  0,
-                  NI_NUMERICHOST) != 0) {
-    strcpy(ip_addr, "addr not supported");
-  }
-
-  return ip_addr;
-}
-
-void get_host_and_port(char * addr, char * host, int * port)
-{
-  /* Separate the port number (if any) from the host name.
-   * Thing is, the separator is a colon (':').  The colon may also exist
-   * in the host portion if the host is specified as an IPv6 address (see
-   * RFC 2732).  If that's the case, then we need to skip past the IPv6
-   * address, which should be contained within square brackets ('[',']').
-   */
-  char *p;
-  p = strchr( addr, '[' );                      /* Look for '['.            */
-  if( p != NULL ) {                             /* If found, look for ']'.  */
-    p = strchr( p, ']' );
-  }
-  if( p == NULL ) {                             /* If '['..']' not found,   */
-    p = addr;                                   /* scan the whole string.   */
-  } else {                                      /* If '['..']' found,       */
-    char *p1;                                   /* extract the remote_host  */
-    char *p2;
-    p1 = strchr( addr, '[' );
-    p2 = strchr( addr, ']' );
-    *p2 = '\0';
-    strcpy(host, p1 + 1);
-    *p2 = ']';
-  }
-  /* Starting at <p>, which is either the start of the host substring
-   * or the end of the IPv6 address, find the last colon character.
-   */
-  p = strchr( p, ':' );
-  if( NULL != p ) {
-    *p = '\0';
-    *port = atol(p + 1);
-  } else {
-    *port = 0;
-  }
-}
-
-static unsigned char tolower_table[256];
-
-void init_tolower_table()
-{
-  for (int i = 0; i < 256; i++) {
-    tolower_table[i] = tolower(i);
-  }
-}
-
-/* This is simpler than doing a regular tolower, because there are no branches.
- * We also inline it, so that we don't have function call overheads.
- *
- * An alternative to a table would be to do (c | 0x20), but that only works if
- * we are sure that we are searching for characters (or don't care if they are
- * not characters. */
-unsigned char inline mytolower(unsigned char c)
-{
-  return tolower_table[c];
-}
-
-char * strcasestr2(const char *s, const char *find)
-{
-  char c, sc;
-  size_t len;
-
-  if ((c = *find++) != 0) {
-    c = mytolower((unsigned char)c);
-    len = strlen(find);
-    do {
-      do {
-        if ((sc = *s++) == 0)
-          return (NULL);
-      } while ((char)mytolower((unsigned char)sc) != c);
-    } while (strncasecmp(s, find, len) != 0);
-    s--;
-  }
-  return ((char *)s);
-}
-
-char * strncasestr(char *s, const char *find, size_t n)
-{
-  char *end = s + n;
-  char c, sc;
-  size_t len;
-
-  if ((c = *find++) != 0) {
-    c = mytolower((unsigned char)c);
-    len = strlen(find);
-    end -= (len - 1);
-    do {
-      do {
-        if ((sc = *s++) == 0)
-          return (NULL);
-        if (s >= end)
-          return (NULL);
-      } while ((char)mytolower((unsigned char)sc) != c);
-    } while (strncasecmp(s, find, len) != 0);
-    s--;
-  }
-  return ((char *)s);
-}
-
-int get_decimal_from_hex(char hex)
-{
-  if (isdigit(hex))
-    return hex - '0';
-  else
-    return tolower(hex) - 'a' + 10;
-}
 
 
-/******************** Recv Poll Processing *********************/
 
-int                  pollnfds;
-struct pollfd        pollfiles[SIPP_MAXFDS];
-
-static int pending_messages = 0;
-
-map<string, struct sipp_socket *>     map_perip_fd;
 
 /***************** Check of the message received ***************/
 
@@ -887,676 +654,7 @@ bool sipMsgCheck (const char *P_msg, int P_msgSize, struct sipp_socket *socket)
 }
 
 /************** Statistics display & User control *************/
-
-void print_stats_in_file(FILE * f, int last, int diagram_only=0)
-{
-  static char temp_str[256];
-  int divisor;
-
-#define SIPP_ENDL "\r\n"
-
-  /* We are not initialized yet. */
-  if (!display_scenario) {
-    return;
-  }
-
-  if (!diagram_only) {
-    /* Optional timestamp line for files only */
-    if(f != stdout) {
-      time_t tim;
-      time(&tim);
-      fprintf(f, "  Timestamp: %s" SIPP_ENDL, ctime(&tim));
-    }
-
-    /* Header line with global parameters */
-    if (users >= 0) {
-      sprintf(temp_str, "%d (%d ms)", users, duration);
-    } else {
-      sprintf(temp_str, "%3.1f(%d ms)/%5.3fs", rate, duration, (double)rate_period_ms / 1000.0);
-    }
-    unsigned long long total_calls = display_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + display_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated);
-    if( creationMode == MODE_SERVER) {
-      fprintf
-      (f,
-       "  Port   Total-time  Total-calls  Transport"
-       SIPP_ENDL
-       "  %-5d %6lu.%02lu s     %8llu  %s"
-       SIPP_ENDL SIPP_ENDL,
-       local_port,
-       clock_tick / 1000, (clock_tick % 1000) / 10,
-       total_calls,
-       TRANSPORT_TO_STRING(transport));
-    } else if( creationMode == MODE_CLIENT)  {
-      assert(creationMode == MODE_CLIENT);
-      if (users >= 0) {
-        fprintf(f, "     Users (length)");
-      } else {
-        fprintf(f, "  Call-rate(length)");
-      }
-      fprintf(f, "   Port   Total-time  Total-calls  Remote-host" SIPP_ENDL
-              "%19s   %-5d %6lu.%02lu s     %8llu  %s:%d(%s)" SIPP_ENDL SIPP_ENDL,
-              temp_str,
-              local_port,
-              clock_tick / 1000, (clock_tick % 1000) / 10,
-              total_calls,
-              remote_ip,
-              remote_port,
-              TRANSPORT_TO_STRING(transport));
-    } else {
-      fprintf(f, "Neither CLIENT nor SERVER mode.");
-    }
-
-    /* 1st line */
-    if(total_calls < stop_after) {
-      sprintf(temp_str, "%llu new calls during %lu.%03lu s period ",
-              display_scenario->stats->GetStat(CStat::CPT_PD_IncomingCallCreated) +
-              display_scenario->stats->GetStat(CStat::CPT_PD_OutgoingCallCreated),
-              (clock_tick-last_report_time) / 1000,
-              ((clock_tick-last_report_time) % 1000));
-    } else {
-      sprintf(temp_str, "Call limit reached (-m %lu), %lu.%03lu s period ",
-              stop_after,
-              (clock_tick-last_report_time) / 1000,
-              ((clock_tick-last_report_time) % 1000));
-    }
-    divisor = scheduling_loops;
-    if(!divisor) {
-      divisor = 1;
-    }
-    fprintf(f,"  %-38s %lu ms scheduler resolution"
-            SIPP_ENDL,
-            temp_str,
-            (clock_tick-last_report_time) / divisor);
-
-    /* 2nd line */
-    if( creationMode == MODE_SERVER) {
-      sprintf(temp_str, "%llu calls", display_scenario->stats->GetStat(CStat::CPT_C_CurrentCall));
-    } else {
-      sprintf(temp_str, "%llu calls (limit %d)", display_scenario->stats->GetStat(CStat::CPT_C_CurrentCall), open_calls_allowed);
-    }
-    fprintf(f,"  %-38s Peak was %llu calls, after %llu s" SIPP_ENDL,
-            temp_str,
-            display_scenario->stats->GetStat(CStat::CPT_C_CurrentCallPeak),
-            display_scenario->stats->GetStat(CStat::CPT_C_CurrentCallPeakTime));
-    fprintf(f,"  %d Running, %d Paused, %d Woken up" SIPP_ENDL,
-            last_running_calls, last_paused_calls, last_woken_calls);
-    last_woken_calls = 0;
-
-    /* 3rd line dead call msgs, and optional out-of-call msg */
-    sprintf(temp_str,"%llu dead call msg (discarded)",
-            display_scenario->stats->GetStat(CStat::CPT_G_C_DeadCallMsgs));
-    fprintf(f,"  %-37s", temp_str);
-    if( creationMode == MODE_CLIENT) {
-      sprintf(temp_str,"%llu out-of-call msg (discarded)",
-              display_scenario->stats->GetStat(CStat::CPT_G_C_OutOfCallMsgs));
-      fprintf(f,"  %-37s", temp_str);
-    }
-    fprintf(f,SIPP_ENDL);
-
-    if(compression) {
-      fprintf(f,"  Comp resync: %d sent, %d recv" ,
-              resynch_send, resynch_recv);
-      fprintf(f,SIPP_ENDL);
-    }
-
-    /* 4th line , sockets and optional errors */
-    sprintf(temp_str,"%d open sockets",
-            pollnfds);
-    fprintf(f,"  %-38s", temp_str);
-    if(nb_net_recv_errors || nb_net_send_errors || nb_net_cong) {
-      fprintf(f,"  %lu/%lu/%lu %s errors (send/recv/cong)" SIPP_ENDL,
-              nb_net_send_errors,
-              nb_net_recv_errors,
-              nb_net_cong,
-              TRANSPORT_TO_STRING(transport));
-    } else {
-      fprintf(f,SIPP_ENDL);
-    }
-
-#ifdef PCAPPLAY
-    /* if has media abilities */
-    if (hasMedia != 0) {
-      sprintf(temp_str, "%lu Total RTP pckts sent ",
-              rtp_pckts_pcap);
-      if (clock_tick-last_report_time) {
-        fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
-                temp_str,
-                (rtp_bytes_pcap)/(clock_tick-last_report_time),
-                (rtp_bytes_pcap)%(clock_tick-last_report_time));
-      }
-      rtp_bytes_pcap = 0;
-      rtp2_bytes_pcap = 0;
-    }
-#endif
-
-    /* 5th line, RTP echo statistics */
-    if (rtp_echo_enabled && (media_socket > 0)) {
-      sprintf(temp_str, "%lu Total echo RTP pckts 1st stream",
-              rtp_pckts);
-
-      // AComment: Fix for random coredump when using RTP echo
-      if (clock_tick-last_report_time) {
-        fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
-                temp_str,
-                (rtp_bytes)/(clock_tick-last_report_time),
-                (rtp_bytes)%(clock_tick-last_report_time));
-      }
-      /* second stream statitics: */
-      sprintf(temp_str, "%lu Total echo RTP pckts 2nd stream",
-              rtp2_pckts);
-
-      // AComment: Fix for random coredump when using RTP echo
-      if (clock_tick-last_report_time) {
-        fprintf(f,"  %-38s %lu.%03lu last period RTP rate (kB/s)" SIPP_ENDL,
-                temp_str,
-                (rtp2_bytes)/(clock_tick-last_report_time),
-                (rtp2_bytes)%(clock_tick-last_report_time));
-      }
-      rtp_bytes = 0;
-      rtp2_bytes = 0;
-    }
-
-    /* Scenario counters */
-    fprintf(f,SIPP_ENDL);
-    if(!lose_packets) {
-      fprintf(f,"                                 "
-              "Messages  Retrans   Timeout   Unexpected-Msg"
-              SIPP_ENDL);
-    } else {
-      fprintf(f,"                                 "
-              "Messages  Retrans   Timeout   Unexp.    Lost"
-              SIPP_ENDL);
-    }
-  } // if diagram_only
-  for(unsigned long index = 0;
-      index < display_scenario->messages.size();
-      index ++) {
-    message *curmsg = display_scenario->messages[index];
-
-    if(do_hide && curmsg->hide) {
-      continue;
-    }
-    if (show_index) {
-      fprintf(f, "%-2lu:", index);
-    }
-
-    if(SendingMessage *src = curmsg -> send_scheme) {
-      char dialog_str[10] = "";
-      if (curmsg->dialog_number != -1)
-        sprintf(dialog_str, "(%-2d)", curmsg->dialog_number);
-      if (src->isResponse()) {
-        sprintf(temp_str, "%d%s", src->getCode(), dialog_str);
-      } else {
-        sprintf(temp_str, "%s%s", src->getMethod(), dialog_str);
-      }
-
-      if(creationMode == MODE_SERVER) {
-        fprintf(f,"  <---------- %-14s ", temp_str);
-      } else {
-        fprintf(f,"  %14s ----------> ", temp_str);
-      }
-      if (!diagram_only) {
-        if (curmsg -> start_rtd) {
-          fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
-        } else if (curmsg -> stop_rtd) {
-          fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
-        } else {
-          fprintf(f, "        ");
-        }
-
-        if(curmsg -> retrans_delay) {
-          fprintf(f,"%-9lu %-9lu %-9lu %-9s" ,
-                  curmsg -> nb_sent,
-                  curmsg -> nb_sent_retrans,
-                  curmsg -> nb_timeout,
-                  "" /* Unexpected */);
-        } else {
-          fprintf(f,"%-9lu %-9lu %-9s %-9s" ,
-                  curmsg -> nb_sent,
-                  curmsg -> nb_sent_retrans,
-                  "", /* Timeout. */
-                  "" /* Unexpected. */);
-        }
-      } // if !diagram_only
-    } else if(curmsg -> recv_response) {
-      if (curmsg->dialog_number != -1)
-        sprintf(temp_str, "%d(%-2d)", curmsg -> recv_response, curmsg->dialog_number);
-      else
-        sprintf(temp_str, "%d", curmsg -> recv_response);
-      if(creationMode == MODE_SERVER) {
-        if (curmsg->optional == OPTIONAL_TRUE)
-          fprintf(f,"  -Optional-> %-14s ", temp_str);
-        else
-          fprintf(f,"  ----------> %-14s ", temp_str);
-      } else {
-        if (curmsg->optional == OPTIONAL_TRUE)
-          fprintf(f,"  %14s <-Optional- ", temp_str);
-        else
-          fprintf(f,"  %14s <---------- ", temp_str);
-      }
-
-      if (!diagram_only) {
-        if (curmsg -> start_rtd) {
-          fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
-        } else if (curmsg -> stop_rtd) {
-          fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
-        } else {
-          fprintf(f, "        ");
-        }
-
-        if(curmsg->retrans_delay) {
-          fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
-                  curmsg->nb_recv,
-                  curmsg->nb_recv_retrans,
-                  curmsg->nb_timeout,
-                  curmsg->nb_unexp);
-        } else {
-          fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
-                  curmsg -> nb_recv,
-                  curmsg -> nb_recv_retrans,
-                  curmsg -> nb_timeout,
-                  curmsg -> nb_unexp);
-        }
-      } // !diagram_only
-    } else if (curmsg -> pause_distribution ||
-               (curmsg -> pause_variable != -1)) {
-      char *desc = curmsg->pause_desc;
-      if (!desc) {
-        desc = (char *)malloc(24);
-        if (curmsg->pause_distribution) {
-          desc[0] = '\0';
-          curmsg->pause_distribution->timeDescr(desc, 23);
-        } else {
-          snprintf(desc, 23, "$%s", display_scenario->allocVars->getName(curmsg->pause_variable));
-        }
-        desc[23] = '\0';
-        curmsg->pause_desc = desc;
-      }
-      int len = strlen(desc) < 9 ? 9 : strlen(desc);
-
-      if(creationMode == MODE_SERVER) {
-        fprintf(f,"  [%9s] Pause%*s    ", desc, 23 - len > 0 ? 23 - len : 0, "");
-      } else {
-        fprintf(f,"       Pause     [%9s]%*s", desc, 18 - len > 0 ? 18 - len : 0, "");
-      }
-
-      if (!diagram_only) {
-        fprintf(f,"%-9d", curmsg->sessions);
-        fprintf(f,"                     %-9lu" , curmsg->nb_unexp);
-      }
-    } else if(curmsg -> recv_request) {
-      if (curmsg->dialog_number != -1)
-        sprintf(temp_str, "%s(%-2d)", curmsg -> recv_request, curmsg->dialog_number);
-      else
-        sprintf(temp_str, "%s", curmsg -> recv_request);
-      if(creationMode == MODE_SERVER) {
-        if (curmsg->optional == OPTIONAL_TRUE)
-          fprintf(f,"  -Optional-> %-14s ", temp_str);
-        else
-          fprintf(f,"  ----------> %-14s ", temp_str);
-      } else {
-        if (curmsg->optional == OPTIONAL_TRUE)
-          fprintf(f,"  %14s <-Optional- ", temp_str);
-        else
-          fprintf(f,"  %14s <---------- ", temp_str);
-      }
-
-      if (!diagram_only) {
-        if (curmsg -> start_rtd) {
-          fprintf(f, " B-RTD%d ", curmsg -> start_rtd);
-        } else if (curmsg -> stop_rtd) {
-          fprintf(f, " E-RTD%d ", curmsg -> stop_rtd);
-        } else {
-          fprintf(f, "        ");
-        }
-
-        fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
-                curmsg -> nb_recv,
-                curmsg -> nb_recv_retrans,
-                curmsg -> nb_timeout,
-                curmsg -> nb_unexp);
-      } // !diagram_only
-    } else if(curmsg -> M_type == MSG_TYPE_NOP) {
-      if (curmsg->display_str) {
-        fprintf(f," %s", curmsg->display_str);
-      } else if(creationMode == MODE_SERVER) {
-        fprintf(f,"              [ NOP ]              ");
-      } else {
-        fprintf(f,"     [ NOP ]                       ");
-      }
-    } else if(curmsg -> M_type == MSG_TYPE_RECVCMD) {
-      fprintf(f,"    [ Received Command ]         ");
-      if (!diagram_only) {
-        if(curmsg->retrans_delay) {
-          fprintf(f,"%-9ld %-9s %-9ld %-9s" ,
-                  curmsg->M_nbCmdRecv,
-                  "",
-                  curmsg->nb_timeout,
-                  "");
-        } else {
-          fprintf(f,"%-9ld %-9s           %-9s" ,
-                  curmsg -> M_nbCmdRecv,
-                  "",
-                  "");
-        }
-      } // !diagram_only
-    } else if(curmsg -> M_type == MSG_TYPE_SENDCMD) {
-      fprintf(f,"        [ Sent Command ]         ");
-      if (!diagram_only)
-        fprintf(f,"%-9lu %-9s           %-9s" ,
-                curmsg -> M_nbCmdSent,
-                "",
-                "");
-    } else {
-      REPORT_ERROR("Scenario command not implemented in display\n");
-    }
-
-    if(lose_packets && (curmsg -> nb_lost) && (!diagram_only)) {
-      fprintf(f," %-9lu" SIPP_ENDL,
-              curmsg -> nb_lost);
-    } else {
-      fprintf(f,SIPP_ENDL);
-    }
-
-    if(curmsg -> crlf) {
-      fprintf(f,SIPP_ENDL);
-    }
-  }
-}
-
-void print_count_file(FILE *f, int header)
-{
-  char temp_str[256];
-
-  if (!main_scenario || (!header && !main_scenario->stats)) {
-    return;
-  }
-
-  if (header) {
-    fprintf(f, "CurrentTime%sElapsedTime%s", stat_delimiter, stat_delimiter);
-  } else {
-    struct timeval currentTime, startTime;
-    GET_TIME(&currentTime);
-    main_scenario->stats->getStartTime(&startTime);
-    unsigned long globalElapsedTime = CStat::computeDiffTimeInMs (&currentTime, &startTime);
-    fprintf(f, "%s%s", CStat::formatTime(&currentTime), stat_delimiter);
-    fprintf(f, "%s%s", CStat::msToHHMMSSmmm(globalElapsedTime), stat_delimiter);
-  }
-
-  for(unsigned int index = 0; index < main_scenario->messages.size(); index ++) {
-    message *curmsg = main_scenario->messages[index];
-    if(curmsg->hide) {
-      continue;
-    }
-
-    if(SendingMessage *src = curmsg -> send_scheme) {
-      if(header) {
-        if (src->isResponse()) {
-          sprintf(temp_str, "%d_%d_", index, src->getCode());
-        } else {
-          sprintf(temp_str, "%d_%s_", index, src->getMethod());
-        }
-
-        fprintf(f, "%sSent%s", temp_str, stat_delimiter);
-        fprintf(f, "%sRetrans%s", temp_str, stat_delimiter);
-        if(curmsg -> retrans_delay) {
-          fprintf(f, "%sTimeout%s", temp_str, stat_delimiter);
-        }
-        if(lose_packets) {
-          fprintf(f, "%sLost%s", temp_str, stat_delimiter);
-        }
-      } else {
-        fprintf(f, "%lu%s", curmsg->nb_sent, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_sent_retrans, stat_delimiter);
-        if(curmsg -> retrans_delay) {
-          fprintf(f, "%lu%s", curmsg->nb_timeout, stat_delimiter);
-        }
-        if(lose_packets) {
-          fprintf(f, "%lu%s", curmsg->nb_lost, stat_delimiter);
-        }
-      }
-    } else if(curmsg -> recv_response) {
-      if(header) {
-        sprintf(temp_str, "%u_%d_", index, curmsg->recv_response);
-
-        fprintf(f, "%sRecv%s", temp_str, stat_delimiter);
-        fprintf(f, "%sRetrans%s", temp_str, stat_delimiter);
-        fprintf(f, "%sTimeout%s", temp_str, stat_delimiter);
-        fprintf(f, "%sUnexp%s", temp_str, stat_delimiter);
-        if(lose_packets) {
-          fprintf(f, "%sLost%s", temp_str, stat_delimiter);
-        }
-      } else {
-        fprintf(f, "%lu%s", curmsg->nb_recv, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_recv_retrans, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_timeout, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_unexp, stat_delimiter);
-        if(lose_packets) {
-          fprintf(f, "%lu%s", curmsg->nb_lost, stat_delimiter);
-        }
-      }
-    } else if(curmsg -> recv_request) {
-      if(header) {
-        sprintf(temp_str, "%u_%s_", index, curmsg->recv_request);
-
-        fprintf(f, "%sRecv%s", temp_str, stat_delimiter);
-        fprintf(f, "%sRetrans%s", temp_str, stat_delimiter);
-        fprintf(f, "%sTimeout%s", temp_str, stat_delimiter);
-        fprintf(f, "%sUnexp%s", temp_str, stat_delimiter);
-        if(lose_packets) {
-          fprintf(f, "%sLost%s", temp_str, stat_delimiter);
-        }
-      } else {
-        fprintf(f, "%lu%s", curmsg->nb_recv, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_recv_retrans, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_timeout, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_unexp, stat_delimiter);
-        if(lose_packets) {
-          fprintf(f, "%lu%s", curmsg->nb_lost, stat_delimiter);
-        }
-      }
-    } else if (curmsg -> pause_distribution ||
-               curmsg -> pause_variable) {
-
-      if(header) {
-        sprintf(temp_str, "%d_Pause_", index);
-        fprintf(f, "%sSessions%s", temp_str, stat_delimiter);
-        fprintf(f, "%sUnexp%s", temp_str, stat_delimiter);
-      } else {
-        fprintf(f, "%d%s", curmsg->sessions, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_unexp, stat_delimiter);
-      }
-    } else if(curmsg -> M_type == MSG_TYPE_NOP) {
-      /* No output. */
-    }  else if(curmsg -> M_type == MSG_TYPE_RECVCMD) {
-      if(header) {
-        sprintf(temp_str, "%d_RecvCmd", index);
-        fprintf(f, "%s%s", temp_str, stat_delimiter);
-        fprintf(f, "%s_Timeout%s", temp_str, stat_delimiter);
-      } else {
-        fprintf(f, "%lu%s", curmsg->M_nbCmdRecv, stat_delimiter);
-        fprintf(f, "%lu%s", curmsg->nb_timeout, stat_delimiter);
-      }
-    } else if(curmsg -> M_type == MSG_TYPE_SENDCMD) {
-      if(header) {
-        sprintf(temp_str, "%d_SendCmd", index);
-        fprintf(f, "%s%s", temp_str, stat_delimiter);
-      } else {
-        fprintf(f, "%lu%s", curmsg->M_nbCmdSent, stat_delimiter);
-      }
-    } else {
-      REPORT_ERROR("Unknown count file message type:");
-    }
-  }
-  fprintf(f, "\n");
-  fflush(f);
-}
-
-void print_header_line(FILE *f, int last)
-{
-  switch(currentScreenToDisplay) {
-  case DISPLAY_STAT_SCREEN :
-    fprintf(f,"----------------------------- Statistics Screen ------- [1-9]: Change Screen --" SIPP_ENDL);
-    break;
-  case DISPLAY_REPARTITION_SCREEN :
-    fprintf(f,"---------------------------- Repartition Screen ------- [1-9]: Change Screen --" SIPP_ENDL);
-    break;
-  case DISPLAY_VARIABLE_SCREEN  :
-    fprintf(f,"----------------------------- Variables Screen -------- [1-9]: Change Screen --" SIPP_ENDL);
-    break;
-  case DISPLAY_TDM_MAP_SCREEN  :
-    fprintf(f,"------------------------------ TDM map Screen --------- [1-9]: Change Screen --" SIPP_ENDL);
-    break;
-  case DISPLAY_SECONDARY_REPARTITION_SCREEN :
-    fprintf(f,"--------------------------- Repartition %d Screen ------ [1-9]: Change Screen --" SIPP_ENDL, currentRepartitionToDisplay);
-    break;
-  case DISPLAY_SCENARIO_SCREEN :
-  default:
-    fprintf(f,"------------------------------ Scenario Screen -------- [1-9]: Change Screen --" SIPP_ENDL);
-    break;
-  }
-}
-
-void print_bottom_line(FILE *f, int last)
-{
-  if(last) {
-    fprintf(f,"------------------------------ Test Terminated --------------------------------" SIPP_ENDL);
-  } else if(quitting) {
-    fprintf(f,"------- Waiting for active calls to end. Press [q] again to force exit. -------" SIPP_ENDL );
-  } else if(paused) {
-    fprintf(f,"----------------- Traffic Paused - Press [p] again to resume ------------------" SIPP_ENDL );
-  } else if(cpu_max) {
-    fprintf(f,"-------------------------------- CPU CONGESTED ---------------------------------" SIPP_ENDL);
-  } else if(outbound_congestion) {
-    fprintf(f,"------------------------------ OUTBOUND CONGESTION -----------------------------" SIPP_ENDL);
-  } else {
-    if (creationMode == MODE_CLIENT) {
-      switch(thirdPartyMode) {
-      case MODE_MASTER :
-        fprintf(f,"-----------------------3PCC extended mode - Master side -------------------------" SIPP_ENDL);
-        break;
-      case MODE_3PCC_CONTROLLER_A :
-        fprintf(f,"----------------------- 3PCC Mode - Controller A side -------------------------" SIPP_ENDL);
-        break;
-      case MODE_3PCC_NONE:
-        fprintf(f,"------ [+|-|*|/]: Adjust rate ---- [q]: Soft exit ---- [p]: Pause traffic -----" SIPP_ENDL);
-        break;
-      default:
-        REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
-      }
-    } else {
-      assert(creationMode == MODE_SERVER);
-      switch(thirdPartyMode) {
-      case MODE_3PCC_A_PASSIVE :
-        fprintf(f,"------------------ 3PCC Mode - Controller A side (passive) --------------------" SIPP_ENDL);
-        break;
-      case MODE_3PCC_CONTROLLER_B :
-        fprintf(f,"----------------------- 3PCC Mode - Controller B side -------------------------" SIPP_ENDL);
-        break;
-      case MODE_MASTER_PASSIVE :
-        fprintf(f,"------------------ 3PCC extended mode - Master side (passive) --------------------" SIPP_ENDL);
-        break;
-      case MODE_SLAVE :
-        fprintf(f,"----------------------- 3PCC extended mode - Slave side -------------------------" SIPP_ENDL);
-        break;
-      case MODE_3PCC_NONE:
-        fprintf(f,"------------------------------ Sipp Server Mode -------------------------------" SIPP_ENDL);
-        break;
-      default:
-        REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
-      }
-    }
-  }
-  fprintf(f,SIPP_ENDL);
-  fflush(stdout);
-}
-
-void print_tdm_map()
-{
-  int interval = 0;
-  int i = 0;
-  int in_use = 0;
-  interval = (tdm_map_a+1) * (tdm_map_b+1) * (tdm_map_c+1);
-
-  printf("TDM Circuits in use:"  SIPP_ENDL);
-  while (i<interval) {
-    if (tdm_map[i]) {
-      printf("*");
-      in_use++;
-    } else {
-      printf(".");
-    }
-    i++;
-    if (i%(tdm_map_c+1) == 0) printf(SIPP_ENDL);
-  }
-  printf(SIPP_ENDL);
-  printf("%d/%d circuits (%d%%) in use", in_use, interval, int(100*in_use/interval));
-  printf(SIPP_ENDL);
-  for(unsigned int i=0; i<(display_scenario->messages.size() + 8 - int(interval/(tdm_map_c+1))); i++) {
-    printf(SIPP_ENDL);
-  }
-}
-
-void print_variable_list()
-{
-  CActions  * actions;
-  CAction   * action;
-  int printed = 0;
-  bool found;
-
-  printf("Action defined Per Message :" SIPP_ENDL);
-  printed++;
-  found = false;
-  for(unsigned int i=0; i<display_scenario->messages.size(); i++) {
-    message *curmsg = display_scenario->messages[i];
-    actions = curmsg->M_actions;
-    if(actions != NULL) {
-      switch(curmsg->M_type) {
-      case MSG_TYPE_RECV:
-        printf("=> Message[%d] (Receive Message) - "
-               "[%d] action(s) defined :" SIPP_ENDL,
-               i,
-               actions->getActionSize());
-        printed++;
-        break;
-      case MSG_TYPE_RECVCMD:
-        printf("=> Message[%d] (Receive Command Message) - "
-               "[%d] action(s) defined :" SIPP_ENDL,
-               i,
-               actions->getActionSize());
-        printed++;
-        break;
-      default:
-        printf("=> Message[%d] - [%d] action(s) defined :" SIPP_ENDL,
-               i,
-               actions->getActionSize());
-        printed++;
-        break;
-      }
-
-      for(int j=0; j<actions->getActionSize(); j++) {
-        action = actions->getAction(j);
-        if(action != NULL) {
-          printf("   --> action[%d] = ", j);
-          action->afficheInfo();
-          printf(SIPP_ENDL);
-          printed++;
-          found = true;
-        }
-      }
-    }
-  }
-  if(!found) {
-    printed++;
-    printf("=> No action found on any messages"SIPP_ENDL);
-  }
-
-  printf(SIPP_ENDL);
-  for(unsigned int i=0; i<(display_scenario->messages.size() + 5 - printed); i++) {
-    printf(SIPP_ENDL);
-  }
-}
-
+// number of display functions moved to sipp_sockethandler.cpp
 /* Function to dump all available screens in a file */
 void print_screens(void)
 {
@@ -1565,88 +663,36 @@ void print_screens(void)
 
   currentScreenToDisplay = DISPLAY_SCENARIO_SCREEN;
   print_header_line(   screenf, 0);
-  print_stats_in_file( screenf, 0);
-  print_bottom_line(   screenf, 0);
+  if (print_stats_in_file( screenf, 0) == SCENARIO_NOT_IMPLEMENTED)
+    REPORT_ERROR("Scenario command not implemented in display\n");
+  if (print_bottom_line(   screenf, 0)==INTERNAL_ERROR)
+    REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
 
   currentScreenToDisplay = DISPLAY_STAT_SCREEN;
   print_header_line(   screenf, 0);
   display_scenario->stats->displayStat(screenf);
-  print_bottom_line(   screenf, 0);
+  if (print_bottom_line(   screenf, 0)==INTERNAL_ERROR)
+    REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
 
   currentScreenToDisplay = DISPLAY_REPARTITION_SCREEN;
   print_header_line(   screenf, 0);
   display_scenario->stats->displayRepartition(screenf);
-  print_bottom_line(   screenf, 0);
+  if (print_bottom_line(   screenf, 0)==INTERNAL_ERROR)
+    REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
 
   currentScreenToDisplay = DISPLAY_SECONDARY_REPARTITION_SCREEN;
   for (currentRepartitionToDisplay = 2; currentRepartitionToDisplay <= display_scenario->stats->nRtds(); currentRepartitionToDisplay++) {
     print_header_line(   screenf, 0);
     display_scenario->stats->displayRtdRepartition(screenf, currentRepartitionToDisplay);
-    print_bottom_line(   screenf, 0);
+    if(print_bottom_line(   screenf, 0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
   }
 
   currentScreenToDisplay = oldScreen;
   currentRepartitionToDisplay = oldRepartition;
 }
 
-void print_statistics(int last)
-{
-  static int first = 1;
 
-  if(backgroundMode == false && display_scenario) {
-    if(!last) {
-      screen_clear();
-    }
-
-    if(first) {
-      first = 0;
-      printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
-             "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    }
-    if (command_mode) {
-      printf(SIPP_ENDL);
-    }
-    print_header_line(stdout,last);
-    switch(currentScreenToDisplay) {
-    case DISPLAY_STAT_SCREEN :
-      display_scenario->stats->displayStat(stdout);
-      break;
-    case DISPLAY_REPARTITION_SCREEN :
-      display_scenario->stats->displayRepartition(stdout);
-      break;
-    case DISPLAY_VARIABLE_SCREEN  :
-      print_variable_list();
-      break;
-    case DISPLAY_TDM_MAP_SCREEN  :
-      print_tdm_map();
-      break;
-    case DISPLAY_SECONDARY_REPARTITION_SCREEN :
-      display_scenario->stats->displayRtdRepartition(stdout, currentRepartitionToDisplay);
-      break;
-    case DISPLAY_SCENARIO_SCREEN :
-    default:
-      print_stats_in_file(stdout, last);
-      break;
-    }
-    print_bottom_line(stdout,last);
-    if (!last && screen_last_error[0]) {
-      char *errstart = jump_over_timestamp(screen_last_error);
-      if (strlen(errstart) > 60) {
-        printf("Last Message: %.60s..." SIPP_ENDL, errstart);
-      } else {
-        printf("Last Message: %s" SIPP_ENDL, errstart);
-      }
-      fflush(stdout);
-    }
-    if (command_mode) {
-      printf("Command: %s", command_buffer ? command_buffer : "");
-      fflush(stdout);
-    }
-    if(last) {
-      fprintf(stdout,"\n");
-    }
-  }
-}
 
 void sipp_sigusr1(int /* not used */)
 {
@@ -1666,28 +712,33 @@ bool process_key(int c)
   switch (c) {
   case '1':
     currentScreenToDisplay = DISPLAY_SCENARIO_SCREEN;
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '2':
     currentScreenToDisplay = DISPLAY_STAT_SCREEN;
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '3':
     currentScreenToDisplay = DISPLAY_REPARTITION_SCREEN;
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '4':
     currentScreenToDisplay = DISPLAY_VARIABLE_SCREEN;
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '5':
     if (use_tdmmap) {
       currentScreenToDisplay = DISPLAY_TDM_MAP_SCREEN;
-      print_statistics(0);
+      if (print_statistics(0)==INTERNAL_ERROR)
+        REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     }
     break;
 
@@ -1698,7 +749,8 @@ bool process_key(int c)
   case '9':
     currentScreenToDisplay = DISPLAY_SECONDARY_REPARTITION_SCREEN;
     currentRepartitionToDisplay = (c - '6') + 2;
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '+':
@@ -1707,7 +759,8 @@ bool process_key(int c)
     } else {
       opentask::set_rate(rate + 1 * rate_scale);
     }
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '-':
@@ -1716,7 +769,8 @@ bool process_key(int c)
     } else {
       opentask::set_rate(rate - 1 * rate_scale);
     }
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '*':
@@ -1725,7 +779,8 @@ bool process_key(int c)
     } else {
       opentask::set_rate(rate + 10 * rate_scale);
     }
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case '/':
@@ -1734,7 +789,8 @@ bool process_key(int c)
     } else {
       opentask::set_rate(rate - 10 * rate_scale);
     }
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case 'p':
@@ -1743,7 +799,8 @@ bool process_key(int c)
     } else {
       opentask::set_paused(true);
     }
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case 's':
@@ -1756,7 +813,8 @@ bool process_key(int c)
     quitting+=10;
     q_pressed = true;
     DEBUG("q pressed. quitting = %d", quitting);
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
 
   case 'Q':
@@ -1764,7 +822,8 @@ bool process_key(int c)
     quitting+=20;
     q_pressed = true;
     DEBUG("Q pressed. quitting = %d", quitting);
-    print_statistics(0);
+    if (print_statistics(0)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
     break;
   }
   return false;
@@ -1840,8 +899,10 @@ void process_set(char *what)
   } else if (!strcmp(what, "display")) {
     if (!strcmp(rest, "main")) {
       display_scenario = main_scenario;
+      display_scenario_stats = main_scenario->stats;
     } else if (!strcmp(rest, "ooc")) {
       display_scenario = ooc_scenario;
+      display_scenario_stats = ooc_scenario->stats;
     } else {
       WARNING("Unknown display scenario: %s", rest);
     }
@@ -1866,15 +927,7 @@ void process_set(char *what)
   }
 }
 
-void log_off(struct logfile_info *lfi)
-{
-  if (lfi->fptr) {
-    fflush(lfi->fptr);
-    fclose(lfi->fptr);
-    lfi->fptr = NULL;
-    lfi->overwrite = false;
-  }
-}
+
 
 void process_trace(char *what)
 {
@@ -2080,12 +1133,26 @@ void setup_ctrl_socket()
   }
 
   if (try_counter == 0) {
+
     if (control_port) {
+#ifdef WIN32
+      ERRORNUMBER = WSAGetLastError();
+#endif
       REPORT_ERROR_NO("Unable to bind remote control socket to UDP port %d",
                       control_port);
     } else {
+#ifdef WIN32
+      ERRORNUMBER = WSAGetLastError();
+      wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+      char errorstring[1000];
+      const char *errstring = wchar_to_char(error_msg,errorstring);
       WARNING("Unable to bind remote control socket (tried UDP ports %d-%d): %s",
-              firstport, port - 1, strerror(errno));
+              firstport, port - 1, errstring);
+
+#else
+      WARNING("Unable to bind remote control socket (tried UDP ports %d-%d): %s",
+              firstport, port - 1, strerror(ERRORNUMBER));
+#endif
     }
     return;
   }
@@ -2098,11 +1165,15 @@ void setup_ctrl_socket()
 
 void setup_stdin_socket()
 {
+#ifdef WIN32
+  //todo how to handle stdin without being a socket
+#else
   fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
   stdin_socket = sipp_allocate_socket(0, T_UDP, fileno(stdin), 0);
   if (!stdin_socket) {
     REPORT_ERROR_NO("Could not setup keyboard (stdin) socket!\n");
   }
+#endif
 }
 
 void handle_stdin_socket()
@@ -2166,91 +1237,11 @@ void handle_stdin_socket()
   }
 }
 
-/*************************** Mini SIP parser ***************************/
+//
+//
+///*************************** Mini SIP parser ***************************/
+// some functions moved to sipp_sockethandler
 
-char * get_to_or_from_tag(char *msg, bool toHeader)
-{
-  char        * hdr;
-  char        * ptr;
-  char        * end_ptr;
-  static char   tag[MAX_HEADER_LEN];
-  int           tag_i = 0;
-
-  if (toHeader) {
-    hdr = strcasestr(msg, "\r\nTo:");
-    if(!hdr) hdr = strstr(msg, "\r\nt:");
-    if(!hdr) {
-      REPORT_ERROR("No valid To: header in reply");
-    }
-  } else {
-    hdr = strcasestr(msg, "\r\nFrom:");
-    if(!hdr) hdr = strstr(msg, "\r\nf:");
-    if(!hdr) {
-      REPORT_ERROR("No valid From: header in message");
-    }
-  }
-
-
-  // Remove CRLF
-  hdr += 2;
-
-  end_ptr = strchr(hdr,'\n');
-
-  ptr = strchr(hdr, '>');
-  if (!ptr) {
-    return NULL;
-  }
-
-  ptr = strchr(hdr, ';');
-
-  if(!ptr) {
-    return NULL;
-  }
-
-  hdr = ptr;
-
-  ptr = strcasestr(hdr, "tag");
-
-  if(!ptr) {
-    return NULL;
-  }
-
-  if (ptr>end_ptr) {
-    return NULL ;
-  }
-
-  ptr = strchr(ptr, '=');
-
-  if(!ptr) {
-    REPORT_ERROR("Invalid tag param in header");
-  }
-
-  ptr ++;
-
-  while((*ptr)         &&
-        (*ptr != ' ')  &&
-        (*ptr != ';')  &&
-        (*ptr != '\t') &&
-        (*ptr != '\t') &&
-        (*ptr != '\r') &&
-        (*ptr != '\n') &&
-        (*ptr)) {
-    tag[tag_i++] = *(ptr++);
-  }
-  tag[tag_i] = 0;
-
-  return tag;
-}
-
-char * get_tag_from_to(char *msg)
-{
-  return get_to_or_from_tag(msg, true);
-}
-
-char * get_tag_from_from(char *msg)
-{
-  return get_to_or_from_tag(msg, false);
-}
 
 char * get_incoming_header_content(char* message, char * name)
 {
@@ -2355,142 +1346,15 @@ char * get_incoming_first_line(char * message)
 }
 
 
-char * get_call_id(char *msg)
-{
-  static char call_id[MAX_HEADER_LEN];
-  char * ptr1, * ptr2, * ptr3, backup;
-  bool short_form;
-
-  call_id[0] = '\0';
-
-  short_form = false;
-
-  ptr1 = strcasestr(msg, "Call-ID:");
-  // For short form, we need to make sure we start from beginning of line
-  // For others, no need to
-  if(!ptr1) {
-    ptr1 = strstr(msg, "\r\ni:");
-    short_form = true;
-  }
-  if(!ptr1) {
-    WARNING("(1) No valid Call-ID: header in message '%s'", msg);
-    return call_id;
-  }
-
-  if (short_form) {
-    ptr1 += 4;
-  } else {
-    ptr1 += 8;
-  }
-
-  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
-    ptr1++;
-  }
-
-  if(!(*ptr1)) {
-    WARNING("(2) No valid Call-ID: header in message");
-    return call_id;
-  }
-
-  ptr2 = ptr1;
-
-  while((*ptr2) &&
-        (*ptr2 != ' ') &&
-        (*ptr2 != '\t') &&
-        (*ptr2 != '\r') &&
-        (*ptr2 != '\n')) {
-    ptr2 ++;
-  }
-
-  if(!*ptr2) {
-    WARNING("(3) No valid Call-ID: header in message");
-    return call_id;
-  }
-
-  backup = *ptr2;
-  *ptr2 = 0;
-  if ((ptr3 = strstr(ptr1, "///")) != 0) ptr1 = ptr3+3;
-  strcpy(call_id, ptr1);
-  *ptr2 = backup;
-  return (char *) call_id;
-}
-
-unsigned long int get_cseq_value(const char *msg)
-{
-  char *ptr1;
-
-  // there is no short form for CSeq:
-  ptr1 = strcasestr2(msg, "\r\nCSeq:");
-  if(!ptr1) {
-    WARNING("No valid Cseq header in request %s", msg);
-    return 0;
-  }
-
-  ptr1 += 7;
-
-  while((*ptr1 == ' ') || (*ptr1 == '\t')) {
-    ++ptr1;
-  }
-
-  if(!(*ptr1)) {
-    WARNING("No valid Cseq data in header");
-    return 0;
-  }
-
-  return strtoul(ptr1, NULL, 10);
-}
-
-unsigned long get_reply_code(const char *msg)
-{
-  while((msg) && (*msg != ' ') && (*msg != '\t')) msg ++;
-  while((msg) && ((*msg == ' ') || (*msg == '\t'))) msg ++;
-
-  if ((msg) && (strlen(msg)>0)) {
-    return atol(msg);
-  } else {
-    return 0;
-  }
-}
 
 /*************************** I/O functions ***************************/
 
-/* Allocate a socket buffer. */
-struct socketbuf *alloc_socketbuf(char *buffer, size_t size, int copy, struct sockaddr_storage *dest) {
-  struct socketbuf *socketbuf;
 
-  socketbuf = (struct socketbuf *)malloc(sizeof(struct socketbuf));
-  if (!socketbuf) {
-    REPORT_ERROR("Could not allocate socket buffer!\n");
-  }
-  memset(socketbuf, 0, sizeof(struct socketbuf));
-  if (copy) {
-    socketbuf->buf = (char *)malloc(size);
-    if (!socketbuf->buf) {
-      REPORT_ERROR("Could not allocate socket buffer data!\n");
-    }
-    memcpy(socketbuf->buf, buffer, size);
-  } else {
-    socketbuf->buf = buffer;
-  }
-  socketbuf->len = size;
-  socketbuf->offset = 0;
-  if (dest) {
-    memcpy(&socketbuf->addr, dest, SOCK_ADDR_SIZE(dest));
-  }
-  socketbuf->next = NULL;
 
-  return socketbuf;
-}
-
-/* Free a poll buffer. */
-void free_socketbuf(struct socketbuf *socketbuf)
-{
-  free(socketbuf->buf);
-  free(socketbuf);
-}
-
+//this isnt used anywhere??
 size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
 {
+#ifndef WIN32
   DEBUG_IN();
   if(compression && len) {
     if (useMessagef == 1) {
@@ -2539,188 +1403,57 @@ size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
     }
   }
   DEBUG_OUT();
+#else
+  REPORT_ERROR("Cannot Decompress. Compression is not enabled in this build");
+#endif
   return len;
 }
 
-void sipp_customize_socket(struct sipp_socket *socket)
+
+void close_peer_sockets()
 {
-  unsigned int buffsize = buff_size;
-  DEBUG_IN();
+  peer_map::iterator peer_it;
+  T_peer_infos infos;
 
-  /* Allows fast TCP reuse of the socket */
-  if (socket->ss_transport == T_TCP || socket->ss_transport == T_TLS ) {
-    int sock_opt = 1;
-
-    if (setsockopt(socket->ss_fd, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt,
-                   sizeof (sock_opt)) == -1) {
-      REPORT_ERROR_NO("setsockopt(SO_REUSEADDR) failed");
-    }
-
-#ifndef SOL_TCP
-#define SOL_TCP 6
-#endif
-    if (setsockopt(socket->ss_fd, SOL_TCP, TCP_NODELAY, SETSOCKOPT_TYPE &sock_opt,
-                   sizeof (sock_opt)) == -1) {
-      {
-        REPORT_ERROR_NO("setsockopt(TCP_NODELAY) failed");
-      }
-    }
-
-    {
-      struct linger linger;
-
-      linger.l_onoff = 1;
-      linger.l_linger = 1;
-      if (setsockopt (socket->ss_fd, SOL_SOCKET, SO_LINGER,
-                      SETSOCKOPT_TYPE &linger, sizeof (linger)) < 0) {
-        REPORT_ERROR_NO("Unable to set SO_LINGER option");
-      }
-    }
+  for(peer_it = peers.begin(); peer_it != peers.end(); peer_it++) {
+    infos = peer_it->second;
+    sipp_close_socket(infos.peer_socket);
+    infos.peer_socket = NULL ;
+    peers[std::string(peer_it->first)] = infos;
   }
 
-  /* Increase buffer sizes for this sockets */
-  if(setsockopt(socket->ss_fd,
-                SOL_SOCKET,
-                SO_SNDBUF,
-                SETSOCKOPT_TYPE &buffsize,
-                sizeof(buffsize))) {
-    REPORT_ERROR_NO("Unable to set socket sndbuf");
-  }
-
-  buffsize = buff_size;
-  if(setsockopt(socket->ss_fd,
-                SOL_SOCKET,
-                SO_RCVBUF,
-                SETSOCKOPT_TYPE &buffsize,
-                sizeof(buffsize))) {
-    REPORT_ERROR_NO("Unable to set socket rcvbuf");
-  }
-  DEBUG_OUT();
-}
-
-static ssize_t socket_write_primitive(struct sipp_socket *socket, char *buffer, size_t len, struct sockaddr_storage *dest)
-{
-  ssize_t rc;
-  DEBUG_IN("this method actually performs send_to() call");
-
-  /* Refuse to write to invalid sockets. */
-  if (socket->ss_invalid) {
-    WARNING("Returning EPIPE on invalid socket: %p (%d)\n", socket, socket->ss_fd);
-    errno = EPIPE;
-    return -1;
-  }
-
-  /* Always check congestion before sending. */
-  if (socket->ss_congested) {
-    DEBUG("socket->ss_congested so returning EWOULDBLOCK");
-    errno = EWOULDBLOCK;
-    return -1;
-  }
-
-  switch(socket->ss_transport) {
-  case T_TLS:
-#ifdef _USE_OPENSSL
-    rc = send_nowait_tls(socket->ss_ssl, buffer, len, 0);
-#else
-    errno = EOPNOTSUPP;
-    rc = -1;
-#endif
-    break;
-  case T_TCP:
-    rc = send_nowait(socket->ss_fd, buffer, len, 0);
-    break;
-  case T_UDP:
-    if(compression) {
-      static char comp_msg[SIPP_MAX_MSG_SIZE];
-      strcpy(comp_msg, buffer);
-      if(comp_compress(&socket->ss_comp_state,
-                       comp_msg,
-                       (unsigned int *) &len) != COMP_OK) {
-        REPORT_ERROR("Compression pluggin error");
-      }
-      buffer = (char *)comp_msg;
-
-      TRACE_MSG("---\nCompressed message len: %d\n", len);
-    }
-
-    DEBUG("sendto(%d, buffer, %d, 0, %s:%hu [&=%p], %d)", socket->ss_fd, len, inet_ntoa( ((struct sockaddr_in*)dest)->sin_addr ), ntohs(((struct sockaddr_in*)dest)->sin_port), dest, SOCK_ADDR_SIZE(dest));
-    rc = sendto(socket->ss_fd, buffer, len, 0, (struct sockaddr *)dest, SOCK_ADDR_SIZE(dest));
-
-    break;
-  default:
-    REPORT_ERROR("Internal error, unknown transport type %d\n", socket->ss_transport);
-  }
-
-  DEBUG_OUT("return %d", rc);
-  return rc;
-}
-
-/* This socket is congestion, mark its as such and add it to the poll files. */
-int enter_congestion(struct sipp_socket *socket, int again)
-{
-  socket->ss_congested = true;
-
-  TRACE_MSG("Problem %s on socket  %d and poll_idx  is %d \n",
-            again == EWOULDBLOCK ? "EWOULDBLOCK" : "EAGAIN",
-            socket->ss_fd, socket->ss_pollidx);
-
-  pollfiles[socket->ss_pollidx].events |= POLLOUT;
-
-  nb_net_cong++;
-  return -1;
+  peers_connected = 0;
 }
 
 
-static int write_error(struct sipp_socket *socket, int ret)
+void close_local_sockets()
 {
-  DEBUG_IN();
-  const char *errstring = strerror(errno);
-
-#ifndef EAGAIN
-  int again = (errno == EWOULDBLOCK) ? errno : 0;
-#else
-  int again = ((errno == EAGAIN) || (errno == EWOULDBLOCK)) ? errno : 0;
-
-  /* Scrub away EAGAIN from the rest of the code. */
-  if (errno == EAGAIN) {
-    errno = EWOULDBLOCK;
+  for (int i = 0; i< local_nb; i++) {
+    sipp_close_socket(local_sockets[i]);
+    local_sockets[i] = NULL;
   }
-#endif
-
-  if(again) {
-    return enter_congestion(socket, again);
-  }
-
-  if (socket->ss_transport == T_TCP && errno == EPIPE) {
-    nb_net_send_errors++;
-    close(socket->ss_fd);
-    socket->ss_fd = -1;
-    sockets_pending_reset.insert(socket);
-    if (reconnect_allowed()) {
-      WARNING("Broken pipe on TCP connection, remote peer "
-              "probably closed the socket");
-    } else {
-      REPORT_ERROR("Broken pipe on TCP connection, remote peer "
-                   "probably closed the socket");
-    }
-    return -1;
-  }
-
-#ifdef _USE_OPENSSL
-  if (socket->ss_transport == T_TLS) {
-    errstring = sip_tls_error_string(socket->ss_ssl, ret);
-  }
-#endif
-
-  WARNING("Unable to send %s message: %s", TRANSPORT_TO_STRING(socket->ss_transport), errstring);
-  nb_net_send_errors++;
-  DEBUG_OUT();
-  return -1;
 }
 
+
+void free_peer_addr_map()
+{
+  peer_addr_map::iterator peer_addr_it;
+  for (peer_addr_it = peer_addrs.begin(); peer_addr_it != peer_addrs.end(); peer_addr_it++) {
+    free(peer_addr_it->second);
+  }
+}
+
+//todo: should this be moved to sipp_sockethandler alongside write_error
 static int read_error(struct sipp_socket *socket, int ret)
 {
-  const char *errstring = strerror(errno);
+#ifdef WIN32
+  ERRORNUMBER = WSAGetLastError();
+  wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+  char errorstring[1000];
+  const char *errstring = wchar_to_char(error_msg,errorstring);
+#else
+  const char *errstring = strerror(ERRORNUMBER);
+#endif
 #ifdef _USE_OPENSSL
   if (socket->ss_transport == T_TLS) {
     errstring = sip_tls_error_string(socket->ss_ssl, ret);
@@ -2731,14 +1464,14 @@ static int read_error(struct sipp_socket *socket, int ret)
 
 #ifdef EAGAIN
   /* Scrub away EAGAIN from the rest of the code. */
-  if (errno == EAGAIN) {
-    errno = EWOULDBLOCK;
+  if (ERRORNUMBER == EAGAIN) {
+    ERRORNUMBER = EWOULDBLOCK;
   }
 #endif
 
   /* We have only non-blocking reads, so this should not occur. */
   if (ret < 0) {
-    assert(errno != EAGAIN);
+    assert(ERRORNUMBER != EAGAIN);
   }
 
   if (socket->ss_transport == T_TCP || socket->ss_transport == T_TLS) {
@@ -2774,7 +1507,7 @@ static int read_error(struct sipp_socket *socket, int ret)
       return 0;
     }
 
-    close(socket->ss_fd);
+    CLOSESOCKET(socket->ss_fd);
     socket->ss_fd = -1;
     sockets_pending_reset.insert(socket);
 
@@ -2792,416 +1525,13 @@ static int read_error(struct sipp_socket *socket, int ret)
   return -1;
 }
 
-/* Flush any output buffers for this socket. */
-static int flush_socket(struct sipp_socket *socket)
-{
-  struct socketbuf *buf;
-  int ret;
 
-  DEBUG_IN();
-  while ((buf = socket->ss_out)) {
-    ssize_t size = buf->len - buf->offset;
-    ret = socket_write_primitive(socket, buf->buf + buf->offset, size, &buf->addr);
-    TRACE_MSG("Wrote %d of %d bytes in an output buffer.", ret, size);
-    if (ret == size) {
-      /* Everything is great, throw away this buffer. */
-      socket->ss_out = buf->next;
-      free_socketbuf(buf);
-    } else if (ret <= 0) {
-      /* Handle connection closes and errors. */
-      return write_error(socket, ret);
-    } else {
-      /* We have written more of the partial buffer. */
-      buf->offset += ret;
-      errno = EWOULDBLOCK;
-      enter_congestion(socket, EWOULDBLOCK);
-      return -1;
-    }
-  }
 
-  DEBUG_OUT();
-  return 0;
-}
 
-void buffer_write(struct sipp_socket *socket, char *buffer, size_t len, struct sockaddr_storage *dest)
-{
-  struct socketbuf *buf = socket->ss_out;
-
-  DEBUG_IN();
-
-  if (!buf) {
-    socket->ss_out = alloc_socketbuf(buffer, len, DO_COPY, dest);
-    TRACE_MSG("Added first buffered message to socket %d\n", socket->ss_fd);
-    return;
-  }
-
-  while(buf->next) {
-    buf = buf->next;
-  }
-
-  buf->next = alloc_socketbuf(buffer, len, DO_COPY, dest);
-  TRACE_MSG("Appended buffered message to socket %d\n", socket->ss_fd);
-  DEBUG_OUT();
-}
-
-void buffer_read(struct sipp_socket *socket, struct socketbuf *newbuf)
-{
-  struct socketbuf *buf = socket->ss_in;
-  struct socketbuf *prev = buf;
-
-  if (!buf) {
-    socket->ss_in = newbuf;
-    return;
-  }
-
-  while(buf->next) {
-    prev = buf;
-    buf = buf->next;
-  }
-
-  prev->next = newbuf;
-}
-
-/* Write data to a socket. */
-int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flags, struct sockaddr_storage *dest)
-{
-  int rc;
-  DEBUG_IN();
-  if ( socket == NULL ) {
-    //FIX coredump when trying to send data but no master yet ... ( for example after unexpected mesdsage)
-    return 0;
-  }
-
-  if (socket->ss_out) {
-    rc = flush_socket(socket);
-    TRACE_MSG("Attempted socket flush returned %d\r\n", rc);
-    if (rc < 0) {
-      if ((errno == EWOULDBLOCK) && (flags & WS_BUFFER)) {
-        buffer_write(socket, buffer, len, dest);
-        return len;
-      } else {
-        return rc;
-      }
-    }
-  }
-
-  rc = socket_write_primitive(socket, buffer, len, dest);
-
-  if (rc == len) {
-    /* Everything is great. */
-    if (useMessagef == 1) {
-      struct timeval currentTime;
-      GET_TIME (&currentTime);
-      TRACE_MSG("----------------------------------------------- %s\n"
-                "%s %smessage sent (%d bytes):\n\n%.*s\n",
-                CStat::formatTime(&currentTime, true),
-                TRANSPORT_TO_STRING(socket->ss_transport),
-                socket->ss_control ? "control " : "",
-                len, len, buffer);
-    }
-  } else if (rc <= 0) {
-    DEBUG("else if (rc <= 0) : Entered");
-    if ((errno == EWOULDBLOCK) && (flags & WS_BUFFER)) {
-      buffer_write(socket, buffer, len, dest);
-      enter_congestion(socket, errno);
-      return len;
-    }
-    if (useMessagef == 1) {
-      struct timeval currentTime;
-      GET_TIME (&currentTime);
-      TRACE_MSG("----------------------------------------------- %s\n"
-                "Error sending %s message:\n\n%.*s\n",
-                CStat::formatTime(&currentTime, true),
-                TRANSPORT_TO_STRING(socket->ss_transport),
-                len, buffer);
-    }
-    return write_error(socket, errno);
-  } else {
-    /* We have a truncated message, which must be handled internally to the write function. */
-    if (useMessagef == 1) {
-      struct timeval currentTime;
-      GET_TIME (&currentTime);
-      TRACE_MSG("----------------------------------------------- %s\n"
-                "Truncation sending %s message (%d of %d sent):\n\n%.*s\n",
-                CStat::formatTime(&currentTime, true),
-                TRANSPORT_TO_STRING(socket->ss_transport),
-                rc, len, len, buffer);
-    }
-    buffer_write(socket, buffer + rc, len - rc, dest);
-    enter_congestion(socket, errno);
-  }
-
-  DEBUG_OUT("return %d", rc);
-  return rc;
-}
 
 /****************************** Network Interface *******************/
 
-/* Our message detection states: */
-#define CFM_NORMAL 0 /* No CR Found, searching for \r\n\r\n. */
-#define CFM_CONTROL 1 /* Searching for 27 */
-#define CFM_CR 2 /* CR Found, Searching for \n\r\n */
-#define CFM_CRLF 3 /* CRLF Found, Searching for \r\n */
-#define CFM_CRLFCR 4 /* CRLFCR Found, Searching for \n */
-#define CFM_CRLFCRLF 5 /* We've found the end of the headers! */
 
-void merge_socketbufs(struct socketbuf *socketbuf)
-{
-  struct socketbuf *next = socketbuf->next;
-  int newsize;
-  char *newbuf;
-
-  if (!next) {
-    return;
-  }
-
-  if (next->offset) {
-    REPORT_ERROR("Internal error: can not merge a socketbuf with a non-zero offset.");
-  }
-
-  if (socketbuf->offset) {
-    memmove(socketbuf->buf, socketbuf->buf + socketbuf->offset, socketbuf->len - socketbuf->offset);
-    socketbuf->len -= socketbuf->offset;
-    socketbuf->offset = 0;
-  }
-
-  newsize = socketbuf->len + next->len;
-
-  newbuf = (char *)realloc(socketbuf->buf, newsize);
-  if (!newbuf) {
-    REPORT_ERROR("Could not allocate memory to merge socket buffers!");
-  }
-  memcpy(newbuf + socketbuf->len, next->buf, next->len);
-  socketbuf->buf = newbuf;
-  socketbuf->len = newsize;
-  socketbuf->next = next->next;
-  free_socketbuf(next);
-}
-
-/* Check for a message in the socket and return the length of the first
- * message.  If this is UDP, the only check is if we have buffers.  If this is
- * TCP or TLS we need to parse out the content-length. */
-static int check_for_message(struct sipp_socket *socket)
-{
-  struct socketbuf *socketbuf = socket->ss_in;
-  int state = socket->ss_control ? CFM_CONTROL : CFM_NORMAL;
-  const char *l;
-
-  if (!socketbuf)
-    return 0;
-
-  if (socket->ss_transport == T_UDP) {
-    return socketbuf->len;
-  }
-
-  int len = 0;
-
-  while (socketbuf->offset + len < socketbuf->len) {
-    char c = socketbuf->buf[socketbuf->offset + len];
-
-    switch(state) {
-    case CFM_CONTROL:
-      /* For CMD Message the escape char is the end of message */
-      if (c == 27) {
-        return len + 1; /* The plus one includes the control character. */
-      }
-      break;
-    case CFM_NORMAL:
-      if (c == '\r') {
-        state = CFM_CR;
-      }
-      break;
-    case CFM_CR:
-      if (c == '\n') {
-        state = CFM_CRLF;
-      } else {
-        state = CFM_NORMAL;
-      }
-      break;
-    case CFM_CRLF:
-      if (c == '\r') {
-        state = CFM_CRLFCR;
-      } else {
-        state = CFM_NORMAL;
-      }
-      break;
-    case CFM_CRLFCR:
-      if (c == '\n') {
-        state = CFM_CRLFCRLF;
-      } else {
-        state = CFM_NORMAL;
-      }
-      break;
-    }
-
-    /* Head off failing because the buffer does not contain the whole header. */
-    if (socketbuf->offset + len == socketbuf->len - 1) {
-      merge_socketbufs(socketbuf);
-    }
-
-    if (state == CFM_CRLFCRLF) {
-      break;
-    }
-
-    len++;
-  }
-
-  /* We did not find the end-of-header marker. */
-  if (state != CFM_CRLFCRLF) {
-    return 0;
-  }
-
-  /* Find the content-length header. */
-  const char *content_length_const = "\r\nContent-Length:";
-  const char *content_length_short_const = "\r\nl:";
-  if ((l = strncasestr(socketbuf->buf + socketbuf->offset, content_length_const, len))) {
-    l += strlen(content_length_const);
-  } else if ((l = strncasestr(socketbuf->buf + socketbuf->offset, content_length_short_const, len))) {
-    l += strlen(content_length_short_const);
-  } else {
-    /* There is no header, so the content-length is zero. */
-    return len + 1;
-  }
-
-  /* Skip spaces. */
-  while(isspace(*l)) {
-    if (*l == '\r' || *l == '\n') {
-      /* We ran into an end-of-line, so there is no content-length. */
-      return len + 1;
-    }
-    l++;
-  }
-
-  /* Do the integer conversion, we only allow '\r' or spaces after the integer. */
-  char *endptr;
-  int content_length = strtol(l, &endptr, 10);
-  if (*endptr != '\r' && !isspace(*endptr)) {
-    content_length = 0;
-  }
-
-  /* Now that we know how large this message is, we make sure we have the whole thing. */
-  do {
-    /* It is in this buffer. */
-    if (socketbuf->offset + len + content_length < socketbuf->len) {
-      return len + content_length + 1;
-    }
-    if (socketbuf->next == NULL) {
-      /* There is no buffer to merge, so we fail. */
-      return 0;
-    }
-    /* We merge ourself with the next buffer. */
-    merge_socketbufs(socketbuf);
-  } while (1);
-}
-
-/* Pull up to tcp_readsize data bytes out of the socket into our local buffer. */
-static int empty_socket(struct sipp_socket *socket)
-{
-  int readsize = socket->ss_transport == T_UDP ? SIPP_MAX_MSG_SIZE : tcp_readsize;
-  struct socketbuf *socketbuf;
-  char *buffer;
-  int ret;
-  DEBUG_IN();
-  /* Where should we start sending packets to, ideally we should begin to parse
-   * the Via, Contact, and Route headers.  But for now SIPp always sends to the
-   * host specified on the command line; or for UAS mode to the address that
-   * sent the last message. */
-  sipp_socklen_t addrlen = sizeof(struct sockaddr_storage);
-
-  buffer = (char *)malloc(readsize);
-  if (!buffer) {
-    REPORT_ERROR("Could not allocate memory for read!");
-  }
-  socketbuf = alloc_socketbuf(buffer, readsize, NO_COPY, NULL);
-
-  switch(socket->ss_transport) {
-  case T_TCP:
-  case T_UDP:
-    ret = recvfrom(socket->ss_fd, buffer, readsize, 0, (struct sockaddr *)&socketbuf->addr,  &addrlen);
-    break;
-  case T_TLS:
-#ifdef _USE_OPENSSL
-    ret = SSL_read(socket->ss_ssl, buffer, readsize);
-    /* XXX: Check for clean shutdown. */
-#else
-    REPORT_ERROR("TLS support is not enabled!");
-#endif
-    break;
-  }
-  if (ret <= 0) {
-    free_socketbuf(socketbuf);
-    return ret;
-  }
-
-  socketbuf->len = ret;
-
-  buffer_read(socket, socketbuf);
-
-  /* Do we have a complete SIP message? */
-  if (!socket->ss_msglen) {
-    if (int msg_len = check_for_message(socket)) {
-      socket->ss_msglen = msg_len;
-      pending_messages++;
-    }
-  }
-
-  DEBUG_OUT("return %d", ret);
-  return ret;
-}
-
-void sipp_socket_invalidate(struct sipp_socket *socket)
-{
-  int pollidx;
-
-  DEBUG_IN();
-  if (socket->ss_invalid) {
-    return;
-  }
-
-#ifdef _USE_OPENSSL
-  if (SSL *ssl = socket->ss_ssl) {
-    SSL_set_shutdown(ssl, SSL_SENT_SHUTDOWN|SSL_RECEIVED_SHUTDOWN);
-    SSL_free(ssl);
-  }
-#endif
-
-  shutdown(socket->ss_fd, SHUT_RDWR);
-  close(socket->ss_fd);
-  socket->ss_fd = -1;
-
-  if((pollidx = socket->ss_pollidx) >= pollnfds) {
-    REPORT_ERROR("Pollset error: index %d is greater than number of fds %d!", pollidx, pollnfds);
-  }
-
-  socket->ss_invalid = true;
-  socket->ss_pollidx = -1;
-
-  /* Adds call sockets in the array */
-  assert(pollnfds > 0);
-
-  pollnfds--;
-  pollfiles[pollidx] = pollfiles[pollnfds];
-  sockets[pollidx] = sockets[pollnfds];
-  sockets[pollidx]->ss_pollidx = pollidx;
-  sockets[pollnfds] = NULL;
-
-  if (socket->ss_msglen) {
-    pending_messages--;
-  }
-  DEBUG_OUT();
-}
-
-void sipp_close_socket (struct sipp_socket *socket)
-{
-  int count = --socket->ss_count;
-
-  if (count > 0) {
-    return;
-  }
-
-  sipp_socket_invalidate(socket);
-  free(socket);
-}
 
 static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, struct sockaddr_storage *src)
 {
@@ -3261,6 +1591,8 @@ static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, s
   return avail;
 }
 
+
+
 void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, struct sockaddr_storage *src)
 {
   DEBUG_IN();
@@ -3273,6 +1605,8 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   }
 
   char *call_id = get_call_id(msg);
+  if (call_id == NULL)
+    WARNING("(1) No valid Call-ID: header in message '%s'", msg);
   if (call_id[0] == '\0') {
     WARNING("SIP message without Call-ID discarded");
     return;
@@ -3419,8 +1753,14 @@ void pollset_process(int wait)
   }
 
   /* Get socket events. */
-  rs = poll(pollfiles, pollnfds, wait ? 1 : 0);
-  if((rs < 0) && (errno == EINTR)) {
+  rs = POLL(pollfiles, pollnfds, wait ? 1 : 0);
+#ifdef WIN32
+  ERRORNUMBER = WSAGetLastError();
+  print_if_error(rs);
+#endif
+  //todo possible collision err.h defines EINTR 4
+  //   we def EINTR as WSAEINTR which is 10004L
+  if((rs < 0) && (ERRORNUMBER == EINTR)) {
     return;
   }
 
@@ -3478,6 +1818,9 @@ void pollset_process(int wait)
           }
         }
       } else {
+        // ret = return value from recvfrom
+        // 0 = orderly shutdown
+        // -1 = error
         if ((ret = empty_socket(sock)) <= 0) {
           ret = read_error(sock, ret);
           if (ret == 0) {
@@ -3547,11 +1890,15 @@ void traffic_thread()
 
   getmilliseconds();
 
+#ifdef WIN32
+  //todo How can we implement timeout in windows
+#else
   /* Arm the global timer if needed */
   if (global_timeout > 0) {
     signal(SIGALRM, timeout_alarm);
     alarm(global_timeout / 1000);
   }
+#endif
 
   // Dump (to create file on disk) and showing screen at the beginning even if
   // the report period is not reached
@@ -3685,18 +2032,24 @@ void traffic_thread()
 /*************** RTP ECHO THREAD ***********************/
 /* param is a pointer to RTP socket */
 
+#ifdef WIN32
+DWORD WINAPI rtp_echo_thread(LPVOID param)
+#else
 void rtp_echo_thread (void * param)
+#endif
 {
   char *msg = (char*)alloca(media_bufsize);
   size_t nr, ns;
   sipp_socklen_t len;
   struct sockaddr_storage remote_rtp_addr;
 
-
+#ifndef WIN32
+  //windows doesnt support signals, no need to block them
   int                   rc;
   sigset_t              mask;
   sigfillset(&mask); /* Mask all allowed signals */
   rc = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+#endif
 
   for (;;) {
     len = sizeof(remote_rtp_addr);
@@ -3705,22 +2058,34 @@ void rtp_echo_thread (void * param)
                   media_bufsize, 0,
                   (sockaddr *)(void *) &remote_rtp_addr,
                   &len);
-
+#ifdef WIN32
+    ERRORNUMBER = WSAGetLastError();
+#endif
     if (((long)nr) < 0) {
       WARNING("%s %i",
               "Error on RTP echo reception - stopping echo - errno=",
-              errno);
+              ERRORNUMBER);
+#ifdef WIN32
+      return -1;
+#else
       return;
+#endif
     }
     ns = sendto(*(int *)param, msg, nr,
                 0, (sockaddr *)(void *) &remote_rtp_addr,
                 len);
-
+#ifdef WIN32
+    ERRORNUMBER = WSAGetLastError();
+#endif
     if (ns != nr) {
       WARNING("%s %i",
               "Error on RTP echo transmission - stopping echo - errno=",
-              errno);
+              ERRORNUMBER);
+#ifdef WIN32
+      return -1;
+#else
       return;
+#endif
     }
 
     if (*(int *)param==media_socket) {
@@ -3732,6 +2097,9 @@ void rtp_echo_thread (void * param)
       rtp2_bytes += ns;
     }
   }
+#ifdef WIN32
+  return 0;
+#endif
 }
 
 /* Wrap the help text. */
@@ -3994,10 +2362,12 @@ void print_last_stats()
 {
   interrupt = 1;
   // print last current screen
-  print_statistics(1);
+  if (print_statistics(1)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
   // and print statistics screen
   currentScreenToDisplay = DISPLAY_STAT_SCREEN;
-  print_statistics(1);
+  if (print_statistics(1)==INTERNAL_ERROR)
+      REPORT_ERROR("Internal error: creationMode=%d, thirdPartyMode=%d", creationMode, thirdPartyMode);
   if (main_scenario) {
     stattask::report();
   }
@@ -4028,362 +2398,10 @@ void releaseGlobalAllocations()
   delete globalVariables;
 }
 
-void stop_all_traces()
-{
-  message_lfi.fptr = NULL;
-  log_lfi.fptr = NULL;
-  if(dumpInRtt) dumpInRtt = 0;
-  if(dumpInFile) dumpInFile = 0;
-}
-
-static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd, int accepting) {
-  struct sipp_socket *ret = NULL;
-  DEBUG_IN();
-
-  ret = (struct sipp_socket *)malloc(sizeof(struct sipp_socket));
-  if (!ret) {
-    REPORT_ERROR("Could not allocate a sipp_socket structure.");
-  }
-  memset(ret, 0, sizeof(struct sipp_socket));
-
-
-  ret->ss_transport = transport;
-  ret->ss_control = false;
-  ret->ss_ipv6 = use_ipv6;
-  ret->ss_fd = fd;
-  ret->ss_comp_state = NULL;
-  ret->ss_count = 1;
-  ret->ss_changed_dest = false;
-
-  /* Initialize all sockets with our destination address. */
-  memcpy(&ret->ss_remote_sockaddr, &remote_sockaddr, sizeof(ret->ss_remote_sockaddr));
-
-#ifdef _USE_OPENSSL
-  ret->ss_ssl = NULL;
-
-  if ( transport == T_TLS ) {
-    DEBUG("Performing SSL socket initialization");
-    if ((ret->ss_bio = BIO_new_socket(fd,BIO_NOCLOSE)) == NULL) {
-      REPORT_ERROR("Unable to create BIO object:Problem with BIO_new_socket()\n");
-    }
-
-    if (!(ret->ss_ssl = SSL_new(accepting ? sip_trp_ssl_ctx : sip_trp_ssl_ctx_client))) {
-      REPORT_ERROR("Unable to create SSL object : Problem with SSL_new() \n");
-    }
-
-    SSL_set_bio(ret->ss_ssl,ret->ss_bio,ret->ss_bio);
-  }
-#endif
-
-  ret->ss_in = NULL;
-  ret->ss_out = NULL;
-  ret->ss_msglen = 0;
-  ret->ss_congested = false;
-  ret->ss_invalid = false;
-
-  /* Store this socket in the tables. */
-  ret->ss_pollidx = pollnfds++;
-  sockets[ret->ss_pollidx] = ret;
-  pollfiles[ret->ss_pollidx].fd      = ret->ss_fd;
-  pollfiles[ret->ss_pollidx].events  = POLLIN | POLLERR;
-  pollfiles[ret->ss_pollidx].revents = 0;
-
-  DEBUG_OUT("return code %d", ret);
-  return ret;
-}
-
-static struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, int fd) {
-  return sipp_allocate_socket(use_ipv6, transport, fd, 0);
-}
-
-int socket_fd(bool use_ipv6, int transport)
-{
-  int socket_type;
-  int fd;
-
-  switch(transport) {
-  case T_UDP:
-    socket_type = SOCK_DGRAM;
-    break;
-  case T_TLS:
-#ifndef _USE_OPENSSL
-    REPORT_ERROR("You do not have TLS support enabled!\n");
-#endif
-  case T_TCP:
-    socket_type = SOCK_STREAM;
-    break;
-  }
-
-  if((fd = socket(use_ipv6 ? AF_INET6 : AF_INET, socket_type, 0))== -1) {
-    REPORT_ERROR("Unable to get a %s socket (3)", TRANSPORT_TO_STRING(transport));
-  }
-
-  DEBUG_OUT("socket fd = %d", fd);
-  return fd;
-}
-
-struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
-  DEBUG_IN();
-  struct sipp_socket *ret;
-  int fd = socket_fd(use_ipv6, transport);
-
-#if defined(__SUNOS)
-  if (fd < 256) {
-    int newfd = fcntl(fd, F_DUPFD, 256);
-    if (newfd <= 0) {
-      // Typically, (24)(Too many open files) is the error here
-      WARNING("Unable to get a different %s socket, errno=%d(%s)",
-              TRANSPORT_TO_STRING(transport), errno, strerror(errno));
-
-      // Keep the original socket fd.
-      newfd = fd;
-    } else {
-      close(fd);
-    }
-    fd = newfd;
-  }
-#endif
-
-  ret  = sipp_allocate_socket(use_ipv6, transport, fd);
-  if (!ret) {
-    close(fd);
-    REPORT_ERROR("Could not allocate new socket structure!");
-  }
-  DEBUG_OUT();
-  return ret;
-}
-
-struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *existing) {
-  DEBUG_IN();
-  struct sipp_socket *sock = NULL;
-  static int next_socket;
-  if (pollnfds >= max_multi_socket) {  // we must take the main socket into account
-    /* Find an existing socket that matches transport and ipv6 parameters. */
-    int first = next_socket;
-    do {
-      int test_socket = next_socket;
-      next_socket = (next_socket + 1) % pollnfds;
-
-      if (sockets[test_socket]->ss_call_socket) {
-        /* Here we need to check that the address is the default. */
-        if (sockets[test_socket]->ss_ipv6 != use_ipv6) {
-          continue;
-        }
-        if (sockets[test_socket]->ss_transport != transport) {
-          continue;
-        }
-        if (sockets[test_socket]->ss_changed_dest) {
-          continue;
-        }
-
-        sock = sockets[test_socket];
-        sock->ss_count++;
-        *existing = true;
-        break;
-      }
-    } while (next_socket != first);
-    if (next_socket == first) {
-      REPORT_ERROR("Could not find an existing call socket to re-use!");
-    }
-  } else {
-    sock = new_sipp_socket(use_ipv6, transport);
-    sock->ss_call_socket = true;
-    *existing = false;
-  }
-  DEBUG_OUT();
-  return sock;
-}
-
-// Returns address of allocated sipp_socket on success or returns 0 if connection rejected due to incorrect
-// source address.  (All other error conditions directly call REPORT_ERROR)
-// If source is not null, only accept connections from source address (no port check though)
-struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket, struct sockaddr_storage *source) {
-  DEBUG_IN();
-  struct sipp_socket *ret;
-  struct sockaddr_storage remote_sockaddr;
-  int fd;
-  sipp_socklen_t addrlen = sizeof(remote_sockaddr);
-
-  DEBUG("Calling accept()");
-  if((fd = accept(accept_socket->ss_fd, (struct sockaddr *)&remote_sockaddr, &addrlen))== -1) {
-    REPORT_ERROR("Unable to accept on a %s socket: %s", TRANSPORT_TO_STRING(transport), strerror(errno));
-  }
-  DEBUG("accept() returned fd %d from %s", fd, socket_to_ip_port_string(&remote_sockaddr).c_str());
-
-#if defined(__SUNOS)
-  if (fd < 256) {
-    int newfd = fcntl(fd, F_DUPFD, 256);
-    if (newfd <= 0) {
-      // Typically, (24)(Too many open files) is the error here
-      WARNING("Unable to get a different %s socket, errno=%d(%s)",
-              TRANSPORT_TO_STRING(transport), errno, strerror(errno));
-
-      // Keep the original socket fd.
-      newfd = fd;
-    } else {
-      close(fd);
-    }
-    fd = newfd;
-  }
-#endif
-
-  // Verify it's from the right spot if source specified
-  if (source) {
-    if (!is_in_addr_equal(&remote_sockaddr, source)) {
-      WARNING("Closing new TCP connection from %s as it does not match specified remote host %s",
-              socket_to_ip_port_string(&remote_sockaddr).c_str(), socket_to_ip_string(source).c_str());
-      close(fd);
-      return 0;
-    }
-  }
-
-  ret  = sipp_allocate_socket(accept_socket->ss_ipv6, accept_socket->ss_transport, fd, 1);
-  if (!ret) {
-    close(fd);
-    REPORT_ERROR_NO("Could not allocate new socket!");
-  }
-
-  memcpy(&ret->ss_remote_sockaddr, &remote_sockaddr, sizeof(ret->ss_remote_sockaddr));
-  /* We should connect back to the address which connected to us if we
-   * experience a TCP failure. */
-  memcpy(&ret->ss_dest, &remote_sockaddr, sizeof(ret->ss_remote_sockaddr));
-
-  if (ret->ss_transport == T_TLS) {
-#ifdef _USE_OPENSSL
-    int err;
-    DEBUG("Calling SSL_accept()");
-    if ((err = SSL_accept(ret->ss_ssl)) < 0) {
-      REPORT_ERROR("Error in SSL_accept: %s\n", sip_tls_error_string(accept_socket->ss_ssl, err));
-    }
-#else
-    REPORT_ERROR("You need to compile SIPp with TLS support");
-#endif
-  }
-
-  DEBUG_OUT();
-  return ret;
-}
-
-int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr, int *port)
-{
-  int ret;
-  int len;
-  char ip_and_port[INET6_ADDRSTRLEN+10];
-  DEBUG_IN();
-
-  if (socket->ss_ipv6) {
-    len = sizeof(struct sockaddr_in6);
-    char ip[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) saddr)->sin6_addr), ip, INET_ADDRSTRLEN);
-    sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in6 *)saddr )->sin6_port));
-  } else {
-    len = sizeof(struct sockaddr_in);
-    char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(((struct sockaddr_in *) saddr)->sin_addr), ip, INET_ADDRSTRLEN);
-    sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in *) saddr)->sin_port));
-  }
-
-  if((ret = bind(socket->ss_fd, (sockaddr *)saddr, len))) {
-    DEBUG("Could not bind socket to %s (%d: %s)", ip_and_port, errno, strerror(errno));
-    return ret;
-  }
-  DEBUG("Bound socket %d to %s", socket->ss_fd, ip_and_port);
-
-  if (!port) {
-    return 0;
-  }
-
-  if ((ret = getsockname(socket->ss_fd, (sockaddr *)saddr, (sipp_socklen_t *) &len))) {
-    return ret;
-  }
-
-  if (socket->ss_ipv6) {
-    *port = ntohs((short)((_RCAST(struct sockaddr_in6 *, saddr))->sin6_port));
-  } else {
-    *port = ntohs((short)((_RCAST(struct sockaddr_in *, saddr))->sin_port));
-  }
-
-  DEBUG_OUT();
-  return 0;
-}
-
-int sipp_do_connect_socket(struct sipp_socket *socket)
-{
-  int ret;
-  //We only connect our socket if using a connection-based protocol, or only one call is allowed.
-  assert(socket->ss_transport == T_TCP || socket->ss_transport == T_TLS || no_call_id_check );
-
-  errno = 0;
-  DEBUG("Calling connect()");
-  ret = connect(socket->ss_fd, (struct sockaddr *)&socket->ss_dest, SOCK_ADDR_SIZE(&socket->ss_dest));
-  if (ret < 0) {
-    return ret;
-  }
-
-  if (socket->ss_transport == T_TLS) {
-#ifdef _USE_OPENSSL
-    int err;
-    DEBUG("Calling SSL_connect()");
-    if ((err = SSL_connect(socket->ss_ssl)) < 0) {
-      REPORT_ERROR("Error in SSL connection: %s\n", sip_tls_error_string(socket->ss_ssl, err));
-    }
-#else
-    REPORT_ERROR("You need to compile SIPp with TLS support");
-#endif
-  }
-
-  return 0;
-}
-
-int sipp_connect_socket(struct sipp_socket *socket, struct sockaddr_storage *dest)
-{
-  memcpy(&socket->ss_dest, dest, SOCK_ADDR_SIZE(dest));
-  return sipp_do_connect_socket(socket);
-}
-
-int sipp_reconnect_socket(struct sipp_socket *socket)
-{
-  DEBUG_IN();
-  assert(socket->ss_fd == -1);
-
-  socket->ss_fd = socket_fd(socket->ss_ipv6, socket->ss_transport);
-  if (socket->ss_fd == -1) {
-    REPORT_ERROR_NO("Could not obtain new socket: ");
-  }
-
-  if (socket->ss_invalid) {
-#ifdef _USE_OPENSSL
-    socket->ss_ssl = NULL;
-
-    if ( transport == T_TLS ) {
-      if ((socket->ss_bio = BIO_new_socket(socket->ss_fd,BIO_NOCLOSE)) == NULL) {
-        REPORT_ERROR("Unable to create BIO object:Problem with BIO_new_socket()\n");
-      }
-
-      if (!(socket->ss_ssl = SSL_new(sip_trp_ssl_ctx_client))) {
-        REPORT_ERROR("Unable to create SSL object : Problem with SSL_new() \n");
-      }
-
-      SSL_set_bio(socket->ss_ssl,socket->ss_bio,socket->ss_bio);
-    }
-#endif
-
-    /* Store this socket in the tables. */
-    socket->ss_pollidx = pollnfds++;
-    sockets[socket->ss_pollidx] = socket;
-    pollfiles[socket->ss_pollidx].fd      = socket->ss_fd;
-    pollfiles[socket->ss_pollidx].events  = POLLIN | POLLERR;
-    pollfiles[socket->ss_pollidx].revents = 0;
-
-    socket->ss_invalid = false;
-  }
-
-  DEBUG_OUT("about to call 'return sipp_do_connect_socket(socket)'");
-  return sipp_do_connect_socket(socket);
-}
-
 
 /* Main */
+#define MAXTHREADS 2
+int threadcount =0;
 int main(int argc, char *argv[])
 {
   int                  argi = 0;
@@ -4425,6 +2443,8 @@ int main(int argc, char *argv[])
     action_usr2.sa_handler = sipp_sigusr2;
     sigaction(SIGUSR2, &action_usr2, NULL);
   }
+#else
+  // todo : sigusr1 and siguser2 used to (q)uit and (Q)quit
 #endif // ifndef WIN32
   screen_set_exename((char *)"sipp");
 
@@ -4435,8 +2455,11 @@ int main(int argc, char *argv[])
   memset(media_ip_escaped,0, 42);
 
   /* Load compression pluggin if available */
+#ifndef WIN32
   comp_load();
-
+#else
+  // compression disabled on win32
+#endif
   /* Initialize the tolower table. */
   init_tolower_table();
 
@@ -4474,7 +2497,7 @@ int main(int argc, char *argv[])
         }
         exit(EXIT_OTHER);
       case SIPP_OPTION_VERSION:
-        printf("\n SIPped v3.2.40"
+        printf("\n SIPped v3.2.45 BETA"
 #ifdef _USE_OPENSSL
                "-TLS"
 #endif
@@ -4636,11 +2659,15 @@ int main(int argc, char *argv[])
 #endif
           break;
         case 'c':
+#ifndef WIN32
           if(strlen(comp_error)) {
             REPORT_ERROR("No " COMP_PLUGGIN " pluggin available:\n%s", comp_error);
           }
           transport = T_UDP;
           compression = 1;
+#else
+          REPORT_ERROR("Compression is not supported in this build of sipp");
+#endif
         }
         switch(argv[argi][1]) {
         case '1':
@@ -4773,8 +2800,8 @@ int main(int argc, char *argv[])
           int i = find_scenario(argv[argi]);
 
           scenario_file = new char [strlen(argv[argi])+1] ;
-          set_logging_scenario_file_name(scenario_file);
           sprintf(scenario_file,"%s", argv[argi]);
+          set_logging_scenario_file_name(scenario_file);
           default_scenario_to_use = i;
         } else if (!strcmp(argv[argi - 1], "-sd")) {
           int i = find_scenario(argv[argi]);
@@ -4962,6 +2989,7 @@ int main(int argc, char *argv[])
         ((struct logfile_info*)option->data)->fixedname = true;
         ((struct logfile_info*)option->data)->overwrite = get_bool(argv[argi], argv[argi-1]);
         break;
+#ifndef WIN32
       case SIPP_OPTION_PLUGIN: {
         void *handle;
         char *error;
@@ -4987,6 +3015,7 @@ int main(int argc, char *argv[])
         }
       }
       break;
+#endif
       default:
         REPORT_ERROR("Internal error: I don't recognize the option type for %s\n", argv[argi]);
       }
@@ -5031,7 +3060,7 @@ int main(int argc, char *argv[])
 #endif
 
   if (!dump_xml && !dump_sequence_diagram)
-    screen_init(print_last_stats);
+    screen_init(print_last_stats, releaseGlobalAllocations);
 
 // OPENING FILES HERE
 
@@ -5174,10 +3203,12 @@ int main(int argc, char *argv[])
     ooc_scenario->stats->setFileName((char*)"ooc_default", (char*)".csv");
   }
   display_scenario = main_scenario;
+  display_scenario_stats = main_scenario->stats;
 
-  if (dump_sequence_diagram)
-    print_stats_in_file(stdout, 0, 1);
-
+  if (dump_sequence_diagram){
+    if (print_stats_in_file(stdout, 0, 1)==SCENARIO_NOT_IMPLEMENTED)
+      REPORT_ERROR("Scenario command not implemented in display\n");
+  }
   if (dump_sequence_diagram || dump_xml)
     exit(0);
 
@@ -5199,7 +3230,8 @@ int main(int argc, char *argv[])
 
   /* In which mode the tool is launched ? */
   main_scenario->computeSippMode();
-
+  
+  initialize_sockets();
   /* initialize [remote_ip] and [local_ip] keywords for use in <init> section */
   determine_remote_and_local_ip();
 
@@ -5229,7 +3261,7 @@ int main(int argc, char *argv[])
       dup2(nullfd, fileno(stdin));
       dup2(nullfd, fileno(stdout));
       dup2(nullfd, fileno(stderr));
-
+  // fileclose not CLOSESOCKET
       close(nullfd);
     }
     break;
@@ -5260,6 +3292,7 @@ int main(int argc, char *argv[])
     opentask::set_rate(rate);
   }
 
+  // move initialize_sockets out of open_connections to here??
   open_connections();
 
   /* Defaults for media sockets */
@@ -5425,22 +3458,25 @@ int main(int argc, char *argv[])
     }
   }
 
-  traffic_thread();
+  // this allows us to
+  //  throw runtime_error("text for report_error");
+  // if we include <stdexcept> in throwing file. This can help
+  // us remove dependancy on screen just to call REPORT_ERROR
+  try {
+    traffic_thread();
+  }catch (exception& e)
+  { 
+    cleanup_sockets();
+    REPORT_ERROR(e.what());
+  }
+  // no finally clause in c++
+  cleanup_sockets(); 
 
   if (scenario_file != NULL) {
     delete [] scenario_file ;
     scenario_file = NULL ;
   }
 
-}
-
-
-bool reconnect_allowed()
-{
-  if (reset_number == -1) {
-    return true;
-  }
-  return (reset_number > 0);
 }
 
 void reset_connection(struct sipp_socket *socket)
@@ -5491,590 +3527,12 @@ void close_calls(struct sipp_socket *socket)
   DEBUG_OUT();
 }
 
-void determine_remote_ip()
-{
-  if(!strlen(remote_host)) {
-    memset(&remote_sockaddr, 0, sizeof( remote_sockaddr ));
-    // remote_host option required for client, optional for server.
-    if((sendMode != MODE_SERVER)) {
-      REPORT_ERROR("Missing remote host parameter. This scenario requires it.  \nCommon reasons are that the first message is a sent by SIPp or that a NOP statement precedes the <recv> and you specified the -mc option");
-    }
-  } else {
-    int temp_remote_port;
-    get_host_and_port(remote_host, remote_host, &temp_remote_port);
-    if (temp_remote_port != 0) {
-      remote_port = temp_remote_port;
-    }
 
-    /* Resolving the remote IP */
-    {
-      struct addrinfo   hints;
-      struct addrinfo * local_addr;
 
-      printf ("Resolving remote host '%s'... ", remote_host);
 
-      memset((char*)&hints, 0, sizeof(hints));
-      hints.ai_flags  = AI_PASSIVE;
-      hints.ai_family = PF_UNSPEC;
 
-      /* FIXME: add DNS SRV support using liburli? */
-      if (getaddrinfo(remote_host,
-                      NULL,
-                      &hints,
-                      &local_addr) != 0) {
-        REPORT_ERROR("Unknown remote host '%s'.\n"
-                     "Use 'sipp -h' for details", remote_host);
-      }
 
-      memset(&remote_sockaddr, 0, sizeof( remote_sockaddr ));
-      memcpy(&remote_sockaddr,
-             local_addr->ai_addr,
-             SOCK_ADDR_SIZE(
-               _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
 
-      freeaddrinfo(local_addr);
-
-      strcpy(remote_ip, get_inet_address(&remote_sockaddr));
-      if (remote_sockaddr.ss_family == AF_INET) {
-        (_RCAST(struct sockaddr_in *, &remote_sockaddr))->sin_port =
-          htons((short)remote_port);
-        strcpy(remote_ip_escaped, remote_ip);
-      } else {
-        (_RCAST(struct sockaddr_in6 *, &remote_sockaddr))->sin6_port =
-          htons((short)remote_port);
-        sprintf(remote_ip_escaped, "[%s]", remote_ip);
-      }
-      printf("Done.\n");
-    }
-  }
-
-} // determine_remote_ip
-
-
-void determine_local_ip()
-{
-  if(gethostname(hostname,64) != 0) {
-    REPORT_ERROR_NO("Can't get local hostname in 'gethostname(hostname,64)'");
-  }
-
-  {
-    char            * local_host = NULL;
-    struct addrinfo * local_addr;
-    struct addrinfo   hints;
-
-    if (!strlen(local_ip)) {
-      local_host = (char *)hostname;
-    } else {
-      local_host = (char *)local_ip;
-    }
-
-    memset((char*)&hints, 0, sizeof(hints));
-    hints.ai_flags  = AI_PASSIVE;
-    hints.ai_family = PF_UNSPEC;
-
-    /* Resolving local IP */
-    if (getaddrinfo(local_host, NULL, &hints, &local_addr) != 0) {
-      REPORT_ERROR("Can't get local IP address in getaddrinfo, local_host='%s', local_ip='%s'",
-                   local_host,
-                   local_ip);
-    }
-    // store local addr info for rsa option
-    getaddrinfo(local_host, NULL, &hints, &local_addr_storage);
-
-    memset(&local_sockaddr,0,sizeof(struct sockaddr_storage));
-    local_sockaddr.ss_family = local_addr->ai_addr->sa_family;
-
-    if (!strlen(local_ip)) {
-      strcpy(local_ip,
-             get_inet_address(
-               _RCAST(struct sockaddr_storage *, local_addr->ai_addr)));
-    } else {
-      memcpy(&local_sockaddr,
-             local_addr->ai_addr,
-             SOCK_ADDR_SIZE(
-               _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
-    }
-    freeaddrinfo(local_addr);
-
-    if (local_sockaddr.ss_family == AF_INET6) {
-      local_ip_is_ipv6 = true;
-      sprintf(local_ip_escaped, "[%s]", local_ip);
-    } else {
-      strcpy(local_ip_escaped, local_ip);
-    }
-  }
-} // determine_local_ip
-
-void determine_remote_and_local_ip()
-{
-  determine_remote_ip();
-  determine_local_ip();
-} // determine_remote_and_local_ip
-
-int open_connections()
-{
-  DEBUG_IN();
-  int status=0;
-  local_port = 0;
-
-  /* Creating and binding the local socket */
-  if ((main_socket = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
-    REPORT_ERROR_NO("Unable to get the local socket");
-  }
-
-  sipp_customize_socket(main_socket);
-
-  /* Trying to bind local port */
-  char peripaddr[256];
-  if(!user_port) {
-    unsigned short l_port;
-    for(l_port = DEFAULT_PORT;
-        l_port < (DEFAULT_PORT + 60);
-        l_port++) {
-
-      // Bind socket to local_ip
-      if (bind_local || peripsocket) {
-        struct addrinfo * local_addr;
-        struct addrinfo   hints;
-        memset((char*)&hints, 0, sizeof(hints));
-        hints.ai_flags  = AI_PASSIVE;
-        hints.ai_family = PF_UNSPEC;
-
-        if (peripsocket) {
-          // On some machines it fails to bind to the self computed local
-          // IP address.
-          // For the socket per IP mode, bind the main socket to the
-          // first IP address specified in the inject file.
-          inFiles[ip_file]->getField(0, peripfield, peripaddr, sizeof(peripaddr));
-          if (getaddrinfo(peripaddr,
-                          NULL,
-                          &hints,
-                          &local_addr) != 0) {
-            REPORT_ERROR("Unknown host '%s'.\n"
-                         "Use 'sipp -h' for details", peripaddr);
-          }
-        } else {
-          if (getaddrinfo(local_ip,
-                          NULL,
-                          &hints,
-                          &local_addr) != 0) {
-            REPORT_ERROR("Unknown host '%s'.\n"
-                         "Use 'sipp -h' for details", peripaddr);
-          }
-        }
-        memcpy(&local_sockaddr,
-               local_addr->ai_addr,
-               SOCK_ADDR_SIZE(
-                 _RCAST(struct sockaddr_storage *, local_addr->ai_addr)));
-        freeaddrinfo(local_addr);
-      }
-      if (local_ip_is_ipv6) {
-        (_RCAST(struct sockaddr_in6 *, &local_sockaddr))->sin6_port
-          = htons((short)l_port);
-      } else {
-        (_RCAST(struct sockaddr_in *, &local_sockaddr))->sin_port
-          = htons((short)l_port);
-      }
-      if(sipp_bind_socket(main_socket, &local_sockaddr, &local_port) == 0) {
-        break;
-      }
-    }
-  }
-
-  if(!local_port) {
-    /* Not already binded, use user_port of 0 to let
-     * the system choose a port. */
-
-    if (bind_local || peripsocket) {
-      struct addrinfo * local_addr;
-      struct addrinfo   hints;
-      memset((char*)&hints, 0, sizeof(hints));
-      hints.ai_flags  = AI_PASSIVE;
-      hints.ai_family = PF_UNSPEC;
-
-      if (peripsocket) {
-        // On some machines it fails to bind to the self computed local
-        // IP address.
-        // For the socket per IP mode, bind the main socket to the
-        // first IP address specified in the inject file.
-        inFiles[ip_file]->getField(0, peripfield, peripaddr, sizeof(peripaddr));
-        if (getaddrinfo(peripaddr,
-                        NULL,
-                        &hints,
-                        &local_addr) != 0) {
-          REPORT_ERROR("Unknown host '%s'.\n"
-                       "Use 'sipp -h' for details", peripaddr);
-        }
-      } else {
-        if (getaddrinfo(local_ip,
-                        NULL,
-                        &hints,
-                        &local_addr) != 0) {
-          REPORT_ERROR("Unknown host '%s'.\n"
-                       "Use 'sipp -h' for details", peripaddr);
-        }
-      }
-      memcpy(&local_sockaddr,
-             local_addr->ai_addr,
-             SOCK_ADDR_SIZE(
-               _RCAST(struct sockaddr_storage *, local_addr->ai_addr)));
-      freeaddrinfo(local_addr);
-    }
-
-    if (local_ip_is_ipv6) {
-      (_RCAST(struct sockaddr_in6 *, &local_sockaddr))->sin6_port
-        = htons((short)user_port);
-    } else {
-      (_RCAST(struct sockaddr_in *, &local_sockaddr))->sin_port
-        = htons((short)user_port);
-    }
-    if(sipp_bind_socket(main_socket, &local_sockaddr, &local_port)) {
-      if (local_ip_is_ipv6) {
-        REPORT_ERROR_NO("Unable to bind main socket to IPv6 address, port %d. This may be caused by an incorrectly specified local IP ", user_port);
-      } else {
-        REPORT_ERROR_NO("Unable to bind main socket to %s:%d. Make sure that the local IP (as specified with -i) is actually an IP address on your computer", inet_ntoa(((struct sockaddr_in *) &local_sockaddr)->sin_addr), user_port);
-      }
-    }
-  }
-
-  if (peripsocket) {
-    // Add the main socket to the socket per subscriber map
-    map_perip_fd[peripaddr] = main_socket;
-  }
-
-  // Create additional server sockets when running in socket per
-  // IP address mode.
-  if (peripsocket && sendMode == MODE_SERVER) {
-    struct sockaddr_storage server_sockaddr;
-    struct addrinfo * local_addr;
-    struct addrinfo   hints;
-    memset((char*)&hints, 0, sizeof(hints));
-    hints.ai_flags  = AI_PASSIVE;
-    hints.ai_family = PF_UNSPEC;
-
-    char peripaddr[256];
-    struct sipp_socket *sock;
-    unsigned int lines = inFiles[ip_file]->numLines();
-    for (unsigned int i = 0; i < lines; i++) {
-      inFiles[ip_file]->getField(i, peripfield, peripaddr, sizeof(peripaddr));
-      map<string, struct sipp_socket *>::iterator j;
-      j = map_perip_fd.find(peripaddr);
-
-      if (j == map_perip_fd.end()) {
-        if((sock = new_sipp_socket(is_ipv6, transport)) == NULL) {
-          REPORT_ERROR_NO("Unable to get server socket");
-        }
-
-        if (getaddrinfo(peripaddr,
-                        NULL,
-                        &hints,
-                        &local_addr) != 0) {
-          REPORT_ERROR("Unknown remote host '%s'.\n"
-                       "Use 'sipp -h' for details", peripaddr);
-        }
-
-        memcpy(&server_sockaddr,
-               local_addr->ai_addr,
-               SOCK_ADDR_SIZE(
-                 _RCAST(struct sockaddr_storage *, local_addr->ai_addr)));
-        freeaddrinfo(local_addr);
-
-        if (is_ipv6) {
-          (_RCAST(struct sockaddr_in6 *, &server_sockaddr))->sin6_port
-            = htons((short)local_port);
-        } else {
-          (_RCAST(struct sockaddr_in *, &server_sockaddr))->sin_port
-            = htons((short)local_port);
-        }
-
-        sipp_customize_socket(sock);
-        if(sipp_bind_socket(sock, &server_sockaddr, NULL)) {
-          REPORT_ERROR_NO("Unable to bind server socket");
-        }
-
-        map_perip_fd[peripaddr] = sock;
-      }
-    }
-  }
-
-  if((!multisocket) && (transport == T_TCP || transport == T_TLS) &&
-      (sendMode != MODE_SERVER)) {
-    DEBUG("Single-socket mode, TCP or TLS, and sendMode == MODE_CLIENT: creating tcp_multiplex socket");
-    if((tcp_multiplex = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
-      REPORT_ERROR_NO("Unable to get a TCP socket");
-    }
-
-    /* OJA FIXME: is it correct? */
-    if (use_remote_sending_addr) {
-      remote_sockaddr = remote_sending_sockaddr ;
-    }
-
-    if(sipp_connect_socket(tcp_multiplex, &remote_sockaddr)) {
-      if(reset_number >0) {
-        WARNING("Failed to reconnect\n");
-        sipp_close_socket(main_socket);
-        reset_number--;
-        return 1;
-      } else {
-        if(errno == EINVAL) {
-          /* This occurs sometime on HPUX but is not a true INVAL */
-          REPORT_ERROR_NO("Unable to connect a TCP socket, remote peer error.\n"
-                          "Use 'sipp -h' for details");
-        } else {
-          REPORT_ERROR_NO("Unable to connect a TCP socket.\n"
-                          "Use 'sipp -h' for details");
-        }
-      }
-    }
-
-    sipp_customize_socket(tcp_multiplex);
-  }
-
-
-  if(transport == T_TCP || transport == T_TLS) {
-    DEBUG("Listening on main_socket (fd = %d)", main_socket->ss_fd);
-    if(listen(main_socket->ss_fd, 100)) {
-      REPORT_ERROR_NO("Unable to listen main socket");
-    }
-  }
-
-  /* Trying to connect to Twin Sipp in 3PCC mode */
-  if(twinSippMode) {
-    if(thirdPartyMode == MODE_3PCC_CONTROLLER_A || thirdPartyMode == MODE_3PCC_A_PASSIVE) {
-      connect_to_peer(twinSippHost, twinSippPort, &twinSipp_sockaddr, twinSippIp, &twinSippSocket);
-    } else if(thirdPartyMode == MODE_3PCC_CONTROLLER_B) {
-      connect_local_twin_socket(twinSippHost);
-    } else {
-      REPORT_ERROR("TwinSipp Mode enabled but thirdPartyMode is different "
-                   "from 3PCC_CONTROLLER_B and 3PCC_CONTROLLER_A\n");
-    }
-  } else if (extendedTwinSippMode) {
-    if (thirdPartyMode == MODE_MASTER || thirdPartyMode == MODE_MASTER_PASSIVE) {
-      strcpy(twinSippHost,get_peer_addr(master_name));
-      get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
-      connect_local_twin_socket(twinSippHost);
-      connect_to_all_peers();
-    } else if(thirdPartyMode == MODE_SLAVE) {
-      strcpy(twinSippHost,get_peer_addr(slave_number));
-      get_host_and_port(twinSippHost, twinSippHost, &twinSippPort);
-      connect_local_twin_socket(twinSippHost);
-    } else {
-      REPORT_ERROR("extendedTwinSipp Mode enabled but thirdPartyMode is different "
-                   "from MASTER and SLAVE\n");
-    }
-  }
-
-  //casting remote_sockaddr as int* and derefrencing to get first byte. If it is null, no IP has been specified.
-  if(*(int*)&remote_sockaddr && no_call_id_check && main_socket->ss_transport == T_UDP) {
-    DEBUG("Connecting (limiting) UDP main_socket (fd = %d) to remote address");
-    if(sipp_connect_socket(main_socket, &remote_sockaddr)) REPORT_ERROR("Could not connect socket to remote address. Check to make sure the remote IP is valid.");
-  }
-
-  DEBUG_OUT();
-  return status;
-} // open_connections
-
-
-void connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *peer_sockaddr, char *peer_ip, struct sipp_socket **peer_socket)
-{
-
-  /* Resolving the  peer IP */
-  printf("Resolving peer address : %s...\n",peer_host);
-  struct addrinfo   hints;
-  struct addrinfo * local_addr;
-  memset((char*)&hints, 0, sizeof(hints));
-  hints.ai_flags  = AI_PASSIVE;
-  hints.ai_family = PF_UNSPEC;
-  is_ipv6 = false;
-  /* Resolving twin IP */
-  if (getaddrinfo(peer_host,
-                  NULL,
-                  &hints,
-                  &local_addr) != 0) {
-
-    REPORT_ERROR("Unknown peer host '%s'.\n"
-                 "Use 'sipp -h' for details", peer_host);
-  }
-
-  memcpy(peer_sockaddr,
-         local_addr->ai_addr,
-         SOCK_ADDR_SIZE(
-           _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
-
-  freeaddrinfo(local_addr);
-
-  if (peer_sockaddr->ss_family == AF_INET) {
-    (_RCAST(struct sockaddr_in *,peer_sockaddr))->sin_port =
-      htons((short)peer_port);
-  } else {
-    (_RCAST(struct sockaddr_in6 *,peer_sockaddr))->sin6_port =
-      htons((short)peer_port);
-    is_ipv6 = true;
-  }
-  strcpy(peer_ip, get_inet_address(peer_sockaddr));
-  if((*peer_socket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-    REPORT_ERROR_NO("Unable to get a twin sipp TCP socket");
-  }
-
-  /* Mark this as a control socket. */
-  (*peer_socket)->ss_control = 1;
-
-  if(sipp_connect_socket(*peer_socket, peer_sockaddr)) {
-    if(errno == EINVAL) {
-      /* This occurs sometime on HPUX but is not a true INVAL */
-      REPORT_ERROR_NO("Unable to connect a twin sipp TCP socket\n "
-                      ", remote peer error.\n"
-                      "Use 'sipp -h' for details");
-    } else {
-      REPORT_ERROR_NO("Unable to connect a twin sipp socket "
-                      "\n"
-                      "Use 'sipp -h' for details");
-    }
-  }
-
-  sipp_customize_socket(*peer_socket);
-}
-
-struct sipp_socket **get_peer_socket(char * peer) {
-  struct sipp_socket **peer_socket;
-  T_peer_infos infos;
-  peer_map::iterator peer_it;
-  peer_it = peers.find(peer_map::key_type(peer));
-  if(peer_it != peers.end()) {
-    infos = peer_it->second;
-    peer_socket = &(infos.peer_socket);
-    return peer_socket;
-  } else {
-    REPORT_ERROR("get_peer_socket: Peer %s not found\n", peer);
-  }
-  return NULL;
-}
-
-char * get_peer_addr(char * peer)
-{
-  char * addr;
-  peer_addr_map::iterator peer_addr_it;
-  peer_addr_it = peer_addrs.find(peer_addr_map::key_type(peer));
-  if(peer_addr_it != peer_addrs.end()) {
-    addr =  peer_addr_it->second;
-    return addr;
-  } else {
-    REPORT_ERROR("get_peer_addr: Peer %s not found\n", peer);
-  }
-  return NULL;
-}
-
-bool is_a_peer_socket(struct sipp_socket *peer_socket)
-{
-  peer_socket_map::iterator peer_socket_it;
-  peer_socket_it = peer_sockets.find(peer_socket_map::key_type(peer_socket));
-  if(peer_socket_it == peer_sockets.end()) {
-    return false;
-  } else {
-    return true;
-  }
-}
-
-void connect_local_twin_socket(char * twinSippHost)
-{
-  /* Resolving the listener IP */
-  printf("Resolving listener address : %s...\n", twinSippHost);
-  struct addrinfo   hints;
-  struct addrinfo * local_addr;
-  memset((char*)&hints, 0, sizeof(hints));
-  hints.ai_flags  = AI_PASSIVE;
-  hints.ai_family = PF_UNSPEC;
-  is_ipv6 = false;
-
-  /* Resolving twin IP */
-  if (getaddrinfo(twinSippHost,
-                  NULL,
-                  &hints,
-                  &local_addr) != 0) {
-    REPORT_ERROR("Unknown twin host '%s'.\n"
-                 "Use 'sipp -h' for details", twinSippHost);
-  }
-  memcpy(&twinSipp_sockaddr,
-         local_addr->ai_addr,
-         SOCK_ADDR_SIZE(
-           _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
-
-  if (twinSipp_sockaddr.ss_family == AF_INET) {
-    (_RCAST(struct sockaddr_in *,&twinSipp_sockaddr))->sin_port =
-      htons((short)twinSippPort);
-  } else {
-    (_RCAST(struct sockaddr_in6 *,&twinSipp_sockaddr))->sin6_port =
-      htons((short)twinSippPort);
-    is_ipv6 = true;
-  }
-  strcpy(twinSippIp, get_inet_address(&twinSipp_sockaddr));
-
-  if((localTwinSippSocket = new_sipp_socket(is_ipv6, T_TCP)) == NULL) {
-    REPORT_ERROR_NO("Unable to get a listener TCP socket ");
-  }
-
-  memset(&localTwin_sockaddr, 0, sizeof(struct sockaddr_storage));
-  if (!is_ipv6) {
-    localTwin_sockaddr.ss_family = AF_INET;
-    (_RCAST(struct sockaddr_in *,&localTwin_sockaddr))->sin_port =
-      htons((short)twinSippPort);
-  } else {
-    localTwin_sockaddr.ss_family = AF_INET6;
-    (_RCAST(struct sockaddr_in6 *,&localTwin_sockaddr))->sin6_port =
-      htons((short)twinSippPort);
-  }
-
-  // add socket option to allow the use of it without the TCP timeout
-  // This allows to re-start the controller B (or slave) without timeout after its exit
-  int reuse = 1;
-  setsockopt(localTwinSippSocket->ss_fd,SOL_SOCKET,SO_REUSEADDR,SETSOCKOPT_TYPE &reuse,sizeof(reuse));
-  sipp_customize_socket(localTwinSippSocket);
-
-  if(sipp_bind_socket(localTwinSippSocket, &localTwin_sockaddr, 0)) {
-    REPORT_ERROR_NO("Unable to bind twin sipp socket ");
-  }
-
-  if(listen(localTwinSippSocket->ss_fd, 100)) {
-    REPORT_ERROR_NO("Unable to listen twin sipp socket in ");
-  }
-}
-
-void close_peer_sockets()
-{
-  peer_map::iterator peer_it;
-  T_peer_infos infos;
-
-  for(peer_it = peers.begin(); peer_it != peers.end(); peer_it++) {
-    infos = peer_it->second;
-    sipp_close_socket(infos.peer_socket);
-    infos.peer_socket = NULL ;
-    peers[std::string(peer_it->first)] = infos;
-  }
-
-  peers_connected = 0;
-}
-
-void close_local_sockets()
-{
-  for (int i = 0; i< local_nb; i++) {
-    sipp_close_socket(local_sockets[i]);
-    local_sockets[i] = NULL;
-  }
-}
-
-void connect_to_all_peers()
-{
-  peer_map::iterator peer_it;
-  T_peer_infos infos;
-  for (peer_it = peers.begin(); peer_it != peers.end(); peer_it++) {
-    infos = peer_it->second;
-    get_host_and_port(infos.peer_host, infos.peer_host, &infos.peer_port);
-    connect_to_peer(infos.peer_host, infos.peer_port,&(infos.peer_sockaddr), infos.peer_ip, &(infos.peer_socket));
-    peer_sockets[infos.peer_socket] = peer_it->first;
-    peers[std::string(peer_it->first)] = infos;
-  }
-  peers_connected = 1;
-}
 
 bool is_a_local_socket(struct sipp_socket *s)
 {
@@ -6084,27 +3542,5 @@ bool is_a_local_socket(struct sipp_socket *s)
   return (false);
 }
 
-void free_peer_addr_map()
-{
-  peer_addr_map::iterator peer_addr_it;
-  for (peer_addr_it = peer_addrs.begin(); peer_addr_it != peer_addrs.end(); peer_addr_it++) {
-    free(peer_addr_it->second);
-  }
-}
 
-char *jump_over_timestamp(char *src)
-{
-  char* tmp = src;
-  int colonsleft = 4;/* We want to skip the time. */
-  while (*tmp && colonsleft) {
-    if (*tmp == ':') {
-      colonsleft--;
-    }
-    tmp++;
-  }
-  while (isspace(*tmp)) {
-    tmp++;
-  }
-  return tmp;
-}
 

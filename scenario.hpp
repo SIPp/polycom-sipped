@@ -24,14 +24,7 @@
 #ifndef __SCENARIO__
 #define __SCENARIO__
 
-//#ifdef WIN32
-//  #include <winsock2.h>
-//#else
-//  #include <sys/socket.h>
-//#endif
-
 #include <string.h>
-//
 #include <map>
 #include <vector>
 #include <string>
@@ -41,7 +34,6 @@
 #include "message.hpp"
 #include "variables.hpp"
 
-
 #define MSG_TYPE_SENDCMD   0
 #define MSG_TYPE_RECVCMD   1
 
@@ -49,19 +41,6 @@
 #define MSG_TYPE_RECV      3
 #define MSG_TYPE_PAUSE     4
 #define MSG_TYPE_NOP       5
-
-#define MODE_CLIENT        0
-#define MODE_SERVER        1
-
-#define MODE_3PCC_NONE          0
-#define MODE_3PCC_CONTROLLER_A  2
-#define MODE_3PCC_CONTROLLER_B  3
-#define MODE_3PCC_A_PASSIVE     4
-
-/* 3pcc extended mode*/
-#define MODE_MASTER             5
-#define MODE_MASTER_PASSIVE     6
-#define MODE_SLAVE              7
 
 #define OPTIONAL_TRUE      1
 #define OPTIONAL_FALSE     0
@@ -290,8 +269,6 @@ extern scenario      *main_scenario;
 extern scenario      *ooc_scenario;
 extern scenario      *display_scenario;
 extern int           creationMode;
-extern int           sendMode;
-extern int           thirdPartyMode;
 
 extern message::ContentLengthFlag  content_length_flag;
 

@@ -3,7 +3,7 @@
 #define __WIN32_COMPATIBILITY__
 
 #ifdef WIN32
-#include <winsock2.h>
+#include <WinSock2.h>
 #include <ws2tcpip.h>
 #include <process.h>
 #include <io.h>
@@ -29,7 +29,7 @@ struct timezone {
 int gettimeofday(struct timeval *tv, struct timezone *tz);
 
 int strcasecmp(const char *str1, const char *str2);
-int strncasecmp(const char *str1, const char *str2, int n);
+int strncasecmp(const char *str1, const char *str2, size_t n);
 const char *strcasestr(const char *s, const char *pattern);
 char *strcasestr(char *s, const char *pattern);
 
@@ -37,9 +37,6 @@ char *strndup (char const *s, size_t n);
 
 
 // Networking-related
-
-const char *inet_ntop(int af, const void *src, char *dst, socklen_t cnt);
-int inet_pton(int af, const char *src, void *dst);
 
 #define uint32_t UINT32
 #define uint16_t SHORT
@@ -67,48 +64,7 @@ struct udphdr {
 };
 
 #define SETSOCKOPT_TYPE (char *)
-
-#define SocketError() WSAGetLastError()
-
 #define SHUT_RDWR SD_BOTH
-
-// error code mapping for windows
-// copied from http://www.aoc.nrao.edu/php/tjuerges/ALMA/ACE-5.5.2/html/ace/os__errno_8h-source.html
-#define EWOULDBLOCK             WSAEWOULDBLOCK
-#define EINPROGRESS             WSAEINPROGRESS
-#define EALREADY                WSAEALREADY
-#define ENOTSOCK                WSAENOTSOCK
-#define EDESTADDRREQ            WSAEDESTADDRREQ
-#define EMSGSIZE                WSAEMSGSIZE
-#define EPROTOTYPE              WSAEPROTOTYPE
-#define ENOPROTOOPT             WSAENOPROTOOPT
-#define EPROTONOSUPPORT         WSAEPROTONOSUPPORT
-#define ESOCKTNOSUPPORT         WSAESOCKTNOSUPPORT
-#define EOPNOTSUPP              WSAEOPNOTSUPP
-#define EPFNOSUPPORT            WSAEPFNOSUPPORT
-#define EAFNOSUPPORT            WSAEAFNOSUPPORT
-#define EADDRINUSE              WSAEADDRINUSE
-#define EADDRNOTAVAIL           WSAEADDRNOTAVAIL
-#define ENETDOWN                WSAENETDOWN
-#define ENETUNREACH             WSAENETUNREACH
-#define ENETRESET               WSAENETRESET
-#define ECONNABORTED            WSAECONNABORTED
-#define ECONNRESET              WSAECONNRESET
-#define ENOBUFS                 WSAENOBUFS
-#define EISCONN                 WSAEISCONN
-#define ENOTCONN                WSAENOTCONN
-#define ESHUTDOWN               WSAESHUTDOWN
-#define ETOOMANYREFS            WSAETOOMANYREFS
-//#define ETIMEDOUT               WSAETIMEDOUT
-#define ECONNREFUSED            WSAECONNREFUSED
-#define ELOOP                   WSAELOOP
-#define EHOSTDOWN               WSAEHOSTDOWN
-#define EHOSTUNREACH            WSAEHOSTUNREACH
-#define EPROCLIM                WSAEPROCLIM
-#define EUSERS                  WSAEUSERS
-#define EDQUOT                  WSAEDQUOT
-#define ESTALE                  WSAESTALE
-#define EREMOTE                 WSAEREMOTE
 
 void ClearScreen();
 
@@ -120,9 +76,12 @@ void ClearScreen();
 #include <sys/time.h>   //gettimeofday
 #include <strings.h>    //strcasecmp strncasecmp
 #include <string.h>     //strndup,strcasestr
-#define SETSOCKOPT_TYPE (void *)
+#include <limits.h>     //PATH_MAX
+#include <unistd.h>     // usleep
 
-#define MAX_PATH                   260
+#define SETSOCKOPT_TYPE (void *)
+#define MAX_PATH              PATH_MAX
+//#define MAX_PATH                   260
 
 #endif
 

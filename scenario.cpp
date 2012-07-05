@@ -199,10 +199,11 @@ scenario      *display_scenario;
 /* This mode setting refers to whether we open calls autonomously (MODE_CLIENT)
  * or in response to requests (MODE_SERVER). */
 int           creationMode  = MODE_CLIENT;
+// moved to sipp_globals
 /* Send mode. Do we send to a fixed address or to the last one we got. */
-int           sendMode  = MODE_CLIENT;
+//int           sendMode  = MODE_CLIENT;
 /* This describes what our 3PCC behavior is. */
-int       thirdPartyMode = MODE_3PCC_NONE;
+
 
 /* These are the names of the scenarios, they must match the default_scenario table. */
 const char *scenario_table[] = {
@@ -508,38 +509,6 @@ char *time_string(int ms)
   return tmp;
 }
 
-int time_string(double ms, char *res, int reslen)
-{
-  if (ms < 10000) {
-    /* Less then 10 seconds we represent accurately. */
-    if ((int)(ms + 0.9999) == (int)(ms)) {
-      /* We have an integer, or close enough to it. */
-      return snprintf(res, reslen, "%dms", (int)ms);
-    } else {
-      if (ms < 1000) {
-        return snprintf(res, reslen, "%.2lfms", ms);
-      } else {
-        return snprintf(res, reslen, "%.1lfms", ms);
-      }
-    }
-  } else if (ms < 60000) {
-    /* We round to 100ms for times less than a minute. */
-    return snprintf(res, reslen, "%.1fs", ms/1000);
-  } else if (ms < 60 * 60000) {
-    /* We round to 1s for times more than a minute. */
-    int s = (unsigned int)(ms / 1000);
-    int m = s / 60;
-    s %= 60;
-    return snprintf(res, reslen, "%d:%02d", m, s);
-  } else {
-    int s = (unsigned int)(ms / 1000);
-    int m = s / 60;
-    int h = m / 60;
-    s %= 60;
-    m %= 60;
-    return snprintf(res, reslen, "%d:%02d:%02d", h, m, s);
-  }
-}
 
 char *double_time_string(double ms)
 {
@@ -1067,7 +1036,11 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
           {
             T_peer_infos infos;
             infos.peer_socket = 0;
-            strcpy(infos.peer_host, get_peer_addr(peer));
+            char *temp_peer_addr = get_peer_addr(peer);
+            if (temp_peer_addr == NULL) {
+              REPORT_ERROR("get_peer_addr: Peer %s not found\n", peer);
+            }
+            strcpy(infos.peer_host, temp_peer_addr);
             peers[std::string(peer)] = infos;
           }
         } else if (extendedTwinSippMode) {

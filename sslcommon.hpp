@@ -38,6 +38,7 @@
 */
 
 /* Initialises an SSL context and makes the lib thread safe */
+#ifdef _USE_OPENSSL
 
 #ifndef SSL_MAIN
 extern
@@ -63,6 +64,7 @@ int SSL_ERROR(void);
 //  extern
 #endif
 //    int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * result);
-
-
 #endif
+#endif
+
+

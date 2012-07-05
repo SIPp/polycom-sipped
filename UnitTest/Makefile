@@ -11,7 +11,8 @@
 
 # All tests produced by this Makefile.  
 # Remember to add new tests you created to the list.
-TESTS = transactionstate xp_parser
+TESTS = transactionstate xp_parser screen sipp_sockethandler sockdemo
+OSNAME:=$(shell uname|sed -e "s/CYGWIN.*/CYGWIN/")
 
 # Please tweak the following variable definitions as needed by your
 # project, except GTEST_HEADERS, which you can use in your own targets
@@ -28,10 +29,30 @@ USER_DIR = $(GTEST_DIR)/samples
 SIPP_DIR = ..
 
 # Flags passed to the preprocessor.
+TLS=-D_USE_OPENSSL -DOPENSSL_NO_KRB5
 CPPFLAGS += -I$(GTEST_DIR)/include
+CPPFLAGS += $(TLS)
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra
+CXXFLAGS += -g -Wall -Wextra -D$(OSNAME)
+
+
+#platform specific library requirements for individual tests
+SSLLIBS_Linux=   -I/usr/include/openssl -lssl -lcrypto
+SSLLIBS_CYGWIN=  -I/usr/include/openssl -lssl -lcrypto
+SSLLIBS=$($(join SSLLIBS_,$(OSNAME)))
+
+PCAPLIBS_Linux=-I/usr/include -L/usr/lib -lpcap
+PCAPLIBS_CYGWIN=-I/usr/lib/WpdPack/Include -L/usr/lib/WpdPack/Lib -lwpcap 
+PCAPLIBS=$($(join PCAPLIBS_,$(OSNAME)))
+
+CURSLIBS_CYGWIN=-I/usr/include -I/usr/include/ncurses -L/usr/lib -lcurses
+CURSLIBS_Linux=-I/usr/include -L/usr/lib -lncurses 
+CURSLIBS=$($(join CURSLIBS_,$(OSNAME)))
+
+
+OBJ_TLS=auth.o sslinit.o sslthreadsafe.o  milenage.o rijndael.o
+
 
 define EOL
 
@@ -44,6 +65,7 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
                 $(GTEST_DIR)/include/gtest/internal/*.h
 
 # House-keeping build targets.
+
 
 all : $(TESTS)
 
@@ -100,13 +122,66 @@ transactionstate.o : transactionstate.cpp $(GTEST_HEADERS)
 transactionstate : transactionstate.o $(SIPP_DIR)/transactionstate.o $(SIPP_DIR)/logging.o  gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
+##### sipp_sockethandler
+	#TLS defines are required since sipp_socket structure is different w/wo TLS
+sipp_sockethandler.o : sipp_sockethandler.cpp  $(GTEST_HEADERS)
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
+
+sipp_sockethandler : sipp_sockethandler.o $(SIPP_DIR)/sipp_sockethandler.o \
+		$(SIPP_DIR)/sipp_globals.o \
+		$(SIPP_DIR)/screen.o         \
+		$(SIPP_DIR)/logging.o           \
+		$(SIPP_DIR)/stat.o           \
+		$(SIPP_DIR)/sslinit.o           \
+		$(SIPP_DIR)/sslthreadsafe.o           \
+		$(SIPP_DIR)/infile.o           \
+		$(SIPP_DIR)/comp.o           \
+		$(SIPP_DIR)/socket_helper.o           \
+		gtest_main.a
+#		echo $(SSLLIBS)
+#		echo $(OSNAME)
+#		echo $(CURSLIBS)
+	$(CXX)  $(CPPFLAGS) $(CXXFLAGS)  -lpthread $^ -o $@ $(SSLLIBS) $(CURSLIBS) 
+
+### socket udp loop around test to help highlight cross platform differences in socket api   
+sockdemo.o : sockdemo.cpp $(GTEST_HEADERS)
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
+
+sockdemo : sockdemo.o \
+		$(SIPP_DIR)/win32_compatibility.o \
+		$(SIPP_DIR)/sipp_globals.o \
+		$(SIPP_DIR)/infile.o           \
+		$(SIPP_DIR)/screen.o         \
+		$(SIPP_DIR)/logging.o           \
+		$(SIPP_DIR)/stat.o           \
+		$(SIPP_DIR)/sipp_sockethandler.o \
+		$(SIPP_DIR)/socket_helper.o \
+    $(SIPP_DIR)/comp.o           \
+		gtest_main.a
+	$(CXX)  $(CPPFLAGS) $(CXXFLAGS)  -lpthread $^ -o $@ $(SSLLIBS) $(CURSLIBS) 
+
+##### 
 ##### xp_parser
 xp_parser.o : xp_parser.cpp  $(GTEST_HEADERS)
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
 
 xp_parser : xp_parser.o $(SIPP_DIR)/xp_parser.o $(SIPP_DIR)/CompositeDocument.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+#####
+##### screen
+screen.o : screen.cpp  $(GTEST_HEADERS)
+		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
 
+screen : screen.o $(SIPP_DIR)/screen.o  \
+		$(SIPP_DIR)/sipp_globals.o      \
+		$(SIPP_DIR)/logging.o           \
+		$(SIPP_DIR)/stat.o           \
+		gtest_main.a
+		echo $(OSNAME)  
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ -lpthread\
+		$(PCAPLIBS) $(SSLLIBS) $(CURSLIBS)
+
+#################################
 #################################
 
 helpers.o : helpers.cpp $(GTEST_HEADERS)

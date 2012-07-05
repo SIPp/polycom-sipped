@@ -28,31 +28,33 @@
 
 /* Std C includes */
 #ifdef WIN32
-//#include <time.h>
-//#include <windows.h>
-//#include <winsock2.h>
-//#include <ws2tcpip.h>
+#include <Winsock2.h>
 #else
 #include <sys/socket.h>     // sockaddr_storage
 #include <unistd.h>
 #include <sys/types.h>
 #endif
 
-#include <list>
-#include <set>
-
-#include "variables.hpp" // VariableTable
-
 #ifdef _USE_OPENSSL
 #include "sslcommon.hpp"  // BIO, SSL
 #endif
-//
+
 #include "infile.hpp"   // FileContents
-#include <map>
-#include <string>
-#include "logging.hpp"
+#include "stat.hpp"
+#include "variables.hpp" // VariableTable
+
 #include <stdio.h>
 #include <stddef.h>
+#include <string>
+#include <map>
+#include <list>
+#include <set>
+
+#ifdef WIN32
+#define SOCKREF SOCKET
+#else
+#define SOCKREF int   //sock_fd
+#endif
 
 #define T_UDP                      0
 #define T_TCP                      1
@@ -88,6 +90,24 @@
 #define MAX_LOCAL_TWIN_SOCKETS     10    /*3pcc extended mode:max number of peers from which
 cmd messages are received */
 
+
+
+/****** moved from call.hpp to remove sipp_globals.cpp depenancy on call.hpp   */
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#define RTCHECK_FULL  1
+#define RTCHECK_LOOSE 2
+
+#define UDP_MAX_RETRANS_INVITE_TRANSACTION 5
+#define UDP_MAX_RETRANS MAX(UDP_MAX_RETRANS_INVITE_TRANSACTION, UDP_MAX_RETRANS_NON_INVITE_TRANSACTION)
+#define UDP_MAX_RETRANS_NON_INVITE_TRANSACTION 9
+#define DEFAULT_T2_TIMER_VALUE  4000
+#define DEFAULT_AUTO_ANSWER_EXPIRES 3600
+
+//
+
 /******************** Default parameters ***********************/
 
 #define DEFAULT_RATE                 10.0
@@ -114,6 +134,13 @@ cmd messages are received */
 
 #define DEFAULT_BEHAVIOR_ALL       (DEFAULT_BEHAVIOR_BYE | DEFAULT_BEHAVIOR_ABORTUNEXP | DEFAULT_BEHAVIOR_PINGREPLY)
 
+//from sipp.cpp for text processing of sipp messages
+#define SIPP_ENDL "\r\n"
+#define MODE_CLIENT        0
+#define MODE_SERVER        1
+
+extern int                sendMode;
+extern CStat*             display_scenario_stats;
 extern int                duration;
 extern double             rate;
 extern double             rate_scale;         // sipp only
@@ -257,14 +284,7 @@ extern AllocVariableTable *userVariables;
 typedef std::map<int, VariableTable *> int_vt_map;
 extern int_vt_map          userVarMap;
 
-//extern int      new_socket(bool P_use_ipv6, int P_type_socket, int * P_status);
-struct   sipp_socket      *new_sipp_socket(bool use_ipv6, int transport);
-struct sipp_socket        *new_sipp_call_socket(bool use_ipv6, int transport, bool *existing);
 struct sipp_socket        *sipp_accept_socket(struct sipp_socket *accept_socket, struct sockaddr_storage *source=0);
-int                        sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr, int *port);
-int                        sipp_connect_socket(struct sipp_socket *socket, struct sockaddr_storage *dest);
-int                        sipp_reconnect_socket(struct sipp_socket *socket);
-void                       sipp_customize_socket(struct sipp_socket *socket);
 int                        delete_socket(int P_socket);
 extern int                 min_socket;
 extern int                 select_socket;
@@ -294,6 +314,15 @@ extern unsigned long       rtp2_pckts;
 extern unsigned long       rtp2_bytes;
 extern unsigned long       rtp2_pckts_pcap;
 extern unsigned long       rtp2_bytes_pcap;
+
+/************************ print_statistics **************************/
+extern bool                do_hide;
+extern bool                show_index;
+extern int                 command_mode;
+extern char               *command_buffer;
+#define                   SCENARIO_NOT_IMPLEMENTED -126
+#define                   INTERNAL_ERROR -125
+#define                   UNKOWN_COUNT_FILE_MSGTYPE -124
 
 /************* Rate Control & Contexts variables **************/
 
@@ -384,6 +413,8 @@ enum E_Alter_YesNo {
   E_ALTER_YES=0,
   E_ALTER_NO
 };
+//moved from call.cpp
+extern  std::map<std::string, struct sipp_socket *>     map_perip_fd;
 
 /************************** Trace Files ***********************/
 
@@ -410,18 +441,16 @@ void                       rotate_errorf();
 int                        rotatef(struct logfile_info *lfi);
 void                       log_off(struct logfile_info *lfi);
 
-/* Screen/Statistics Printing Functions. */
-void                       print_statistics(int last);
-void                       print_count_file(FILE *f, int header);
 
 
 /********************* Mini-Parser Routines *******************/
-
+extern const char*        errflag;
 int                        get_method(char *msg);
 char                      *get_tag_from_to(char *msg);
 char                      *get_tag_from_from(char *msg);
 unsigned long int          get_cseq_value(const char *msg);
 unsigned long              get_reply_code(const char *msg);
+char                      *get_call_id(char *msg);
 
 /********************** Network Interfaces ********************/
 
@@ -452,8 +481,7 @@ struct sipp_socket {
   bool                       ss_control; /* Is this a control socket? */
   bool                       ss_call_socket; /* Is this a call socket? */
   bool                       ss_changed_dest; /* Has the destination changed from default. */
-
-  int                        ss_fd;  /* The underlying file descriptor for this socket. */
+  SOCKREF                    ss_fd;
   void                      *ss_comp_state; /* The compression state. */
 #ifdef _USE_OPENSSL
   SSL                       *ss_ssl;  /* The underlying SSL descriptor for this socket. */
@@ -471,16 +499,6 @@ struct sipp_socket {
   size_t                     ss_msglen; /* Is there a complete SIP message waiting, and if so how big? */
   struct socketbuf          *ss_out; /* Buffered output. */
 };
-
-/* Write data to a socket. */
-int                          write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flags, struct sockaddr_storage *dest);
-/* Mark a socket as "bad". */
-void                         sipp_socket_invalidate(struct sipp_socket *socket);
-/* Actually free the socket. */
-void                         sipp_close_socket(struct sipp_socket *socket);
-
-#define WS_EAGAIN 1 /* Return EAGAIN if there is no room for writing the message. */
-#define WS_BUFFER 2 /* Buffer the message if there is no room for writing the message. */
 
 
 #if defined (__hpux) || defined (__alpha) && !defined (__FreeBSD__)
@@ -501,6 +519,8 @@ void                         sipp_close_socket(struct sipp_socket *socket);
 
 /********************* Utilities functions  *******************/
 
+void                       init_tolower_table(); // must call befure using strcasestrX routines
+char                      *strncasestr(char *s, const char *find, size_t n);
 char                      *strcasestr2 ( const char *__haystack, const char *__needle);
 char                      *get_peer_addr(char *);
 int                        get_decimal_from_hex(char hex);
@@ -508,28 +528,28 @@ int                        get_decimal_from_hex(char hex);
 bool                       reconnect_allowed();
 void                       reset_connection(struct sipp_socket *);
 void                       close_calls(struct sipp_socket *);
-int                        close_connections();
-int                        open_connections();
 void                       timeout_alarm(int);
 
-void                        determine_remote_and_local_ip();
-
 char                      *jump_over_timestamp(char *src);
+
+
 
 /* extended 3PCC mode */
 struct sipp_socket       **get_peer_socket(char *);
 bool                       is_a_peer_socket(struct sipp_socket *);
 bool                       is_a_local_socket(struct sipp_socket *);
-void                       connect_to_peer (char *, int , sockaddr_storage *, char *, struct sipp_socket **);
-void                       connect_to_all_peers ();
-void                       connect_local_twin_socket(char *);
-void                       close_peer_sockets();
-void                       close_local_sockets();
-void                       free_peer_addr_map();
 
 /******************** Recv Poll Processing *********************/
 
 extern struct sipp_socket  *sockets[SIPP_MAXFDS];
+extern int                  pollnfds;  
+extern int pending_messages ; 
+/******************** Hacky things done to segregate sipp.cpp ******/
+void stop_all_traces();
+
+// from scenario to break stat dependancy on scenario
+int time_string(double ms, char *res, int reslen);
+
 
 
 /************************** Constants **************************/
@@ -544,6 +564,16 @@ extern struct sipp_socket  *sockets[SIPP_MAXFDS];
 # define SIPP_VERSION               "$Revision$"
 #endif
 
+/*********************** scenario globals ***********************/
+extern int       thirdPartyMode;
+#define MODE_3PCC_NONE          0
+#define MODE_3PCC_CONTROLLER_A  2
+#define MODE_3PCC_CONTROLLER_B  3
+#define MODE_3PCC_A_PASSIVE     4
+/* 3pcc extended mode*/
+#define MODE_MASTER             5
+#define MODE_MASTER_PASSIVE     6
+#define MODE_SLAVE              7
 
 
 #endif /* SIPP_GLOBALS_HPP_ */

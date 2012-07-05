@@ -1,6 +1,39 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
+3.2.45 BETA	
+- merged win32 branch back into trunk
+- win32 now compiles and runs 80% of ruby test cases
+- win32 has the following disabled(compared to cygwin/linux)
+	compression
+	sipp option plugins (dlsym, dlopen)
+	command line interface
+	MD5 authentication (requires openssl)
+	ssl
+	global timers (watchdog timers)
+	pcap_play
+	_USE_32BIT_TIME_T (64 bit time disabled due to sdk6.0 exceptions)
+	signals
+	
+	
+
+3.2.44 BETA
+- WIN32 refactoring. Compiles on msvs while retaining linux/cygwin functionality.
+
+3.2.43
+- disabled compression to eliminate dependancy on dlfcn for win32
+- minor socket helping functions rearranged.
+
+3.2.42 Jun 04 2012
+- msvc refactoring in prep for windows port
+- moved some sipp mini parser methods to sipp_globals (get_tag_from_from, get_tag_from_to, get_call_id
+- moved perip_fd to sipp_globals
+
+
+3.2.41 Jun 01 2012
+- msvc gtest fixes
+- refactoring of screen, call, sipp in prep for win32 port
+
 3.2.40 May 30 2012
 - reformatted all modules using  
 	astlye --style=stroustrup --indent=spaces=2 --convert-tabs *.cpp *.hpp 

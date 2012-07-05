@@ -1,0 +1,3 @@
+downloaded http://gnuwin32.sourceforge.net/downlinks/regex-bin-zip.php to get matching regex2.dll
+I think this matches the library already included so I only added this dll.  If regex doesnt
+work try replacing the complete library from sourceforge so that you have matching dll and libraries.

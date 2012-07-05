@@ -14,3 +14,7 @@ void            *get_in_addr(struct sockaddr_storage *sa);
 unsigned short  get_in_port(struct sockaddr_storage *sa);
 string          socket_to_ip_string(struct sockaddr_storage *socket);
 string          socket_to_ip_port_string(struct sockaddr_storage *socket);
+char            *get_inet_address(struct sockaddr_storage * addr);
+void            get_host_and_port(char * addr, char * host, int * port);
+
+
