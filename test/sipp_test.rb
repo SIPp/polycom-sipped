@@ -72,7 +72,7 @@ class SippTest
       cmd="netstat -nao | grep \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""   
     else
       # netstat option p is for pid/program running connecion
-      cmd="netstat -nap | grep -i \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""
+      cmd="netstat -na | grep -i \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""
     end
     result = `#{cmd}`
     puts "netstat_command: '#{cmd}'\n'#{result}'" if @logging=="verbose"
