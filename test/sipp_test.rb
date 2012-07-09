@@ -44,11 +44,12 @@ class SippTest
     @is_windows = Config::CONFIG["host_os"] =~ /mswin|mingw/
     @name = name
     @client_options = client_options
-    @server_options = server_options
+    @server_options = server_options 
     @sipp_local_port = 5069
     @sipp_remote_port = 15060
-    @sipp_logging_parameters = "" #"-trace_debug" # "-trace_screen -trace_msg"
-    @sipp_path = (@is_windows)? "..\\sipp.exe" : "../sipp"
+    @sipp_logging_parameters = "" "-trace_debug"  "-trace_screen -trace_msg"
+    @sipp_path = (@is_windows)? "..\\Debug\\SIPped.exe" : "../sipp"
+    #@sipp_path = (@is_windows)? "..\\sipp\.exe" : "../sipp"
     @logging = "normal" unless @logging
     @error_message = "";
     @server_screen_destination =  "#{@name}_server.out"
@@ -72,7 +73,7 @@ class SippTest
       cmd="netstat -nao | grep \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""   
     else
       # netstat option p is for pid/program running connecion
-      cmd="netstat -na | grep -i \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""
+      cmd="netstat -nap | grep -i \"LISTEN\\|ESTABLISHED\\|UDP\" | grep \"#{grep_value}\""
     end
     result = `#{cmd}`
     puts "netstat_command: '#{cmd}'\n'#{result}'" if @logging=="verbose"
@@ -381,7 +382,8 @@ class SippTest
     if @is_windows
       # SIGINT on child processes does not terminate them, must use sigkill
       Sys::ProcTable.ps.each { |ps|
-        if ((ps.name.downcase == "sipp.exe")&&(ps.ppid==@server_pid))
+        #if ((ps.name.downcase == "sipp.exe")&&(ps.ppid==@server_pid))
+        if ((ps.name.downcase == "sipped.exe")&&(ps.ppid==@server_pid))
             puts "SIGKILL #{ps.pid}  #{ps.name}"  if @logging == "verbose"
             #todo catch Process::Error: The handle is invalid.
             begin
