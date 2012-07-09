@@ -49,7 +49,7 @@ class SippTest
     @sipp_remote_port = 15060
     @sipp_logging_parameters = "" "-trace_debug"  " -trace_screen -trace_msg"
     #@sipp_path = (@is_windows)? "..\\Debug\\SIPped.exe" : "../sipp"
-    @sipp_path = (@is_windows)? "..\\sipp\.exe" : "../sipp"
+    @sipp_path = (@is_windows)? "..\\sipp.exe" : "../sipp"
     @logging = "normal" unless @logging
     @error_message = "";
     @server_screen_destination =  "#{@name}_server.out"
