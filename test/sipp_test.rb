@@ -382,8 +382,8 @@ class SippTest
     if @is_windows
       # SIGINT on child processes does not terminate them, must use sigkill
       Sys::ProcTable.ps.each { |ps|
-        #if ((ps.name.downcase == "sipp.exe")&&(ps.ppid==@server_pid))
-        if ((ps.name.downcase == "sipped.exe")&&(ps.ppid==@server_pid))
+        if ((ps.name.downcase == "sipp.exe")&&(ps.ppid==@server_pid))
+        #if ((ps.name.downcase == "sipped.exe")&&(ps.ppid==@server_pid))
             puts "SIGKILL #{ps.pid}  #{ps.name}"  if @logging == "verbose"
             #todo catch Process::Error: The handle is invalid.
             begin
