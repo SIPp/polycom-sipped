@@ -41,6 +41,7 @@ unsigned long      defl_send_timeout       = 0;
 unsigned long      global_timeout          = 0;
 int                transport               = DEFAULT_TRANSPORT;
 bool               retrans_enabled         = 1;
+bool               absorb_retrans          = 0;
 
 //call.hpp defines constants that these initialize to
 int                rtcheck                 = RTCHECK_FULL;

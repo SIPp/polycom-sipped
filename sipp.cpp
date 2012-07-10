@@ -289,6 +289,7 @@ struct sipp_option options_table[] = {
   },
   {"nr", "Disable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_UNSETFLAG, &retrans_enabled, 1},
   {"yr", "Enable retransmission in UDP mode. Retransmissions are enabled by default unless -mc options is used.", SIPP_OPTION_SETFLAG, &retrans_enabled, 1},
+  {"ar", "Absorb retransmission in UDP mode, no corresponding outgoing retransmission are triggered. absorb retransmissions are disabled by default unless -ar options is used.", SIPP_OPTION_SETFLAG, &absorb_retrans, 1},
 
   {"nostdin", "Disable stdin.\n", SIPP_OPTION_SETFLAG, &nostdin, 1},
 
@@ -2497,7 +2498,7 @@ int main(int argc, char *argv[])
         }
         exit(EXIT_OTHER);
       case SIPP_OPTION_VERSION:
-        printf("\n SIPped v3.2.45 BETA"
+        printf("\n SIPped v3.2.46 BETA"
 #ifdef _USE_OPENSSL
                "-TLS"
 #endif

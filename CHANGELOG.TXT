@@ -1,6 +1,13 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
+3.2.46 BETA
+- implemented accept retransmitted messages feature, -ar to enable
+- corrected WIN32 exception during deallocation on abortCall
+- corrected WIN32 exception during error location reporting if end of doc reached
+- 3 digit message index number and shifted spacing to accomodate
+
+
 3.2.45 BETA	
 - merged win32 branch back into trunk
 - win32 now compiles and runs 80% of ruby test cases

@@ -23,6 +23,14 @@ This does not test anything to do with sipp.  Focus is on getting
 basic sockets working on windows vs cygwin vs linux.  This should
 highlight any underlying socket api differences on platforms.
 
+
+NOTE: this test tends to fail if you rerun the test back-to-back since
+  we establish tcp loop arounds with specified ports.  The connections 
+  are established and then closed but stay connected in a TIME_WAIT state
+  which prevents the second iteration from accessing the same ports.
+  So far seems to be an issue on linux but not cygwin or win32
+todo: look at using dynamically assigned ports instead of fixed ports.
+
 For reference, windows
   - always initialize and shutdown using WSAStartup/WSACleanup
       implemented 
@@ -37,6 +45,10 @@ For reference, windows
       only shows first char of error string??
   - sockfd in posix is an int, windows is SOCKET which is unsigned int
       no obvious problems found but used shim SOCKREF ifdef anyway
+    INVALID_SOCKET is used on msvc, ifdef to -1 for non win in sipp_sockethandler.hpp
+      value is ~zero on microsoft: 
+      #define INVALID_SOCKET -1  // for posix code 
+      todo : look for socket -1 comparison and repl withINVALID_SOCKET 
   - inet_ntop (and others) are not part of windows xp libraries (default
       that comes with visual studio 2005) but are available in Vista or later.
       Versioning detection needs to be worked out still but you can download
@@ -49,6 +61,9 @@ For reference, windows
         inet_pton implemented in vista and later;
         look in windows header files of specific to see what they use
         eg WinSock2.h has #if (     > 0x600)  ... #endif
+      For sipped, we just use sdk 6.0 (comes with msvs 2008) and existing
+        msvs2005 toolchain (compiler assembler etc)
+        todo: should we be using later toolchain...compatibile msvs 2005?
     There also seems to be some difference in what addresses are returned by
       getaddrinfo on different platforms (AF_UNSPEC may or maynot include ipv6)..
     DEFINES may map to different numbers.
@@ -56,26 +71,32 @@ For reference, windows
       AF_INET6 = 10 on linux /usr/include/bits/socket.h
       AF_INET6 = 23 on windows WinSock2.h
       AF_INET6 = 23 on cygwin
-    INVALID_SOCKET is used on msvc, ifdef to -1 for non win in sipp_sockethandler.hpp
+
     CLOSESOCKET - windows uses closesocket vs close
+      care must be taken not to use CLOSEOCKET on a file : posix close(file) looks same as close(socket_fd)
     errno and perror vs WSAGetLastError
       other modules use errno as error indicator (call, sendpackets)- will need updating
-    #define INVALID_SOCKET -1  // for posix code 
-      //msft defines as 0, -1 for posix  
-      //todo makesure all socket fd compare to INVALID_SOCKET for consitency
     snprintf currently used in socket_helper only
       #define SNPRINTF _snprintf
       #else
       #define SNPRINTF snprintf
 
     todo : sendpackets does its own socket code
-      needs same adaptions - WSAStartup, CLOSESOCKET SOCKETREF etc.
+      doublecheck 
+        errno vs WSAGetLastError
+        SOCKREF vs int for sock_fd
+        INVALID_SOCKET vs 0 vs -1
+        initialize_socket (WSAStartup_ called before any sendpackets
+        CLOSESOCKET vs close
+      seems to be working but needs sanity check
 
-      verify setsockopt sufficient for windows and that we dont have to use these:
+      todo: verify setsockopt sufficient for windows and that we dont have to use these:
  for windows SIO_KEEPALIVE_VALS using WSAIoctl or WSPIoctl
  http://msdn.microsoft.com/en-us/library/dd877220%28v=vs.85%29.aspx
 
 screen unit test, REPORT_ERROR, WARNING  : must use 32 bit time to avoid assertion error in microsoft library
+todo : what is implication of 32 bit time vs 64 bit...any issues?
+  should we try a later version of sdk?
 //assertion failed *ptime <= _MAX_time64_t
 //REPORT_ERROR->_screen_error->_set_last_msg ->  CStat::FormatTime -> localtime -> localtime64
 //http://securityvulns.com/advisories/year3000.asp

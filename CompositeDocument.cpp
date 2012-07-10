@@ -182,7 +182,7 @@ int CompositeDocument::compositeLineNumberFromIndex(int index)
 {
   unsigned int i = 0; // incr line no until byte
   // lineToOffset is 0 based, so actual lineno is +1
-  while ((lineToOffset[i] < index) && (i < lineToOffset.size())) {
+  while ( (i < lineToOffset.size()) && (lineToOffset[i] < index) ) {
     i++;
   }
   if (i >= lineToOffset.size())

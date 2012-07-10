@@ -155,6 +155,7 @@ extern unsigned long      defl_send_timeout;
 extern unsigned long      global_timeout;     // sipp only
 extern int                transport;
 extern bool               retrans_enabled;
+extern bool               absorb_retrans;
 
 //call.hpp defines constants that these initialize to
 extern int                rtcheck;

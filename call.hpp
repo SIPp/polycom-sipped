@@ -23,6 +23,7 @@
 #define __CALL__
 
 #include <map>
+#include <set>
 
 #ifdef WIN32
 #include <WinSock2.h>
@@ -179,6 +180,8 @@ private:
    * scenario steps sends a message */
   unsigned long    last_recv_hash;
   int              last_recv_index;
+  typedef std::pair<unsigned long, int> hash_msgindex_pair;
+  std::set<hash_msgindex_pair> recvhash_msgindex_pairs;
 
   /* Recv message characteristics when we sent a valid message
    *  (scneario, no retrans) just after a valid reception. This was

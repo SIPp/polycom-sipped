@@ -444,11 +444,11 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
     fprintf(f,SIPP_ENDL);
     if(!lose_packets) {
       fprintf(f,"                                 "
-              "Messages  Retrans   Timeout   Unexpected-Msg"
+              " Messages   Retrans   Timeout  Unexpected-Msg"
               SIPP_ENDL);
     } else {
       fprintf(f,"                                 "
-              "Messages  Retrans   Timeout   Unexp.    Lost"
+              " Messages   Retrans   Timeout  Unexp.    Lost"
               SIPP_ENDL);
     }
   } // if diagram_only
@@ -461,7 +461,7 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
       continue;
     }
     if (show_index) {
-      fprintf(f, "%-2lu:", index);
+      fprintf(f, "%-3lu:", index);
     }
 
     if(SendingMessage *src = curmsg -> send_scheme) {
@@ -489,13 +489,13 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
         }
 
         if(curmsg -> retrans_delay) {
-          fprintf(f,"%-9lu %-9lu %-9lu %-9s" ,
+          fprintf(f,"%-8lu %-8lu %-8lu %-8s" ,
                   curmsg -> nb_sent,
                   curmsg -> nb_sent_retrans,
                   curmsg -> nb_timeout,
                   "" /* Unexpected */);
         } else {
-          fprintf(f,"%-9lu %-9lu %-9s %-9s" ,
+          fprintf(f,"%-8lu %-8lu %-8s %-8s" ,
                   curmsg -> nb_sent,
                   curmsg -> nb_sent_retrans,
                   "", /* Timeout. */
@@ -529,13 +529,13 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
         }
 
         if(curmsg->retrans_delay) {
-          fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
+          fprintf(f,"%-8ld %-8ld %-8ld %-8ld" ,
                   curmsg->nb_recv,
                   curmsg->nb_recv_retrans,
                   curmsg->nb_timeout,
                   curmsg->nb_unexp);
         } else {
-          fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
+          fprintf(f,"%-8ld %-8ld %-8ld %-8ld" ,
                   curmsg -> nb_recv,
                   curmsg -> nb_recv_retrans,
                   curmsg -> nb_timeout,
@@ -559,14 +559,14 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
       int len = strlen(desc) < 9 ? 9 : strlen(desc);
 
       if(creationMode == MODE_SERVER) {
-        fprintf(f,"  [%9s] Pause%*s    ", desc, 23 - len > 0 ? 23 - len : 0, "");
+        fprintf(f,"  [%8s] Pause%*s     ", desc, 23 - len > 0 ? 23 - len : 0, "");
       } else {
-        fprintf(f,"       Pause     [%9s]%*s", desc, 18 - len > 0 ? 18 - len : 0, "");
+        fprintf(f,"          Pause   [%8s]%*s", desc, 18 - len > 0 ? 18 - len : 0, "");
       }
 
       if (!diagram_only) {
-        fprintf(f,"%-9d", curmsg->sessions);
-        fprintf(f,"                     %-9lu" , curmsg->nb_unexp);
+        fprintf(f,"%-8d", curmsg->sessions);
+        fprintf(f,"                   %-8lu" , curmsg->nb_unexp);
       }
     } else if(curmsg -> recv_request) {
       if (curmsg->dialog_number != -1)
@@ -594,7 +594,7 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
           fprintf(f, "        ");
         }
 
-        fprintf(f,"%-9ld %-9ld %-9ld %-9ld" ,
+        fprintf(f,"%-8ld %-8ld %-8ld %-8ld" ,
                 curmsg -> nb_recv,
                 curmsg -> nb_recv_retrans,
                 curmsg -> nb_timeout,
@@ -612,13 +612,13 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
       fprintf(f,"    [ Received Command ]         ");
       if (!diagram_only) {
         if(curmsg->retrans_delay) {
-          fprintf(f,"%-9ld %-9s %-9ld %-9s" ,
+          fprintf(f,"%-8ld %-8s %-8ld %-8s" ,
                   curmsg->M_nbCmdRecv,
                   "",
                   curmsg->nb_timeout,
                   "");
         } else {
-          fprintf(f,"%-9ld %-9s           %-9s" ,
+          fprintf(f,"%-8ld %-8s           %-8s" ,
                   curmsg -> M_nbCmdRecv,
                   "",
                   "");
@@ -627,7 +627,7 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
     } else if(curmsg -> M_type == MSG_TYPE_SENDCMD) {
       fprintf(f,"        [ Sent Command ]         ");
       if (!diagram_only)
-        fprintf(f,"%-9lu %-9s           %-9s" ,
+        fprintf(f,"%-8lu %-8s           %-8s" ,
                 curmsg -> M_nbCmdSent,
                 "",
                 "");
@@ -637,7 +637,7 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
     }
 
     if(lose_packets && (curmsg -> nb_lost) && (!diagram_only)) {
-      fprintf(f," %-9lu" SIPP_ENDL,
+      fprintf(f," %-8lu" SIPP_ENDL,
               curmsg -> nb_lost);
     } else {
       fprintf(f,SIPP_ENDL);

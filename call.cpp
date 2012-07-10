@@ -412,6 +412,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
 
   last_recv_hash = 0;
   last_recv_index = -1;
+  recvhash_msgindex_pairs.clear();
 
   recv_retrans_hash = 0;
   recv_retrans_recv_index = -1;
@@ -1752,7 +1753,6 @@ bool call::executeMessage(message *curmsg)
       recv_retrans_hash       = last_recv_hash;
       recv_retrans_recv_index = last_recv_index;
       recv_retrans_send_index = curmsg->index;
-
       callDebug("Set Retransmission Hash: %u (recv index %d, send index %d)\n", recv_retrans_hash, recv_retrans_recv_index, recv_retrans_send_index);
 
       /* Prevent from detecting the cause relation between send and recv
@@ -1816,8 +1816,12 @@ bool call::executeMessage(message *curmsg)
       // special case - the label points to the end - finish the call
       computeStat(CStat::E_FAILED_TIMEOUT_ON_RECV);
       if (default_behaviors & DEFAULT_BEHAVIOR_BYE) {
+        DEBUG("msg_index = %d >= messages.size = %d, call complete, default behavior bye",
+          msg_index,(int)call_scenario->messages.size());
         return (abortCall(true));
       } else {
+        DEBUG("msg_index = %d >= messages.size = %d, deleting call\n",
+          msg_index,(int)call_scenario->messages.size()); 
         computeStat(CStat::E_CALL_FAILED);
         delete this;
         return false;
@@ -2236,8 +2240,8 @@ bool call::abortCall(bool writeLog)
     sprintf(reason, "aborted at index %d", msg_index);
     deadcall_ptr = new deadcall(id, reason);
   }
-  delete this;
   call_scenario->stats->computeStat(CStat::E_CALL_FAILED);
+  delete this;
   DEBUG_OUT();
   return false;
 }
@@ -3518,7 +3522,26 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   responsecseqmethod[0] = '\0';
   branch[0] = '\0';
 
-  if((transport == T_UDP) && (retrans_enabled)) {
+  if((transport == T_UDP) && (absorb_retrans)){
+    // check to see if this is a retransmitted message
+    unsigned long currmsghash = hash(msg);
+    DEBUG ("Current message hash is %ul\n", currmsghash);
+    set<hash_msgindex_pair>::iterator it;
+    for (it=recvhash_msgindex_pairs.begin(); it!=recvhash_msgindex_pairs.end(); it++){
+      DEBUG ("pair<hash,index> =  <%ul , %d>\n", it->first, it->second);
+      if (it->first == currmsghash){
+        //hash matched a prev sent message index = it->second()
+        DEBUG("Retransmitted Message: hash matches msg index %d, %d\n",
+          it->second, currmsghash);
+        call_scenario->messages[it->second]->nb_recv_retrans++;
+        if(absorb_retrans){
+        return true;
+        } 
+      }
+    }
+    DEBUG("no hash match to previously received messages");
+    // if we absorb_retrans, we dont retrans_enabled - dont rxmt last sent msg
+  }else if((transport == T_UDP) && (retrans_enabled)) {
     /* Detects retransmissions from peer and retransmit the
     * message which was sent just after this one was received */
     cookie = hash(msg);
@@ -3552,7 +3575,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
       }
 
       return true;
-    }
+  }
 
     if((last_recv_index >= 0) && (last_recv_hash == cookie)) {
       /* This one has already been received, but not processed
@@ -3815,6 +3838,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   if(!found) {
     DEBUG("Message not matched: processing an unexpected message. ");
     DEBUG("Reason: %s", reason);
+
     // unexpected_jump contains the index for the location where scenario file contains
     // <label id="_unexp.main"/>   This is a feature to allow user to specify a message
     // sequence for any unexpected message.  "_unexp.retaddr" can be used for return in
@@ -3906,18 +3930,21 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   }
 
   // Message was found, store call-id if specified
-
   DEBUG ("Message found at index %d from dialog %d\n", search_index,
          call_scenario->messages[search_index]->dialog_number);
   // Retrieve dialog state for this message so it can be updated
   DialogState *ds = get_dialogState(call_scenario->messages[search_index]->dialog_number);
 
   // If first time we've seen this call-id, remember it for next time
-
   if (call_scenario->messages[search_index]->dialog_number != -1) {
     if (ds->call_id.empty())
       ds->call_id = call_id;
   }
+
+  //since we found the matching message store teh hash of the message and the msg index
+  DEBUG ("Adding hash %ul for msgindex %d to set of recvhash_msgindex_pairs\n",
+    hash(msg), search_index);
+  recvhash_msgindex_pairs.insert(hash_msgindex_pair(hash(msg), search_index));
 
   int test = (!found) ? -1 : call_scenario->messages[search_index]->test;
   /* test==0: No branching"
@@ -4154,6 +4181,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   * in our messages. */
   last_recv_index = search_index;
   last_recv_hash = cookie;
+
   callDebug("Set Last Recv Hash: %u (recv index %d)\n", last_recv_hash, last_recv_index);
   // Update transaction's lastMessage along with all default locations
   setLastMsg(msg, call_scenario->messages[search_index]->dialog_number, search_index);
