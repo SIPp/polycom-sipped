@@ -18,6 +18,8 @@
 #include "sipp_sockethandler.hpp"
 #include "socket_helper.hpp"
 
+#include <cmath> //modf
+
 /*
 This does not test anything to do with sipp.  Focus is on getting 
 basic sockets working on windows vs cygwin vs linux.  This should
@@ -540,7 +542,7 @@ TEST(sockdemo, polldemo){
   initialize_sockets();
   SOCKREF s1, s2,serv;
   int rv;
-  char buf1[256], buf2[256], buf3[256], buf3out[256];
+  char buf1[256], buf3out[256];
   struct pollfd ufds[5];
 
 
@@ -677,4 +679,18 @@ TEST(sockdemo, polldemo){
 
 }
 
+
+TEST(sockdemo, sizofstuff){
+  EXPECT_EQ((unsigned int)4,sizeof(long));
+  EXPECT_EQ((unsigned int)4,sizeof(int));
+  EXPECT_EQ((unsigned int)8,sizeof(double));
+  EXPECT_EQ((unsigned int)4,sizeof(time_t));
+  EXPECT_EQ((unsigned int)4,sizeof(float));
+
+
+  float myfloat = 2.9;
+  double myint;// = myfloat;
+  modf(myfloat,&myint);
+  EXPECT_EQ(2,myint);
+}
 

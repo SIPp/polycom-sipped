@@ -3535,7 +3535,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
           it->second, currmsghash);
         call_scenario->messages[it->second]->nb_recv_retrans++;
         if(absorb_retrans){
-        return true;
+          return true;
         } 
       }
     }

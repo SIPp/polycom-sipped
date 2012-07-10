@@ -74,6 +74,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+#include <cmath>  //modf
 
 
 
@@ -87,8 +88,16 @@ timerdiv (struct timeval *tvp, float div)
     return;
 
   interval = ((double) tvp->tv_sec * 1000000 + tvp->tv_usec) / (double) div;
-  tvp->tv_sec = interval / (int) 1000000;
-  tvp->tv_usec = interval - (tvp->tv_sec * 1000000);
+  
+  double timevalue = interval / (int) 1000000;
+  if (timevalue > LONG_MAX)
+    WARNING("tvp->tv_sec time value lost significant digits");
+  tvp->tv_sec = (long) timevalue;
+  timevalue = interval - (tvp->tv_sec * 1000000);
+  if (timevalue > LONG_MAX)
+    WARNING("tvp->tv_usec time value lost significant digits");
+  tvp->tv_usec = (long) timevalue;
+
 }
 
 /*
@@ -98,13 +107,22 @@ inline void
 float2timer (float time, struct timeval *tvp)
 {
   float n;
-
   n = time;
-
-  tvp->tv_sec = n;
+  
+  double intpart;
+  //float  fracpart = 
+  modf(time, &intpart);
+  
+  if (intpart > LONG_MAX)
+    WARNING("tv_sec lost significant digits");
+  tvp->tv_sec = (long) intpart;
 
   n -= tvp->tv_sec;
-  tvp->tv_usec = n * 100000;
+  n = n * 100000;
+  modf(n,&intpart);
+  if (intpart > LONG_MAX)
+    WARNING("tv_usec lost significant digits");
+  tvp->tv_usec = (long) intpart;
 }
 
 /* buffer should be "file_name" */

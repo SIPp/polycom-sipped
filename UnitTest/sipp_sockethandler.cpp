@@ -2442,7 +2442,7 @@ TEST(sockethandler, write_error){
   int rc = sendto(asocket->ss_fd, buff, strlen(buff), 0, (sockaddr*)&remote_sockaddr, sizeof(local_sockaddr));
   print_if_error(rc);
   rc = write_error(asocket, ret);
-  EXPECT_EQ(copy_nb_net_send_errors +1, nb_net_send_errors);
+  EXPECT_EQ((long unsigned int) (copy_nb_net_send_errors +1), nb_net_send_errors);
   
   sockaddr_storage null_ss;
   memset (&null_ss,0,sizeof(null_ss));
@@ -2450,7 +2450,8 @@ TEST(sockethandler, write_error){
 
   print_if_error(rc);
   rc = write_error(asocket, ret);
-  EXPECT_EQ(copy_nb_net_send_errors +2, nb_net_send_errors);
+  ASSERT_GE(copy_nb_net_send_errors, 0);
+  EXPECT_EQ((long unsigned int) (copy_nb_net_send_errors +2), nb_net_send_errors);
 
   sipp_close_socket(asocket);
   cleanup_sockets();
