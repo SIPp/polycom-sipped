@@ -1,7 +1,7 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
-3.2.47 BETA
+3.2.47 BETA 
 - -ar automatically enabled when -mc is selected
 - retransmit logic was prior to matching logic but has been moved to post
   matching logic, during unexpected error handling so that scenario matching
