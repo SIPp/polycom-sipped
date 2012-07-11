@@ -26,10 +26,18 @@ class Retransmits < Test::Unit::TestCase
   
   #presence of -yr should not change behavoir
   #to server: retransmit invite immediately
-  def test_uas_uac_rrxmt_invite1
-    test = SippTest.new("test_uas_uac_rrxmt_invite1", "-sf myuac_rxmt_invite1.sipp -mc", "-sf myuas.sipp -mc -ar -yr")
+  def test_uas_uac_rrxmt_invite1_yr
+    test = SippTest.new("test_uas_uac_rrxmt_invite1_yr", "-sf myuac_rxmt_invite1.sipp -mc", "-sf myuas.sipp -mc -ar -yr")
     assert(test.run())
   end    
+  
+  #-mc should automatically enable -ar functionality
+  #to server: retransmit invite immediately
+  def test_uas_uac_rrxmt_invite1_mc
+    test = SippTest.new("test_uas_uac_rrxmt_invite1_mc", "-sf myuac_rxmt_invite1.sipp -mc", "-sf myuas.sipp -mc")
+    assert(test.run())
+  end    
+  
   
   #to server: retransmit invite twice immediately
   def test_uas_uac_rrxmt_invite2
@@ -161,6 +169,7 @@ class Retransmits < Test::Unit::TestCase
     #test.expected_error_log = /Aborting call on unexpected message for.*while pausing \(index 7\). Response \'200\' does not match.*Message index   8,\s*BYE\(1\).*Message index  13, 200\(2\)/m
     assert(test.run())
   end 
+
   
   
   

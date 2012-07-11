@@ -3522,26 +3522,9 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   responsecseqmethod[0] = '\0';
   branch[0] = '\0';
 
-  if((transport == T_UDP) && (absorb_retrans)){
-    // check to see if this is a retransmitted message
-    unsigned long currmsghash = hash(msg);
-    DEBUG ("Current message hash is %ul\n", currmsghash);
-    set<hash_msgindex_pair>::iterator it;
-    for (it=recvhash_msgindex_pairs.begin(); it!=recvhash_msgindex_pairs.end(); it++){
-      DEBUG ("pair<hash,index> =  <%ul , %d>\n", it->first, it->second);
-      if (it->first == currmsghash){
-        //hash matched a prev sent message index = it->second()
-        DEBUG("Retransmitted Message: hash matches msg index %d, %d\n",
-          it->second, currmsghash);
-        call_scenario->messages[it->second]->nb_recv_retrans++;
-        if(absorb_retrans){
-          return true;
-        } 
-      }
-    }
-    DEBUG("no hash match to previously received messages");
-    // if we absorb_retrans, we dont retrans_enabled - dont rxmt last sent msg
-  }else if((transport == T_UDP) && (retrans_enabled)) {
+
+  // if we absorb_retrans, we dont retrans_enabled - dont rxmt last sent msg
+  if((transport == T_UDP) && (retrans_enabled)&& (!absorb_retrans)) {
     /* Detects retransmissions from peer and retransmit the
     * message which was sent just after this one was received */
     cookie = hash(msg);
@@ -3838,6 +3821,26 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   if(!found) {
     DEBUG("Message not matched: processing an unexpected message. ");
     DEBUG("Reason: %s", reason);
+
+    if((transport == T_UDP) && (absorb_retrans)){
+    // check to see if this is a retransmitted message
+      unsigned long currmsghash = hash(msg);
+      DEBUG ("Current message hash is %ul\n", currmsghash);
+      set<hash_msgindex_pair>::iterator it;
+      for (it=recvhash_msgindex_pairs.begin(); it!=recvhash_msgindex_pairs.end(); it++){
+        DEBUG ("pair<hash,index> =  <%ul , %d>\n", it->first, it->second);
+        if (it->first == currmsghash){
+          //hash matched a prev sent message index = it->second()
+          DEBUG("Retransmitted Message: hash matches msg index %d, %d\n",
+            it->second, currmsghash);
+          call_scenario->messages[it->second]->nb_recv_retrans++;
+          if(absorb_retrans){
+            return true;
+          } 
+        }
+      }
+    DEBUG("no hash match to previously received messages, continue processing unexpected message");
+    }
 
     // unexpected_jump contains the index for the location where scenario file contains
     // <label id="_unexp.main"/>   This is a feature to allow user to specify a message

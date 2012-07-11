@@ -681,12 +681,19 @@ TEST(sockdemo, polldemo){
 
 
 TEST(sockdemo, sizofstuff){
+#if defined WIN32 || defined CYGWIN
   EXPECT_EQ((unsigned int)4,sizeof(long));
   EXPECT_EQ((unsigned int)4,sizeof(int));
   EXPECT_EQ((unsigned int)8,sizeof(double));
   EXPECT_EQ((unsigned int)4,sizeof(time_t));
   EXPECT_EQ((unsigned int)4,sizeof(float));
-
+#else if defined Linux 
+  EXPECT_EQ((unsigned int)8,sizeof(long));
+  EXPECT_EQ((unsigned int)4,sizeof(int));
+  EXPECT_EQ((unsigned int)8,sizeof(double));
+  EXPECT_EQ((unsigned int)8,sizeof(time_t));
+  EXPECT_EQ((unsigned int)4,sizeof(float));
+#endif
 
   float myfloat = 2.9;
   double myint;// = myfloat;

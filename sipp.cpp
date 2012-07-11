@@ -2498,7 +2498,7 @@ int main(int argc, char *argv[])
         }
         exit(EXIT_OTHER);
       case SIPP_OPTION_VERSION:
-        printf("\n SIPped v3.2.46 BETA"
+        printf("\n SIPped v3.2.47 BETA"
 #ifdef _USE_OPENSSL
                "-TLS"
 #endif
@@ -2736,6 +2736,7 @@ int main(int argc, char *argv[])
         retrans_enabled = 0;
         watchdog_interval = 0;
         deadcall_wait = 0;
+        absorb_retrans = 1;
         // default is to stop after 1 call if value not changed on command line.
         if (stop_after == 0xffffffff) {
           DEBUG("Setting stop_after to one since it is %u", stop_after);
