@@ -14,9 +14,9 @@ class Exec < Test::Unit::TestCase
   def test_exec_command
   	# verify <exec command=""> [runs fast, doesn't mind 123 exit code]
     test = SippTest.new("exec_command", "-sf exec_command.sipp -m 1 -l 1 -key command \"sleep 16 && echo test \"", "-sn uas -aa ")
-	test.expected_maximum_run_time = 15
+	test.expected_maximum_run_time = 29
     assert(test.run())
-	sleep 16 # be sure child process has finished before test case finishes so address is no longer in use.
+	sleep 30 # be sure child process has finished before test case finishes so address is no longer in use.
   end
   
   def test_exec_verify_pass
