@@ -106,7 +106,7 @@ class CompositeDocument {
     string showStack();
     string topDoc();
     int getCompositeLineNumber();
-    int getDocsInStack();
+    size_t getDocsInStack();
     void reduceBothLineNumBy(int delta);
     // void incrCompositeLineNumber();
   }; // inner class DocStack
@@ -127,8 +127,8 @@ public:
   int getCompositeLineNumber();
   string strStackFromCompositeLineNumber(int compositeLineNumber);
   string getCurrDoc();
-  int currStackSize();
-  int getQtyStacks();
+  size_t currStackSize();
+  size_t getQtyStacks();
   string dumpStacks();
   int compositeLineNumberFromIndex(int index);
   string strStackFromIndex( int index);

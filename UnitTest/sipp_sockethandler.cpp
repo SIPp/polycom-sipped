@@ -439,6 +439,9 @@ TEST(sockethandler, determine_local_ip_ipv6 ){
 //
 // This tests uses local_ip = null which creates local address of
 //   0.0.0.0   or :: 
+
+extern SOCKREF                      socket_fd(bool use_ipv6, int transport);
+
 TEST(sockethandler, allocate_noaddr_notipv6_DFLT_TRANSPORT){
   initialize_sockets();
 
@@ -1013,7 +1016,6 @@ TEST(sockethandler, allocate_notipv6_T_TCP){
   sipp_close_socket(ss);
   //sipp_socket is freed, ss data is no longer be valid, nothing to check
   EXPECT_EQ(0,pollnfds) << "sipp_close_socket should have decremented pollnfds";
-  //todo is there a way to verify socket state is closed?
 
   cleanup_sockets();
 
@@ -1394,7 +1396,7 @@ TEST(sockethandler, udp_ipv4_looparound){
   EXPECT_EQ(2, pollnfds) << "pollnfds should have been incremented by sipp_allocate_sokcet";
   EXPECT_EQ(pollnfds-1,local_ss->ss_pollidx) << "pollidx should be set to one less than current pollnfds";
   EXPECT_EQ(local_ss, sockets[local_ss->ss_pollidx])<< "socket array should have this socket at position ss_pollidx";
-
+  
 //bind socket to local_ip address
   rc = sipp_bind_socket(local_ss,(sockaddr_storage*)(&local_sockaddr),&local_port);
   print_if_error(rc);

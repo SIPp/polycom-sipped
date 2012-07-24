@@ -64,6 +64,7 @@
 #include "logging.hpp"
 #include "send_packets.hpp"
 #include "screen.hpp"
+#include "sipp_sockethandler.hpp"
 //
 #include "sipp_globals.hpp"
 #include "prepare_pcap.hpp"
@@ -138,17 +139,21 @@ int parse_play_args (char *buffer, pcap_pkts *pkts)
 void do_sleep (struct timeval *, struct timeval *, struct timeval *, struct timeval *);
 void send_packets_cleanup(void *arg)
 {
+#ifdef WIN32
+  SOCKREF sock = (SOCKREF) arg;
+#else
   int sock = (int) ((long) arg);
-
+#endif
   // Close send socket
-  close(sock);
+  CLOSESOCKET(sock);
 }
 
 
 int
 send_packets (play_args_t * play_args)
 {
-  int ret, sock;
+  SOCKREF sock;
+  int ret;
   pcap_pkt *pkt_index, *pkt_max;
   struct timeval didsleep = { 0, 0 };
   struct timeval start = { 0, 0 };
@@ -171,7 +176,7 @@ send_packets (play_args_t * play_args)
     from = &from_struct;
   }
 
-  DEBUG_IN();
+  DEBUGIN();
 
   if (media_ip_is_ipv6) {
     sock = socket(PF_INET6, SOCK_DGRAM, 0);
@@ -279,7 +284,7 @@ send_packets (play_args_t * play_args)
 
   /* Closing the socket is handled by pthread_cleanup_push()/pthread_cleanup_pop() */
   pthread_cleanup_pop(1);
-  DEBUG_OUT();
+  DEBUGOUT();
   return result;
 }
 

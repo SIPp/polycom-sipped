@@ -1,0 +1,45 @@
+20120712   me again
+
+www.openssl.org   openssl-1.0.1c
+
+read FAQ, INSTALL.W32
+
+steps to rebuild or get new versions
+- download openssl-1.0.1c.tar.gzip
+- gzip -d openssl-1.0.1c.tar.gzip   // I used mingw tools 
+- tar -xvf openssl-1.0.1c.tar       // seriously, really usefull
+
+from openssl-1.0.1c directory
+>perl Configure VC-WIN32 no-asm --prefix=c:\TestUtilities\SIPped\SIPped\src\openssl
+>ms\do_ms
+
+from visual studio cmd prompt, go to same directory
+>nmake -f ms\ntdll.mak   // if Failed to write the updated manifest - close visual studio and try again, otherwise manifest tool, embed manifest = false (race conditionon multi-core cpu with msvs2005 on vista) 
+>nmake -f ms\ntdll.mak test   
+>nmake -f ms\ntdll.mak install
+
+this results in the files in this dir c:\TestUtilities\SIPped\SIPped\src\openssl
+
+Do this again but change the initial step to the following (see noteworthy for explanation)
+
+>perl Configure debug-VC-WIN32 no-asm --prefix=c:\TestUtilities\SIPped\SIPped\src\openssld
+
+NOTEWORTHY 
+
+If you link with static OpenSSL libraries [those built with ms/nt.mak],
+ then you're expected to additionally link your application with
+ WS2_32.LIB, ADVAPI32.LIB, GDI32.LIB and USER32.LIB
+
+version 1 and later of openssl use winsock2.h libraries instead of winsock.h
+ older version of openssl build on winsock.h and there will be many compiler
+ errors since w32 sipp builds on winsock2.h (redefinition errors etc).
+
+application must link against the same version of the Win32C-Runtime against 
+which your openssl libraries were linked.  The default version for OpenSSL 
+is /MD - "Multithreaded DLL". sipped is normally built and used as debug versions.
+
+Note that debug and release libraries are NOT interchangeable.  If you
+built OpenSSL with /MD your application must use /MD and cannot use /MDd.
+
+building once with debug and once without means that sipped debug version must
+link to the openssld directoty and the release vesion must link to the openssl dirctory

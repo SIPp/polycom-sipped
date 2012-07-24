@@ -42,6 +42,7 @@
 #include "win32_compatibility.hpp"
 #include "stat.hpp"
 #include <time.h>
+#include <limits.h>
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -556,7 +557,9 @@ int print_stats_in_file(FILE * f, int last, int diagram_only)
         desc[23] = '\0';
         curmsg->pause_desc = desc;
       }
-      int len = strlen(desc) < 9 ? 9 : strlen(desc);
+      if (strlen(desc)>INT_MAX)
+        WARNING("length of desc exceeds INT_MAX: %ld", strlen(desc));
+      int len = strlen(desc) < 9 ? 9 : (int)strlen(desc);
 
       if(creationMode == MODE_SERVER) {
         fprintf(f,"  [%8s] Pause%*s     ", desc, 23 - len > 0 ? 23 - len : 0, "");

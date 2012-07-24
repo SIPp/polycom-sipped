@@ -90,6 +90,9 @@ int _TRACE_CALLDEBUG(const char *fmt, ...);
 #define DEBUG(x, ...) _DEBUG_LOG("%s() in %s:%d - " x "\n",  __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__)
 #define DEBUG_IN(x, ...) DEBUG("(Entered) - " x, ##__VA_ARGS__)
 #define DEBUG_OUT(x, ...) DEBUG("(Leaving) - " x, ##__VA_ARGS__)
+// win32 warnings complain about not enough args if you DEBUG_IN().  Cant overload macros so ...
+#define DEBUGIN()  DEBUG("(Entered) - ", " ")
+#define DEBUGOUT() DEBUG("(Leaving) - ", " ")
 
 #define TRACE_MSG(x, ...)       { _TRACE_MSG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }
 #define TRACE_CALLDEBUG(x, ...) { _TRACE_CALLDEBUG(x, ##__VA_ARGS__); _DEBUG_LOG(x, ##__VA_ARGS__); }

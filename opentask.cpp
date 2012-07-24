@@ -32,6 +32,7 @@
  */
 #include <assert.h>
 #include <math.h>
+#include <limits.h>
 #include "call.hpp"
 #include "opentask.hpp"
 #include "screen.hpp"
@@ -102,7 +103,9 @@ bool opentask::run()
   unsigned long long total_calls = main_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + main_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated);
 
   if (users >= 0) {
-    calls_to_open = ((l = (users - current_calls)) > 0) ? l : 0;
+    if (current_calls>INT_MAX)
+      WARNING("current calls exceeds INT_MAX");
+    calls_to_open = ((l = (users - (int)current_calls)) > 0) ? l : 0;
   } else {
     calls_to_open = (unsigned int)
                     ((l=(long)floor(((clock_tick - last_rate_change_time) * rate/rate_period_ms)
@@ -110,11 +113,15 @@ bool opentask::run()
   }
 
   if (total_calls + calls_to_open > stop_after) {
-    calls_to_open = stop_after - total_calls;
+    if (total_calls>INT_MAX)
+      WARNING("total_calls exceeds INT_MAX: %ld",total_calls);
+    calls_to_open = stop_after - (int)total_calls;
   }
 
   if (open_calls_allowed && (current_calls + calls_to_open > open_calls_allowed)) {
-    calls_to_open = open_calls_allowed - current_calls;
+    if (current_calls>INT_MAX)
+      WARNING("total_calls exceeds INT_MAX: %ld",total_calls);
+    calls_to_open = open_calls_allowed - (int)current_calls;
   }
 
   if (calls_to_open < 0) {

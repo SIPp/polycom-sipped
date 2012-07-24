@@ -14,13 +14,13 @@
 #define SOCKREF SOCKET
 #define CLOSESOCKET closesocket
 #define POLL WSAPoll
-#else  //WIN32
+#else
 #include <poll.h>
 #define SOCKREF int   //sock_fd
 #define POLLREF struct pollfd
 
-//msft defines as 0, -1 for posix?
-//todo makesure all socket fd compare to INVALID_SOCKET for consistency
+//msft defines as ~0, -1 for posix?
+//todo makesure all socket fd compare to INVALID_SOCKET for consistency -esp in send_packet
 #define INVALID_SOCKET -1
 #define CLOSESOCKET close  //make sure its a socket, not a file close to use this
 #define POLL poll
@@ -35,8 +35,8 @@
 //  with err.h. Since we do use errno for non socket errors, only 
 //  define the specific errors from err.h that we use to minimize 
 //  potential name collision with errno for non socket errors.
-#define EAGAIN      WSAEWOULDBLOCK
-#define EINTR       WSAEINTR
+//#define EAGAIN      WSAEWOULDBLOCK
+//#define EINTR       WSAEINTR
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define EOPNOTSUPP  WSAEOPNOTSUPP
 #define EADDRINUSE  WSAEADDRINUSE
@@ -61,23 +61,18 @@ struct sipp_socket           *new_sipp_socket(bool use_ipv6, int transport);
 int                          sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr, int *port);
 struct sipp_socket           *sipp_allocate_socket(bool use_ipv6, int transport, SOCKREF fd, int accepting) ;
 struct sipp_socket           *sipp_allocate_socket(bool use_ipv6, int transport, SOCKREF fd);
-SOCKREF                      socket_fd(bool use_ipv6, int transport);
 void                         determine_remote_and_local_ip();
 int                          empty_socket(struct sipp_socket *socket);
 int                          check_for_message(struct sipp_socket *socket);
 int                          write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flags, struct sockaddr_storage *dest);
 int                          flush_socket(struct sipp_socket *socket);
 void                         free_socketbuf(struct socketbuf *socketbuf);
-struct socketbuf             *alloc_socketbuf(char *buffer, size_t size, int copy, struct sockaddr_storage *dest) ;
 void                         sipp_customize_socket(struct sipp_socket *socket);
 int                          sipp_reconnect_socket(struct sipp_socket *socket);
 struct sipp_socket           *sipp_accept_socket(struct sipp_socket *accept_socket, struct sockaddr_storage *source);
 int                          sipp_connect_socket(struct sipp_socket *socket, struct sockaddr_storage *dest);
-//int                          sipp_do_connect_socket(struct sipp_socket *socket);
 int                          open_connections();
-void                         connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *peer_sockaddr, char *peer_ip, struct sipp_socket **peer_socket);
 void                         connect_to_all_peers();
-void                         connect_local_twin_socket(char * twinSippHost);
 void                         print_if_error(int rc);
 
 #ifdef WIN32 
@@ -92,7 +87,7 @@ extern struct pollfd         pollfiles[SIPP_MAXFDS];
 const char *sip_tls_error_string(SSL *ssl, int size);
 extern SSL_CTX  *sip_trp_ssl_ctx ; /* For SSL cserver context */
 extern SSL_CTX  *sip_trp_ssl_ctx_client; /* For SSL cserver context */
-extern SSL_CTX  *twinSipp_sip_trp_ssl_ctx_client; /* For SSL cserver context */
+//extern SSL_CTX  *twinSipp_sip_trp_ssl_ctx_client; /* For SSL cserver context */
 #endif
 
 /* Socket Buffer Management. */

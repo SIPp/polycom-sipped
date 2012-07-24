@@ -19,7 +19,7 @@
   </send>
 
 
-  <recv response="200">
+  <recv response="200" dialog="1">
       <action>
            <ereg regexp="local-[0-9]+-1-0" search_in="hdr" header="From:" check_it="true" assign_to="keyword1" />
            <log message="Local tag is '[$keyword1]'" />           

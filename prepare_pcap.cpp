@@ -129,6 +129,8 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
   pcap = pcap_open_offline(file, errbuf);
   if (!pcap)
     REPORT_ERROR("Can't open PCAP file '%s'. pcap_open_offline returned error: '%s'", file, errbuf);
+  int num_of_non_ip_packets = 0;
+  int num_of_non_udp_packets = 0;
 
 #if HAVE_PCAP_NEXT_EX
   while (pcap_next_ex (pcap, &pkthdr, (const u_char **) &pktdata) == 1) {
@@ -140,8 +142,6 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
 #endif
   if (!pkthdr)
     REPORT_ERROR("Can't allocate memory for pcap pkthdr");
-  int num_of_non_ip_packets = 0;
-  int num_of_non_udp_packets = 0;
   while ((pktdata = (u_char *) pcap_next (pcap, pkthdr)) != NULL) {
 #endif
     int link_type = pcap_datalink(pcap);
@@ -236,7 +236,9 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
 #if defined(__HPUX) || defined(__DARWIN) || (defined __CYGWIN) || defined(__FreeBSD__)
     pkt_index->partial_check = check((u_int16_t *) &udphdr->uh_ulen, pktlen - 4) + ntohs(IPPROTO_UDP + pktlen);
 #else
-    pkt_index->partial_check = check((u_int16_t *) &udphdr->len, pktlen - 4) + ntohs(IPPROTO_UDP + pktlen);
+    if (pktlen > USHRT_MAX)
+      WARNING("pktlen is greater than USHRT_MAX: %d",pktlen);
+    pkt_index->partial_check = check((u_int16_t *) &udphdr->len, pktlen - 4) + ntohs(IPPROTO_UDP + (unsigned short)pktlen);
 #endif
     if (max_length < pktlen)
       max_length = pktlen;

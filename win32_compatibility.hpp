@@ -45,8 +45,8 @@ char *strndup (char const *s, size_t n);
 struct iphdr {
   uint32_t    ihl:4;
   uint32_t    version:4;
-  uint8_t     tos;
-  uint16_t    tot_len;
+  uint32_t     tos:8;
+  uint32_t    tot_len:16;
   uint16_t    id;
   uint16_t    frag_off;
   uint8_t     ttl;

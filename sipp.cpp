@@ -43,6 +43,7 @@
 #ifdef WIN32
 #include <time.h>
 #include <pthread.h>
+#include <conio.h>
 #else
 #include <netinet/tcp.h>
 #include <sys/poll.h>
@@ -68,6 +69,7 @@
 #ifdef WIN32
 # include <io.h>
 # include <process.h>
+#include <time.h>  // for clock usage in global timer
 #else
 #include "comp.hpp"
 #endif
@@ -117,6 +119,23 @@ int passwd_call_back_routine(char  *buf , int size , int flag, void *passwd)
 
 struct sipp_socket *ctrl_socket = NULL;  // ctrl_socket is network socket for remote control of SIPp
 struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket for use in SIPp poll loop
+
+void set_sipp_version_string(){
+  memset(sipp_version,0,SIPPVERSSIZE);
+  sprintf(sipp_version,"SIPped 3.2.60 BETA"
+#ifdef WIN32
+               "-W32"
+#endif
+#ifdef _USE_OPENSSL
+               "-TLS"
+#endif
+#ifdef PCAPPLAY
+               "-PCAP"
+#endif
+               ", vers %s, built %s, %s.",
+               SIPP_VERSION, __DATE__, __TIME__);
+}
+
 
 /* These could be local to main, but for the option processing table. */
 static int argiFileName;
@@ -171,6 +190,8 @@ struct sipp_option {
 #define SIPP_OPTION_LFOVERWRITE   37
 #define SIPP_OPTION_PLUGIN        38
 #define SIPP_OPTION_NO_CALL_ID_CHECK 39
+
+#define MAX_CMD_CHARS 256
 
 /* Put Each option, its help text, and type in this table. */
 struct sipp_option options_table[] = {
@@ -449,6 +470,8 @@ struct sipp_option options_table[] = {
   {"dynamicMax",   "variable value\nSet the maximum of dynamic_id variable     ",   SIPP_OPTION_INT, &maxDynamicId,   1},
   {"dynamicStep",  "variable value\nSet the increment of dynamic_id variable",      SIPP_OPTION_INT, &stepDynamicId,  1}
 };
+
+
 
 struct sipp_option *find_option(const char *option) {
   int i;
@@ -1167,14 +1190,23 @@ void setup_ctrl_socket()
 void setup_stdin_socket()
 {
 #ifdef WIN32
-  //todo how to handle stdin without being a socket
+  //unsigned long int iMode = 1;  // 0=blocking, 1=nonblocking
+  //int rc = ioctlsocket(fd, FIONBIO, (u_long FAR*) &iMode);
+  //if (rc != 0){
+  //  ERRORNUMBER = WSAGetLastError();
+  //  wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+  //  char errorstring[1000];
+  //  const char *errstring = wchar_to_char(error_msg,errorstring);
+  //  WARNING("Failed to set tls socket mode:%s",errstring);
+  //}
 #else
   fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
-  stdin_socket = sipp_allocate_socket(0, T_UDP, fileno(stdin), 0);
+    stdin_socket = sipp_allocate_socket(0, T_UDP, fileno(stdin), 0);
   if (!stdin_socket) {
     REPORT_ERROR_NO("Could not setup keyboard (stdin) socket!\n");
   }
 #endif
+
 }
 
 void handle_stdin_socket()
@@ -1356,7 +1388,7 @@ char * get_incoming_first_line(char * message)
 size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
 {
 #ifndef WIN32
-  DEBUG_IN();
+  DEBUGIN();
   if(compression && len) {
     if (useMessagef == 1) {
       struct timeval currentTime;
@@ -1403,7 +1435,7 @@ size_t decompress_if_needed(int sock, char *buff,  size_t len, void **st)
       return 0;
     }
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 #else
   REPORT_ERROR("Cannot Decompress. Compression is not enabled in this build");
 #endif
@@ -1444,7 +1476,6 @@ void free_peer_addr_map()
   }
 }
 
-//todo: should this be moved to sipp_sockethandler alongside write_error
 static int read_error(struct sipp_socket *socket, int ret)
 {
 #ifdef WIN32
@@ -1537,7 +1568,7 @@ static int read_error(struct sipp_socket *socket, int ret)
 static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, struct sockaddr_storage *src)
 {
   size_t avail;
-  DEBUG_IN();
+  DEBUGIN();
 
   if (!socket->ss_msglen)
     return 0;
@@ -1588,7 +1619,7 @@ static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, s
               avail, buf);
   }
 
-  DEBUG_OUT();
+  DEBUGOUT();
   return avail;
 }
 
@@ -1596,7 +1627,7 @@ static ssize_t read_message(struct sipp_socket *socket, char *buf, size_t len, s
 
 void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, struct sockaddr_storage *src)
 {
-  DEBUG_IN();
+  DEBUGIN();
   if(msg_size <= 0) {
     return;
   }
@@ -1710,7 +1741,7 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   } else {
     listener_ptr -> process_incoming(msg, src, socket);
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 } // process_message
 
 void pollset_process(int wait)
@@ -1884,7 +1915,7 @@ void timeout_alarm(int param)
 
 void traffic_thread()
 {
-  DEBUG_IN();
+  DEBUGIN();
   /* create the file */
   char         L_file_name [MAX_PATH];
   sprintf (L_file_name, "%s_%d_screen.log", scenario_file, getpid());
@@ -1892,7 +1923,8 @@ void traffic_thread()
   getmilliseconds();
 
 #ifdef WIN32
-  //todo How can we implement timeout in windows
+  clock_t targettime = clock()+(global_timeout);
+  // check for expiry in traffic loop
 #else
   /* Arm the global timer if needed */
   if (global_timeout > 0) {
@@ -1901,14 +1933,74 @@ void traffic_thread()
   }
 #endif
 
+
+
   // Dump (to create file on disk) and showing screen at the beginning even if
   // the report period is not reached
   stattask::report();
   screentask::report(false);
 
+#ifdef WIN32
+  // report task uses these values to refresh the screen and maintain command echo
+  command_mode = 0;
+  unsigned int cmd_char_count = 0;
+#endif
+
   while(1) {
     scheduling_loops++;
     getmilliseconds();
+
+#ifdef WIN32
+  // check if global timer is set and if it is expired.
+    if ((global_timeout > 0)&&(clock() > targettime)) {
+      timeout_alarm(0);
+    }
+
+  // check for console input, no blocking calls since this is traffic loop
+    int ch;
+    if(kbhit()){
+      ch = getch();
+      if (command_mode){
+        putchar(ch);
+        switch (ch){
+          case 0x1b:  //esc 
+          case 0x3:   //ctl c
+            free(command_buffer);
+            command_buffer = NULL;
+            command_mode = 0;
+            cmd_char_count = 0;
+            break;
+          case 0x8:   //del
+            if (cmd_char_count > 0){
+              command_buffer[cmd_char_count-1]=0;
+              cmd_char_count--;
+            }
+            break;
+          case 0xd:   //return
+            command_buffer[cmd_char_count] = 0;
+            process_command(command_buffer);
+            free(command_buffer);
+            command_buffer = NULL;
+            command_mode = 0;
+            cmd_char_count = 0;
+            break;
+          default:
+            if (cmd_char_count<MAX_CMD_CHARS-1)
+              command_buffer[cmd_char_count++] = (char)ch;
+            else
+              WARNING("command buffer full:..sure you know what you're doing?");
+            break;
+        }
+      }else{
+        if (ch == (int) 'c'){
+          command_mode = 1;
+          printf("Command: ");
+          command_buffer = (char*)calloc(MAX_CMD_CHARS,1);
+        }else
+          process_key(ch);
+      }
+    }
+#endif
 
     if (signalDump) {
       /* Screen dumping in a file */
@@ -2027,17 +2119,14 @@ void traffic_thread()
     /* Receive incoming messages */
     pollset_process(running_tasks->size() == 0);
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 /*************** RTP ECHO THREAD ***********************/
 /* param is a pointer to RTP socket */
 
-#ifdef WIN32
-DWORD WINAPI rtp_echo_thread(LPVOID param)
-#else
+
 void rtp_echo_thread (void * param)
-#endif
 {
   char *msg = (char*)alloca(media_bufsize);
   size_t nr, ns;
@@ -2066,11 +2155,7 @@ void rtp_echo_thread (void * param)
       WARNING("%s %i",
               "Error on RTP echo reception - stopping echo - errno=",
               ERRORNUMBER);
-#ifdef WIN32
-      return -1;
-#else
       return;
-#endif
     }
     ns = sendto(*(int *)param, msg, nr,
                 0, (sockaddr *)(void *) &remote_rtp_addr,
@@ -2082,11 +2167,7 @@ void rtp_echo_thread (void * param)
       WARNING("%s %i",
               "Error on RTP echo transmission - stopping echo - errno=",
               ERRORNUMBER);
-#ifdef WIN32
-      return -1;
-#else
       return;
-#endif
     }
 
     if (*(int *)param==media_socket) {
@@ -2098,9 +2179,6 @@ void rtp_echo_thread (void * param)
       rtp2_bytes += ns;
     }
   }
-#ifdef WIN32
-  return 0;
-#endif
 }
 
 /* Wrap the help text. */
@@ -2222,6 +2300,7 @@ void help()
 
   printf
   (
+#ifdef WIN32
     "Signal handling:\n"
     "\n"
     "   SIPp can be controlled using posix signals. The following signals\n"
@@ -2234,7 +2313,8 @@ void help()
     "         <scenario_name>_<pid>_screens.log file. Especially useful \n"
     "         in background mode to know what the current status is.\n"
     "         Example: kill -SIGUSR2 732\n"
-    "\n"
+#endif
+        "\n"
     "Exit code:\n"
     "\n"
     "   Upon exit (on fatal error or when the number of asked calls (-m\n"
@@ -2374,6 +2454,9 @@ void print_last_stats()
   }
 }
 
+
+
+
 void freeInFiles()
 {
   for (file_map::iterator file_it = inFiles.begin(); file_it != inFiles.end(); file_it++) {
@@ -2391,12 +2474,14 @@ void freeUserVarMap()
 
 void releaseGlobalAllocations()
 {
+  cleanup_sockets();
   delete main_scenario;
   delete ooc_scenario;
   free_default_messages();
   freeInFiles();
   freeUserVarMap();
   delete globalVariables;
+
 }
 
 
@@ -2445,9 +2530,10 @@ int main(int argc, char *argv[])
     sigaction(SIGUSR2, &action_usr2, NULL);
   }
 #else
-  // todo : sigusr1 and siguser2 used to (q)uit and (Q)quit
+  // no windows signals 
 #endif // ifndef WIN32
   screen_set_exename((char *)"sipp");
+  set_sipp_version_string();
 
   pid = getpid();
   memset(local_ip, 0, 40);
@@ -2498,16 +2584,7 @@ int main(int argc, char *argv[])
         }
         exit(EXIT_OTHER);
       case SIPP_OPTION_VERSION:
-        printf("\n SIPped v3.2.47 BETA"
-#ifdef _USE_OPENSSL
-               "-TLS"
-#endif
-#ifdef PCAPPLAY
-               "-PCAP"
-#endif
-               ", version %s, built %s, %s.\n\n",
-               SIPP_VERSION, __DATE__, __TIME__);
-
+        printf("\n%s\n\n",sipp_version);
         printf
         (" This program is free software; you can redistribute it and/or\n"
          " modify it under the terms of the GNU General Public License as\n"
@@ -3178,7 +3255,7 @@ int main(int argc, char *argv[])
     }
   }
 #endif // ifndef WIN32
-
+  DEBUG("%s", sipp_version);
   DEBUG("Configuration complete, initializing...");
 
   if (scenario_file) {
@@ -3338,9 +3415,8 @@ int main(int argc, char *argv[])
 
   media_port = user_media_port ? user_media_port : DEFAULT_MEDIA_PORT;
 
-  /* Always create and Bind RTP socket */
-  /* to avoid ICMP                     */
-  int create_media_socket = 0;
+  /*  ICMP msgs from os running sipp will occur if sipp is being sent rtp and no port is open                  */
+  int create_media_socket = rtp_echo_enabled;
   if (!create_media_socket) {
     if (media_sockaddr.ss_family == AF_INET) {
       (_RCAST(struct sockaddr_in *,&media_sockaddr))->sin_port = htons((short)media_port);
@@ -3483,7 +3559,7 @@ int main(int argc, char *argv[])
 
 void reset_connection(struct sipp_socket *socket)
 {
-  DEBUG_IN();
+  DEBUGIN();
   if (!reconnect_allowed()) {
     REPORT_ERROR_NO("Max number of reconnections reached");
   }
@@ -3506,14 +3582,14 @@ void reset_connection(struct sipp_socket *socket)
   } else {
     WARNING("Socket required a reconnection.");
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 /* Close just those calls for a given socket (e.g., if the remote end closes
  * the connection. */
 void close_calls(struct sipp_socket *socket)
 {
-  DEBUG_IN();
+  DEBUGIN();
   owner_list *owners = get_owners_for_socket(socket);
   owner_list::iterator owner_it;
   socketowner *owner_ptr = NULL;
@@ -3526,7 +3602,7 @@ void close_calls(struct sipp_socket *socket)
   }
 
   delete owners;
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 

@@ -5,6 +5,9 @@
 #include <sstream>
 #include <iomanip>
 #include <cstdio>
+#include <limits.h>
+#include <stdexcept>
+#include <limits.h>
 
 using namespace std;
 
@@ -128,13 +131,13 @@ CompositeDocument::DocStack CompositeDocument::getCurrStack()
 }
 
 // how many bookmarks in current/latest DocStack image
-int CompositeDocument::currStackSize()
+size_t CompositeDocument::currStackSize()
 {
   return getCurrStack().getDocsInStack();
 }
 
 // how many DocStack Images have we collected
-int CompositeDocument::getQtyStacks()
+size_t CompositeDocument::getQtyStacks()
 {
   return compositeDocument.size();
 }
@@ -143,7 +146,7 @@ int CompositeDocument::getQtyStacks()
 string CompositeDocument::dumpStacks()
 {
   string result ="";
-  int i;
+  size_t i;
   char buf[256];
   for (i = 0; i < getQtyStacks(); i++) {
     sprintf(buf,"%d",compositeDocument[i].getCompositeLineNumber());
@@ -322,7 +325,10 @@ string CompositeDocument::DocStack::showStack()
   stringstream ss;
   int i;
   string docstack = "";
-  for (i = docs.size() - 1; i >= 0; i--) {
+  
+  if (docs.size() > INT_MAX)
+    throw runtime_error ("number of documents exceeds INT_MAX");
+  for (i = (int)docs.size() - 1; i >= 0; i--) {
     BookMark abookmark = docs[i];
     ss.clear();
     ss.str("");
@@ -347,7 +353,7 @@ string CompositeDocument::DocStack::topDoc()
 }
 
 // how many files are in the document stack
-int CompositeDocument::DocStack::getDocsInStack()
+size_t CompositeDocument::DocStack::getDocsInStack()
 {
   return docs.size();
 }

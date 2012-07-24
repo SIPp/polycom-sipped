@@ -46,7 +46,7 @@ bool CCallVariable::isSet()
   } else if (M_type == E_VT_BOOL) {
     return M_bool;
   } else if (M_type == E_VT_DOUBLE) {
-    return M_double;
+    return (M_double!=0);
   }
   return (M_type != E_VT_UNDEFINED);
 }
@@ -133,7 +133,7 @@ char *CCallVariable::getString()
 bool CCallVariable::toDouble(double *newValue, const char *what)
 {
   char *p;
-  DEBUG_IN();
+  DEBUGIN();
   switch(M_type) {
   case E_VT_REGEXP:
     if(M_nbOfMatchingValue < 1) {
@@ -159,7 +159,7 @@ bool CCallVariable::toDouble(double *newValue, const char *what)
   default:
     return false;
   }
-  DEBUG_OUT();
+  DEBUGOUT();
   return true;
 }
 

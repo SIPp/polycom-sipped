@@ -74,10 +74,15 @@
 #include "socket_helper.hpp"
 //#include <ctype.h>
 #include "sipp_sockethandler.hpp"
+#include <limits.h>
+
 
 #define callDebug(x, ...) do { if (useDebugf) { DEBUG(x, ##__VA_ARGS__); } if (useCallDebugf) { _callDebug(x, ##__VA_ARGS__ ); } } while (0)
+// when substituting short to long headers, need to know how much extra space we may need in buffer
+#define MAX_LONG_FORM_HEADER_LENGTH 20 //strlen("content-encoding:") = 17
 
 char short_and_long_headers[NUM_OF_SHORT_FORM_HEADERS * 2][MAX_HEADER_NAME_LEN] = {
+  
   "i:", "m:", "e:", "l:", "c:", "f:", "s:", "k:", "t:", "v:",
   "Call-ID:", "Contact:", "Content-Encoding:", "Content-Length:", "Content-Type:", "From:", "Subject:", "Supported:", "To:", "Via:"
 };
@@ -122,6 +127,26 @@ unsigned int get_tdm_map_number()
   } else {
     return nb+1;
   }
+}
+
+// given a callid, find the dialog number currently assigned
+// valid dialog numbers >= 0
+//    -1 is the default dialog number when none is specified
+//    Do not match on  dialog = -1  backward compatibility for messages with no dialog number 
+// return -2 if no current dialog exists for the given callid.
+int call::get_dialog_fr_callid(string callid)
+{
+  if ((callid.size()==0)||(per_dialog_state.size()==0))
+    return -2; // nothing to match
+  perDialogStateMap::iterator dialog_it;
+  for(dialog_it = per_dialog_state.begin(); dialog_it != per_dialog_state.end(); dialog_it++){
+    if (( callid.compare((*dialog_it).second->call_id) == 0)&&(callid.compare("-1") != 0)){
+      return dialog_it->first;
+    }
+  }
+  return -2; //no matches found
+  //dialog -1 is used for when no dialog is specified.  We will use -2 as indicator for not found as
+  //  to allow finding of no dialoge (-1) as a vailid return value.
 }
 
 /* When should this call wake up? */
@@ -398,7 +423,7 @@ call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest)
 
 void call::init(scenario * call_scenario, struct sipp_socket *socket, struct sockaddr_storage *dest, const char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall)
 {
-  DEBUG_IN();
+  DEBUGIN();
   this->call_scenario = call_scenario;
   zombie = false;
 
@@ -568,7 +593,8 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   }
 
   hasMediaInformation = 0;
-  for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) media_threads[i] = 0;
+  for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) 
+    media_threads[i] = 0;
   number_of_active_rtp_threads = 0;
 #endif
 
@@ -602,7 +628,7 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   callDebug("Starting call %s\n", id);
 
   setRunning();
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 int call::_callDebug(const char *fmt, ...)
@@ -637,7 +663,7 @@ int call::_callDebug(const char *fmt, ...)
 
 call::~call()
 {
-  DEBUG_IN();
+  DEBUGIN();
   computeStat(CStat::E_ADD_CALL_DURATION, clock_tick - start_time);
 #ifndef WIN32
   if(comp_state) {
@@ -678,19 +704,26 @@ call::~call()
 # ifdef PCAPPLAY
   for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) {
     if (media_threads[i] != 0) {
-      pthread_cancel(media_threads[i]);
-      pthread_join(media_threads[i], NULL);
+      pthread_cancel(*(media_threads[i]));
+      pthread_join(*(media_threads[i]), NULL);
+    }
+  }
+  for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) {
+    if (media_threads[i] != 0) {
+      free(media_threads[i]);
+      media_threads[i] = 0;
     }
   }
 #endif
 
+  
 
   free(start_time_rtd);
   free(rtd_done);
   if (debugBuffer) {
     free(debugBuffer);
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 void call::computeStat (CStat::E_Action P_action)
@@ -739,7 +772,9 @@ void call::dump()
 
 
 struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *existing) {
-  DEBUG_IN();
+  DEBUGIN();
+
+
   struct sipp_socket *sock = NULL;
   static int next_socket;
   if (pollnfds >= max_multi_socket) {  // we must take the main socket into account
@@ -775,14 +810,14 @@ struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *exi
     sock->ss_call_socket = true;
     *existing = false;
   }
-  DEBUG_OUT();
+  DEBUGOUT();
   return sock;
 }
 
 
 bool call::connect_socket_if_needed()
 {
-  DEBUG_IN();
+  DEBUGIN();
   bool existing;
 
   // if socket already exists and it's valid for use, return true.
@@ -919,7 +954,7 @@ bool call::connect_socket_if_needed()
       }
     }
   } // TCP or TLS.
-  DEBUG_OUT();
+  DEBUGOUT();
   return true;
 } // bool call::connect_socket_if_needed()
 
@@ -953,7 +988,7 @@ int call::send_raw(char * msg, int index, int len)
   struct sipp_socket *sock;
   int rc;
 
-  DEBUG_IN();
+  DEBUGIN();
   callDebug("Sending %s message for call %s (index %d, hash %u):\n%s\n\n", TRANSPORT_TO_STRING(transport), id, index, hash(msg), msg);
 
   if (useShortMessagef == 1) {
@@ -1014,7 +1049,9 @@ int call::send_raw(char * msg, int index, int len)
 
   // If the length hasn't been explicitly specified, treat the message as a string
   if (len==0) {
-    len = strlen(msg);
+    if (strlen(msg)>INT_MAX)
+      WARNING("message length exceeds INT_MAX: %ld",strlen(msg));
+    len = (int)strlen(msg);
   }
 
   if (!sock) {
@@ -1048,7 +1085,7 @@ int call::send_raw(char * msg, int index, int len)
 /* part of the XML scenario                          */
 void call::sendBuffer(char * msg, int len)
 {
-  DEBUG_IN();
+  DEBUGIN();
   /* call send_raw but with a special scenario index */
   if (send_raw(msg, -1, len) < 0) {
     if (sendbuffer_warn) {
@@ -1057,7 +1094,7 @@ void call::sendBuffer(char * msg, int len)
       WARNING_NO("Error sending raw message");
     }
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 
@@ -1083,7 +1120,7 @@ char * call::get_header_field_code(char *msg, char * name)
 // you gotta pass in the dialog state this is based on.
 char * call::get_last_header(const char * name, const char *msg, bool valueOnly)
 {
-  int len;
+  size_t len;
 
   if((!msg) || (!strlen(msg))) {
     return NULL;
@@ -1248,7 +1285,8 @@ char * call::get_header(char* message, const char * name, bool content)
   if(alt_form && !content) {
     ptr = strstr(last_header, name);
     ptr += strlen(name);
-    char *start_tmp = (char *) alloca(strlen(ptr) + strlen(name));
+    // if the swap is from short to long, we need enough room to grow to long form
+    char *start_tmp = (char *) alloca(strlen(ptr) + MAX_LONG_FORM_HEADER_LENGTH);
     strcpy(start_tmp, swap_long_and_short_form_header(name));
     strcat(start_tmp, ptr);
     strcpy(start, start_tmp);
@@ -1346,7 +1384,7 @@ string call::get_last_request_uri (const char *last_recv_msg)
   char * tmp;
   char * tmp2;
   char last_request_uri[MAX_HEADER_LEN];
-  int tmp_len;
+  size_t tmp_len;
 
   char * last_To = get_last_header("To:", last_recv_msg, false);
   if (!last_To) {
@@ -1382,7 +1420,7 @@ char * call::send_scene(int index, int *send_status, int *len)
   char *L_ptr1 ;
   char *L_ptr2 ;
   int uselen = 0;
-  DEBUG_IN();
+  DEBUGIN();
 
   assert(send_status);
 
@@ -1426,7 +1464,7 @@ char * call::send_scene(int index, int *send_status, int *len)
 
   *send_status = send_raw(dest, index, *len);
 
-  DEBUG_OUT();
+  DEBUGOUT();
   return dest;
 }
 
@@ -1450,9 +1488,11 @@ void call::do_bookkeeping(message *curmsg)
       if(dumpInRtt) {
         call_scenario->stats->computeRtt(start, end, rtd);
       }
-
+      long long size = (end - start) / 1000;
+      if (size>INT_MAX)
+        WARNING("time delta exceeds INT_MAX: %ld",size);
       computeStat(CStat::E_ADD_RESPONSE_TIME_DURATION,
-                  (end - start) / 1000, rtd - 1);
+                  (int)size, rtd - 1);
 
       if (!curmsg -> repeat_rtd) {
         rtd_done[rtd - 1] = true;
@@ -1841,14 +1881,14 @@ bool call::executeMessage(message *curmsg)
   } else {
     WARNING("Unknown message type at %s:%d: %d", curmsg->desc, curmsg->index, curmsg->M_type);
   }
-  DEBUG_OUT();
+  DEBUGOUT();
   return true;
 }
 
 bool call::run()
 {
   bool            bInviteTransaction = false;
-  DEBUG_IN();
+  DEBUGIN();
 
   assert(running);
 
@@ -2096,7 +2136,7 @@ bool call::process_unexpected(char * msg, const char *reason)
 {
   char buffer[MAX_HEADER_LEN];
   char *desc = buffer;
-  DEBUG_IN();
+  DEBUGIN();
 
   message *curmsg = call_scenario->messages[msg_index];
 
@@ -2174,7 +2214,7 @@ bool call::abortCall(bool writeLog)
   int is_inv;
 
   const char * src_recv = NULL ;
-  DEBUG_IN();
+  DEBUGIN();
 
   callDebug("Aborting call %s (index %d).\n", id, msg_index);
 
@@ -2229,7 +2269,8 @@ bool call::abortCall(bool writeLog)
 
   if (writeLog && useCallDebugf) {
     TRACE_CALLDEBUG ("-------------------------------------------------------------------------------\n", id);
-    TRACE_CALLDEBUG ("Call debugging information for call %s:\n", id);
+    TRACE_CALLDEBUG ("\n\n-----  %s  ------\n\n", sipp_version);
+    TRACE_CALLDEBUG ("\nCall debugging information for call %s:\n", id);
     TRACE_CALLDEBUG("%s", debugBuffer);
   }
 
@@ -2242,7 +2283,7 @@ bool call::abortCall(bool writeLog)
   }
   call_scenario->stats->computeStat(CStat::E_CALL_FAILED);
   delete this;
-  DEBUG_OUT();
+  DEBUGOUT();
   return false;
 }
 
@@ -2406,7 +2447,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
   for (int i = 0; i < src->numComponents(); i++) {
     MessageComponent *comp = src->getComponent(i);
-    int left = buf_len - (dest - msg_buffer);
+    size_t left = buf_len - (dest - msg_buffer);
     // per-component dialog state may be different than message if explicitly specified via dialog= attribute
     DialogState *ds = (comp->dialog_number == src->getDialogNumber() ? src_dialog_state : get_dialogState(comp->dialog_number));
 
@@ -2789,7 +2830,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
         length = 0;
       }
       char *filltext = comp->literal;
-      int filllen = strlen(filltext);
+      size_t filllen = strlen(filltext);
       if (filllen == 0) {
         REPORT_ERROR("Internal error: [fill] keyword has zero-length text.");
       }
@@ -2806,7 +2847,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       if (!f) {
         REPORT_ERROR("Could not open '%s': %s\n", buffer, strerror(ERRORNUMBER));
       }
-      int ret;
+      size_t ret;
       while ((ret = fread(dest, 1, left, f)) > 0) {
         left -= ret;
         dest += ret;
@@ -2854,7 +2895,9 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       break;
     }
     case E_Message_Custom: {
-      dest += comp->comp_param.fxn(this, comp, dest, left);
+      if (left > INT_MAX)
+        WARNING("size of remaining exceeds INT_MAX: %ld",left);
+      dest += comp->comp_param.fxn(this, comp, dest, (int)left);
       break;
     }
     case E_Message_Last_Message:
@@ -2922,7 +2965,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   }
 
   if (msgLen) {
-    *msgLen = dest - msg_buffer;
+    long long size = dest - msg_buffer;
+    if (size>INT_MAX)
+      WARNING("msgLen exceeds INT_MAX: %ld",size);
+    *msgLen = (int) size;
   }
 
   /*
@@ -2940,9 +2986,12 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
 
     int    auth_marker_len;
     char * tmp;
-    int  authlen;
+    size_t  authlen;
 
-    auth_marker_len = (strchr(auth_marker, ']') + 1) - auth_marker;
+    long long size = (strchr(auth_marker, ']') + 1) - auth_marker;
+    if (size > INT_MAX)
+      WARNING("length of auth_marker exceeds INT_MAX: %ld", size);
+    auth_marker_len = (int) size;
 
     /* Need the Method name from the CSeq of the Challenge */
     char method[MAX_HEADER_LEN];
@@ -2995,7 +3044,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     /* Copy our result into the hole. */
     memcpy(auth_marker, result, authlen);
     if (msgLen) {
-      *msgLen += (authlen -  auth_marker_len);
+      long long size = (authlen -  auth_marker_len);
+      if (size>INT_MAX)
+        WARNING("auth marker length execeeds INT_MAX: %ld",size);
+      *msgLen += (int)size;
     }
 #endif
   }
@@ -3386,6 +3438,21 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
   DEBUG_IN("index = %d", index);
   bool result = false;
   message *curmsg = call_scenario->messages[index];
+  // dialog = -1 will not be matched here and will not 
+  int matched_active_dialog = get_dialog_fr_callid(call_id);
+  if (matched_active_dialog >= 0 ){
+    DEBUG("Callid %s is already assigned to a dialog number %d", 
+      call_id.c_str(), matched_active_dialog);
+    // does scenario dialog number expect this dialog number - which was previously established
+    if (curmsg->dialog_number != matched_active_dialog){
+      sprintf(reason, 
+        "Callid %s is already in dialog %d, which doesn't match scenario dialog %d", 
+        call_id.c_str(), matched_active_dialog,curmsg->dialog_number);
+      return false;
+    }// else curmsg matches scenario dialog number and is a match to active dialog
+  }//else no existing dialog number assigned to call_id, go get one
+
+  DEBUG("Callid %s is not yet assigned to a dialog number, make one", call_id.c_str());
   DialogState *ds = get_dialogState(curmsg->dialog_number);
   *reason = '\0';
 
@@ -3474,6 +3541,7 @@ void call::queue_up(char *msg)
   free(queued_msg);
   queued_msg = strdup(msg);
 }
+
 
 
 bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sipp_socket *socket)
@@ -4262,7 +4330,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
 
     setPaused();
   }
-  DEBUG_OUT();
+  DEBUGOUT();
   return true;
 }
 
@@ -4366,7 +4434,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
   CAction*   currentAction;
 
   actions = curmsg->M_actions;
-  DEBUG_IN();
+  DEBUGIN();
   // looking for action to do on this message
   if(actions == NULL) {
     DEBUG_OUT("return(call::E_AR_NO_ERROR) [because actions==NULL]");
@@ -4643,7 +4711,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 
         DEBUG("Verifying authentication with username %s and password %s and auth %s", username, password, auth);
 
-        result = verifyAuthHeader(username, password, method, auth);
+        result = verifyAuthHeader(username, password, method, auth)!=0;
         if(result) DEBUG("Verification successful");
         else DEBUG("Verification failed.");
 
@@ -4711,7 +4779,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         }
       }
       if (currentAction->getVarId()) {
-        M_callVariableTable->getVar(currentAction->getVarId())->setBool(value);
+        M_callVariableTable->getVar(currentAction->getVarId())->setBool(value!=0);
       }
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_STRCMP) {
       char *rhs = M_callVariableTable->getVar(currentAction->getVarInId())->getString();
@@ -4746,8 +4814,8 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       }
       char *q = strdup(p);
       var->setString(q);
-      int l = strlen(q);
-      for (int i = l - 1; ((i >= 0) && (isspace(q[i]))); i--) {
+      size_t l = strlen(q);
+      for (size_t i = l - 1; ((i >= 0) && (isspace(q[i]))); i--) {
         q[i] = '\0';
       }
     } else if (currentAction->getActionType() == CAction::E_AT_VAR_TO_DOUBLE) {
@@ -4809,8 +4877,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       // Win32 and Cygwin
       intptr_t ret;
       if(verify_result) {
+#ifdef WIN32
+        ret = _spawnvpe (_P_WAIT, argv[0], argv, environ);
+#else
         ret = spawnvpe (_P_WAIT, argv[0], argv, environ);
+#endif
         if (ret < 0) {
+          ERRORNUMBER=errno;
           REPORT_ERROR("<exec verify> FAIL: '%s': %s", x, strerror(ERRORNUMBER));
         } else if (ret > 0) {
           REPORT_ERROR ("<exec verify> FAIL: '%s'. Abnormal exit with an abort or an interrupt: %d\n", x, ret);
@@ -4818,7 +4891,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           DEBUG("<exec verify=\"%s\"> PASS.", x);
         }
       } else {
+#ifdef WIN32
+        if ((ret = _spawnvpe (_P_NOWAIT, argv[0], argv, environ)) < 0) {
+#else
         if ((ret = spawnvpe (_P_NOWAIT, argv[0], argv, environ)) < 0) {
+#endif
+          ERRORNUMBER=errno;
           REPORT_ERROR("<exec verify> FAIL: '%s': %s", x, strerror(ERRORNUMBER));
         }
       }
@@ -4912,8 +4990,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       if (number_of_active_rtp_threads >= MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS-1) {
         REPORT_ERROR("Trying to play too many concurrent media threads. Current maximum is %d.", MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS);
       }
-
-      int ret = pthread_create(&media_threads[number_of_active_rtp_threads++], &attr, send_wrapper, (void *) play_args);
+      
+      media_threads[number_of_active_rtp_threads] = (pthread_t *)malloc(sizeof(pthread_t));
+      int ret = pthread_create(media_threads[number_of_active_rtp_threads++], &attr, send_wrapper, (void *) play_args);
       if(ret)
         REPORT_ERROR("Can't create thread to send RTP packets");
       DEBUG("Created media thread %d.", number_of_active_rtp_threads);
@@ -4923,7 +5002,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       REPORT_ERROR("call::executeAction unknown action");
     }
   } // end for
-  DEBUG_OUT();
+  DEBUGOUT();
   return(call::E_AR_NO_ERROR);
 }
 
@@ -4931,9 +5010,9 @@ void call::extractSubMessage(char * msg, char * matchingString, char* result, bo
 {
 
   char *ptr, *ptr1;
-  int sizeOf;
-  int i = 0;
-  int len = strlen(matchingString);
+  size_t sizeOf;
+  unsigned int i = 0;
+  size_t len = strlen(matchingString);
   char mat1 = tolower(*matchingString);
   char mat2 = toupper(*matchingString);
 
@@ -5176,12 +5255,12 @@ void *send_wrapper(void *arg)
   //ret = pthread_setschedparam(pthread_self(), SCHED_RR, &param);
   //if(ret)
   //  REPORT_ERROR("Can't set RTP play thread realtime parameters");
-  DEBUG_IN();
+  DEBUGIN();
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
   send_packets(s);
   pthread_exit(NULL);
-  DEBUG_OUT();
+  DEBUGOUT();
   return NULL;
 }
 #endif
@@ -5265,7 +5344,7 @@ void encode(struct MessageComponent *comp, const char *src, char *dest)
 void uri_encode(const char* src, char *dest)
 {
   const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
-  const int SRC_LEN = strlen(src);
+  const size_t SRC_LEN = strlen(src);
   const char * const SRC_END = src + SRC_LEN;
 
   for (; src < SRC_END; ++src) {
@@ -5311,6 +5390,7 @@ bool is_reserved_char (char c)
 
 void setArguments(char* args, char** argv)
 {
+
 #ifndef __CYGWIN
   argv[0] = "sh";
   argv[1] = "-c";
@@ -5318,6 +5398,12 @@ void setArguments(char* args, char** argv)
   argv[0] = "cmd.exe";
   argv[1] = "/c";
 #endif
+
+#ifdef WIN32
+  argv[0] = "cmd.exe";
+  argv[1] = "/c";
+#endif
+
   argv[2] = args;
   argv[3] = NULL;
 }
@@ -5436,7 +5522,7 @@ string remove_ipv6_brackets_if_present(char* ip)
   string ipaddr(ip);
   if (ipaddr.at(0) = '[') {
     ipaddr.erase(0);
-    unsigned int pos = ipaddr.find(']');
+    size_t pos = ipaddr.find(']');
     if (pos != string::npos)
       ipaddr.erase(pos);
   }
@@ -5447,7 +5533,7 @@ string remove_ipv6_brackets_if_present(char* ip)
 string remove_ipv6_zone_if_present(char* ip)
 {
   string ipaddr(ip);
-  unsigned int zone_pos = ipaddr.find('%');
+  size_t zone_pos = ipaddr.find('%');
   if (zone_pos) {
     while ((ipaddr.size() > zone_pos+1) && (ipaddr.at(zone_pos+1) != ']')) {
       ipaddr.erase(zone_pos+1,1);

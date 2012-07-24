@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 #include "screen.hpp"
 #ifdef WIN32
+#include <winsock2.h>
 #include <Windows.h>  //Sleep
 #define SLEEP Sleep(2000);
 #else

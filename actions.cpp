@@ -37,6 +37,15 @@
 #include <unistd.h>
 #endif
 
+//io.h file access check
+#ifdef WIN32
+#define F_OK 04
+#define ACCESS _access
+//http://msdn.microsoft.com/en-us/library/1w06ktdy  readonly _waccess
+#else
+#define ACCESS access
+#endif
+
 static const char* strIntCmd(CAction::T_IntCmdType type)
 {
   switch (type) {
@@ -485,7 +494,7 @@ void CAction::setPcapArgs (char*        P_value)
     if (parse_play_args(P_value, M_pcapArgs) == -1) {
       REPORT_ERROR("Play pcap error");
     }
-    if (access(M_pcapArgs->file, F_OK)) {
+    if (ACCESS(M_pcapArgs->file, F_OK)) {
       REPORT_ERROR("Cannot read file %s\n", M_pcapArgs->file);
     }
   }

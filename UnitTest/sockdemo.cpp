@@ -26,85 +26,12 @@ basic sockets working on windows vs cygwin vs linux.  This should
 highlight any underlying socket api differences on platforms.
 
 
-NOTE: this test tends to fail if you rerun the test back-to-back since
+NOTE: this test tends to fail on linux if you rerun the test back-to-back since
   we establish tcp loop arounds with specified ports.  The connections 
   are established and then closed but stay connected in a TIME_WAIT state
   which prevents the second iteration from accessing the same ports.
   So far seems to be an issue on linux but not cygwin or win32
 todo: look at using dynamically assigned ports instead of fixed ports.
-
-For reference, windows
-  - always initialize and shutdown using WSAStartup/WSACleanup
-      implemented 
-        void initialize_sockets();
-        void cleanup_sockets();
-  - windows doesnt use errno, perror(), WSAGetLastError
-      related, windows returns wchar_t strings, need to use wprintf or truncate to char*
-      implemented
-        wchar_t* wsaerrorstr(int errnumber); //takes WSAGetLastError() as input
-        char* wchar_to_char(wchar_t* orig);  // takes wsaerrorstr as input
-    windows gaistrerror doesnt seem to work right use WSAGetLastError instead
-      only shows first char of error string??
-  - sockfd in posix is an int, windows is SOCKET which is unsigned int
-      no obvious problems found but used shim SOCKREF ifdef anyway
-    INVALID_SOCKET is used on msvc, ifdef to -1 for non win in sipp_sockethandler.hpp
-      value is ~zero on microsoft: 
-      #define INVALID_SOCKET -1  // for posix code 
-      todo : look for socket -1 comparison and repl withINVALID_SOCKET 
-  - inet_ntop (and others) are not part of windows xp libraries (default
-      that comes with visual studio 2005) but are available in Vista or later.
-      Versioning detection needs to be worked out still but you can download
-      later Windows SDK or install Visual Studio 2008.
-      Related windows conditional defines for different target platforms
-        http://msdn.microsoft.com/en-us/library/windows/desktop/aa383745%28v=vs.85%29.aspx
-        eg properties, c++, preprocessor, definitions: _WIN32_WINNT_WINXP=0x0501
-          will limit header usage to windows xp
-        pollfd - has WSAPOLLFD in vista and later: _WIN32_WINNT_VISTA (0x0600)
-        inet_pton implemented in vista and later;
-        look in windows header files of specific to see what they use
-        eg WinSock2.h has #if (     > 0x600)  ... #endif
-      For sipped, we just use sdk 6.0 (comes with msvs 2008) and existing
-        msvs2005 toolchain (compiler assembler etc)
-        todo: should we be using later toolchain...compatibile msvs 2005?
-    There also seems to be some difference in what addresses are returned by
-      getaddrinfo on different platforms (AF_UNSPEC may or maynot include ipv6)..
-    DEFINES may map to different numbers.
-      AF_INET = PF_INET = 2  on all platforms
-      AF_INET6 = 10 on linux /usr/include/bits/socket.h
-      AF_INET6 = 23 on windows WinSock2.h
-      AF_INET6 = 23 on cygwin
-
-    CLOSESOCKET - windows uses closesocket vs close
-      care must be taken not to use CLOSEOCKET on a file : posix close(file) looks same as close(socket_fd)
-    errno and perror vs WSAGetLastError
-      other modules use errno as error indicator (call, sendpackets)- will need updating
-    snprintf currently used in socket_helper only
-      #define SNPRINTF _snprintf
-      #else
-      #define SNPRINTF snprintf
-
-    todo : sendpackets does its own socket code
-      doublecheck 
-        errno vs WSAGetLastError
-        SOCKREF vs int for sock_fd
-        INVALID_SOCKET vs 0 vs -1
-        initialize_socket (WSAStartup_ called before any sendpackets
-        CLOSESOCKET vs close
-      seems to be working but needs sanity check
-
-      todo: verify setsockopt sufficient for windows and that we dont have to use these:
- for windows SIO_KEEPALIVE_VALS using WSAIoctl or WSPIoctl
- http://msdn.microsoft.com/en-us/library/dd877220%28v=vs.85%29.aspx
-
-screen unit test, REPORT_ERROR, WARNING  : must use 32 bit time to avoid assertion error in microsoft library
-todo : what is implication of 32 bit time vs 64 bit...any issues?
-  should we try a later version of sdk?
-//assertion failed *ptime <= _MAX_time64_t
-//REPORT_ERROR->_screen_error->_set_last_msg ->  CStat::FormatTime -> localtime -> localtime64
-//http://securityvulns.com/advisories/year3000.asp
-//compiler flag in both sipp and unit test _USE_32BIT_TIME_T
-
-
 
 Flow of this test is to use socket routines directly as follows
   sockfd = socket
@@ -120,6 +47,7 @@ Flow of this test is to use socket routines directly as follows
   sendto(r_sockfd, bmsg, strlen(bmsg),0, local_sockaddr, local_addrlen );
   recvfrom(sockfd,buf,sizeof(buf),0,    (struct sockaddr*)&from, &fromlen);
 
+Test is done on all combinations of udp/tcp and ipv4/ipv6
 */
 
 
@@ -209,7 +137,7 @@ if (argc==1){
         perror("Could not bind to socket:");
     struct sockaddr* local_sockaddr;
     local_sockaddr = (struct sockaddr*) res->ai_addr;
-    int local_addrlen = res->ai_addrlen; 
+    int local_addrlen = (int)res->ai_addrlen; 
 
     struct sockaddr* remote_sockaddr;
     int remote_addrlen;
@@ -235,7 +163,7 @@ if (argc==1){
         if (verbose)
           printf("remote %s: %s:%d, protocol %d\n", ipver, ipstr, port, p->ai_protocol);
         remote_sockaddr = p->ai_addr;
-        remote_addrlen  = p->ai_addrlen;
+        remote_addrlen  = (int)p->ai_addrlen;
     }
 // get remote socket into r_sockfd, remote_sockaddr
     SOCKREF r_sockfd;
@@ -345,12 +273,12 @@ if (argc==1){
 
 
     const char* msg = "drahcir mul saw reven ereh!";
-    int sent = sendto(sockfd, msg, strlen(msg),0, remote_sockaddr, remote_addrlen );
+    int sent = sendto(sockfd, msg, (int)strlen(msg),0, remote_sockaddr, remote_addrlen );
     if (sent&&verbose)
         printf("sent from sockfd to remote_sockaddr %d letters\n", sent);
 
     const char* bmsg = "eht rewsna ym drneirf si gniwolb ni eht dniw";
-    int sent_to_local = sendto(r_sockfd, bmsg, strlen(bmsg),0, local_sockaddr, local_addrlen );
+    int sent_to_local = sendto(r_sockfd, bmsg, (int)strlen(bmsg),0, local_sockaddr, local_addrlen );
     if (sent&&verbose)
         printf("sent from r_sockfd to local_sockaddr %d letters\n", sent_to_local);
 
@@ -677,27 +605,5 @@ TEST(sockdemo, polldemo){
 
   cleanup_sockets();
 
-}
-
-
-TEST(sockdemo, sizofstuff){
-#if defined WIN32 || defined CYGWIN
-  EXPECT_EQ((unsigned int)4,sizeof(long));
-  EXPECT_EQ((unsigned int)4,sizeof(int));
-  EXPECT_EQ((unsigned int)8,sizeof(double));
-  EXPECT_EQ((unsigned int)4,sizeof(time_t));
-  EXPECT_EQ((unsigned int)4,sizeof(float));
-#else if defined Linux 
-  EXPECT_EQ((unsigned int)8,sizeof(long));
-  EXPECT_EQ((unsigned int)4,sizeof(int));
-  EXPECT_EQ((unsigned int)8,sizeof(double));
-  EXPECT_EQ((unsigned int)8,sizeof(time_t));
-  EXPECT_EQ((unsigned int)4,sizeof(float));
-#endif
-
-  float myfloat = 2.9;
-  double myint;// = myfloat;
-  modf(myfloat,&myint);
-  EXPECT_EQ(2,myint);
 }
 

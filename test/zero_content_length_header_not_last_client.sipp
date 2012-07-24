@@ -25,7 +25,7 @@
   </send>
 
 
-  <recv response="200">
+  <recv response="200" dialog="1">
       <action>
            <ereg regexp=".*" search_in="hdr" header="Call-Info:" check_it="true" assign_to="dontcare" />
            <log message="Call-Info header is '[$dontcare]'" />           
@@ -52,7 +52,7 @@
       Content-Length: [len]]]>
   </send>
 
-  <recv response="200" dialog="2">
+  <recv response="200" dialog="1">
       <action>
            <ereg regexp=" 0" search_in="hdr" header="Previous-Content-Length:" check_it="true" assign_to="contentlength" />
            <log message="Previous-Content-Length header is '[$contentlength]'" />           

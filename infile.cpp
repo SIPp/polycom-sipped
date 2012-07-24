@@ -23,6 +23,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "sipp_globals.hpp"   // SIPP_MAX_MSG_SIZE
 #include "screen.hpp"
@@ -204,9 +205,11 @@ int FileContents::getField(int lineNum, int field, char *dest, int len)
   if (x.length()) {
     if (printfFile) {
       const char *s = x.c_str();
-      int l = strlen(s);
+      size_t l = strlen(s);
       int copied = 0;
-      for (int i = 0; i < l; i++) {
+      if (l>INT_MAX)
+        WARNING("length of string exceeds INT_MAX: %ld",l);
+      for (int i = 0; i < (int)l; i++) {
         if (s[i] == '%') {
           if (s[i + 1] == '%') {
             dest[copied++] = s[i];
@@ -214,7 +217,7 @@ int FileContents::getField(int lineNum, int field, char *dest, int len)
             const char *format = s + i;
             i++;
             while (s[i] != 'd') {
-              if (i == l) {
+              if (i == (int)l) {
                 REPORT_ERROR("Invalid printf injection field (ran off end of line): %s", s);
               }
               if (!(isdigit(s[i]) || s[i] == '.' || s[i] == '-')) {

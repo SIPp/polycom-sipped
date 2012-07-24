@@ -31,12 +31,12 @@ TransactionState::TransactionState(const string &name) : name(name), branch(""),
   client(false), cseq(0),  cseqMethod(""), lastReceivedMessage(""),
   lastResponseCode(0), transactionResponseHash(0), ackIndex(0)
 {
-  DEBUG_IN();
+  DEBUGIN();
 }
 
 TransactionState::~TransactionState()
 {
-  DEBUG_IN();
+  DEBUGIN();
 }
 
 

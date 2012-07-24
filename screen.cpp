@@ -86,8 +86,8 @@ int screen_readkey()
 
 void screen_exit(int rc)
 {
-  unsigned long counter_value_failed=0;
-  unsigned long counter_value_success=0;
+  unsigned long long counter_value_failed=0;
+  unsigned long long counter_value_success=0;
 
   /* Some signals may be delivered twice during exit() execution,
    * and we must prevent all this from beeing done twice */
@@ -308,6 +308,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
       screen_exit(EXIT_FATAL_ERROR);
     } else {
       DEBUG("%s: The following events occurred:\n", screen_exename);
+      fprintf(error_lfi.fptr, "-----  %s  ------\n", sipp_version);
       fprintf(error_lfi.fptr, "%s: The following events occurred:\n",
               screen_exename);
       fflush(error_lfi.fptr);

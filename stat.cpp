@@ -1276,7 +1276,7 @@ void CStat::displayData (FILE *f)
     char s[80];
 
     /* Skip if we aren't stopped. */
-    assert(rtd_stopped[M_revRtdMap[i]] == true);
+    assert(rtd_stopped[M_revRtdMap[i]] >0 );
 
     sprintf(s, "Response Time %s", M_revRtdMap[i]);
     DISPLAY_TXT_COL (s,
@@ -1395,6 +1395,8 @@ void CStat::displayStat (FILE *f)
   DISPLAY_TXT_COL ("Call Length",
                    msToHHMMSSmmm( (unsigned long)computeMean(CPT_PD_AverageCallLength_Sum, CPT_PD_NbOfCallUsedForAverageCallLength ) ),
                    msToHHMMSSmmm( (unsigned long)computeMean(CPT_C_AverageCallLength_Sum, CPT_C_NbOfCallUsedForAverageCallLength) ));
+  DISPLAY_CROSS_LINE ();
+  fprintf(f,"  %s\n",sipp_version);
   fflush(f);
 }
 

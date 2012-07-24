@@ -24,7 +24,7 @@
 #include "common.hpp"  //MAX_HEADER_LEN
 
 
-
+char               sipp_version[SIPPVERSSIZE];
 int                sendMode                = MODE_CLIENT;
 CStat*             display_scenario_stats  = NULL;
 int                duration                = 0;

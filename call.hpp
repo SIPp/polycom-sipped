@@ -30,6 +30,7 @@
 #include <ws2tcpip.h>
 #include <stdio.h>
 #include <process.h>
+#include <pthread.h>
 #else
 #include <sys/socket.h>
 #ifdef __CYGWIN
@@ -194,7 +195,7 @@ private:
 
 #ifdef PCAPPLAY
   int hasMediaInformation;
-  pthread_t media_threads[MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS];
+  pthread_t* media_threads[MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS];
   int number_of_active_rtp_threads;
   play_args_t play_args_a;
   play_args_t play_args_v;
@@ -353,6 +354,7 @@ private:
   char * get_first_line(char* message);
   string get_last_request_uri(const char *last_recv_msg);
   unsigned long hash(char * msg);
+  int get_dialog_fr_callid(string callid);
 
 //headers with short forms.
   enum T_compactHeaders {

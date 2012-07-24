@@ -84,7 +84,7 @@ class LooseMessageSequencing < Test::Unit::TestCase
   def test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_server_w_nextclient
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_server_w_nextclient", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client_next.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_server.sipp -mc")
     test.expected_exitstatus = 255
-    test.expected_error_log = /unexpected message.*while expecting \'RANDOM\'\s\(index 3\)\.\sResponse\s\'200\'\sdoes not match/
+    test.expected_error_log = /unexpected message.*while expecting \'RANDOM\'\s\(index 3\)\./
     assert(test.run())
   end    
   
@@ -93,7 +93,7 @@ class LooseMessageSequencing < Test::Unit::TestCase
   def test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_server_w_jumpclient
     test = SippTest.new("test_bla_register_and_subscribe_two_lines_short_register_and_200_swapped_server_w_jumpclient", "-sf bla_register_and_subscribe_two_lines_short_with_optional_client_jump.sipp -mc", "-sf bla_register_and_subscribe_two_lines_short_register_and_200_swapped_server.sipp -mc")
     test.expected_exitstatus = 255
-    test.expected_error_log = /unexpected message.*while expecting \'RANDOM\'\s\(index 3\)\.\sResponse\s\'200\'\sdoes not match/
+    test.expected_error_log = /unexpected message.*while expecting \'RANDOM\'\s\(index 3\)\./
     assert(test.run())
   end    
   

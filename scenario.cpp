@@ -849,7 +849,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
 
         curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
-        bool use_txn = (bool) xp_get_value("use_txn");
+        bool use_txn = xp_get_value("use_txn")!=NULL;
         curmsg->send_scheme = new SendingMessage(this, msg, false, curmsg->dialog_number, use_txn);
         free(msg);
 
@@ -934,8 +934,8 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
         curmsg->optional = xp_get_optional("optional", "recv");
-        last_recv_optional = curmsg->optional;
-        curmsg->advance_state = xp_get_bool("advance_state", "recv", true);
+        last_recv_optional = (curmsg->optional!=0);
+        curmsg->advance_state = (xp_get_bool("advance_state", "recv", true)!=0);
         if (!curmsg->advance_state && curmsg->optional == OPTIONAL_FALSE) {
           REPORT_ERROR("advance_state is allowed only for optional messages (index = %d)\n%s\n", messages.size() - 1,whereami_if_valid().c_str());
         }
@@ -980,7 +980,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         } else {
           CSample *distribution = parse_distribution(true);
 
-          bool sanity_check = xp_get_bool("sanity_check", "pause", true);
+          bool sanity_check = (xp_get_bool("sanity_check", "pause", true)!=0);
 
           double pause_duration = distribution->cdfInv(0.99);
           if (sanity_check && (pause_duration > INT_MAX)) {
@@ -1007,7 +1007,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
       } else if(!strcmp(elem, "recvCmd")) {
         curmsg->M_type = MSG_TYPE_RECVCMD;
         curmsg->optional = xp_get_optional("optional", "recv");
-        last_recv_optional = curmsg->optional;
+        last_recv_optional = (curmsg->optional!=0);
 
         curmsg->dialog_number = xp_get_long_only_if_no_call_id_check("dialog", "dialog number", -1);
 
@@ -1144,7 +1144,7 @@ void clear_int_int(int_int_map m)
 
 scenario::~scenario()
 {
-  DEBUG_IN();
+  DEBUGIN();
   for (msgvec::iterator i = messages.begin(); i != messages.end(); i++) {
     delete *i;
   }
@@ -1159,7 +1159,7 @@ scenario::~scenario()
   clear_str_int(initLabelMap);
 
   if (scenario_path) free(scenario_path);
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 CSample *parse_distribution(bool oldstyle = false)
@@ -1293,7 +1293,7 @@ void parse_slave_cfg()
 // launched (client, server, 3pcc client, 3pcc server, 3pcc extended master or slave)
 void scenario::computeSippMode()
 {
-  DEBUG_IN();
+  DEBUGIN();
   bool isRecvCmdFound = false;
   bool isSendCmdFound = false;
   bool encounteredNop = false;
@@ -1455,7 +1455,7 @@ void scenario::parseAction(CActions *actions, int dialog_number)
   char * ptr;
   int           sub_currentNbVarId;
 
-  DEBUG_IN();
+  DEBUGIN();
   while((actionElem = xp_open_element(recvScenarioLen))) {
     CAction *tmpAction = new CAction(this, dialog_number);
 
@@ -1471,8 +1471,8 @@ void scenario::parseAction(CActions *actions, int dialog_number)
 
       // warning - although these are detected for both msg and hdr
       // they are only implemented for search_in="hdr"
-      tmpAction->setCaseIndep(xp_get_bool("case_indep", "ereg", false));
-      tmpAction->setHeadersOnly(xp_get_bool("start_line", "ereg", false));
+      tmpAction->setCaseIndep(xp_get_bool("case_indep", "ereg", false)!=0);
+      tmpAction->setHeadersOnly(xp_get_bool("start_line", "ereg", false)!=0);
 
       if ( 0 != ( ptr = xp_get_value((char *)"search_in") ) ) {
         tmpAction->setOccurence(1);
@@ -1824,15 +1824,15 @@ void scenario::getCommonAttributes(message *message)
   }
 
   if (xp_get_value("hiderest")) {
-    hidedefault = xp_get_bool("hiderest", "hiderest");
+    hidedefault = (xp_get_bool("hiderest", "hiderest")!=0);
   }
-  message -> hide = xp_get_bool("hide", "hide", hidedefault);
+  message -> hide = xp_get_bool("hide", "hide", hidedefault)!=0;
   if((ptr = xp_get_value((char *)"display"))) {
     message -> display_str = strdup(ptr);
   }
 
   message -> condexec = xp_get_var("condexec", "condexec variable", -1);
-  message -> condexec_inverse = xp_get_bool("condexec_inverse", "condexec_inverse", false);
+  message -> condexec_inverse = xp_get_bool("condexec_inverse", "condexec_inverse", false)!=0;
 
   if ((ptr = xp_get_value((char *)"next"))) {
     if (found_timewait) {

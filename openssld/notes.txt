@@ -1,0 +1,71 @@
+20120712   me again
+
+www.openssl.org   openssl-1.0.1c
+
+read FAQ, INSTALL.W32
+
+steps to rebuild or get new versions
+- download openssl-1.0.1c.tar.gzip
+- gzip -d openssl-1.0.1c.tar.gzip   // I used mingw tools 
+- tar -xvf openssl-1.0.1c.tar       // seriously, really usefull
+
+from openssl-1.0.1c directory
+>perl Configure VC-WIN32 no-asm --prefix=c:\TestUtilities\SIPped\SIPped\src\openssl
+>ms\do_ms
+
+from visual studio cmd prompt, go to same directory
+>nmake -f ms\ntdll.mak   // if Failed to write the updated manifest - close visual studio and try again, otherwise manifest tool, embed manifest = false (race conditionon multi-core cpu with msvs2005 on vista) 
+>nmake -f ms\ntdll.mak test   
+>nmake -f ms\ntdll.mak install
+
+this results in the files in dir c:\TestUtilities\SIPped\SIPped\src\openssl
+
+in file openssl/include/openssl/dtls1.h , replace #include <winsock.h> with #include <winsock2.h>
+ otherwise 100 errors come from redifining things.
+
+Do this again but change the initial step to the following (see noteworthy for explanation)
+
+>perl Configure debug-VC-WIN32 no-asm --prefix=c:\TestUtilities\SIPped\SIPped\src\openssld
+
+NOTEWORTHY 
+
+If you link with static OpenSSL libraries [those built with ms/nt.mak],
+ then you're expected to additionally link your application with
+ WS2_32.LIB, ADVAPI32.LIB, GDI32.LIB and USER32.LIB
+ note that the last three are probably inherited from default project anyway
+
+version 1 and later of openssl use winsock2.h libraries instead of winsock.h
+ older version of openssl build on winsock.h and there will be many compiler
+ errors since w32 sipp builds on winsock2.h (redefinition errors etc).
+
+application must link against the same version of the Win32C-Runtime against 
+which your openssl libraries were linked.  The default version for OpenSSL 
+is /MD - "Multithreaded DLL". sipped is normally built and used as debug versions.
+
+Note that debug and release libraries are NOT interchangeable.  If you
+built OpenSSL with /MD your application must use /MD and cannot use /MDd.
+
+building once with debug and once without means that sipped debug version must
+link to the openssld directoty and the release vesion must link to the openssl dirctory
+
+If you link with OpenSSL .DLLs, then you're expected to include into
+ your 
+application code small "shim" snippet, which provides glue between
+ OpenSSL 
+BIO layer and your compiler run-time. Look up OPENSSL_Applink
+ reference 
+page for further details.
+
+Note that the ssl library requires use of the microsoft visual c redistributable
+release version
+Microsoft.VC80.CRT
+msvcr80.dll
+msvcp80.dll
+msvcm80.dll
+Debug version
+C Runtime Library, release DLLs
+Microsoft.VC80.DebugCRT
+msvcr80d.dll
+msvcp80d.dll
+msvcm80d.dll
+C Runtime Library, debug DLLs

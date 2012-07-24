@@ -139,6 +139,9 @@ cmd messages are received */
 #define MODE_CLIENT        0
 #define MODE_SERVER        1
 
+#define SIPPVERSSIZE 256
+
+extern char               sipp_version[SIPPVERSSIZE];
 extern int                sendMode;
 extern CStat*             display_scenario_stats;
 extern int                duration;
@@ -562,7 +565,7 @@ int time_string(double ms, char *res, int reslen);
 #  define SIPP_VERSION               SVN_VERSION
 # endif
 #else
-# define SIPP_VERSION               "$Revision$"
+# define SIPP_VERSION               "$Rev$"
 #endif
 
 /*********************** scenario globals ***********************/

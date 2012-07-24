@@ -28,7 +28,11 @@ listener_map listeners;
 
 listener::listener(const char *id, bool listening)
 {
+#ifdef WIN32
+  this->id = _strdup(id);
+#else
   this->id = strdup(id);
+#endif
   this->listening = false;
   if (listening) {
     startListening();

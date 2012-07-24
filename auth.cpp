@@ -38,6 +38,7 @@
 //
 #include <sys/types.h>
 #include <stddef.h>
+#include <limits.h> // INT_MAX
 
 
 
@@ -141,8 +142,11 @@ int getAuthParameter(char *name, char *header, char *result, int len)
     strncpy(result, start, end - start);
     result[end - start] = '\0';
   }
-
-  return end - start;
+  
+  long long size = end - start;
+  if (size > INT_MAX)
+    WARNING("return value from getAuthParameter is larger than INT_MAX %ld",size);
+  return (int)size;
 }
 
 
@@ -512,7 +516,10 @@ int createAuthHeaderAKAv1MD5(char * user, char * aka_OP,
   /* Compute the AKA RES */
   resp_hex[0]=0;
   nonce64 = tmp;
-  nonce = base64_decode_string(nonce64,end-start,&noncelen);
+  long long size = end - start;
+  if (size > INT_MAX)
+    WARNING("OVERFLOW, nonce size larger than int: %ld",size);
+  nonce = base64_decode_string(nonce64,(int)size,&noncelen);
   if (noncelen<RANDLEN+AUTNLEN) {
     sprintf(result,"createAuthHeaderAKAv1MD5 : Nonce is too short %d < %d expected \n",
             noncelen,RANDLEN+AUTNLEN);
@@ -604,7 +611,9 @@ int createAuthHeader(char * user, char * password, char * method,
   }
 
   if (strncasecmp(algo, "MD5", 3)==0) {
-    return createAuthHeaderMD5(user,password,strlen(password),method,uri,msgbody,auth,algo,result);
+    if (strlen(password) > INT_MAX)
+      WARNING("size of password exceeds INT_MAX: %ld",strlen(password));
+    return createAuthHeaderMD5(user,password,(int)strlen(password),method,uri,msgbody,auth,algo,result);
   } else if (strncasecmp(algo, "AKAv1-MD5", 9)==0) {
     return createAuthHeaderAKAv1MD5(user, aka_OP,
                                     aka_AMF,
@@ -691,7 +700,9 @@ int verifyAuthHeader(char * user, char * password, char * method, char * auth)
     getAuthParameter("realm", auth, realm, sizeof(realm));
     getAuthParameter("uri", auth, uri, sizeof(uri));
     getAuthParameter("nonce", auth, nonce, sizeof(nonce));
-    createAuthResponseMD5(user,password,strlen(password),method,uri,realm,nonce,result);
+    if (strlen(password) > INT_MAX)
+      WARNING("size of password exceeds INT_MAX: %ld",strlen(password));
+    createAuthResponseMD5(user,password,(int)strlen(password),method,uri,realm,nonce,result);
     getAuthParameter("response", auth, response, sizeof(response));
     return !strcmp((char *)result, response);
   } else {
@@ -773,7 +784,10 @@ char * base64_encode_string( const char *buf, unsigned int len, int *newlen )
     break;
   }
   // fprintf(stderr,"base64=%.*s >> %d\n",ptr-out,out,ptr-out);
-  *newlen = ptr-out;
+  long long length = ptr-out;
+  if (length > INT_MAX)
+    WARNING("string length exceeds INT_MAX: %ld",length);
+  *newlen = (int)(ptr-out);
   return out;
 }
 

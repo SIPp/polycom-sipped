@@ -45,6 +45,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits.h>
 #ifndef WIN32
 #include <sys/wait.h>
 #endif
@@ -156,7 +157,7 @@ int paused_tasks_count()
  * should no longer be paused, and adding them to the run queue. */
 int timewheel::expire_paused_tasks()
 {
-  int found = 0;
+  size_t found = 0;
 
   while (wheel_base < clock_tick) {
     int slot1 = wheel_base % LEVEL_ONE_SLOTS;
@@ -201,7 +202,9 @@ int timewheel::expire_paused_tasks()
     wheel_base++;
   }
 
-  return found;
+  if (found>INT_MAX)
+    WARNING("found is greater than INT_MAX: %ld",found);
+  return (int)found;
 }
 
 void timewheel::add_paused_task(task *task, bool increment)

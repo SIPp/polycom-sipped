@@ -1,7 +1,63 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
-3.2.47 BETA  
+3.2.60 BETA
+- checking of incoming message for membership in active
+  dialogs to prevent false matching modified to not take
+  any action when dialog is -1 (no dialog specified for
+  message).for backward compatibility 
+- clean up sipp_sockethandler.hpp includes
+  
+3.2.59 BETA
+- implement checking of incoming message for membership in active
+  dialogs to prevent false matching to new dialog just based on 
+  message type.
+
+
+3.2.58 BETA
+- implment socket clean up on report_error
+- win32 warnings opentask
+- linux fix includes limits.h
+
+3.2.57 BETA
+- fix win32 warnings compositeDocument - 
+- version string in logs and screen 2 
+- linux header fix for send_packets
+
+3.2.56 BETA
+- rtp_echo option enables media port on port specified by -mp (and +2), default 6000 6002
+    was previously always hardcoded disabled.regardless of command line option.
+- fix wn32 warnings actions-call
+
+3.2.55 BETA
+- fix pcap play, misdefined bitfields in iphdr causing no packets to
+  be retreived for playback
+
+3.2.54 BETA
+- W32 warnings DEBUGIN, DEBUGOUT, _spawnvpe, 
+- removal of project custom build tool settings
+- some size_t - int conversions
+
+3.2.53 BETA
+- minor cleanup, remove unneeded libaries from project.
+
+3.2.52 BETA
+- user input enabled, including command_mode
+- sipp timeout option implemented
+
+3.2.51 BETA
+- enabled ssl
+
+3.2.50 BETA
+- enabled pcap
+
+3.2.49 BETA
+- fix exec verify command for win32, changed params for spawnvpe
+
+3.2.48 BETA
+- fix stack overflow in call::get_headers
+
+3.2.47 BETA
 - -ar automatically enabled when -mc is selected
 - retransmit logic was prior to matching logic but has been moved to post
   matching logic, during unexpected error handling so that scenario matching

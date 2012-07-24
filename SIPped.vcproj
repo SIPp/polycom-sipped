@@ -40,8 +40,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\OpenSSL-Win32\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;.;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pdcurses\include&quot;;.\pthreads_w32.2\include;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T"
+				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\openssld\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T;WIN32_LEAN_AND_MEAN;PCAPPLAY;_USE_OPENSSL;HAVE_PCAP_NEXT_EX"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -62,10 +62,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pthreadVC2.lib wpcap.lib ws2_32.lib regex.lib"
+				AdditionalDependencies="pthreadVC2.lib wpcap.lib ws2_32.lib regex.lib libeay32.lib ssleay32.lib"
 				ShowProgress="1"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\openssld\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -120,7 +120,8 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\openssl\include\&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Include&quot;"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T;WIN32_LEAN_AND_MEAN;PCAPPLAY;_USE_OPENSSL"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -138,7 +139,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="pthreadVC2.lib wpcap.lib ws2_32.lib regex.lib libeay32.lib ssleay32.lib"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\openssl\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"
@@ -278,14 +281,6 @@
 			<File
 				RelativePath=".\stat.hpp"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCustomBuildTool"
-						CommandLine="/DWIN32&#x0D;&#x0A;"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\task.hpp"
@@ -325,6 +320,10 @@
 			>
 			<File
 				RelativePath=".\actions.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\applink.c"
 				>
 			</File>
 			<File
@@ -390,15 +389,6 @@
 			<File
 				RelativePath=".\screen.cpp"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						WarningLevel="4"
-						ShowIncludes="true"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\send_packets.cpp"

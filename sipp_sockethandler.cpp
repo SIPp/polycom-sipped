@@ -1,7 +1,7 @@
 #include "sipp_sockethandler.hpp"
 
 #include "logging.hpp" // DEBUG
-//todo can we elminate dependancy on screen
+//note we can eliminate dependency on screen by throw runtime_error("text for report_error");
 #include "screen.hpp" // REPORT_ERROR
 #include "stat.hpp"     //CStat
 #include <assert.h>
@@ -23,6 +23,10 @@
 POLLREF        pollfiles[SIPP_MAXFDS]; 
 int            errorcode;
 
+#ifdef WIN32
+WSADATA WSStartData;
+#endif
+
 #ifdef _USE_OPENSSL
 SSL_CTX  *sip_trp_ssl_ctx = NULL; /* For SSL cserver context */
 SSL_CTX  *sip_trp_ssl_ctx_client = NULL; /* For SSL cserver context */
@@ -32,9 +36,10 @@ SSL_CTX  *twinSipp_sip_trp_ssl_ctx_client = NULL; /* For SSL cserver context */
 void initialize_sockets()
 {
 #ifdef WIN32
-  WSADATA WSStartData;
   int rc = WSAStartup(MAKEWORD (2,0),&WSStartData);
-  
+  DEBUG("WSAStartData.szDescription = %s\n",WSStartData.szDescription);
+  DEBUG("WSAStartData.szSystemStatus = %s\n", WSStartData.szSystemStatus);
+  DEBUG("WSAStartData.iMaxSockets = %d\n", WSStartData.iMaxSockets);
   switch (rc){
     case 0:
       //all ok
@@ -64,7 +69,13 @@ void initialize_sockets()
 void cleanup_sockets()
 {
 #ifdef WIN32
-    WSACleanup();
+    char running[] ="Running";
+    if (strncmp(running,WSStartData.szSystemStatus, strlen(running))==0){
+      DEBUG("WSA is running, cleaning up");
+      WSACleanup();
+    }else{
+      DEBUG("WSA is '%s' %d, no need to clean up",WSStartData.szSystemStatus,strlen(WSStartData.szSystemStatus));
+    }
 #endif
 }
 
@@ -72,7 +83,7 @@ void sipp_socket_invalidate(struct sipp_socket *socket)
 {
   int pollidx;
 
-  DEBUG_IN();
+  DEBUGIN();
   if (socket->ss_invalid) {
     return;
   }
@@ -108,7 +119,7 @@ void sipp_socket_invalidate(struct sipp_socket *socket)
   if (socket->ss_msglen) {
     pending_messages--;
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 void sipp_close_socket (struct sipp_socket *socket)
@@ -121,10 +132,7 @@ void sipp_close_socket (struct sipp_socket *socket)
 
   sipp_socket_invalidate(socket);
   free(socket);
-  //todo: this doesnt make any sense to set all the socket parameters
-  // and then free the memory.   Dangerous to hang on to socket pointer
-  // to freed memory.
-  socket = NULL;  // to prevent accessing deallocated memory
+  socket = NULL;  
 }
 
 
@@ -189,7 +197,7 @@ int enter_congestion(struct sipp_socket *socket, int again)
 //static 
 int write_error(struct sipp_socket *socket, int ret)
 {
-  DEBUG_IN();
+  DEBUGIN();
 #ifdef WIN32
   ERRORNUMBER = WSAGetLastError();
   wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
@@ -237,7 +245,7 @@ int write_error(struct sipp_socket *socket, int ret)
 
   WARNING("Unable to send %s message: %s", TRANSPORT_TO_STRING(socket->ss_transport), errstring);
   nb_net_send_errors++;
-  DEBUG_OUT();
+  DEBUGOUT();
   return -1;
 }
 
@@ -282,7 +290,7 @@ void buffer_write(struct sipp_socket *socket, char *buffer, size_t len, struct s
 {
   struct socketbuf *buf = socket->ss_out;
 
-  DEBUG_IN();
+  DEBUGIN();
 
   if (!buf) {
     socket->ss_out = alloc_socketbuf(buffer, len, DO_COPY, dest);
@@ -296,7 +304,7 @@ void buffer_write(struct sipp_socket *socket, char *buffer, size_t len, struct s
 
   buf->next = alloc_socketbuf(buffer, len, DO_COPY, dest);
   TRACE_MSG("Appended buffered message to socket %d\n", socket->ss_fd);
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 
@@ -306,11 +314,8 @@ int send_nowait(int s, const void *msg, int len, int flags)
   return send(s, msg, len, flags | MSG_DONTWAIT);
 #else
 
-// ********
-// TESTME  this reads the existing value, but windows doesn't really support this with ioctlsocket.  Is this ok?
-
 # ifdef WIN32
-  int iMode = 1;
+  int iMode = 1; //set to nonblocking
   ioctlsocket(s, FIONBIO, (u_long FAR*) &iMode);
 # else
   int fd_flags = fcntl(s, F_GETFL , NULL);
@@ -321,10 +326,11 @@ int send_nowait(int s, const void *msg, int len, int flags)
   fd_flags |= O_NONBLOCK;
   fcntl(s, F_SETFL , fd_flags);
 # endif
+
   int rc = send(s, (const char *)msg, len, flags);
 
 # ifdef WIN32
-  iMode = 0; // We really should be setting back to previous mode rather than resetting entirely.
+  iMode = 0; // set back to blocking (default)
   ioctlsocket(s, FIONBIO, (u_long FAR*) &iMode);
 # else
   fcntl(s, F_SETFL , initial_fd_flags);
@@ -338,22 +344,45 @@ int send_nowait(int s, const void *msg, int len, int flags)
 
 int send_nowait_tls(SSL *ssl, const void *msg, int len, int flags)
 {
-  int initial_fd_flags;
+
   int rc;
   SOCKREF fd;
-  int fd_flags;
   if ( (fd = SSL_get_fd(ssl)) == INVALID_SOCKET ) {
     return (-1);
   }
+
+#ifdef WIN32
+  unsigned long int iMode = 1;  // 0=blocking, 1=nonblocking
+  rc = ioctlsocket(fd, FIONBIO, (u_long FAR*) &iMode);
+  if (rc != 0){
+    ERRORNUMBER = WSAGetLastError();
+    wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+    char errorstring[1000];
+    const char *errstring = wchar_to_char(error_msg,errorstring);
+    WARNING("Failed to set tls socket mode:%s",errstring);
+  }
+#else
+  int initial_fd_flags;
+  // get the flags, add NONBLOCK, set flags, send, reset flags.
+  int fd_flags;
   fd_flags = fcntl(fd, F_GETFL , NULL);
   initial_fd_flags = fd_flags;
   fd_flags |= O_NONBLOCK;
   fcntl(fd, F_SETFL , fd_flags);
+#endif
+
   rc = SSL_write(ssl,msg,len);
   if ( rc <= 0 ) {
     return(rc);
   }
+
+#ifdef WIN32
+  //restore prior state (default is blocking)
+  iMode=0;
+  ioctlsocket(fd, FIONBIO, (u_long FAR*) &iMode);
+#else
   fcntl(fd, F_SETFL , initial_fd_flags);
+#endif
   return rc;
 }
 #endif
@@ -429,7 +458,7 @@ int flush_socket(struct sipp_socket *socket)
   struct socketbuf *buf;
   ssize_t ret;
 
-  DEBUG_IN();
+  DEBUGIN();
   while ((buf = socket->ss_out)) {
     ssize_t size = buf->len - buf->offset;
     ret = socket_write_primitive(socket, buf->buf + buf->offset, size, &buf->addr);
@@ -450,7 +479,7 @@ int flush_socket(struct sipp_socket *socket)
     }
   }
 
-  DEBUG_OUT();
+  DEBUGOUT();
   return 0;
 }
 
@@ -459,7 +488,7 @@ int flush_socket(struct sipp_socket *socket)
 int write_socket(struct sipp_socket *socket, char *buffer, ssize_t len, int flags, struct sockaddr_storage *dest)
 {
   int rc;
-  DEBUG_IN();
+  DEBUGIN();
   if ( socket == NULL ) {
     //FIX coredump when trying to send data but no master yet ... ( for example after unexpected mesdsage)
     return 0;
@@ -573,7 +602,7 @@ int sipp_connect_socket(struct sipp_socket *socket, struct sockaddr_storage *des
 void sipp_customize_socket(struct sipp_socket *socket)
 {
   unsigned int buffsize = buff_size;
-  DEBUG_IN();
+  DEBUGIN();
 
   /* Allows fast TCP reuse of the socket */
   if (socket->ss_transport == T_TCP || socket->ss_transport == T_TLS ) {
@@ -621,7 +650,7 @@ void sipp_customize_socket(struct sipp_socket *socket)
                 sizeof(buffsize))) {
     REPORT_ERROR_NO("Unable to set socket rcvbuf");
   }
-  DEBUG_OUT();
+  DEBUGOUT();
 }
 
 
@@ -631,7 +660,7 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
   int ret;
   int len;
   char ip_and_port[INET6_ADDRSTRLEN+10];
-  DEBUG_IN();
+  DEBUGIN();
 
   if (socket->ss_ipv6) {
     len = sizeof(struct sockaddr_in6);
@@ -686,7 +715,7 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
 // used by sipp.cpp and sipp_sockethandler.cpp
 struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, SOCKREF fd, int accepting) {
   struct sipp_socket *ret = NULL;
-  DEBUG_IN();
+  DEBUGIN();
 
   ret = (struct sipp_socket *)malloc(sizeof(struct sipp_socket));
   if (!ret) {
@@ -782,7 +811,8 @@ SOCKREF socket_fd(bool use_ipv6, int transport)
 
 
 struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
-  DEBUG_IN();
+  DEBUGIN();
+
   struct sipp_socket *ret;
   SOCKREF fd = socket_fd(use_ipv6, transport);
 
@@ -808,7 +838,7 @@ struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
     CLOSESOCKET(fd);
     REPORT_ERROR("Could not allocate new socket structure!");
   }
-  DEBUG_OUT();
+  DEBUGOUT();
   return ret;
 }
 
@@ -818,7 +848,7 @@ struct sipp_socket *new_sipp_socket(bool use_ipv6, int transport) {
 
 int sipp_reconnect_socket(struct sipp_socket *socket)
 {
-  DEBUG_IN();
+  DEBUGIN();
   assert(socket->ss_fd == INVALID_SOCKET);
 
   socket->ss_fd = socket_fd(socket->ss_ipv6, socket->ss_transport);
@@ -867,7 +897,7 @@ int sipp_reconnect_socket(struct sipp_socket *socket)
 
 
 struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket, struct sockaddr_storage *source) {
-  DEBUG_IN();
+  DEBUGIN();
   struct sipp_socket *ret;
   struct sockaddr_storage remote_sockaddr;
   int fd;
@@ -937,7 +967,7 @@ struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket, struct
 #endif
   }
 
-  DEBUG_OUT();
+  DEBUGOUT();
   return ret;
 }
 
@@ -1223,7 +1253,7 @@ void connect_local_twin_socket(char * twinSippHost)
 
 int open_connections()
 {
-  DEBUG_IN();
+  DEBUGIN();
   int status=0;
   local_port = 0;
 
@@ -1489,7 +1519,7 @@ int open_connections()
     if(sipp_connect_socket(main_socket, &remote_sockaddr)) REPORT_ERROR("Could not connect socket to remote address. Check to make sure the remote IP is valid.");
   }
 
-  DEBUG_OUT();
+  DEBUGOUT();
   return status;
 } // open_connections
 
@@ -1518,7 +1548,7 @@ int empty_socket(struct sipp_socket *socket)
   struct socketbuf *socketbuf;
   char *buffer;
   int ret;
-  DEBUG_IN();
+  DEBUGIN();
   /* Where should we start sending packets to, ideally we should begin to parse
    * the Via, Contact, and Route headers.  But for now SIPp always sends to the
    * host specified on the command line; or for UAS mode to the address that
