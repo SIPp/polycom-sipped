@@ -2231,7 +2231,7 @@ bool call::abortCall(bool writeLog)
 
       // Answer unexpected errors (4XX, 5XX and beyond) with an ACK
       // Contributed by F. Tarek Rogers
-      if((src_recv) && (get_reply_code(src_recv) >= 400)) {
+      if((src_recv) && (strlen(src_recv)!=0)  &&(get_reply_code(src_recv) >= 400)) {
         sendBuffer(createSendingMessage(get_default_message("ack"), -2));
       } else if (src_recv) {
         /* Call is not established and the reply is not a 4XX, 5XX */

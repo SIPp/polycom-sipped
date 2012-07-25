@@ -122,7 +122,7 @@ struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket 
 
 void set_sipp_version_string(){
   memset(sipp_version,0,SIPPVERSSIZE);
-  sprintf(sipp_version,"SIPped 3.2.60 BETA"
+  sprintf(sipp_version,"SIPped 3.2.61 BETA"
 #ifdef WIN32
                "-W32"
 #endif
@@ -1108,7 +1108,7 @@ void setup_ctrl_socket()
   int try_counter = 60;
   struct sockaddr_storage ctl_sa;
 
-  int sock = socket(AF_INET,SOCK_DGRAM,0);
+  SOCKREF sock = socket(AF_INET,SOCK_DGRAM,0);
   if (sock == -1) {
     REPORT_ERROR_NO("Unable to create remote control socket!");
   }

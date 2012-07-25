@@ -38,7 +38,7 @@
 #else
 #define SOCKREF int   //sock_fd
 //msft defines as 0, -1 for posix  
-//todo makesure all socket fd compare to INVALID_SOCKET for consitency
+//all socket fd should compare to INVALID_SOCKET for portability
 #define INVALID_SOCKET -1
 #endif
 
@@ -1916,7 +1916,7 @@ TEST(sockethandler, open_connections_tcp_ipv4){
   sockaddr_storage res_addr;
   socklen_t size_res_addr = sizeof(res_addr);
   SOCKREF asocket = socket(AF_INET,SOCK_STREAM,0);
-  rc = bind(asocket, (sockaddr*)res->ai_addr, res->ai_addrlen);
+  rc = bind(asocket, (sockaddr*)res->ai_addr, (int)res->ai_addrlen);
   EXPECT_EQ(0,rc)<<"failed to bind to newly closed socket";
   print_if_error(rc);
   getsockname(asocket, (sockaddr *) &res_addr, &size_res_addr);
@@ -2372,7 +2372,7 @@ TEST(sockethandler, error_message){
   EXPECT_STREQ("The requested protocol has not been configured into the system, or no implementation for it exists.\r\n",errorstring);
 
   char msg[] = "Good Luck Chuck";
-  send(asocket,msg,strlen(msg),0);
+  send(asocket,msg,(int)strlen(msg),0);
   EXPECT_EQ(10057, WSAGetLastError());
   wchar_to_char(wsaerrorstr(WSAGetLastError()),errorstring);
   EXPECT_STREQ("A request to send or receive data was disallowed because the socket is not connected and (when sending on a datagram socket using a sendto call) no address was supplied.\r\n",errorstring);
@@ -2441,14 +2441,14 @@ TEST(sockethandler, write_error){
 //  udp  rc = sendto(socket->ss_fd, buffer, len, 0, (struct sockaddr *)dest, SOCK_ADDR_SIZE(dest));
 //  tcp  rc = send_nowait(socket->ss_fd, buffer, len, 0);
   char buff[] = "This is a Test,  This is only a Test.  Do not panic......yet";
-  int rc = sendto(asocket->ss_fd, buff, strlen(buff), 0, (sockaddr*)&remote_sockaddr, sizeof(local_sockaddr));
+  int rc = sendto(asocket->ss_fd, buff, (int)strlen(buff), 0, (sockaddr*)&remote_sockaddr, (int)sizeof(local_sockaddr));
   print_if_error(rc);
   rc = write_error(asocket, ret);
   EXPECT_EQ((long unsigned int) (copy_nb_net_send_errors +1), nb_net_send_errors);
   
   sockaddr_storage null_ss;
   memset (&null_ss,0,sizeof(null_ss));
-  rc = sendto(asocket->ss_fd, buff, strlen(buff), 0, (sockaddr*)&remote_sockaddr, sizeof(local_sockaddr));
+  rc = sendto(asocket->ss_fd, buff, (int)strlen(buff), 0, (sockaddr*)&remote_sockaddr, (int)sizeof(local_sockaddr));
 
   print_if_error(rc);
   rc = write_error(asocket, ret);

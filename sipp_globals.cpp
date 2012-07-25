@@ -486,6 +486,7 @@ unsigned long int get_cseq_value(const char *msg)
 
 unsigned long get_reply_code(const char *msg)
 {
+  if (strlen(msg) == 0) return 0;
   while((msg) && (*msg != ' ') && (*msg != '\t')) msg ++;
   while((msg) && ((*msg == ' ') || (*msg == '\t'))) msg ++;
 

@@ -1,6 +1,10 @@
 This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
+3.2.61 BETA
+- fix exception during abort call when in client mode and looping scenario.  get_reply_code
+from last received message is not valid for first message in scenario.
+
 3.2.60 BETA
 - checking of incoming message for membership in active
   dialogs to prevent false matching modified to not take

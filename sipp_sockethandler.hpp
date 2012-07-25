@@ -50,9 +50,6 @@
 #define SOL_TCP 6
 #endif
 
-
-//todo some of these dont need to be publicly available 
-// residual from fact that they were moved one by one and made public to ensure nothing broke along the way
 void                         initialize_sockets();
 void                         cleanup_sockets();
 void                         sipp_socket_invalidate(struct sipp_socket *socket);

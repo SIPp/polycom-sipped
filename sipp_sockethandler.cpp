@@ -110,7 +110,7 @@ void sipp_socket_invalidate(struct sipp_socket *socket)
   assert(pollnfds > 0);
 
   pollnfds--;   
-  //TODO windows uses select instead of poll, review architecture for windows version 
+
   pollfiles[pollidx] = pollfiles[pollnfds];
   sockets[pollidx] = sockets[pollnfds];
   sockets[pollidx]->ss_pollidx = pollidx;
@@ -308,7 +308,7 @@ void buffer_write(struct sipp_socket *socket, char *buffer, size_t len, struct s
 }
 
 
-int send_nowait(int s, const void *msg, int len, int flags)
+int send_nowait(SOCKREF s, const void *msg, int len, int flags)
 {
 #if defined(MSG_DONTWAIT) && !defined(__SUNOS)
   return send(s, msg, len, flags | MSG_DONTWAIT);
@@ -706,13 +706,6 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
   return 0;
 }
 
-
-
-//TODO : WIN32 was static function in sipp.cpp, any issues?
-// static funtion is visibililty - var in static function are not persistant
-// static variable is persistance
-// since we malloc return value, we have persistance
-// used by sipp.cpp and sipp_sockethandler.cpp
 struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, SOCKREF fd, int accepting) {
   struct sipp_socket *ret = NULL;
   DEBUGIN();
@@ -776,7 +769,6 @@ struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, SOCKREF f
   return ret;
 }
 
-//TODO : was static function in sipp.cpp, any issues?
 struct sipp_socket *sipp_allocate_socket(bool use_ipv6, int transport, SOCKREF fd) {
   return sipp_allocate_socket(use_ipv6, transport, fd, 0);
 }
