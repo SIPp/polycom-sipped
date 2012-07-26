@@ -25,7 +25,7 @@
   </send>
 
 
-  <recv response="200" dialog="1">
+  <recv response="200">
       <action>
            <ereg regexp=".*" search_in="hdr" header="Call-Info:" check_it="true" assign_to="dontcare" />
            <log message="Call-Info header is '[$dontcare]'" />           

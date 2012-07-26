@@ -3440,7 +3440,7 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
   message *curmsg = call_scenario->messages[index];
   // dialog = -1 will not be matched here and will not 
   int matched_active_dialog = get_dialog_fr_callid(call_id);
-  if (matched_active_dialog >= 0 ){
+  if ((matched_active_dialog >= 0 )&&(curmsg->dialog_number!= -1)){
     DEBUG("Callid %s is already assigned to a dialog number %d", 
       call_id.c_str(), matched_active_dialog);
     // does scenario dialog number expect this dialog number - which was previously established
@@ -3450,7 +3450,7 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
         call_id.c_str(), matched_active_dialog,curmsg->dialog_number);
       return false;
     }// else curmsg matches scenario dialog number and is a match to active dialog
-  }//else no existing dialog number assigned to call_id, go get one
+  }//else no existing dialog number assigned to call_id, go get one OR scenario message doesnt specify dialog
 
   DEBUG("Callid %s is not yet assigned to a dialog number, make one", call_id.c_str());
   DialogState *ds = get_dialogState(curmsg->dialog_number);
