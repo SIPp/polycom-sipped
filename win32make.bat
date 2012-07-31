@@ -38,6 +38,8 @@ rem "C:\Program Files (x86)\Microsoft Visual Studio 8\VC\vcvarsall.bat"
 
 set TA_DIR=%WORKSPACE%\TestUtilities
 set SIPPED=%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped
+set INCLUDE=C:\Program Files\Microsoft SDKs\Windows\v6.0A\Include
+set LIB=C:\Program Files\Microsoft SDKs\Windows\v6.0A\Lib
 echo "*********************************************"
 
 
