@@ -7,7 +7,7 @@ export SIPPED="$WORKSPACE/TestUtilities/SIPped/WindowsBinary/SIPped"
 export TERM=xterm
 
 # reference rsipp.config.xml must exist on test platform 
-cp /home/jenkins/TA_Config/TestUtilities/SIPped/rsipp/rsipp.config.xml "$TA_DIR/SIPped/rsipp"
+cp "$WORKSPACE/TestUtilities/AutoTester/continuous_integration/TA_Config/$1/SIPped/rsipp/rsipp.config.xml" "$TA_DIR/SIPped/rsipp"
 cat "$TA_DIR/SIPped/rsipp/rsipp.config.xml"
 
 #how do we alter svn checkin so this is executable on checkout
