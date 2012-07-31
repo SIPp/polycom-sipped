@@ -21,7 +21,8 @@ from visual studio cmd prompt, go to same directory
 this results in the files in dir c:\TestUtilities\SIPped\SIPped\src\openssl
 
 in file openssl/include/openssl/dtls1.h , replace #include <winsock.h> with #include <winsock2.h>
- otherwise 100 errors come from redifining things.
+ otherwise 100 errors come from redifining things.  There is patch out there for this but its just
+ a simple one liner to change manually.
 
 Do this again but change the initial step to the following (see noteworthy for explanation)
 
@@ -57,7 +58,7 @@ BIO layer and your compiler run-time. Look up OPENSSL_Applink
 page for further details.
 
 Note that the ssl library requires use of the microsoft visual c redistributable
-release version
+rel ease version
 Microsoft.VC80.CRT
 msvcr80.dll
 msvcp80.dll
