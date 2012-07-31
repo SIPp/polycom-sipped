@@ -36,6 +36,9 @@ rem "C:\Program Files (x86)\Microsoft Visual Studio 8\VC\vcvarsall.bat"
 
 :end
 
+set TA_DIR=%WORKSPACE%\TestUtilities
+set SIPPED=%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped
+echo "*********************************************"
 
 
 msbuild SIPped.sln /t:rebuild
