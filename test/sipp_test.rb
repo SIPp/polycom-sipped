@@ -276,7 +276,7 @@ class SippTest
     end
 
     if(!@expected_error_log.nil?)
-      if !(@expected_error_log.match(get_error_log())):
+      if (!@expected_error_log.match(get_error_log()))
         puts "Expected error log does not match actual.\n" unless @logging == "silent"
         puts "Expected = '#{@expected_error_log}'\nActual = '#{get_error_log()}'\n" if @logging == "verbose"
         result = false;
