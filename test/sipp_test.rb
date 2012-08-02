@@ -260,7 +260,7 @@ class SippTest
 
     #Note that expected_client/server_output use strings, whereas expected_error_log uses a regular expression.
     if (!@expected_client_output.nil?)
-      if (@expected_client_output != get_client_output())
+      if (remove_space_and_crlf(@expected_client_output) != remove_space_and_crlf(get_client_output()))
         puts "Expected client output does not match actual.\n" unless @logging == "silent"
         puts "Expected = '#{@expected_client_output}'\nActual = '#{get_client_output()}'\n" if @logging == "verbose"
         result = false;
@@ -268,7 +268,7 @@ class SippTest
     end
 
     if (!@expected_server_output.nil?)
-      if (@expected_server_output != get_server_output())
+      if (remove_space_and_crlf(@expected_server_output) != remove_space_and_crlf(get_server_output()))
         puts "Expected server output does not match actual.\n" unless @logging == "silent"
         puts "Expected = '#{@expected_server_output}'\nActual = '#{get_server_output()}'\n" if @logging == "verbose"
         result = false;
