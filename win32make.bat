@@ -3,7 +3,7 @@ rem *   20120731  compile windows port of sipped
 rem ******************************************************************
 
 rem Set the environment for msbuild
-call ""C:\Program Files (x86)\Microsoft Visual Studio 8\VC\vcvarsall.bat"" x86
+call "C:\Program Files (x86)\Microsoft Visual Studio 8\VC\vcvarsall.bat" x86
 
 set TA_DIR=%WORKSPACE%\TestUtilities
 set SIPPED=%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped
