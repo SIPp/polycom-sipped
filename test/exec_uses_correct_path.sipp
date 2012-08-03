@@ -6,7 +6,7 @@
 
   <nop display="Wait">
     <action>
-      <exec verify="rsipp.pl -f wait_three_seconds.sipp"/>
+      <exec verify="rsipp.pl -sf wait_three_seconds.sipp"/>
     </action>
   </nop>
 
