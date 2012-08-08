@@ -23,8 +23,9 @@ call create_windows7_installer.bat
 set PATH=%TMP%
 @endlocal
 
+
 IF %Deploy% EQU "No" GOTO :END:
-rem DeploySIPpedWin32.bat
+call DeploySIPped.bat SIPped_windows7.msi
 
 :END
 exit /B %ERRORLEVEL%
