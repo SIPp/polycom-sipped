@@ -2,10 +2,12 @@ This file tracks changes responsible for version number updates.
 $Author $Date $Id $Revision
 
 3.2.62.BETA
-- allow scenario messages with no assigned dialog number to ignore dialog number when matching
-incoming messages against scenario
+- fix error reporting for win32 from send_packets to use WSA instead
+of errno
 
 3.2.61 BETA
+- allow scenario messages with no assigned dialog number to ignore dialog number when matching
+incoming messages against scenario
 - fix exception during abort call when in client mode and looping scenario.  get_reply_code
 from last received message is not valid for first message in scenario.
 

@@ -271,7 +271,15 @@ send_packets (play_args_t * play_args)
     }
 #endif
     if (ret < 0) {
+#ifdef WIN32
+      ERRORNUMBER = WSAGetLastError();
+      wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+      char errorstring[1000];
+      const char *errstring = wchar_to_char(error_msg,errorstring);
+      WARNING("send_packets.c: sendto failed with error: %s (sock = %d)", errstring, sock);
+#else
       WARNING("send_packets.c: sendto failed with error: %s (sock = %d)", strerror(errno), sock);
+#endif
       result = -1;
       break; // Can not return directly because of pthread_cleanup_push/pop's use of { and }
     }
