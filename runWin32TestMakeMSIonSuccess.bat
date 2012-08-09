@@ -24,7 +24,7 @@ set PATH=%TMP%
 @endlocal
 
 cd "%TA_DIR%\SIPped\SIPped\src"
-IF %Deploy% EQU "No" GOTO :END:
+IF /I "%Deploy%"=="No" GOTO END
 call DeploySIPped.bat SIPped_windows7.msi
 
 :END
