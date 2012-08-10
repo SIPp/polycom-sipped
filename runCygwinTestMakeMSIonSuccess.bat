@@ -22,8 +22,7 @@ cd "%SIPPED%\..\Installation\"
 call create_installer.bat
 
 cd "%TA_DIR%\SIPped\SIPped\src"
-IF /I "%Deploy%"=="No" GOTO END
-call DeploySIPped.bat SIPped.msi
+IF /I "%CygwinDeploy%"=="Yes" call DeploySIPped.bat SIPped.msi
 
 :END
 exit /B %ERRORLEVEL%
