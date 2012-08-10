@@ -65,6 +65,7 @@
 #include "send_packets.hpp"
 #include "screen.hpp"
 #include "sipp_sockethandler.hpp"
+#include "socket_helper.hpp"
 //
 #include "sipp_globals.hpp"
 #include "prepare_pcap.hpp"
@@ -198,6 +199,10 @@ send_packets (play_args_t * play_args)
           ((struct sockaddr_in *)(void *) from )->sin_addr.s_addr,
           ntohs(((struct sockaddr_in *)(void *) to )->sin_port),
           ((struct sockaddr_in *)(void *) to )->sin_addr.s_addr);
+    DEBUG("IPV4 from %s  to  %s", 
+      socket_to_ip_port_string(from).c_str(),
+      socket_to_ip_port_string(to).c_str()    );
+
   }
   int sock_opt = 1;
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt, sizeof (sock_opt)) == -1) {
@@ -292,6 +297,8 @@ send_packets (play_args_t * play_args)
 
   /* Closing the socket is handled by pthread_cleanup_push()/pthread_cleanup_pop() */
   pthread_cleanup_pop(1);
+  free(play_args);
+  play_args = 0;
   DEBUGOUT();
   return result;
 }

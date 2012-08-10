@@ -4,6 +4,10 @@ $Author $Date $Id $Revision
 3.2.62.BETA
 - fix error reporting for win32 from send_packets to use WSA instead
 of errno
+- send_packets race condition for multiple media streams occassionally has second stream overwriting
+play_args before first stream has established socket connection, resulting in a collision of sockets.
+malloc a local copy of play_args for thread to allow main thread to proceed to next stream without 
+interferig with thread play_args 
 
 3.2.61 BETA
 - allow scenario messages with no assigned dialog number to ignore dialog number when matching

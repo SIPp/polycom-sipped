@@ -5248,7 +5248,9 @@ bool call::automaticResponseMode(T_AutoMode P_case, char * P_recv)
 #ifdef PCAPPLAY
 void *send_wrapper(void *arg)
 {
-  play_args_t *s = (play_args_t *) arg;
+  //play_args_t *s = (play_args_t *) arg;
+    play_args_t *s = (play_args_t *) malloc (sizeof(play_args_t));
+    memcpy(s, arg, sizeof(play_args_t));
   //struct sched_param param;
   //int ret;
   //param.sched_priority = 10;
