@@ -5,7 +5,7 @@ echo %TA_DIR%
 echo %SIPPED%
 echo %Deploy%
 
-cd "%SIPPED%\src\SIPped\SIPped\src"
+cd "%TA_DIR%\SIPped\SIPped\src"
 sipp.exe -v | grep SIP >> svncommitmessage.txt
 echo ---commit message
 type svncommitmessage.txt
