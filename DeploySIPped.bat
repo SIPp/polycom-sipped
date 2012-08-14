@@ -21,9 +21,17 @@ rem "c:\Program Files\SlikSvn\bin\svn.exe" commit %1 "%SIPPED%\sipp.exe" --usern
 @echo archiving copy of msi file
 pushd "\\vanfileprd\public\SIPped\Old SIPped Versions"
 wmic logicaldisk get  name,description,providername
-dir
+@echo copying to archive
 if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPPED%\..\Installation\SIPped_windows7*.msi" .
 if /I "%1"=="SIPped.msi" copy /y "%SIPPED%\..\Installation\SIPped_v*.msi" .
+dir
+@echo updating current distribution copy
+cd ..
+if /I "%1"=="SIPped_windows7.msi" del SIPped_windows7*.msi
+if /I "%1"=="SIPped_windows7.msi" del SIPped_v*.msi
+if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPPED%\..\Installation\SIPped_windows7*.msi" .
+if /I "%1"=="SIPped.msi" copy /y "%SIPPED%\..\Installation\SIPped_v*.msi" .
+dir
 popd 
 rem
   
