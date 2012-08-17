@@ -416,8 +416,8 @@ void call::get_remote_media_addr(char *msg)
       //set to session level contact address
       memcpy(&(m_play_arg.to), &to, sizeof(sockaddr_storage));
     }
-    string destination  = socket_to_ip_string(&(m_play_arg.to)).c_str();
-    DEBUG("Setting destination address to %s\n", destination);
+    string destination  = socket_to_ip_string(&(m_play_arg.to));
+    DEBUG("Setting destination address to %s\n", destination.c_str());
     // was statically set in init when we only had one, need to initialize here for dynamic play_args creation
     // only setting from address here as a default fall back. Expect from and pcap to be updated elsewhere
     setMediaFromAddress(&m_play_arg);
