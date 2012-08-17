@@ -72,6 +72,7 @@ public:
 #ifdef PCAPPLAY
     E_AT_PLAY_PCAP_AUDIO,
     E_AT_PLAY_PCAP_VIDEO,
+    E_AT_PLAY_PCAP_APPLICATION,
 #endif
     E_AT_NB_ACTION
   };
@@ -127,6 +128,7 @@ public:
 #ifdef PCAPPLAY
   pcap_pkts     *getPcapPkts(); /* send_packets specific function */
   int           getMediaPortOffset(); /* send_packets specific function */
+  int           getMediaIndex();   /* media specific index number, eg 1st application media stream in sdp */
 #endif
 
   void setActionType   (T_ActionType   P_value);
@@ -152,6 +154,7 @@ public:
   void setPcapArgs     (char *         P_value);  /* send_packets specific function */
   void setPcapArgs     (pcap_pkts   *  P_value);  /* send_packets specific function */
   void setMediaPortOffset (int offset);           /* send_packets specific function */
+  void setMediaIndex   (int            index);  /* media specific index number, eg 2nd video stream in sdp */
 #endif
 
   void setSubVarId     (int P_value);
@@ -207,6 +210,7 @@ private:
   pcap_pkts  *   M_pcapArgs;
   /* offset from a exec pcap play command */
   int            M_mediaPortOffset;
+  int            M_mediaIndex;
 #endif
   void setSubString(char** P_target, char* P_source, int P_start, int P_stop);
 };

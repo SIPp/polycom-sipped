@@ -173,6 +173,19 @@ unsigned int call::wake()
   return wake;
 }
 
+// given a play_args, set the from address (excluding port).
+void setMediaFromAddress(play_args_t* play_args){
+  //todo: allow for multiple source address and/or mixed ipv4 ipv6 media source address indep
+  // of sipp main control address
+  if (media_ip_is_ipv6) {
+    inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args->from)))->sin6_addr);
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args->from)))->sin_addr.s_addr = inet_addr(media_ip);
+    (_RCAST(struct sockaddr_in *, &(play_args->from)))->sin_family = AF_INET;
+  }
+}
+
+
 #ifdef PCAPPLAY
 /******* Media information management *************************/
 /*
@@ -201,6 +214,8 @@ uint32_t get_remote_ip_media(char *msg)
 /*
  * Look for "c=IN IP6 " pattern in the message and extract the following value
  * which should be IPv6 address
+ * on success, return the location within msg of the byte after the end of found address
+ * on failure, return 0
  */
 uint8_t get_remote_ipv6_media(char *msg, struct in6_addr *addr)
 {
@@ -233,6 +248,7 @@ uint8_t get_remote_ipv6_media(char *msg, struct in6_addr *addr)
  */
 #define PAT_AUDIO 1
 #define PAT_VIDEO 2
+#define PAT_APPLICATION 3
 uint16_t get_remote_port_media(char *msg, int pattype)
 {
   const char *pattern;
@@ -243,7 +259,9 @@ uint16_t get_remote_port_media(char *msg, int pattype)
     pattern = "m=audio ";
   } else if (pattype == PAT_VIDEO) {
     pattern = "m=video ";
-  } else {
+  } else if (pattype == PAT_APPLICATION){
+    pattern = "m=application";
+  }else{
     REPORT_ERROR("Internal error: Undefined media pattern %d\n", 3);
   }
 
@@ -261,56 +279,207 @@ uint16_t get_remote_port_media(char *msg, int pattype)
   return atoi(number);
 }
 
+
+
 /*
  * IPv{4,6} compliant
- */
+ */ // getting remote media address from incoming sdp   allow for multiple c=IN IP, m=audio lines
+    // creates play_args here 
 void call::get_remote_media_addr(char *msg)
-{
-  uint16_t video_port, audio_port;
-  if (media_ip_is_ipv6) {
-    struct in6_addr ip_media;
-    if (get_remote_ipv6_media(msg, &ip_media)) {
-      audio_port = get_remote_port_media(msg, PAT_AUDIO);
-      if (audio_port) {
-        /* We have audio in the SDP: set the to_audio addr */
-        (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_flowinfo = 0;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_scope_id = 0;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_family = AF_INET6;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_port = htons(audio_port);
-        (_RCAST(struct sockaddr_in6 *, &(play_args_a.to)))->sin6_addr = ip_media;
-      }
-      video_port = get_remote_port_media(msg, PAT_VIDEO);
-      if (video_port) {
-        /* We have video in the SDP: set the to_video addr */
-        (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_flowinfo = 0;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_scope_id = 0;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_family = AF_INET6;
-        (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_port = htons(video_port);
-        (_RCAST(struct sockaddr_in6 *, &(play_args_v.to)))->sin6_addr = ip_media;
-      }
-      hasMediaInformation = 1;
-    }
-  } else {
-    uint32_t ip_media;
-    ip_media = get_remote_ip_media(msg);
-    if (ip_media != INADDR_NONE) {
-      audio_port = get_remote_port_media(msg, PAT_AUDIO);
-      if (audio_port) {
-        /* We have audio in the SDP: set the to_audio addr */
-        (_RCAST(struct sockaddr_in *, &(play_args_a.to)))->sin_family = AF_INET;
-        (_RCAST(struct sockaddr_in *, &(play_args_a.to)))->sin_port = htons(audio_port);
-        (_RCAST(struct sockaddr_in *, &(play_args_a.to)))->sin_addr.s_addr = ip_media;
-      }
-      video_port = get_remote_port_media(msg, PAT_VIDEO);
-      if (video_port) {
-        /* We have video in the SDP: set the to_video addr */
-        (_RCAST(struct sockaddr_in *, &(play_args_v.to)))->sin_family = AF_INET;
-        (_RCAST(struct sockaddr_in *, &(play_args_v.to)))->sin_port = htons(video_port);
-        (_RCAST(struct sockaddr_in *, &(play_args_v.to)))->sin_addr.s_addr = ip_media;
-      }
-      hasMediaInformation = 1;
-    }
+{                                 // http://tools.ietf.org/html/rfc4566
+  const char* vline = "v=";       //sdp must start with session level with this marker
+  const char* cline = "c=IN IP";  //contact can be at session level or media level or both, media level overrides session level
+  const char* mline = "m=";
+  const char* maudio = "m=audio"; //media level marker
+  const char* mvideo = "m=video";
+  const char* mappl  = "m=application";
+  // todo, why do we care what type of media it is, why not generic code for any 'm' line?
+  uint16_t video_port, audio_port,application_port;
+  char* endmsg = strstr(msg, "\r\n\r\n")+4;
+  char line[1000]; //while line in an sdp has no limit, total limit on sdp is 1000 bytes
+  char* endline;
+  char* msgptr = msg;   // keep track of where we are at within the msg
+  struct sockaddr_storage to; // the default session level destination address
+  memset(&to,0, sizeof(sockaddr_storage));
+  bool session_level_contact = false;
+  bool sess_media_is_IPV6=false;
+  bool curr_media_is_IPV6=false;
+  int             media_audio_count=0;
+  int             media_video_count=0;
+  int             media_application_count=0;
+
+  msgptr = strstr(msg,cline);  //initial position on c line, m line cannot preceed c line.
+  if (!msgptr){
+    //no address line found
+    return;
   }
+
+  endline = strstr(msgptr,"\r\n");
+  memset(line,0,sizeof(line));
+  strncpy(line, msgptr, endline-msgptr);
+  if (msgptr < strstr(msg,"m=")){ // order of lines is fixed but presence is optional
+    // we have a default session level 'c' line for ip address.  Since the first 'c' line 
+    // appears in the session section before the first media section. Set up default address.
+    session_level_contact = true;
+    if (msgptr[strlen(cline)]=='6'){
+      sess_media_is_IPV6 = true;
+      struct in6_addr ip_media;
+      memset(&ip_media,0,sizeof(in6_addr));
+      if (!get_remote_ipv6_media(msgptr, &ip_media)){
+        REPORT_ERROR("unable to retrieve ipv6 address from 'c' line: %s\n",msgptr);
+      }else{
+        (_RCAST(struct sockaddr_in6 *, &(to)))->sin6_flowinfo = 0;
+        (_RCAST(struct sockaddr_in6 *, &(to)))->sin6_scope_id = 0;
+        (_RCAST(struct sockaddr_in6 *, &(to)))->sin6_family = AF_INET6;
+        (_RCAST(struct sockaddr_in6 *, &(to)))->sin6_addr = ip_media;
+        // port to be set when we get to the 'm' line
+      }
+    }else { // ipv4
+      sess_media_is_IPV6 = false;
+      uint32_t ip_media = 0;
+      ip_media = get_remote_ip_media(msgptr);
+      if (ip_media == INADDR_NONE) {
+        REPORT_ERROR("unable to retrieve ipv4 address from 'c' line: %s\n",msgptr);
+      }else{
+        (_RCAST(struct sockaddr_in *, &(to)))->sin_family = AF_INET;
+        (_RCAST(struct sockaddr_in *, &(to)))->sin_addr.s_addr = ip_media;
+        // port to be set when we get to the 'm' line
+      }
+    }// session level dest address is now set
+  }  // if no session level 'c' line, each media section (started with m line) must contain its own 'c' line
+    
+  // jump to media section
+  msgptr =  strstr(msgptr,mline);
+  endline = strstr(msgptr,"\r\n")+2;
+  memset(line,0,1000);
+  if (endline>msgptr){ 
+    strncpy (line, msgptr, endline-msgptr);
+  }
+  DEBUG("SDP mline = %s",line);
+  //line contains a "m=" line or nothing
+  while (strlen(line)){ //no blank lines (cr lf) allowed within sdp body 
+    // goto next line
+    bool local_media_c_address=false;  // should we use a local c address of the session c address
+    if (session_level_contact)
+      curr_media_is_IPV6 = sess_media_is_IPV6;  // using session level contact 
+    char* next_mline = strstr(msgptr,mline);
+    char* next_cline = strstr(msgptr,cline);
+    struct sockaddr_storage media_to;  // place to store media specific contact (if any)
+    memset (&media_to,0,sizeof(sockaddr_storage));
+    if (((next_cline!=0)&&(next_mline!=0)&&(next_cline<next_mline))||   // we have a local 'c' address that for this media section
+        ((next_cline!=0)&&(next_mline==0)))                           // we have a local 'c' address for this media and its the last media
+    {
+      // a local ip address that should be used instead of session level address
+      local_media_c_address=true;
+        //todo: no longer checking that local_ip and media_ip have to both be same Address Family
+        //  need to look at implementation to ensure this is handled correctly in rest of code
+        //  to allow ipv6 streams from ipv4 hosts and vice versa...esp getting localhost source address right
+      if (next_cline[strlen(cline)]=='6'){
+        curr_media_is_IPV6 = true;
+        struct in6_addr ip_media;
+        memset(&ip_media,0,sizeof(in6_addr));
+        if (!get_remote_ipv6_media(next_cline, &ip_media)){
+          REPORT_ERROR("unable to retrieve ipv6 address from 'c' line: %s\n",next_cline);
+        }else{
+          (_RCAST(struct sockaddr_in6 *, &(media_to)))->sin6_flowinfo = 0;
+          (_RCAST(struct sockaddr_in6 *, &(media_to)))->sin6_scope_id = 0;
+          (_RCAST(struct sockaddr_in6 *, &(media_to)))->sin6_family = AF_INET6;
+          (_RCAST(struct sockaddr_in6 *, &(media_to)))->sin6_addr = ip_media;
+          // port to be set when we get to the 'm' line
+        }
+      }else { // ipv4
+        curr_media_is_IPV6 = false;
+        uint32_t ip_media = 0;
+        ip_media = get_remote_ip_media(next_cline);
+        if (ip_media == INADDR_NONE) {
+          REPORT_ERROR("unable to retrevive ipv4 address from 'c' line: %s\n",next_cline);
+        }else{
+          (_RCAST(struct sockaddr_in *, &(media_to)))->sin_family = AF_INET;
+          (_RCAST(struct sockaddr_in *, &(media_to)))->sin_addr.s_addr = ip_media;
+          // port to be set when we get to the 'm' line
+        }//ipv4 found
+      }//ipv4
+    }// local media dest address is now set    
+
+    // store appropriate values into the play_args vector
+    // todo vector of struct that contains pointer : keep in mind deep vs shallow copy or use 
+
+    // line should contain 'm=' 
+    if (!strstr(line,mline))
+      REPORT_ERROR("SDP processing out of sync.  did not find m=, got %s", line);
+    play_args_t m_play_arg;
+    memset(&m_play_arg,0,sizeof(play_args_t));
+    if (local_media_c_address){
+      //set to media specific contact address
+      memcpy(&(m_play_arg.to), &media_to, sizeof(sockaddr_storage));
+    }else{
+      //set to session level contact address
+      memcpy(&(m_play_arg.to), &to, sizeof(sockaddr_storage));
+    }
+    // was statically set in init when we only had one, need to initialize here for dynamic play_args creation
+    // only setting from address here as a default fall back. Expect from and pcap to be updated elsewhere
+    setMediaFromAddress(&m_play_arg);
+    // set the to port and push onto the appropriate vector
+    if (strstr(line,mvideo)){
+      video_port = get_remote_port_media(line, PAT_VIDEO);
+      if (curr_media_is_IPV6)
+        (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(video_port);
+      else
+        (_RCAST(struct sockaddr_in *, &(m_play_arg.to)))->sin_port = htons(video_port);
+      // put play_args info into right vector at right index
+      // if index doesnt exist yet, push on play_args until it does.
+      media_video_count++;
+      play_args_t play_args;
+      setMediaFromAddress(&play_args);
+      memset(&play_args,0, sizeof(play_args_t));
+      while (play_args_video.size()<media_video_count){
+        DEBUG("play_args_video.size() = %d, adding one to set port in index %d",
+          play_args_video.size(), media_video_count);
+        play_args_video.push_back(play_args);
+      }
+      memcpy(&(play_args_video[media_video_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+    }else if (strstr(line,mappl)){
+      application_port = get_remote_port_media(line, PAT_APPLICATION);
+      if (curr_media_is_IPV6)
+        (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(application_port);
+      else
+        (_RCAST(struct sockaddr_in *, &(m_play_arg.to)))->sin_port = htons(application_port);
+      media_application_count++;
+      play_args_t play_args;
+      setMediaFromAddress(&play_args);
+      memset(&play_args,0, sizeof(play_args_t));
+      while (play_args_application.size()<media_application_count){
+        DEBUG("play_args_application.size() = %d, adding one to set port in index %d",
+          play_args_application.size(), media_application_count);
+        play_args_application.push_back(play_args);
+      }
+      memcpy(&(play_args_application[media_application_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+    }else if (strstr(line,maudio)){
+      audio_port = get_remote_port_media(line, PAT_AUDIO);
+      if (curr_media_is_IPV6)
+        (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(audio_port);
+      else
+        (_RCAST(struct sockaddr_in *, &(m_play_arg.to)))->sin_port = htons(audio_port);
+      media_audio_count++;
+      play_args_t play_args;
+      setMediaFromAddress(&play_args);
+      memset(&play_args,0, sizeof(play_args_t));
+      while (play_args_audio.size()<media_audio_count){
+        DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
+          play_args_audio.size(), media_audio_count);
+        play_args_audio.push_back(play_args);
+      }
+      memcpy(&(play_args_audio[media_audio_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+    }
+
+    // get next 'm' line - start searching at current endline
+    msgptr = strstr(endline, mline);
+    memset(line,0,1000);
+    if (msgptr){
+      endline = strstr(msgptr,"\r\n")+2;
+      strncpy (line, msgptr, endline-msgptr);
+    }
+  }//while    
 }
 
 #endif
@@ -576,12 +745,14 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   this->initCall = isInitCall;
 
 #ifdef PCAPPLAY
+  //todo remove play_args_a and play_args_v
   memset(&(play_args_a.to), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_v.to), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_a.from), 0, sizeof(struct sockaddr_storage));
   memset(&(play_args_v.from), 0, sizeof(struct sockaddr_storage));
 
   // Store IP in audio and video structure from for use in send_packets:
+  //todo: remove this block, dynamic allocation of play_args_* structures.
   if (media_ip_is_ipv6) {
     inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
     inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_addr);
@@ -2401,6 +2572,14 @@ void call::verifyIsClientTransaction(TransactionState &txn, const string &wrongK
   }
 }
 
+
+/*
+// returns a buffer containing the message to be sent out.
+// built by processing a given message index from a scenario from a .sipp file
+// literal text is copied over while keywords (square bracket delimited) are substituted
+// control is based on MessageComponent->type.  
+// MessageComponents are assembled in SendingMessage::SendingMessage for this method to consume.
+*/
 char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buffer, int buf_len, int *msgLen)
 {
   char * length_marker = NULL;
@@ -2410,6 +2589,12 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   int  len_offset = 0;
   char * dest = msg_buffer;
   bool supresscrlf = false;
+  // use these to keep track of which index of media type is being processed.
+  // assumes sdp is processed sequentially from start to finish
+  int audio_media_counter=0;
+  int video_media_counter=0;
+  int application_media_counter=0;
+
   // cache default dialog state to prevent repeated lookups (fastpath)
   DialogState *src_dialog_state = get_dialogState(src->getDialogNumber());
 
@@ -2564,10 +2749,16 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
       if (begin == msg_buffer) {
         REPORT_ERROR("Can not find beginning of a line for the media port!\n");
       }
+      // media index assumes createSendingMessage processes scenario sdp message sequentially
+      //effectively, play_args_media[index].from = media_port+offset
+      // where offset is eg 2 for [media_port+2] in scenario sdp
+      // index is the stream number based on scenario sdp counting.
       if (strstr(begin, "audio")) {
-        set_audio_from_port(port);
+        set_audio_from_port(port,++audio_media_counter);
       } else if (strstr(begin, "video")) {
-        set_video_from_port(port);
+        set_video_from_port(port,++video_media_counter);
+      } else if (strstr(begin, "application")){
+        set_application_from_port(port,++application_media_counter);
       } else {
         REPORT_ERROR("media_port keyword with no audio or video on the current line (%s)", begin);
       }
@@ -3555,6 +3746,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
   int             search_index;
   bool            found = false;
   T_ActionResult  actionResult;
+
 
   getmilliseconds();
   DEBUG_IN("Current msg_index is %d\n", msg_index);
@@ -4943,22 +5135,34 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       }
 #ifdef PCAPPLAY
     } else if ((currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) ||
+               (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_APPLICATION) ||
                (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO)) {
       play_args_t *play_args = 0;
       string media_type;
       if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_AUDIO");
-        play_args = &(this->play_args_a);
+        //retrieve  play_pcap_audio attribute index="x", set in ParseAction
+        int index = currentAction->getMediaIndex();
+        play_args = &(this->play_args_audio[index-1]);
         media_type = string("Audio");
         if (currentAction->getMediaPortOffset()) {
-          this->set_audio_from_port(media_port + currentAction->getMediaPortOffset());
+          this->set_audio_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
       } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
-        play_args = &(this->play_args_v);
+        int index = currentAction->getMediaIndex();
+        play_args = &(this->play_args_video[index-1]);
         media_type = string("Video");
         if (currentAction->getMediaPortOffset()) {
-          this->set_video_from_port(media_port + currentAction->getMediaPortOffset());
+          this->set_video_from_port(media_port + currentAction->getMediaPortOffset(),index);
+        }
+      }else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_APPLICATION) {
+        DEBUG("getActionType() is E_AT_PLAY_PCAP_APPLICATION");
+        int index = currentAction->getMediaIndex();
+        play_args = &(this->play_args_application[index-1]);
+        media_type = string("application");
+        if (currentAction->getMediaPortOffset()) {
+          this->set_application_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
       }
       DEBUG("From: %s (0x%x)  To: %s (0x%x)",
@@ -5295,24 +5499,63 @@ void call::free_dialogState()
   last_dialog_state = 0;
 }
 
+
+
 #ifdef PCAPPLAY
-void call::set_audio_from_port(int port)
+// index is 1 based value that is used to determine where to put port information into 
+// one of the media play_args vectors
+void call::set_audio_from_port(int port,int index)
 {
-  DEBUG("Setting audio port to %d", port);
+  DEBUG("Setting audio port (stream %d) to %d ", index, port);
+  play_args_t play_args;
+  setMediaFromAddress(&play_args);
+  memset(&play_args,0, sizeof(play_args_t));
+  while (play_args_audio.size()<index){
+    DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
+      play_args_audio.size(), index);
+    play_args_audio.push_back(play_args);
+  }
   if (media_ip_is_ipv6) {
-    (_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_port = htons(port);
+    (_RCAST(struct sockaddr_in6 *, &(play_args_audio[index-1].from)))->sin6_port = htons(port);
   } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_port = htons(port);
+    (_RCAST(struct sockaddr_in *, &(play_args_audio[index-1].from)))->sin_port = htons(port);
+  }
+
+}
+
+void call::set_video_from_port(int port, int index)
+{
+  DEBUG("Setting video port (stream %d) to %d", index, port);
+  play_args_t play_args;
+  setMediaFromAddress(&play_args);
+  memset(&play_args,0, sizeof(play_args_t));
+  while (play_args_video.size()<index){
+    DEBUG("play_args_video.size() = %d, adding one to set port in index %d",
+      play_args_video.size(), index);
+    play_args_video.push_back(play_args);
+  }
+  if (media_ip_is_ipv6) {
+    (_RCAST(struct sockaddr_in6 *, &(play_args_video[index-1].from)))->sin6_port = htons(port);
+  } else {
+    (_RCAST(struct sockaddr_in *, &(play_args_video[index-1].from)))->sin_port = htons(port);
   }
 }
 
-void call::set_video_from_port(int port)
+void call::set_application_from_port(int port, int index)
 {
-  DEBUG("Setting video port to %d", port);
+  DEBUG("Setting application port (stream %d) to %d", index,  port);
+    play_args_t play_args;
+  setMediaFromAddress(&play_args);
+  memset(&play_args,0, sizeof(play_args_t));
+  while (play_args_application.size()<index){
+    DEBUG("play_args_application.size() = %d, adding one to set port in index %d",
+      play_args_application.size(), index);
+    play_args_application.push_back(play_args);
+  }
   if (media_ip_is_ipv6) {
-    (_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_port = htons(port);
+    (_RCAST(struct sockaddr_in6 *, &(play_args_application[index-1].from)))->sin6_port = htons(port);
   } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_port = htons(port);
+    (_RCAST(struct sockaddr_in *, &(play_args_application[index-1].from)))->sin_port = htons(port);
   }
 }
 #endif

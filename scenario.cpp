@@ -1454,6 +1454,10 @@ void scenario::parseAction(CActions *actions, int dialog_number)
   int           currentNbVarNames;
   char * ptr;
   int           sub_currentNbVarId;
+  int           media_audio_count =0;
+  int           media_video_count =0;
+  int           media_application_count=0;
+
 
   DEBUGIN();
   while((actionElem = xp_open_element(recvScenarioLen))) {
@@ -1715,6 +1719,7 @@ void scenario::parseAction(CActions *actions, int dialog_number)
         tmpAction->setIntCmd(type);
 #ifdef PCAPPLAY
       } else if ((ptr = xp_get_value((char *) "play_pcap_audio"))) {
+        //pcap file to play
         if(scenario_path) {
           char *temp = (char *)alloca(strlen(scenario_path) + strlen(ptr) + 1);
           strcpy(temp , scenario_path);
@@ -1722,8 +1727,16 @@ void scenario::parseAction(CActions *actions, int dialog_number)
         } else {
           tmpAction->setPcapArgs(ptr);
         }
+        //set "from port" if explictly being requested to do so
         if((ptr = xp_get_value("media_port_offset")))
           parseMediaPortOffset(ptr, tmpAction);
+
+        //set index to determine "to port" in executeAction
+        if ((ptr = xp_get_value("index")))
+          tmpAction->setMediaIndex(atoi(ptr));
+        else
+          tmpAction->setMediaIndex(1);
+        //flag for executeAction
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_AUDIO);
         hasMedia = 1;
       } else if ((ptr = xp_get_value((char *) "play_pcap_video"))) {
@@ -1736,7 +1749,27 @@ void scenario::parseAction(CActions *actions, int dialog_number)
         }
         if((ptr = xp_get_value("media_port_offset")))
           parseMediaPortOffset(ptr, tmpAction);
+        if ((ptr = xp_get_value("index")))
+          tmpAction->setMediaIndex(atoi(ptr));
+        else
+          tmpAction->setMediaIndex(1);
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
+        hasMedia = 1;
+      } else if ((ptr = xp_get_value((char *) "play_pcap_application"))) {
+        if(scenario_path) {
+          char *temp = (char *)alloca(strlen(scenario_path) + strlen(ptr) + 1);
+          strcpy(temp , scenario_path);
+          tmpAction->setPcapArgs(strcat(temp, ptr));
+        } else {
+          tmpAction->setPcapArgs(ptr);
+        }
+        if((ptr = xp_get_value("media_port_offset")))
+          parseMediaPortOffset(ptr, tmpAction);
+        if ((ptr = xp_get_value("index")))
+          tmpAction->setMediaIndex(atoi(ptr));
+        else
+          tmpAction->setMediaIndex(1);
+        tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_APPLICATION);
         hasMedia = 1;
 #else
       } else if ((ptr = xp_get_value((char *) "play_pcap_audio"))) {

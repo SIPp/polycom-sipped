@@ -170,7 +170,7 @@ void CAction::afficheInfo()
   } else if (M_action == E_AT_VAR_TO_DOUBLE) {
     printf("Type[%d] - toDouble varId[%s]", M_action, display_scenario->allocVars->getName(M_varId));
 #ifdef PCAPPLAY
-  } else if ((M_action == E_AT_PLAY_PCAP_AUDIO) || (M_action == E_AT_PLAY_PCAP_VIDEO)) {
+  } else if ((M_action == E_AT_PLAY_PCAP_AUDIO) || (M_action == E_AT_PLAY_PCAP_VIDEO)|| (M_action == E_AT_PLAY_PCAP_APPLICATION)) {
     printf("Type[%d] - file[%s]", M_action, M_pcapArgs->file);
 #endif
   } else {
@@ -257,7 +257,12 @@ int            CAction::getMediaPortOffset()
 {
   return(M_mediaPortOffset);
 }
+int            CAction::getMediaIndex()
+{
+  return(M_mediaIndex);
+}
 #endif
+
 
 void CAction::setActionType   (CAction::T_ActionType   P_value)
 {
@@ -503,6 +508,10 @@ void CAction::setPcapArgs (char*        P_value)
 void CAction::setMediaPortOffset(int offset)
 {
   M_mediaPortOffset = offset;
+}
+void CAction::setMediaIndex(int index)
+{
+  M_mediaIndex = index;
 }
 #endif
 
