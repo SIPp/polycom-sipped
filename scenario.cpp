@@ -1776,6 +1776,8 @@ void scenario::parseAction(CActions *actions, int dialog_number)
         REPORT_ERROR("play_pcap_audio requires pcap support! Please recompile SIPp");
       } else if ((ptr = xp_get_value((char *) "play_pcap_video"))) {
         REPORT_ERROR("play_pcap_video requires pcap support! Please recompile SIPp");
+      } else if ((ptr = xp_get_value((char *) "play_pcap_application"))) {
+        REPORT_ERROR("play_pcap_video requires pcap support! Please recompile SIPp");
 #endif
       } else {
         REPORT_ERROR("illegal <exec> in the scenario\n");

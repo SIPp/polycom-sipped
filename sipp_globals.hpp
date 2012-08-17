@@ -565,7 +565,7 @@ int time_string(double ms, char *res, int reslen);
 #  define SIPP_VERSION               SVN_VERSION
 # endif
 #else
-# define SIPP_VERSION               "$Revision$"
+# define SIPP_VERSION               " $Revision$ " 
 #endif
 
 /*********************** scenario globals ***********************/

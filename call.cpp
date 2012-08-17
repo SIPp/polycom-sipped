@@ -260,7 +260,7 @@ uint16_t get_remote_port_media(char *msg, int pattype)
   } else if (pattype == PAT_VIDEO) {
     pattern = "m=video ";
   } else if (pattype == PAT_APPLICATION){
-    pattern = "m=application";
+    pattern = "m=application ";
   }else{
     REPORT_ERROR("Internal error: Undefined media pattern %d\n", 3);
   }
@@ -416,12 +416,15 @@ void call::get_remote_media_addr(char *msg)
       //set to session level contact address
       memcpy(&(m_play_arg.to), &to, sizeof(sockaddr_storage));
     }
+    string destination  = socket_to_ip_string(&(m_play_arg.to)).c_str();
+    DEBUG("Setting destination address to %s\n", destination);
     // was statically set in init when we only had one, need to initialize here for dynamic play_args creation
     // only setting from address here as a default fall back. Expect from and pcap to be updated elsewhere
     setMediaFromAddress(&m_play_arg);
     // set the to port and push onto the appropriate vector
     if (strstr(line,mvideo)){
       video_port = get_remote_port_media(line, PAT_VIDEO);
+      DEBUG("remote video media port = %d",video_port);
       if (curr_media_is_IPV6)
         (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(video_port);
       else
@@ -440,6 +443,7 @@ void call::get_remote_media_addr(char *msg)
       memcpy(&(play_args_video[media_video_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
     }else if (strstr(line,mappl)){
       application_port = get_remote_port_media(line, PAT_APPLICATION);
+      DEBUG("remote application media port = %d",application_port);
       if (curr_media_is_IPV6)
         (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(application_port);
       else
@@ -456,6 +460,7 @@ void call::get_remote_media_addr(char *msg)
       memcpy(&(play_args_application[media_application_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
     }else if (strstr(line,maudio)){
       audio_port = get_remote_port_media(line, PAT_AUDIO);
+      DEBUG("remote audio media port = %d",audio_port);
       if (curr_media_is_IPV6)
         (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(audio_port);
       else
@@ -5160,7 +5165,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         DEBUG("getActionType() is E_AT_PLAY_PCAP_APPLICATION");
         int index = currentAction->getMediaIndex();
         play_args = &(this->play_args_application[index-1]);
-        media_type = string("application");
+        media_type = string("Application");
         if (currentAction->getMediaPortOffset()) {
           this->set_application_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
