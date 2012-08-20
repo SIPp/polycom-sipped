@@ -197,8 +197,8 @@ private:
   int hasMediaInformation;
   pthread_t* media_threads[MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS];
   int number_of_active_rtp_threads;
-  play_args_t play_args_a;
-  play_args_t play_args_v;
+  //play_args_t play_args_a;
+  //play_args_t play_args_v;
   // the changes:
   vector<play_args_t> play_args_audio;
   vector<play_args_t> play_args_video;

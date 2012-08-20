@@ -177,12 +177,32 @@ unsigned int call::wake()
 void setMediaFromAddress(play_args_t* play_args){
   //todo: allow for multiple source address and/or mixed ipv4 ipv6 media source address indep
   // of sipp main control address
+  memset (&(play_args->from), 0, sizeof(sockaddr_storage));
   if (media_ip_is_ipv6) {
-    inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args->from)))->sin6_addr);
+    inet_pton(AF_INET6, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args->from)))->sin6_addr);
   } else {
     (_RCAST(struct sockaddr_in *, &(play_args->from)))->sin_addr.s_addr = inet_addr(media_ip);
     (_RCAST(struct sockaddr_in *, &(play_args->from)))->sin_family = AF_INET;
   }
+  
+  char addrstring[INET6_ADDRSTRLEN];
+  memset (addrstring,0,INET6_ADDRSTRLEN);
+  const char* dst = inet_ntop( play_args->from.ss_family  ,
+                  &(((sockaddr_in*)&(play_args->from))->sin_addr.s_addr),
+                addrstring,INET6_ADDRSTRLEN);
+  if(dst==0){
+    int error = WSAGetLastError();
+    wchar_t *error_msg = wsaerrorstr(error);
+    char errorstring[1000];
+    const char *errstring = wchar_to_char(error_msg,errorstring);
+    WARNING("inet_ntop error : %s\n",
+      errstring);
+  }
+
+  DEBUG("set from address to media_ip (%s) of play_args to AF_family = %d, ip address = %s",
+    media_ip,
+    (&(play_args->from))->ss_family,
+    addrstring);
 }
 
 
@@ -272,6 +292,10 @@ uint16_t get_remote_port_media(char *msg, int pattype)
   }
   begin += strlen(pattern) - 1;
   end = strstr(begin, "\r\n");
+  char line[1000];
+  memset (line,0,1000);
+  strncpy(line, begin, end-begin);
+  DEBUG("getting remote port from line : %s", line);
   if (!end)
     REPORT_ERROR("get_remote_port_media: no CRLF found");
   memset(number, 0, sizeof(number));
@@ -304,10 +328,12 @@ void call::get_remote_media_addr(char *msg)
   bool session_level_contact = false;
   bool sess_media_is_IPV6=false;
   bool curr_media_is_IPV6=false;
+  // counters for processing incoming SDP media lines.
   int             media_audio_count=0;
   int             media_video_count=0;
   int             media_application_count=0;
-
+  
+  DEBUG_IN("msg =  %s",msg);
   msgptr = strstr(msg,cline);  //initial position on c line, m line cannot preceed c line.
   if (!msgptr){
     //no address line found
@@ -317,6 +343,7 @@ void call::get_remote_media_addr(char *msg)
   endline = strstr(msgptr,"\r\n");
   memset(line,0,sizeof(line));
   strncpy(line, msgptr, endline-msgptr);
+  DEBUG("1st c line = %s",line);
   if (msgptr < strstr(msg,"m=")){ // order of lines is fixed but presence is optional
     // we have a default session level 'c' line for ip address.  Since the first 'c' line 
     // appears in the session section before the first media section. Set up default address.
@@ -334,6 +361,8 @@ void call::get_remote_media_addr(char *msg)
         (_RCAST(struct sockaddr_in6 *, &(to)))->sin6_addr = ip_media;
         // port to be set when we get to the 'm' line
       }
+      DEBUG("setting dest ipv6 address to %s",
+        socket_to_ip_port_string(&to));
     }else { // ipv4
       sess_media_is_IPV6 = false;
       uint32_t ip_media = 0;
@@ -345,6 +374,8 @@ void call::get_remote_media_addr(char *msg)
         (_RCAST(struct sockaddr_in *, &(to)))->sin_addr.s_addr = ip_media;
         // port to be set when we get to the 'm' line
       }
+      DEBUG("setting dest ipv4 address to %s",
+        socket_to_ip_port_string(&to).c_str());
     }// session level dest address is now set
   }  // if no session level 'c' line, each media section (started with m line) must contain its own 'c' line
     
@@ -366,9 +397,17 @@ void call::get_remote_media_addr(char *msg)
     char* next_cline = strstr(msgptr,cline);
     struct sockaddr_storage media_to;  // place to store media specific contact (if any)
     memset (&media_to,0,sizeof(sockaddr_storage));
+    // set dest media address to session level contact if it exists
+    if (session_level_contact)
+      memcpy(&media_to, &to, sizeof(sockaddr_storage));
+    // overwrite dest media address with local c line if any
     if (((next_cline!=0)&&(next_mline!=0)&&(next_cline<next_mline))||   // we have a local 'c' address that for this media section
         ((next_cline!=0)&&(next_mline==0)))                           // we have a local 'c' address for this media and its the last media
     {
+      char* end_next_cline = strstr(next_cline,"\n");
+      char templine[1000];
+      strncpy(templine,next_cline,end_next_cline - next_cline);
+      DEBUG("next c line = %s", templine);
       // a local ip address that should be used instead of session level address
       local_media_c_address=true;
         //todo: no longer checking that local_ip and media_ip have to both be same Address Family
@@ -387,6 +426,7 @@ void call::get_remote_media_addr(char *msg)
           (_RCAST(struct sockaddr_in6 *, &(media_to)))->sin6_addr = ip_media;
           // port to be set when we get to the 'm' line
         }
+
       }else { // ipv4
         curr_media_is_IPV6 = false;
         uint32_t ip_media = 0;
@@ -417,33 +457,35 @@ void call::get_remote_media_addr(char *msg)
       memcpy(&(m_play_arg.to), &to, sizeof(sockaddr_storage));
     }
     string destination  = socket_to_ip_string(&(m_play_arg.to));
-    DEBUG("Setting destination address to %s\n", destination.c_str());
-    // was statically set in init when we only had one, need to initialize here for dynamic play_args creation
-    // only setting from address here as a default fall back. Expect from and pcap to be updated elsewhere
+    DEBUG("Destination address set to %s\n", destination.c_str());
     setMediaFromAddress(&m_play_arg);
     // set the to port and push onto the appropriate vector
     if (strstr(line,mvideo)){
       video_port = get_remote_port_media(line, PAT_VIDEO);
-      DEBUG("remote video media port = %d",video_port);
+      DEBUG("remote video media port = %hu",video_port);
       if (curr_media_is_IPV6)
         (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(video_port);
       else
         (_RCAST(struct sockaddr_in *, &(m_play_arg.to)))->sin_port = htons(video_port);
       // put play_args info into right vector at right index
-      // if index doesnt exist yet, push on play_args until it does.
+      // if index doesnt exist yet, push on play_args until it does
+      // this ensures that all play_args in vector have from address set, .
       media_video_count++;
       play_args_t play_args;
       setMediaFromAddress(&play_args);
       memset(&play_args,0, sizeof(play_args_t));
       while (play_args_video.size()<media_video_count){
         DEBUG("play_args_video.size() = %d, adding one to set port in index %d",
-          play_args_video.size(), media_video_count);
+          play_args_video.size(), media_video_count-1);
         play_args_video.push_back(play_args);
       }
       memcpy(&(play_args_video[media_video_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+      DEBUG("Video index %d dest set from %s to %s", media_video_count-1,
+        socket_to_ip_port_string(&(play_args_video.at(media_video_count-1).from)).c_str(),
+        socket_to_ip_port_string(&(play_args_video.at(media_video_count-1).to)).c_str() );
     }else if (strstr(line,mappl)){
       application_port = get_remote_port_media(line, PAT_APPLICATION);
-      DEBUG("remote application media port = %d",application_port);
+      DEBUG("remote application media port = %hu",application_port);
       if (curr_media_is_IPV6)
         (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(application_port);
       else
@@ -454,13 +496,16 @@ void call::get_remote_media_addr(char *msg)
       memset(&play_args,0, sizeof(play_args_t));
       while (play_args_application.size()<media_application_count){
         DEBUG("play_args_application.size() = %d, adding one to set port in index %d",
-          play_args_application.size(), media_application_count);
+          play_args_application.size(), media_application_count-1);
         play_args_application.push_back(play_args);
       }
       memcpy(&(play_args_application[media_application_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+      DEBUG("Application index %d dest set from %s  to %s", media_application_count-1,
+        socket_to_ip_port_string(&(play_args_application.at(media_application_count-1).from)).c_str(),
+        socket_to_ip_port_string(&(play_args_application.at(media_application_count-1).to)).c_str()  );
     }else if (strstr(line,maudio)){
       audio_port = get_remote_port_media(line, PAT_AUDIO);
-      DEBUG("remote audio media port = %d",audio_port);
+      DEBUG("remote audio media port = %hu",audio_port);
       if (curr_media_is_IPV6)
         (_RCAST(struct sockaddr_in6 *, &(m_play_arg.to)))->sin6_port = htons(audio_port);
       else
@@ -471,10 +516,13 @@ void call::get_remote_media_addr(char *msg)
       memset(&play_args,0, sizeof(play_args_t));
       while (play_args_audio.size()<media_audio_count){
         DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
-          play_args_audio.size(), media_audio_count);
+          play_args_audio.size(), media_audio_count-1);
         play_args_audio.push_back(play_args);
       }
       memcpy(&(play_args_audio[media_audio_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+      DEBUG("Audio index %d dest set from %s  to %s", media_audio_count-1,
+        socket_to_ip_port_string(&(play_args_audio.at(media_audio_count-1).from)).c_str(),
+        socket_to_ip_port_string(&(play_args_audio.at(media_audio_count-1).to)).c_str()  );
     }
 
     // get next 'm' line - start searching at current endline
@@ -751,22 +799,22 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
 
 #ifdef PCAPPLAY
   //todo remove play_args_a and play_args_v
-  memset(&(play_args_a.to), 0, sizeof(struct sockaddr_storage));
-  memset(&(play_args_v.to), 0, sizeof(struct sockaddr_storage));
-  memset(&(play_args_a.from), 0, sizeof(struct sockaddr_storage));
-  memset(&(play_args_v.from), 0, sizeof(struct sockaddr_storage));
+  //memset(&(play_args_a.to), 0, sizeof(struct sockaddr_storage));
+  //memset(&(play_args_v.to), 0, sizeof(struct sockaddr_storage));
+  //memset(&(play_args_a.from), 0, sizeof(struct sockaddr_storage));
+  //memset(&(play_args_v.from), 0, sizeof(struct sockaddr_storage));
 
   // Store IP in audio and video structure from for use in send_packets:
   //todo: remove this block, dynamic allocation of play_args_* structures.
-  if (media_ip_is_ipv6) {
-    inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
-    inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_addr);
-  } else {
-    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_addr.s_addr = inet_addr(media_ip);
-    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_addr.s_addr = inet_addr(media_ip);
-    (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_family = AF_INET;
-    (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_family = AF_INET;
-  }
+  //if (media_ip_is_ipv6) {
+  //  inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_a.from)))->sin6_addr);
+  //  inet_pton(AF_INET, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args_v.from)))->sin6_addr);
+  //} else {
+  //  (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_addr.s_addr = inet_addr(media_ip);
+  //  (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_addr.s_addr = inet_addr(media_ip);
+  //  (_RCAST(struct sockaddr_in *, &(play_args_a.from)))->sin_family = AF_INET;
+  //  (_RCAST(struct sockaddr_in *, &(play_args_v.from)))->sin_family = AF_INET;
+  //}
 
   hasMediaInformation = 0;
   for (int i=0; i<MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS; i++) 
@@ -2595,7 +2643,17 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   char * dest = msg_buffer;
   bool supresscrlf = false;
   // use these to keep track of which index of media type is being processed.
-  // assumes sdp is processed sequentially from start to finish
+  // assumes sdp is processed sequentially from start to finish, These
+  // counters are for processing media lines in outgoing sipp Scenario that contains SDP
+  // outgoing SDP order of media lines determines from port 
+
+  // incoming SDP from running sipp tiggers get_remote_media_address, which
+  // does parallel counting with media_audio_counter etc... to match index to remote port
+  // play_pcap_[audio|video|application] will optionally have index attribute to 
+  // link file being played back to scenario sdp media line index and incoming sdp media index line.
+
+  // no index present in sipp play_pcap will by default use the first index only
+
   int audio_media_counter=0;
   int video_media_counter=0;
   int application_media_counter=0;
@@ -5153,9 +5211,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (currentAction->getMediaPortOffset()) {
           this->set_audio_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
+        DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
+          media_type.c_str(), index, play_args_audio.size(),
+          media_port + currentAction->getMediaPortOffset());
       } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
         int index = currentAction->getMediaIndex();
+        
         play_args = &(this->play_args_video[index-1]);
         media_type = string("Video");
         if (currentAction->getMediaPortOffset()) {
@@ -5170,6 +5232,14 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           this->set_application_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
       }
+      DEBUG ("dest afamily = %d", play_args->to.ss_family);
+      DEBUG ("src afamily = %d", play_args->from.ss_family);
+      if (play_args->to.ss_family!=play_args->from.ss_family)
+        WARNING("src address family (%d) != dest address family (%d), from %s to %s",
+          play_args->from.ss_family, play_args->to.ss_family,
+          socket_to_ip_port_string(&(play_args->from)).c_str(),
+          socket_to_ip_port_string(&(play_args->to)).c_str()
+          );
       DEBUG("From: %s (0x%x)  To: %s (0x%x)",
             socket_to_ip_port_string(&(play_args->from)).c_str(),
             *((int*)get_in_addr(&(play_args->from))),
@@ -5513,11 +5583,11 @@ void call::set_audio_from_port(int port,int index)
 {
   DEBUG("Setting audio port (stream %d) to %d ", index, port);
   play_args_t play_args;
-  setMediaFromAddress(&play_args);
   memset(&play_args,0, sizeof(play_args_t));
+  setMediaFromAddress(&play_args);
   while (play_args_audio.size()<index){
     DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
-      play_args_audio.size(), index);
+      play_args_audio.size(), index-1);
     play_args_audio.push_back(play_args);
   }
   if (media_ip_is_ipv6) {
@@ -5532,11 +5602,11 @@ void call::set_video_from_port(int port, int index)
 {
   DEBUG("Setting video port (stream %d) to %d", index, port);
   play_args_t play_args;
-  setMediaFromAddress(&play_args);
   memset(&play_args,0, sizeof(play_args_t));
+  setMediaFromAddress(&play_args);
   while (play_args_video.size()<index){
     DEBUG("play_args_video.size() = %d, adding one to set port in index %d",
-      play_args_video.size(), index);
+      play_args_video.size(), index-1);
     play_args_video.push_back(play_args);
   }
   if (media_ip_is_ipv6) {
@@ -5549,12 +5619,13 @@ void call::set_video_from_port(int port, int index)
 void call::set_application_from_port(int port, int index)
 {
   DEBUG("Setting application port (stream %d) to %d", index,  port);
-    play_args_t play_args;
-  setMediaFromAddress(&play_args);
+  play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
+  setMediaFromAddress(&play_args);
+
   while (play_args_application.size()<index){
     DEBUG("play_args_application.size() = %d, adding one to set port in index %d",
-      play_args_application.size(), index);
+      play_args_application.size(), index-1);
     play_args_application.push_back(play_args);
   }
   if (media_ip_is_ipv6) {

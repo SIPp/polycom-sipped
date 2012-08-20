@@ -1,4 +1,5 @@
 #include "socket_helper.hpp"
+#include "sipp_sockethandler.hpp"  //wsaerrorstr
 #include "sipp_globals.hpp"   //_RCAST
 #include <cstring>      //memcmp
 #ifdef WIN32
@@ -55,10 +56,18 @@ string socket_to_ip_string(struct sockaddr_storage *socket)
 #ifdef WIN32
   int flag = NI_NUMERICHOST;
   int err = getnameinfo((struct sockaddr *) socket,sizeof(struct sockaddr_storage), ip, sizeof(ip), NULL, 0, flag );
-  if (err)
-    perror("getnameinfo");
+  if (err){
+    int error = WSAGetLastError();
+    wchar_t *error_msg = wsaerrorstr(error);
+    char errorstring[1000];
+    const char *errstring = wchar_to_char(error_msg,errorstring);
+    printf("getnameinfo error looking up ip for socket Error: %s\n",
+      errstring);
+  }
 #else
-  inet_ntop(socket->ss_family, get_in_addr(socket), ip, sizeof(ip));
+  if (inet_ntop(socket->ss_family, get_in_addr(socket), ip, sizeof(ip))==0){
+    perror("inet_ntop failure");
+  }
 #endif
   return string(ip);
 }
@@ -73,7 +82,19 @@ string socket_to_ip_port_string(struct sockaddr_storage *socket)
   int flag = NI_NUMERICHOST;
   int err = getnameinfo((struct sockaddr *) socket,sizeof(struct sockaddr_storage), ip, sizeof(ip), NULL, 0, flag );
   if (err)
+#ifndef WIN32
     perror("getnameinfo");
+#else
+  {
+    int nameerror;
+    nameerror = WSAGetLastError();
+    wchar_t *error_msg = wsaerrorstr(nameerror);
+    char errorstring[1000];
+    const char *errstring = wchar_to_char(error_msg,errorstring);
+    printf("getnameinfo error looking up ip for socket Error: %s\n",
+      errstring);
+  }
+#endif
   if (socket->ss_family == AF_INET6){
     SNPRINTF(ip_and_port, sizeof(ip_and_port), "[%s]:%hu", ip, get_in_port(socket));
   }else{
