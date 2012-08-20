@@ -191,12 +191,16 @@ void setMediaFromAddress(play_args_t* play_args){
                   &(((sockaddr_in*)&(play_args->from))->sin_addr.s_addr),
                 addrstring,INET6_ADDRSTRLEN);
   if(dst==0){
+#ifdef WIN32
     int error = WSAGetLastError();
     wchar_t *error_msg = wsaerrorstr(error);
     char errorstring[1000];
     const char *errstring = wchar_to_char(error_msg,errorstring);
     WARNING("inet_ntop error : %s\n",
       errstring);
+#else
+    perror("inet_ntop");
+#endif
   }
 
   DEBUG("set from address to media_ip (%s) of play_args to AF_family = %d, ip address = %s",
@@ -311,7 +315,7 @@ uint16_t get_remote_port_media(char *msg, int pattype)
     // creates play_args here 
 void call::get_remote_media_addr(char *msg)
 {                                 // http://tools.ietf.org/html/rfc4566
-  const char* vline = "v=";       //sdp must start with session level with this marker
+  //const char* vline = "v=";       //sdp must start with session level with this marker
   const char* cline = "c=IN IP";  //contact can be at session level or media level or both, media level overrides session level
   const char* mline = "m=";
   const char* maudio = "m=audio"; //media level marker
@@ -319,7 +323,7 @@ void call::get_remote_media_addr(char *msg)
   const char* mappl  = "m=application";
   // todo, why do we care what type of media it is, why not generic code for any 'm' line?
   uint16_t video_port, audio_port,application_port;
-  char* endmsg = strstr(msg, "\r\n\r\n")+4;
+  //char* endmsg = strstr(msg, "\r\n\r\n")+4;
   char line[1000]; //while line in an sdp has no limit, total limit on sdp is 1000 bytes
   char* endline;
   char* msgptr = msg;   // keep track of where we are at within the msg
@@ -329,9 +333,9 @@ void call::get_remote_media_addr(char *msg)
   bool sess_media_is_IPV6=false;
   bool curr_media_is_IPV6=false;
   // counters for processing incoming SDP media lines.
-  int             media_audio_count=0;
-  int             media_video_count=0;
-  int             media_application_count=0;
+  unsigned int             media_audio_count=0;
+  unsigned int             media_video_count=0;
+  unsigned int             media_application_count=0;
   
   DEBUG_IN("msg =  %s",msg);
   msgptr = strstr(msg,cline);  //initial position on c line, m line cannot preceed c line.
@@ -362,7 +366,7 @@ void call::get_remote_media_addr(char *msg)
         // port to be set when we get to the 'm' line
       }
       DEBUG("setting dest ipv6 address to %s",
-        socket_to_ip_port_string(&to));
+        socket_to_ip_port_string(&to).c_str());
     }else { // ipv4
       sess_media_is_IPV6 = false;
       uint32_t ip_media = 0;
@@ -5579,7 +5583,7 @@ void call::free_dialogState()
 #ifdef PCAPPLAY
 // index is 1 based value that is used to determine where to put port information into 
 // one of the media play_args vectors
-void call::set_audio_from_port(int port,int index)
+void call::set_audio_from_port(int port,unsigned int index)
 {
   DEBUG("Setting audio port (stream %d) to %d ", index, port);
   play_args_t play_args;
@@ -5598,7 +5602,7 @@ void call::set_audio_from_port(int port,int index)
 
 }
 
-void call::set_video_from_port(int port, int index)
+void call::set_video_from_port(int port, unsigned int index)
 {
   DEBUG("Setting video port (stream %d) to %d", index, port);
   play_args_t play_args;
@@ -5616,7 +5620,7 @@ void call::set_video_from_port(int port, int index)
   }
 }
 
-void call::set_application_from_port(int port, int index)
+void call::set_application_from_port(int port, unsigned int index)
 {
   DEBUG("Setting application port (stream %d) to %d", index,  port);
   play_args_t play_args;

@@ -1454,9 +1454,6 @@ void scenario::parseAction(CActions *actions, int dialog_number)
   int           currentNbVarNames;
   char * ptr;
   int           sub_currentNbVarId;
-  int           media_audio_count =0;
-  int           media_video_count =0;
-  int           media_application_count=0;
 
 
   DEBUGIN();

@@ -203,9 +203,9 @@ private:
   vector<play_args_t> play_args_audio;
   vector<play_args_t> play_args_video;
   vector<play_args_t> play_args_application;
-  void set_audio_from_port(int port, int index=1);
-  void set_video_from_port(int port, int index=1);
-  void set_application_from_port(int port, int index=1);
+  void set_audio_from_port(int port, unsigned int index=1);
+  void set_video_from_port(int port, unsigned int index=1);
+  void set_application_from_port(int port, unsigned int index=1);
 
  // void set_audio_from_port(int port);
  // void set_video_from_port(int port);
