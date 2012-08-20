@@ -5212,6 +5212,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         int index = currentAction->getMediaIndex();
         play_args = &(this->play_args_audio[index-1]);
         media_type = string("Audio");
+        setMediaFromAddress(play_args);
         if (currentAction->getMediaPortOffset()) {
           this->set_audio_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
@@ -5221,9 +5222,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
         int index = currentAction->getMediaIndex();
-        
         play_args = &(this->play_args_video[index-1]);
         media_type = string("Video");
+        setMediaFromAddress(play_args);
         if (currentAction->getMediaPortOffset()) {
           this->set_video_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
@@ -5232,6 +5233,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         int index = currentAction->getMediaIndex();
         play_args = &(this->play_args_application[index-1]);
         media_type = string("Application");
+        setMediaFromAddress(play_args);
         if (currentAction->getMediaPortOffset()) {
           this->set_application_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
@@ -5588,7 +5590,7 @@ void call::set_audio_from_port(int port,unsigned int index)
   DEBUG("Setting audio port (stream %d) to %d ", index, port);
   play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
-  setMediaFromAddress(&play_args);
+  //setMediaFromAddress(&play_args);
   while (play_args_audio.size()<index){
     DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
       play_args_audio.size(), index-1);
@@ -5607,7 +5609,7 @@ void call::set_video_from_port(int port, unsigned int index)
   DEBUG("Setting video port (stream %d) to %d", index, port);
   play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
-  setMediaFromAddress(&play_args);
+  //setMediaFromAddress(&play_args);
   while (play_args_video.size()<index){
     DEBUG("play_args_video.size() = %d, adding one to set port in index %d",
       play_args_video.size(), index-1);
@@ -5625,7 +5627,7 @@ void call::set_application_from_port(int port, unsigned int index)
   DEBUG("Setting application port (stream %d) to %d", index,  port);
   play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
-  setMediaFromAddress(&play_args);
+  //setMediaFromAddress(&play_args);
 
   while (play_args_application.size()<index){
     DEBUG("play_args_application.size() = %d, adding one to set port in index %d",
