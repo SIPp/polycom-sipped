@@ -61,8 +61,8 @@ string socket_to_ip_string(struct sockaddr_storage *socket)
     wchar_t *error_msg = wsaerrorstr(error);
     char errorstring[1000];
     const char *errstring = wchar_to_char(error_msg,errorstring);
-    printf("getnameinfo error looking up ip for socket Error: %s\n",
-      errstring);
+    printf("getnameinfo error looking up ip for socket (AF= %d) Error: %s\n",
+      socket->ss_family, errstring);
   }
 #else
   if (inet_ntop(socket->ss_family, get_in_addr(socket), ip, sizeof(ip))==0){
@@ -91,8 +91,8 @@ string socket_to_ip_port_string(struct sockaddr_storage *socket)
     wchar_t *error_msg = wsaerrorstr(nameerror);
     char errorstring[1000];
     const char *errstring = wchar_to_char(error_msg,errorstring);
-    printf("getnameinfo error looking up ip for socket Error: %s\n",
-      errstring);
+    printf("getnameinfo error looking up ip for socket (AF=%d) Error: %s\n",
+      socket->ss_family, errstring);
   }
 #endif
   if (socket->ss_family == AF_INET6){

@@ -397,8 +397,8 @@ void call::get_remote_media_addr(char *msg)
     bool local_media_c_address=false;  // should we use a local c address of the session c address
     if (session_level_contact)
       curr_media_is_IPV6 = sess_media_is_IPV6;  // using session level contact 
-    char* next_mline = strstr(msgptr,mline);
-    char* next_cline = strstr(msgptr,cline);
+    char* next_mline = strstr(msgptr+strlen(line),mline);
+    char* next_cline = strstr(msgptr+strlen(line),cline);
     struct sockaddr_storage media_to;  // place to store media specific contact (if any)
     memset (&media_to,0,sizeof(sockaddr_storage));
     // set dest media address to session level contact if it exists
@@ -410,8 +410,9 @@ void call::get_remote_media_addr(char *msg)
     {
       char* end_next_cline = strstr(next_cline,"\n");
       char templine[1000];
+      memset(templine,0,1000);
       strncpy(templine,next_cline,end_next_cline - next_cline);
-      DEBUG("next c line = %s", templine);
+      DEBUG("Found Local contact c line = %s", templine);
       // a local ip address that should be used instead of session level address
       local_media_c_address=true;
         //todo: no longer checking that local_ip and media_ip have to both be same Address Family
@@ -430,7 +431,7 @@ void call::get_remote_media_addr(char *msg)
           (_RCAST(struct sockaddr_in6 *, &(media_to)))->sin6_addr = ip_media;
           // port to be set when we get to the 'm' line
         }
-
+        
       }else { // ipv4
         curr_media_is_IPV6 = false;
         uint32_t ip_media = 0;
@@ -443,6 +444,8 @@ void call::get_remote_media_addr(char *msg)
           // port to be set when we get to the 'm' line
         }//ipv4 found
       }//ipv4
+      DEBUG("Dest Address reset to local c  line address: %s",
+        socket_to_ip_string(&media_to).c_str());
     }// local media dest address is now set    
 
     // store appropriate values into the play_args vector
@@ -476,14 +479,14 @@ void call::get_remote_media_addr(char *msg)
       // this ensures that all play_args in vector have from address set, .
       media_video_count++;
       play_args_t play_args;
-      setMediaFromAddress(&play_args);
       memset(&play_args,0, sizeof(play_args_t));
+      setMediaFromAddress(&play_args);
       while (play_args_video.size()<media_video_count){
         DEBUG("play_args_video.size() = %d, adding one to set port in index %d",
           play_args_video.size(), media_video_count-1);
         play_args_video.push_back(play_args);
       }
-      memcpy(&(play_args_video[media_video_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+      memcpy(&((play_args_video[media_video_count-1]).to), &(m_play_arg.to),sizeof(sockaddr_storage));
       DEBUG("Video index %d dest set from %s to %s", media_video_count-1,
         socket_to_ip_port_string(&(play_args_video.at(media_video_count-1).from)).c_str(),
         socket_to_ip_port_string(&(play_args_video.at(media_video_count-1).to)).c_str() );
@@ -496,14 +499,14 @@ void call::get_remote_media_addr(char *msg)
         (_RCAST(struct sockaddr_in *, &(m_play_arg.to)))->sin_port = htons(application_port);
       media_application_count++;
       play_args_t play_args;
-      setMediaFromAddress(&play_args);
       memset(&play_args,0, sizeof(play_args_t));
+      setMediaFromAddress(&play_args);
       while (play_args_application.size()<media_application_count){
         DEBUG("play_args_application.size() = %d, adding one to set port in index %d",
           play_args_application.size(), media_application_count-1);
         play_args_application.push_back(play_args);
       }
-      memcpy(&(play_args_application[media_application_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+      memcpy(&((play_args_application[media_application_count-1]).to), &(m_play_arg.to),sizeof(sockaddr_storage));
       DEBUG("Application index %d dest set from %s  to %s", media_application_count-1,
         socket_to_ip_port_string(&(play_args_application.at(media_application_count-1).from)).c_str(),
         socket_to_ip_port_string(&(play_args_application.at(media_application_count-1).to)).c_str()  );
@@ -515,15 +518,16 @@ void call::get_remote_media_addr(char *msg)
       else
         (_RCAST(struct sockaddr_in *, &(m_play_arg.to)))->sin_port = htons(audio_port);
       media_audio_count++;
+      //local play_args just for initializing vector elements if needed.
       play_args_t play_args;
-      setMediaFromAddress(&play_args);
       memset(&play_args,0, sizeof(play_args_t));
+      setMediaFromAddress(&play_args);
       while (play_args_audio.size()<media_audio_count){
         DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
           play_args_audio.size(), media_audio_count-1);
         play_args_audio.push_back(play_args);
       }
-      memcpy(&(play_args_audio[media_audio_count-1].to), &(m_play_arg.to),sizeof(sockaddr_storage));
+      memcpy(&((play_args_audio[media_audio_count-1]).to), &(m_play_arg.to),sizeof(sockaddr_storage));
       DEBUG("Audio index %d dest set from %s  to %s", media_audio_count-1,
         socket_to_ip_port_string(&(play_args_audio.at(media_audio_count-1).from)).c_str(),
         socket_to_ip_port_string(&(play_args_audio.at(media_audio_count-1).to)).c_str()  );
@@ -5590,7 +5594,7 @@ void call::set_audio_from_port(int port,unsigned int index)
   DEBUG("Setting audio port (stream %d) to %d ", index, port);
   play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
-  //setMediaFromAddress(&play_args);
+  setMediaFromAddress(&play_args);
   while (play_args_audio.size()<index){
     DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
       play_args_audio.size(), index-1);
@@ -5609,7 +5613,7 @@ void call::set_video_from_port(int port, unsigned int index)
   DEBUG("Setting video port (stream %d) to %d", index, port);
   play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
-  //setMediaFromAddress(&play_args);
+  setMediaFromAddress(&play_args);
   while (play_args_video.size()<index){
     DEBUG("play_args_video.size() = %d, adding one to set port in index %d",
       play_args_video.size(), index-1);
@@ -5627,7 +5631,7 @@ void call::set_application_from_port(int port, unsigned int index)
   DEBUG("Setting application port (stream %d) to %d", index,  port);
   play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
-  //setMediaFromAddress(&play_args);
+  setMediaFromAddress(&play_args);
 
   while (play_args_application.size()<index){
     DEBUG("play_args_application.size() = %d, adding one to set port in index %d",

@@ -4,11 +4,14 @@ $Date$
 $Id$ 
 $Revision$
 
+
 3.2.63
 - support multiple media streams found in sdp and playback
 - use index attribute in play_pcap_audio, play_pcap_video
 - add play_pcap_application category for media streams
 - add support for 'application' media stream (UDP/BFCP)
+- added ability to handle a media specific contact line "c=", overrides 
+the session wide contact line (if any).
 
 3.2.62.BETA
 - fix error reporting for win32 from send_packets to use WSA instead
