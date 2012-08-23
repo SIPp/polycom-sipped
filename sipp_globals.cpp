@@ -84,8 +84,11 @@ unsigned int       global_t2               = DEFAULT_T2_TIMER_VALUE;
 unsigned int       auto_answer_expires     = DEFAULT_AUTO_ANSWER_EXPIRES;
 
 char               local_ip[40];
+char               local_ip2[40];
 char               local_ip_escaped[42];
+char               local_ip2_escaped[42];
 bool               local_ip_is_ipv6        = false;
+bool               local_ip2_is_ipv6        = false;
 int                local_port              = 0;
 char               control_ip[40];
 int                control_port            = 0;

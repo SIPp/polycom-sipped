@@ -4,6 +4,11 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.64
+- introduce support for -i2 command line parameter [local_ip2]
+- fix handling of media specific contact line to allow for ipv6 independant
+of local_ip
+
 
 3.2.63
 - support multiple media streams found in sdp and playback

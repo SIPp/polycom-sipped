@@ -51,7 +51,9 @@ typedef enum {
   E_Message_Remote_Port,
   E_Message_Transport,
   E_Message_Local_IP,
+  E_Message_Local_IP2,
   E_Message_Local_IP_Type,
+  E_Message_Local_IP2_Type,
   E_Message_Local_Port,
   E_Message_Server_IP,
   E_Message_Media_IP,
@@ -106,6 +108,7 @@ typedef enum {
   E_Message_Custom,
   E_Message_Remote_IP_noesc,
   E_Message_Local_IP_noesc,
+  E_Message_Local_IP2_noesc,
   E_Message_Server_IP_noesc,
   E_Message_Media_IP_noesc,
 } MessageCompType;

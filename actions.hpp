@@ -129,6 +129,7 @@ public:
   pcap_pkts     *getPcapPkts(); /* send_packets specific function */
   int           getMediaPortOffset(); /* send_packets specific function */
   int           getMediaIndex();   /* media specific index number, eg 1st application media stream in sdp */
+  int           getSourceIP();
 #endif
 
   void setActionType   (T_ActionType   P_value);
@@ -155,6 +156,7 @@ public:
   void setPcapArgs     (pcap_pkts   *  P_value);  /* send_packets specific function */
   void setMediaPortOffset (int offset);           /* send_packets specific function */
   void setMediaIndex   (int            index);  /* media specific index number, eg 2nd video stream in sdp */
+  void setSourceIP     (int            index);
 #endif
 
   void setSubVarId     (int P_value);
@@ -210,7 +212,11 @@ private:
   pcap_pkts  *   M_pcapArgs;
   /* offset from a exec pcap play command */
   int            M_mediaPortOffset;
+  /* pcap_play attribute to control mapping of which sdp entry for dest port */
   int            M_mediaIndex;
+  /* pcap_play_attribute to control which source media is sent from 
+      1= local_ip, 2 = local_ip2 defined by -i and -i2 command line args */
+  int            M_sourceIP;
 #endif
   void setSubString(char** P_target, char* P_source, int P_start, int P_stop);
 };

@@ -179,7 +179,8 @@ send_packets (play_args_t * play_args)
 
   DEBUGIN();
 
-  if (media_ip_is_ipv6) {
+  if ( (play_args->from.ss_family == play_args->to.ss_family) && 
+       (play_args->from.ss_family == AF_INET6)) {
     sock = socket(PF_INET6, SOCK_DGRAM, 0);
     if (sock < 0) {
       REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
@@ -208,8 +209,8 @@ send_packets (play_args_t * play_args)
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt, sizeof (sock_opt)) == -1) {
     REPORT_ERROR_NO("setsockopt(sock, SO_REUSEADDR) failed");
   }
-
-  if (!media_ip_is_ipv6) {
+  if (!( (play_args->from.ss_family == play_args->to.ss_family) && 
+       (play_args->from.ss_family == AF_INET6))) {
     if (bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in)) < 0) {
       char ip[INET_ADDRSTRLEN];
 
@@ -219,9 +220,17 @@ send_packets (play_args_t * play_args)
   } else {
     if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0) {
       char ip[INET6_ADDRSTRLEN];
-
+#ifdef WIN32
+      ERRORNUMBER = WSAGetLastError();
+      wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+      char errorstring[1000];
+      const char *errstring = wchar_to_char(error_msg,errorstring);
+      WARNING("send_packets.c: bind to %s failed with error: %s (sock = %d)", 
+        socket_to_ip_port_string(from).c_str() ,errstring, sock);
+#else
       inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) from)->sin6_addr), ip, INET_ADDRSTRLEN);
       REPORT_ERROR_NO("Could not bind socket to send RTP traffic %s:%hu", ip, ntohs(((struct sockaddr_in6 *)from )->sin6_port));
+#endif
     }
   }
 
@@ -240,7 +249,8 @@ send_packets (play_args_t * play_args)
   pkt_index = pkts->pkts;
   pkt_max = pkts->max;
 
-  if (media_ip_is_ipv6) {
+  if ( (play_args->from.ss_family == play_args->to.ss_family) && 
+       (play_args->from.ss_family == AF_INET6)) {
     memset(&to6, 0, sizeof(to6));
     memset(&from6, 0, sizeof(from6));
     to6.sin6_family = AF_INET6;
@@ -269,7 +279,8 @@ send_packets (play_args_t * play_args)
       ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
     }
 #else
-    if (!media_ip_is_ipv6) {
+    if (!( (play_args->from.ss_family == play_args->to.ss_family) && 
+       (play_args->from.ss_family == AF_INET6))) {
       ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
     } else {
       ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));

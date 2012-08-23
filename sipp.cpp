@@ -122,7 +122,7 @@ struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket 
 
 void set_sipp_version_string(){
   memset(sipp_version,0,SIPPVERSSIZE);
-  sprintf(sipp_version,"SIPped v3.2.63"
+  sprintf(sipp_version,"SIPped v3.2.64"
 #ifdef WIN32
                "-W32"
 #endif
@@ -190,6 +190,7 @@ struct sipp_option {
 #define SIPP_OPTION_LFOVERWRITE   37
 #define SIPP_OPTION_PLUGIN        38
 #define SIPP_OPTION_NO_CALL_ID_CHECK 39
+#define SIPP_OPTION_IP2            40
 
 #define MAX_CMD_CHARS 256
 
@@ -252,6 +253,7 @@ struct sipp_option options_table[] = {
   {"help", NULL, SIPP_OPTION_HELP, NULL, 0},
 
   {"i", "Set the local IP address for 'Contact:','Via:', and 'From:' headers. Default is primary host IP address.\n", SIPP_OPTION_IP, local_ip, 1},
+  {"i2", "Set the secondary local IP address \n", SIPP_OPTION_IP, local_ip2, 1},
   {
     "inf", "Inject values from an external CSV file during calls into the scenarios.\n"
     "First line of this file say whether the data is to be read in sequence (SEQUENTIAL), random (RANDOM), or user (USER) order.\n"
@@ -2537,6 +2539,7 @@ int main(int argc, char *argv[])
 
   pid = getpid();
   memset(local_ip, 0, 40);
+  memset(local_ip2, 0, 40);
   memset(media_ip,0, 40);
   memset(control_ip,0, 40);
   memset(media_ip_escaped,0, 42);

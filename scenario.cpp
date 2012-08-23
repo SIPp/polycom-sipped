@@ -1727,12 +1727,16 @@ void scenario::parseAction(CActions *actions, int dialog_number)
         //set "from port" if explictly being requested to do so
         if((ptr = xp_get_value("media_port_offset")))
           parseMediaPortOffset(ptr, tmpAction);
-
         //set index to determine "to port" in executeAction
         if ((ptr = xp_get_value("index")))
           tmpAction->setMediaIndex(atoi(ptr));
         else
           tmpAction->setMediaIndex(1);
+        if ((ptr = xp_get_value("source_ip")))
+          tmpAction->setSourceIP(atoi(ptr));
+        else
+          tmpAction->setSourceIP(1);
+
         //flag for executeAction
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_AUDIO);
         hasMedia = 1;
@@ -1750,6 +1754,11 @@ void scenario::parseAction(CActions *actions, int dialog_number)
           tmpAction->setMediaIndex(atoi(ptr));
         else
           tmpAction->setMediaIndex(1);
+        if ((ptr = xp_get_value("source_ip")))
+          tmpAction->setSourceIP(atoi(ptr));
+        else
+          tmpAction->setSourceIP(1);
+
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
         hasMedia = 1;
       } else if ((ptr = xp_get_value((char *) "play_pcap_application"))) {
@@ -1766,6 +1775,11 @@ void scenario::parseAction(CActions *actions, int dialog_number)
           tmpAction->setMediaIndex(atoi(ptr));
         else
           tmpAction->setMediaIndex(1);
+        if ((ptr = xp_get_value("source_ip")))
+          tmpAction->setSourceIP(atoi(ptr));
+        else
+          tmpAction->setSourceIP(1);
+
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_APPLICATION);
         hasMedia = 1;
 #else

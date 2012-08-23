@@ -65,6 +65,7 @@ kw_map keyword_map;
 struct KeywordMap IP_Keywords[] = {
   {"remote_ip", E_Message_Remote_IP },
   {"local_ip", E_Message_Local_IP },
+  {"local_ip2", E_Message_Local_IP2 },
   {"server_ip", E_Message_Server_IP },
   {"media_ip", E_Message_Media_IP }
 };
@@ -77,6 +78,7 @@ struct KeywordMap SimpleKeywords[] = {
   {"transport", E_Message_Transport },
 
   {"local_ip_type", E_Message_Local_IP_Type },
+  {"local_ip2_type", E_Message_Local_IP2_Type },
   {"local_port", E_Message_Local_Port },
 
 #ifdef PCAPPLAY
@@ -313,6 +315,9 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
                 break;
               case (E_Message_Local_IP):
                 newcomp->type = E_Message_Local_IP_noesc;
+                break;
+              case (E_Message_Local_IP2):
+                newcomp->type = E_Message_Local_IP2_noesc;
                 break;
               case (E_Message_Server_IP):
                 newcomp->type = E_Message_Server_IP_noesc;

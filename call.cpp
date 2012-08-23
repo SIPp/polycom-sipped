@@ -415,9 +415,6 @@ void call::get_remote_media_addr(char *msg)
       DEBUG("Found Local contact c line = %s", templine);
       // a local ip address that should be used instead of session level address
       local_media_c_address=true;
-        //todo: no longer checking that local_ip and media_ip have to both be same Address Family
-        //  need to look at implementation to ensure this is handled correctly in rest of code
-        //  to allow ipv6 streams from ipv4 hosts and vice versa...esp getting localhost source address right
       if (next_cline[strlen(cline)]=='6'){
         curr_media_is_IPV6 = true;
         struct in6_addr ip_media;
@@ -431,7 +428,6 @@ void call::get_remote_media_addr(char *msg)
           (_RCAST(struct sockaddr_in6 *, &(media_to)))->sin6_addr = ip_media;
           // port to be set when we get to the 'm' line
         }
-        
       }else { // ipv4
         curr_media_is_IPV6 = false;
         uint32_t ip_media = 0;
@@ -2748,6 +2744,12 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     case E_Message_Local_IP_noesc:
       dest += snprintf(dest, left, "%s", local_ip);
       break;
+    case E_Message_Local_IP2:
+      dest += snprintf(dest, left, "%s", local_ip2_escaped);
+      break;
+    case E_Message_Local_IP2_noesc:
+      dest += snprintf(dest, left, "%s", local_ip2);
+      break;
     case E_Message_Local_Port:
       int port;
       if((transport == T_UDP) && (multisocket) && (sendMode != MODE_SERVER)) {
@@ -2763,6 +2765,10 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     case E_Message_Local_IP_Type:
       DEBUG("local_ip_is_ipv6 = ", local_ip_is_ipv6);
       dest += snprintf(dest, left, "%s", (local_ip_is_ipv6 ? "6" : "4"));
+      break;
+    case E_Message_Local_IP2_Type:
+      DEBUG("local_ip2_is_ipv6 = ", local_ip2_is_ipv6);
+      dest += snprintf(dest, left, "%s", (local_ip2_is_ipv6 ? "6" : "4"));
       break;
     case E_Message_Server_IP:
     case E_Message_Server_IP_noesc: {
@@ -5220,6 +5226,19 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (currentAction->getMediaPortOffset()) {
           this->set_audio_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
+        if( currentAction->getSourceIP()==2){
+          // replace from ip address with local_ip2,  the -i2 parameter value
+          if (local_ip2_is_ipv6){
+            play_args->from.ss_family=AF_INET6;
+            struct in6_addr * address = &(((sockaddr_in6*)(&play_args->from))->sin6_addr) ;
+            inet_pton(AF_INET6, local_ip2, address);
+          }else {
+            play_args->from.ss_family=AF_INET;
+            struct in_addr* address = &(((sockaddr_in*)(&play_args->from))->sin_addr) ;
+            inet_pton(AF_INET, local_ip2, address);
+          }
+          DEBUG("Reset 'From' address: %s", socket_to_ip_port_string(&play_args->from).c_str());
+        };
         DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
           media_type.c_str(), index, play_args_audio.size(),
           media_port + currentAction->getMediaPortOffset());
@@ -5261,15 +5280,17 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       }
       play_args->pcap = currentAction->getPcapPkts();
       /* port number is set in [auto_]media_port interpolation*/
-      if (media_ip_is_ipv6) {
-        struct sockaddr_in6 *from = (struct sockaddr_in6 *)(void *) &(play_args->from);
-        from->sin6_family = AF_INET6;
-        inet_pton(AF_INET6, media_ip, &(from->sin6_addr));
-      } else {
-        struct sockaddr_in *from = (struct sockaddr_in *)(void *) &(play_args->from);
-        from->sin_family = AF_INET;
-        from->sin_addr.s_addr = inet_addr(media_ip);
-      }
+//from address is now set on initialization of play_args and overridden
+// by other from addess features before it gets here
+      //if ((media_ip_is_ipv6)||(play_args->from.ss_family==AF_INET6)) {
+      //  struct sockaddr_in6 *from = (struct sockaddr_in6 *)(void *) &(play_args->from);
+      //  from->sin6_family = AF_INET6;
+      //  inet_pton(AF_INET6, media_ip, &(from->sin6_addr));
+      //} else {
+      //  struct sockaddr_in *from = (struct sockaddr_in *)(void *) &(play_args->from);
+      //  from->sin_family = AF_INET;
+      //  from->sin_addr.s_addr = inet_addr(media_ip);
+      //}
       /* Create a thread to send RTP packets */
       pthread_attr_t attr;
       pthread_attr_init(&attr);

@@ -261,8 +261,12 @@ int            CAction::getMediaIndex()
 {
   return(M_mediaIndex);
 }
-#endif
 
+int            CAction::getSourceIP()
+{
+  return(M_sourceIP);
+}
+#endif
 
 void CAction::setActionType   (CAction::T_ActionType   P_value)
 {
@@ -513,6 +517,11 @@ void CAction::setMediaIndex(int index)
 {
   M_mediaIndex = index;
 }
+void CAction::setSourceIP(int index)
+{
+  M_sourceIP = index;
+}
+
 #endif
 
 

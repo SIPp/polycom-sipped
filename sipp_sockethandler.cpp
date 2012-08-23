@@ -662,16 +662,29 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
   char ip_and_port[INET6_ADDRSTRLEN+10];
   DEBUGIN();
 
+  const char* res;
   if (socket->ss_ipv6) {
     len = sizeof(struct sockaddr_in6);
     char ip[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) saddr)->sin6_addr), ip, INET_ADDRSTRLEN);
-    sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in6 *)saddr )->sin6_port));
+    res = inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) saddr)->sin6_addr), ip, INET_ADDRSTRLEN);
+    if (res!=0) sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in6 *)saddr )->sin6_port));
   } else {
     len = sizeof(struct sockaddr_in);
     char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(((struct sockaddr_in *) saddr)->sin_addr), ip, INET_ADDRSTRLEN);
-    sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in *) saddr)->sin_port));
+    res = inet_ntop(AF_INET, &(((struct sockaddr_in *) saddr)->sin_addr), ip, INET_ADDRSTRLEN);
+    if (res!=0) sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in *) saddr)->sin_port));
+  }
+
+  if(res==0){
+#ifdef WIN32
+      ERRORNUMBER = WSAGetLastError();
+      wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+      char errorstring[1000];
+      const char *errstring = wchar_to_char(error_msg,errorstring);
+      WARNING("inet_ntop failed for AF = %d, error: %s", saddr->ss_family, errorstring);
+#else
+    perror("inet_ntop");
+#endif
   }
 
   if((ret = bind(socket->ss_fd, (sockaddr *)saddr, len))) {
@@ -1076,7 +1089,6 @@ void determine_local_ip()
                _RCAST(struct sockaddr_storage *,local_addr->ai_addr)));
     }
     freeaddrinfo(local_addr);
-
     if (local_sockaddr.ss_family == AF_INET6) {
       local_ip_is_ipv6 = true;
       sprintf(local_ip_escaped, "[%s]", local_ip);
@@ -1085,6 +1097,30 @@ void determine_local_ip()
       strcpy(local_ip_escaped, local_ip);
     }
   }
+
+  //i2 is to be used for media streaming as an alternate 'from address'
+  //  we will not be using as sip traffic port, 
+  struct addrinfo   hints;
+  struct addrinfo * local_addr;
+  if (strlen(local_ip2)!=0){
+    memset((char*)&hints, 0, sizeof(hints));
+    hints.ai_flags  = AI_PASSIVE;
+    hints.ai_family = PF_UNSPEC;
+     /* Resolving local IP2 */
+    if (getaddrinfo(local_ip2, NULL, &hints, &local_addr) != 0) {
+      REPORT_ERROR("Can't get local_ip2 address in getaddrinfo, local_ip='%s'",
+                   local_ip2);
+    }
+    if (local_addr->ai_addr->sa_family==AF_INET6) {
+      local_ip2_is_ipv6 = true;
+      sprintf(local_ip2_escaped, "[%s]", local_ip2);
+    }else{
+      local_ip2_is_ipv6 = false;
+      strcpy(local_ip2_escaped, local_ip2);
+    }
+    freeaddrinfo(local_addr);
+  }
+
 } // determine_local_ip
 
 void determine_remote_and_local_ip()
