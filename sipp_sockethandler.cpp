@@ -1472,6 +1472,21 @@ int open_connections()
     if((tcp_multiplex = new_sipp_socket(local_ip_is_ipv6, transport)) == NULL) {
       REPORT_ERROR_NO("Unable to get a TCP socket");
     }
+    // on a host with multiple ip addresses, we want to originate from ip address 
+    // specified by -i in command line (local_ip) so bind to the local address/port before 
+    // connecting to remote host 
+    sockaddr_storage tcp_ss;
+    memcpy(&tcp_ss,&local_sockaddr,sizeof(sockaddr_storage));
+    unsigned short  tcp_port = 5060;
+    if (user_port != 0)
+      tcp_port = (unsigned short) user_port;
+    ((sockaddr_in*)(&tcp_ss))->sin_port=htons(tcp_port);
+    if(sipp_bind_socket(tcp_multiplex, &local_sockaddr,(int*) &tcp_port) == 0) {
+       REPORT_ERROR_NO("Unable to BIND a TCP socket, %s",
+         socket_to_ip_port_string(&tcp_ss));
+    }
+
+
 
     /* OJA FIXME: is it correct? */
     if (use_remote_sending_addr) {

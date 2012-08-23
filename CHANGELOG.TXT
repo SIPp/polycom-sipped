@@ -4,6 +4,12 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.65
+- for client mode, originating ip address was from host default regardless
+of -i value.  Bind to local_ip and user_port (or 5060 if not defined) before 
+initiating tcp connect to enforce origination ip address = local_ip.
+
+
 3.2.64
 - introduce support for -i2 command line parameter [local_ip2]
 - fix handling of media specific contact line to allow for ipv6 independant
