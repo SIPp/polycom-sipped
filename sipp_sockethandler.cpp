@@ -1067,10 +1067,23 @@ void determine_local_ip()
     hints.ai_family = PF_UNSPEC;
 
     /* Resolving local IP */
-    if (getaddrinfo(local_host, NULL, &hints, &local_addr) != 0) {
-      REPORT_ERROR("Can't get local IP address in getaddrinfo, local_host='%s', local_ip='%s'",
+    int rv;
+    if ((rv=getaddrinfo(local_host, NULL, &hints, &local_addr)) != 0) {
+#ifdef WIN32
+      int error = WSAGetLastError();
+      wchar_t *error_msg = wsaerrorstr(error);
+      char errorstring[1000];
+      const char *errstring = wchar_to_char(error_msg,errorstring);
+      REPORT_ERROR("Can't get local IP address in getaddrinfo, local_host='%s', local_ip='%s', error: %s",
                    local_host,
-                   local_ip);
+                   local_ip,
+                   errstring);
+#else
+      REPORT_ERROR("Can't get local IP address in getaddrinfo, local_host='%s', local_ip='%s', error: %s",
+                   local_host,
+                   local_ip,
+                   gai_strerror(rv));
+#endif
     }
     // store local addr info for rsa option
     getaddrinfo(local_host, NULL, &hints, &local_addr_storage);
@@ -1098,8 +1111,9 @@ void determine_local_ip()
     }
   }
 
-  //i2 is to be used for media streaming as an alternate 'from address'
-  //  we will not be using as sip traffic port, 
+  //i2=[local_ip2] is to be used for media streaming as an alternate 'from address'
+  //  we will not be using as sip traffic port. Initialize here along
+  //  with local_ip2_escapted and local_ip2_is_ipv6
   struct addrinfo   hints;
   struct addrinfo * local_addr;
   if (strlen(local_ip2)!=0){
@@ -1476,16 +1490,19 @@ int open_connections()
     // specified by -i in command line (local_ip) so bind to the local address/port before 
     // connecting to remote host 
     sockaddr_storage tcp_ss;
-    memcpy(&tcp_ss,&local_sockaddr,sizeof(sockaddr_storage));
-    unsigned short  tcp_port = 5060;
-    if (user_port != 0)
-      tcp_port = (unsigned short) user_port;
-    ((sockaddr_in*)(&tcp_ss))->sin_port=htons(tcp_port);
-    if(sipp_bind_socket(tcp_multiplex, &local_sockaddr,(int*) &tcp_port) == 0) {
+    memcpy(&tcp_ss,&local_sockaddr, sizeof(sockaddr_storage));
+    // set the port to zero - allow system to choose any random port
+    int tcp_port = 0;
+    if (tcp_ss.ss_family==AF_INET6){
+      ((sockaddr_in6*)(&tcp_ss))->sin6_port=htons(tcp_port);
+    }else{
+      ((sockaddr_in*)(&tcp_ss))->sin_port=htons(tcp_port);
+    }
+    DEBUG("binding to %s", socket_to_ip_port_string(&tcp_ss).c_str());
+    if(sipp_bind_socket(tcp_multiplex, &tcp_ss,(int*) &tcp_port) ) {
        REPORT_ERROR_NO("Unable to BIND a TCP socket, %s",
          socket_to_ip_port_string(&tcp_ss));
     }
-
 
 
     /* OJA FIXME: is it correct? */

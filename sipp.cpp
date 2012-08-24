@@ -122,7 +122,7 @@ struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket 
 
 void set_sipp_version_string(){
   memset(sipp_version,0,SIPPVERSSIZE);
-  sprintf(sipp_version,"SIPped v3.2.65"
+  sprintf(sipp_version,"SIPped v3.2.66"
 #ifdef WIN32
                "-W32"
 #endif
@@ -133,7 +133,7 @@ void set_sipp_version_string(){
                "-PCAP"
 #endif
                ", version %s, built %s, %s.",
-               SIPP_VERSION, __DATE__, __TIME__);
+               CREATESTRING($Revision$), __DATE__, __TIME__);
 }
 
 

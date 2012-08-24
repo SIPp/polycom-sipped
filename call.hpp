@@ -145,8 +145,6 @@ private:
   bool loose_message_sequence;
   unsigned int get_last_insequence_received_message(int search_from_msg_index);
 
-
-
 public:
   static   int   maxDynamicId;    // max value for dynamicId; this value is reached !
   static   int   startDynamicId;  // offset for first dynamicId  FIXME:in CmdLine
@@ -206,9 +204,8 @@ private:
   void set_audio_from_port(int port, unsigned int index=1);
   void set_video_from_port(int port, unsigned int index=1);
   void set_application_from_port(int port, unsigned int index=1);
-
- // void set_audio_from_port(int port);
- // void set_video_from_port(int port);
+  void setSrcIP_to_local_ip2(play_args_t* play_args);
+  void setSrcIP_autopick(play_args_t* play_args);
 #endif
 
 

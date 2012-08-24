@@ -4697,6 +4697,103 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
   return candidate_index;
 }
 
+
+void call::setSrcIP_to_local_ip2(play_args_t* play_args){
+  // replace from ip address with local_ip2,  the -i2 parameter value
+  if (local_ip2_is_ipv6){
+    play_args->from.ss_family=AF_INET6;
+    struct in6_addr * address = &(((sockaddr_in6*)(&play_args->from))->sin6_addr) ;
+    inet_pton(AF_INET6, local_ip2, address);
+  }else {
+    play_args->from.ss_family=AF_INET;
+    struct in_addr* address = &(((sockaddr_in*)(&play_args->from))->sin_addr) ;
+    inet_pton(AF_INET, local_ip2, address);
+  }
+  DEBUG("Reset 'From' address: %s", socket_to_ip_port_string(&play_args->from).c_str());
+}
+
+
+void call::setSrcIP_autopick(play_args_t* play_args){
+  // replace from ip address with any local ip that will work
+  struct addrinfo   hints, *result, *p;
+  memset(&hints,0,sizeof(addrinfo));
+  hints.ai_flags = AI_PASSIVE;
+  hints.ai_socktype = SOCK_DGRAM;  // only supporting udp for media at this time.
+  hints.ai_family = play_args->to.ss_family;
+  int rv;
+  const int namesize = 1024;
+  char hostname[namesize];
+  SOCKREF sockfd;
+  if((rv = gethostname(hostname,namesize))!=0){
+#ifdef WIN32
+    int error = WSAGetLastError();
+    wchar_t *error_msg = wsaerrorstr(error);
+    char errorstring[1000];
+    const char *errstring = wchar_to_char(error_msg,errorstring);
+    WARNING("Can't get hostname for autopick of ip address");
+#endif
+  }
+  
+  if ((rv=getaddrinfo(hostname, NULL, &hints, &result)) != 0){
+#ifdef WIN32
+    int error = WSAGetLastError();
+    wchar_t *error_msg = wsaerrorstr(error);
+    char errorstring[1000];
+    const char *errstring = wchar_to_char(error_msg,errorstring);
+    WARNING("Can't get local IP address in getaddrinfo, hostname ='%s', error: %s",
+                 hostname, errstring);
+#else
+    WARNING("getaddrinfo failed for hostname = %s: %s", hostname, gai_strerror(rv));
+#endif
+  }
+
+  for (p=result; p!=NULL; p=result->ai_next){
+    if((sockfd = socket(p->ai_family, p->ai_socktype,p->ai_protocol)) == INVALID_SOCKET){
+      DEBUG ("media ip src autopick tried failed with %s", 
+        socket_to_ip_port_string((sockaddr_storage*)(p->ai_addr)).c_str());
+#ifdef WIN32
+      int error = WSAGetLastError();
+      wchar_t *error_msg = wsaerrorstr(error);
+      char errorstring[1000];
+      const char *errstring = wchar_to_char(error_msg,errorstring);
+      WARNING("socket failed, error: %s", errstring);
+#else
+      perror("socket");
+#endif
+      DEBUG("failed to create socket for: %s",
+        socket_to_ip_port_string((sockaddr_storage*)(p->ai_addr)).c_str());
+      continue;  
+    }
+    
+    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1){
+      CLOSESOCKET(sockfd);
+#ifdef WIN32
+      int error = WSAGetLastError();
+      wchar_t *error_msg = wsaerrorstr(error);
+      char errorstring[1000];
+      const char *errstring = wchar_to_char(error_msg,errorstring);
+      WARNING("bind failed, error: %s", errstring);
+#else
+      perror("bind");
+#endif
+     DEBUG("failed to bind socket for: %s",
+        socket_to_ip_port_string((sockaddr_storage*)(p->ai_addr)).c_str());
+      continue;
+    }
+    DEBUG("Successul bind to socket for: %s",
+        socket_to_ip_port_string((sockaddr_storage*)(p->ai_addr)).c_str());
+    CLOSESOCKET(sockfd);
+    break; // successfully created socket and bound to it
+  }//for loop
+
+  if (p == NULL){
+    DEBUG("No address could be found to use for media source that matches dest requirements");
+  }else{
+    memcpy(&(play_args->from),p->ai_addr,p->ai_addrlen);
+    DEBUG("Reset 'From' address: %s", socket_to_ip_port_string(&play_args->from).c_str());
+  }
+}
+
 call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 {
   CActions*  actions;
@@ -5227,18 +5324,10 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
           this->set_audio_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
         if( currentAction->getSourceIP()==2){
-          // replace from ip address with local_ip2,  the -i2 parameter value
-          if (local_ip2_is_ipv6){
-            play_args->from.ss_family=AF_INET6;
-            struct in6_addr * address = &(((sockaddr_in6*)(&play_args->from))->sin6_addr) ;
-            inet_pton(AF_INET6, local_ip2, address);
-          }else {
-            play_args->from.ss_family=AF_INET;
-            struct in_addr* address = &(((sockaddr_in*)(&play_args->from))->sin_addr) ;
-            inet_pton(AF_INET, local_ip2, address);
-          }
-          DEBUG("Reset 'From' address: %s", socket_to_ip_port_string(&play_args->from).c_str());
-        };
+          setSrcIP_to_local_ip2(play_args);
+        }else if (currentAction->getSourceIP()==0){
+          setSrcIP_autopick(play_args);
+        }
         DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
           media_type.c_str(), index, play_args_audio.size(),
           media_port + currentAction->getMediaPortOffset());
@@ -5251,6 +5340,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (currentAction->getMediaPortOffset()) {
           this->set_video_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
+        if( currentAction->getSourceIP()==2){
+          setSrcIP_to_local_ip2(play_args);
+        };
+        DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
+          media_type.c_str(), index, play_args_video.size(),
+          media_port + currentAction->getMediaPortOffset());
       }else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_APPLICATION) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_APPLICATION");
         int index = currentAction->getMediaIndex();
@@ -5260,6 +5355,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         if (currentAction->getMediaPortOffset()) {
           this->set_application_from_port(media_port + currentAction->getMediaPortOffset(),index);
         }
+        if( currentAction->getSourceIP()==2){
+          setSrcIP_to_local_ip2(play_args);
+        };
+        DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
+          media_type.c_str(), index, play_args_application.size(),
+          media_port + currentAction->getMediaPortOffset());
       }
       DEBUG ("dest afamily = %d", play_args->to.ss_family);
       DEBUG ("src afamily = %d", play_args->from.ss_family);
@@ -5280,17 +5381,8 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       }
       play_args->pcap = currentAction->getPcapPkts();
       /* port number is set in [auto_]media_port interpolation*/
-//from address is now set on initialization of play_args and overridden
-// by other from addess features before it gets here
-      //if ((media_ip_is_ipv6)||(play_args->from.ss_family==AF_INET6)) {
-      //  struct sockaddr_in6 *from = (struct sockaddr_in6 *)(void *) &(play_args->from);
-      //  from->sin6_family = AF_INET6;
-      //  inet_pton(AF_INET6, media_ip, &(from->sin6_addr));
-      //} else {
-      //  struct sockaddr_in *from = (struct sockaddr_in *)(void *) &(play_args->from);
-      //  from->sin_family = AF_INET;
-      //  from->sin_addr.s_addr = inet_addr(media_ip);
-      //}
+      // play_args->from address is set on initialization of play_args and overridden as required
+
       /* Create a thread to send RTP packets */
       pthread_attr_t attr;
       pthread_attr_init(&attr);

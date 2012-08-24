@@ -4,8 +4,20 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.66
+- expand support for pcap_play source_ip attribute to pcap playback of 
+video and application in addtion to audio
+- introduce support for source_ip="0" to trigger auto selection of source ip
+from any ip address in same address family as target that we are able to bind to.
+- attempt to get svn revision number in to sipp version
+- additional socket error reporting
+- fix tcp client mode orig ip address, port colliding with 
+main_socket port.  use port 0 and allow system to choose random. 
+
+
+
 3.2.65
-- for client mode, originating ip address was from host default regardless
+- for tcp client mode, originating ip address was from host default regardless
 of -i value.  Bind to local_ip and user_port (or 5060 if not defined) before 
 initiating tcp connect to enforce origination ip address = local_ip.
 
