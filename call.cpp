@@ -262,9 +262,23 @@ uint8_t get_remote_ipv6_media(char *msg, struct in6_addr *addr)
   if (!end)
     return 0;
   strncpy(ip, begin, end - begin);
-  if (!inet_pton(AF_INET6, ip, addr)) {
-    return 0;
-  }
+  int rc = inet_pton(AF_INET6, ip, addr);
+//  BUG in windows code??  inet_pton returns 0 on success (should return 1)
+  // appears to be ipv6 specific
+  // wsagetlasterror shows as operation succeeded, 
+//  if (rc==0) {
+//#ifdef WIN32
+//    ERRORNUMBER = WSAGetLastError();
+//    wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
+//    char errorstring[1000];
+//    const char *errstring = wchar_to_char(error_msg,errorstring);
+//    WARNING("get_remote_ipv6_media inet_pton failure: %s failed with error: %s )", 
+//      ip ,errstring);
+//#else
+//    perror("inet_pton");
+//#endif
+//    return 0;
+//  }
   return 1;
 }
 
