@@ -567,6 +567,19 @@ int sipp_do_connect_socket(struct sipp_socket *socket)
   DEBUG("Calling connect()");
   ret = connect(socket->ss_fd, (struct sockaddr *)&socket->ss_dest, SOCK_ADDR_SIZE(&socket->ss_dest));
   if (ret < 0) {
+    DEBUG("sockfd = %d, AF=%d dest = %s", socket->ss_fd,
+      socket->ss_dest.ss_family,
+      socket_to_ip_port_string((struct sockaddr_storage *)&socket->ss_dest).c_str());
+#ifdef WIN32
+    int error = WSAGetLastError();
+    wchar_t *error_msg = wsaerrorstr(error);
+    char errorstring[1000];
+    const char *errstring = wchar_to_char(error_msg,errorstring);
+    WARNING("connect error: %s\n", errstring);
+#else
+    WARNING("connect error: %s\n", strerror(errno));
+#endif
+
     return ret;
   }
 
@@ -1361,6 +1374,9 @@ int open_connections()
       if(sipp_bind_socket(main_socket, &local_sockaddr, &local_port) == 0) {
         break;
       }
+      DEBUG("main socket %d, bound to AF = %d, %s", main_socket->ss_fd, 
+        local_sockaddr.ss_family,
+        socket_to_ip_port_string((sockaddr_storage*)(&local_sockaddr)).c_str());
     }
   }
 
@@ -1418,6 +1434,9 @@ int open_connections()
         REPORT_ERROR_NO("Unable to bind main socket to %s:%d. Make sure that the local IP (as specified with -i) is actually an IP address on your computer", inet_ntoa(((struct sockaddr_in *) &local_sockaddr)->sin_addr), user_port);
       }
     }
+    DEBUG("main socket %d, bound to AF = %d, %s", main_socket->ss_fd, 
+        local_sockaddr.ss_family,
+        socket_to_ip_port_string((sockaddr_storage*)(&local_sockaddr)).c_str());
   }
 
   if (peripsocket) {
@@ -1474,7 +1493,9 @@ int open_connections()
         if(sipp_bind_socket(sock, &server_sockaddr, NULL)) {
           REPORT_ERROR_NO("Unable to bind server socket");
         }
-
+        DEBUG("perip socket %d, bound to AF = %d, %s", sock->ss_fd, 
+          server_sockaddr.ss_family,
+          socket_to_ip_port_string((sockaddr_storage*)(&server_sockaddr)).c_str());
         map_perip_fd[peripaddr] = sock;
       }
     }
@@ -1498,10 +1519,10 @@ int open_connections()
     }else{
       ((sockaddr_in*)(&tcp_ss))->sin_port=htons(tcp_port);
     }
-    DEBUG("binding to %s", socket_to_ip_port_string(&tcp_ss).c_str());
+    DEBUG("binding tcp client to %s", socket_to_ip_port_string(&tcp_ss).c_str());
     if(sipp_bind_socket(tcp_multiplex, &tcp_ss,(int*) &tcp_port) ) {
        REPORT_ERROR_NO("Unable to BIND a TCP socket, %s",
-         socket_to_ip_port_string(&tcp_ss));
+         socket_to_ip_port_string(&tcp_ss).c_str());
     }
 
 

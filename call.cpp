@@ -179,6 +179,7 @@ void setMediaFromAddress(play_args_t* play_args){
   // of sipp main control address
   memset (&(play_args->from), 0, sizeof(sockaddr_storage));
   if (media_ip_is_ipv6) {
+    (&(play_args->from))->ss_family=AF_INET6;
     inet_pton(AF_INET6, media_ip, (void *)&(_RCAST(struct sockaddr_in6 *, &(play_args->from)))->sin6_addr);
   } else {
     (_RCAST(struct sockaddr_in *, &(play_args->from)))->sin_addr.s_addr = inet_addr(media_ip);
@@ -196,7 +197,8 @@ void setMediaFromAddress(play_args_t* play_args){
     wchar_t *error_msg = wsaerrorstr(error);
     char errorstring[1000];
     const char *errstring = wchar_to_char(error_msg,errorstring);
-    WARNING("inet_ntop error : %s\n",
+    WARNING("inet_ntop error, address family = %d : %s\n",
+      play_args->from.ss_family,
       errstring);
 #else
     perror("inet_ntop");
