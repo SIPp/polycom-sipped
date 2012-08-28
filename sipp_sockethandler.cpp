@@ -674,16 +674,19 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
   int len;
   char ip_and_port[INET6_ADDRSTRLEN+10];
   DEBUGIN();
-  char ip[INET6_ADDRSTRLEN];
-  memset(ip,0,INET6_ADDRSTRLEN);
 
   const char* res;
   if (socket->ss_ipv6) {
     len = sizeof(struct sockaddr_in6);
+    char ip[INET6_ADDRSTRLEN];
+    memset(ip,0,INET6_ADDRSTRLEN);
     res = inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) saddr)->sin6_addr), ip, INET6_ADDRSTRLEN);
     if (res!=0) sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in6 *)saddr )->sin6_port));
   } else {
-     res = inet_ntop(AF_INET, &(((struct sockaddr_in *) saddr)->sin_addr), ip, INET_ADDRSTRLEN);
+    len = sizeof(struct sockaddr_in);
+    char ip[INET_ADDRSTRLEN];
+    memset(ip,0,INET_ADDRSTRLEN);
+    res = inet_ntop(AF_INET, &(((struct sockaddr_in *) saddr)->sin_addr), ip, INET_ADDRSTRLEN);
     if (res!=0) sprintf(ip_and_port, "%s:%hu", ip, ntohs(((struct sockaddr_in *) saddr)->sin_port));
   }
 
@@ -698,21 +701,20 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
     perror("inet_ntop");
 #endif
   }
-  DEBUG("attempting to bind to %s",
-    socket_to_ip_port_string(saddr).c_str());
+
   if((ret = bind(socket->ss_fd, (sockaddr *)saddr, len))) {
 #ifdef WIN32
     ERRORNUMBER = WSAGetLastError();
     wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
     char errorstring[1000];
     const char *errstring = wchar_to_char(error_msg,errorstring);
-    DEBUG("Could not bind socket to %s (%d: %s)", socket_to_ip_port_string(saddr).c_str(), ERRORNUMBER, errstring);
+    DEBUG("Could not bind socket to %s (%d: %s)", ip_and_port, ERRORNUMBER, errstring);
 #else
     DEBUG("Could not bind socket to %s (%d: %s)", ip_and_port, ERRORNUMBER, strerror(ERRORNUMBER));
 #endif
     return ret;
   }
-  DEBUG("Bound socket %d to %s", socket->ss_fd, socket_to_ip_port_string(saddr).c_str());
+  DEBUG("Bound socket %d to %s", socket->ss_fd, ip_and_port);
 
   if (!port) {
     return 0;
