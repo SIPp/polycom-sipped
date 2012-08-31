@@ -199,10 +199,6 @@ scenario      *display_scenario;
 /* This mode setting refers to whether we open calls autonomously (MODE_CLIENT)
  * or in response to requests (MODE_SERVER). */
 int           creationMode  = MODE_CLIENT;
-// moved to sipp_globals
-/* Send mode. Do we send to a fixed address or to the last one we got. */
-//int           sendMode  = MODE_CLIENT;
-/* This describes what our 3PCC behavior is. */
 
 
 /* These are the names of the scenarios, they must match the default_scenario table. */

@@ -503,6 +503,7 @@ unsigned long get_reply_code(const char *msg)
 
 
 //moved from sipp.cpp
+// Returns call-id from message or empty string if one is not found.
 char * get_call_id(char *msg)
 {
   static char call_id[MAX_HEADER_LEN];
@@ -521,9 +522,7 @@ char * get_call_id(char *msg)
     short_form = true;
   }
   if(!ptr1) {
-    //WARNING("(1) No valid Call-ID: header in message '%s'", msg);
-    //return call_id;
-    return NULL;
+    return call_id;
   }
 
   if (short_form) {
@@ -537,9 +536,7 @@ char * get_call_id(char *msg)
   }
 
   if(!(*ptr1)) {
-    //WARNING("(2) No valid Call-ID: header in message");
-    //return call_id;
-    return NULL;
+    return call_id;
   }
 
   ptr2 = ptr1;
@@ -553,9 +550,7 @@ char * get_call_id(char *msg)
   }
 
   if(!*ptr2) {
- /*   WARNING("(3) No valid Call-ID: header in message");
-    return call_id;*/
-    return NULL;
+    return call_id;
   }
 
   backup = *ptr2;

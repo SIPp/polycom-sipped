@@ -653,8 +653,6 @@ static ssl_init_status FI_init_ssl_context (void)
   return SSL_INIT_NORMAL;
 }
 
-//int send_nowait_tls(SSL *ssl, const void *msg, int len, int flags)
-// moved to sipp_sockethandler, used by sipp_socket_handler::socket_write_primitive
 
 #endif
 
@@ -1191,17 +1189,8 @@ void setup_ctrl_socket()
 
 void setup_stdin_socket()
 {
-#ifdef WIN32
-  //unsigned long int iMode = 1;  // 0=blocking, 1=nonblocking
-  //int rc = ioctlsocket(fd, FIONBIO, (u_long FAR*) &iMode);
-  //if (rc != 0){
-  //  ERRORNUMBER = WSAGetLastError();
-  //  wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
-  //  char errorstring[1000];
-  //  const char *errstring = wchar_to_char(error_msg,errorstring);
-  //  WARNING("Failed to set tls socket mode:%s",errstring);
-  //}
-#else
+// NOTE: On Win32 we handle standard in with a special loop so don't need this.
+#ifndef WIN32
   fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
     stdin_socket = sipp_allocate_socket(0, T_UDP, fileno(stdin), 0);
   if (!stdin_socket) {
@@ -1639,10 +1628,8 @@ void process_message(struct sipp_socket *socket, char *msg, ssize_t msg_size, st
   }
 
   char *call_id = get_call_id(msg);
-  if (call_id == NULL)
-    WARNING("(1) No valid Call-ID: header in message '%s'", msg);
   if (call_id[0] == '\0') {
-    WARNING("SIP message without Call-ID discarded");
+    WARNING("SIP message without Call-ID discarded '%s'", msg);
     return;
   }
   listener *listener_ptr = get_listener(no_call_id_check == false ? call_id : NULL);
@@ -1788,9 +1775,9 @@ void pollset_process(int wait)
 
   /* Get socket events. */
   rs = POLL(pollfiles, pollnfds, wait ? 1 : 0);
+  print_if_error(rs);  
 #ifdef WIN32
   ERRORNUMBER = WSAGetLastError();
-  print_if_error(rs);
 #endif
   //todo possible collision err.h defines EINTR 4
   //   we def EINTR as WSAEINTR which is 10004L
@@ -2488,8 +2475,6 @@ void releaseGlobalAllocations()
 
 
 /* Main */
-#define MAXTHREADS 2
-int threadcount =0;
 int main(int argc, char *argv[])
 {
   int                  argi = 0;
@@ -3374,7 +3359,6 @@ int main(int argc, char *argv[])
     opentask::set_rate(rate);
   }
 
-  // move initialize_sockets out of open_connections to here??
   open_connections();
 
   /* Defaults for media sockets */
