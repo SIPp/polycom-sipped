@@ -4,6 +4,11 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.67
+- report error when no -i2 command line argument and scenrio uses either 
+exec pcap_play_[audio|video|application] source_ip="2"   or uses [local_ip2]
+tag 
+
 3.2.66
 - expand support for pcap_play source_ip attribute to pcap playback of 
 video and application in addtion to audio

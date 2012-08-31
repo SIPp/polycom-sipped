@@ -4717,6 +4717,8 @@ unsigned int call::get_last_insequence_received_message(int search_from_msg_inde
 
 void call::setSrcIP_to_local_ip2(play_args_t* play_args){
   // replace from ip address with local_ip2,  the -i2 parameter value
+  if (strlen(local_ip2)==0)
+    REPORT_ERROR("Scenario uses local_ip2, require a  -i2 command line argument"); 
   if (local_ip2_is_ipv6){
     play_args->from.ss_family=AF_INET6;
     struct in6_addr * address = &(((sockaddr_in6*)(&play_args->from))->sin6_addr) ;

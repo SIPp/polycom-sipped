@@ -306,6 +306,8 @@ SendingMessage::SendingMessage(scenario *msg_scenario, const char *src, bool ski
                  ( strlen(keyword)> strlen(IP_Keywords[i].keyword )) &&
                  ( keyword[strlen(IP_Keywords[i].keyword)] ==  ' ')     )  ) {
             newcomp->type = IP_Keywords[i].type;
+            if ((IP_Keywords[i].type == E_Message_Local_IP2)&&(strlen(local_ip2)==0))
+              REPORT_ERROR("Scenario uses [local_ip2], requires use of -i2 command line argument");
             if( strstr(keyword, "no_square_bracket")  ) {
               // want the no escape version of the ip address
 
