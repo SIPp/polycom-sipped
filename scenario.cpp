@@ -1732,9 +1732,15 @@ void scenario::parseAction(CActions *actions, int dialog_number)
           tmpAction->setMediaIndex(atoi(ptr));
         else
           tmpAction->setMediaIndex(1);
-        if ((ptr = xp_get_value("source_ip")))
-          tmpAction->setSourceIP(atoi(ptr));
-        else
+        if ((ptr = xp_get_value("source_ip"))){
+          int source_no = atoi(ptr);
+          if ((source_no==2)&&(strlen(local_ip2)==0)){
+            REPORT_ERROR("Scenario specifies source_ip=\'%d\' but no -i2 parameter given",source_no);
+          }else if (source_no>2){
+            REPORT_ERROR("Scenario specifies source_ip=\'%d\', index not supported", source_no);
+          }
+          tmpAction->setSourceIP(source_no);
+        }else
           tmpAction->setSourceIP(1);
 
         //flag for executeAction
@@ -1754,9 +1760,15 @@ void scenario::parseAction(CActions *actions, int dialog_number)
           tmpAction->setMediaIndex(atoi(ptr));
         else
           tmpAction->setMediaIndex(1);
-        if ((ptr = xp_get_value("source_ip")))
-          tmpAction->setSourceIP(atoi(ptr));
-        else
+        if ((ptr = xp_get_value("source_ip"))){
+          int source_no = atoi(ptr);
+          if ((source_no==2)&&(strlen(local_ip2)==0)){
+            REPORT_ERROR("Scenario specifies source_ip=\'%d\' but no -i2 parameter given",source_no);
+          }else if (source_no>2){
+            REPORT_ERROR("Scenario specifies source_ip=\'%d\', index not supported", source_no);
+          }
+          tmpAction->setSourceIP(source_no);
+        }else
           tmpAction->setSourceIP(1);
 
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
@@ -1775,9 +1787,15 @@ void scenario::parseAction(CActions *actions, int dialog_number)
           tmpAction->setMediaIndex(atoi(ptr));
         else
           tmpAction->setMediaIndex(1);
-        if ((ptr = xp_get_value("source_ip")))
-          tmpAction->setSourceIP(atoi(ptr));
-        else
+        if ((ptr = xp_get_value("source_ip"))){
+          int source_no = atoi(ptr);
+          if ((source_no==2)&&(strlen(local_ip2)==0)){
+            REPORT_ERROR("Scenario specifies source_ip=\'%d\' but no -i2 parameter given",source_no);
+          }else if (source_no>2){
+            REPORT_ERROR("Scenario specifies source_ip=\'%d\', index not supported", source_no);
+          }
+          tmpAction->setSourceIP(source_no);
+        }else
           tmpAction->setSourceIP(1);
 
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_APPLICATION);

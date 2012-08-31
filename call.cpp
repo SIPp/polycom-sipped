@@ -328,7 +328,8 @@ uint16_t get_remote_port_media(char *msg, int pattype)
 /*
  * IPv{4,6} compliant
  */ // getting remote media address from incoming sdp   allow for multiple c=IN IP, m=audio lines
-    // creates play_args here 
+    // creates play_args here if they dont already exist. 
+    // fills in destination address of each play_arg->to based on index number for each media type.
 void call::get_remote_media_addr(char *msg)
 {                                 // http://tools.ietf.org/html/rfc4566
   //const char* vline = "v=";       //sdp must start with session level with this marker
@@ -5716,6 +5717,13 @@ void call::free_dialogState()
 
 
 #ifdef PCAPPLAY
+//todo setMediaFromAddress needs to be modified to scan sdp for multiple c lines and store
+//  session or media specific contact address in play_args
+//  existing logic can be culled from get_remote_media_addr which already does this
+//  for incoming SDP. 
+//  need access to buffer with full SDP inside as contact line follows media line 
+//  if it exists.
+
 // index is 1 based value that is used to determine where to put port information into 
 // one of the media play_args vectors
 void call::set_audio_from_port(int port,unsigned int index)
@@ -5724,6 +5732,7 @@ void call::set_audio_from_port(int port,unsigned int index)
   play_args_t play_args;
   memset(&play_args,0, sizeof(play_args_t));
   setMediaFromAddress(&play_args);
+  // incase out of order creation
   while (play_args_audio.size()<index){
     DEBUG("play_args_audio.size() = %d, adding one to set port in index %d",
       play_args_audio.size(), index-1);
