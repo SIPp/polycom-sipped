@@ -4,6 +4,10 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.69
+- Improve error message when pcap_play_X's 'to' address is unknown, 
+and mention possibility that index 'attribute' is too large.
+
 3.2.68
 - return fatal error codes as negative numbers so perl doesn't produce
 "can't spawn" messages. 

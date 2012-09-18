@@ -5332,53 +5332,51 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
                (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO)) {
       play_args_t *play_args = 0;
       string media_type;
+      int media_index = currentAction->getMediaIndex();
       if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_AUDIO");
         //retrieve  play_pcap_audio attribute index="x", set in ParseAction
-        int index = currentAction->getMediaIndex();
-        play_args = &(this->play_args_audio[index-1]);
-        media_type = string("Audio");
+        play_args = &(this->play_args_audio[media_index-1]);
+        media_type = string("audio");
         setMediaFromAddress(play_args);
         if (currentAction->getMediaPortOffset()) {
-          this->set_audio_from_port(media_port + currentAction->getMediaPortOffset(),index);
+          this->set_audio_from_port(media_port + currentAction->getMediaPortOffset(), media_index);
         }
-        if( currentAction->getSourceIP()==2){
+        if( currentAction->getSourceIP() == 2){
           setSrcIP_to_local_ip2(play_args);
-        }else if (currentAction->getSourceIP()==0){
+        }else if (currentAction->getSourceIP() == 0){
           setSrcIP_autopick(play_args);
         }
-        DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
-          media_type.c_str(), index, play_args_audio.size(),
+        DEBUG("play pcap %s, media_index = %d, size = %d, port %d\n", 
+          media_type.c_str(), media_index, play_args_audio.size(),
           media_port + currentAction->getMediaPortOffset());
       } else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_VIDEO) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_VIDEO");
-        int index = currentAction->getMediaIndex();
-        play_args = &(this->play_args_video[index-1]);
-        media_type = string("Video");
+        play_args = &(this->play_args_video[media_index-1]);
+        media_type = string("video");
         setMediaFromAddress(play_args);
         if (currentAction->getMediaPortOffset()) {
-          this->set_video_from_port(media_port + currentAction->getMediaPortOffset(),index);
+          this->set_video_from_port(media_port + currentAction->getMediaPortOffset(), media_index);
         }
-        if( currentAction->getSourceIP()==2){
+        if( currentAction->getSourceIP() == 2){
           setSrcIP_to_local_ip2(play_args);
         };
-        DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
-          media_type.c_str(), index, play_args_video.size(),
+        DEBUG("play pcap %s, media_index = %d, size = %d, port %d\n", 
+          media_type.c_str(), media_index, play_args_video.size(),
           media_port + currentAction->getMediaPortOffset());
       }else if (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_APPLICATION) {
         DEBUG("getActionType() is E_AT_PLAY_PCAP_APPLICATION");
-        int index = currentAction->getMediaIndex();
-        play_args = &(this->play_args_application[index-1]);
-        media_type = string("Application");
+        play_args = &(this->play_args_application[media_index-1]);
+        media_type = string("application");
         setMediaFromAddress(play_args);
         if (currentAction->getMediaPortOffset()) {
-          this->set_application_from_port(media_port + currentAction->getMediaPortOffset(),index);
+          this->set_application_from_port(media_port + currentAction->getMediaPortOffset(), media_index);
         }
-        if( currentAction->getSourceIP()==2){
+        if( currentAction->getSourceIP() == 2 ){
           setSrcIP_to_local_ip2(play_args);
         };
-        DEBUG("play pcap %s, index = %d, size = %d, port %d\n", 
-          media_type.c_str(), index, play_args_application.size(),
+        DEBUG("play pcap %s, media_index = %d, size = %d, port %d\n", 
+          media_type.c_str(), media_index, play_args_application.size(),
           media_port + currentAction->getMediaPortOffset());
       }
       DEBUG ("dest afamily = %d", play_args->to.ss_family);
@@ -5395,8 +5393,10 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
             socket_to_ip_port_string(&(play_args->to)).c_str(),
             *((int*)get_in_addr(&(play_args->to)) ));
       if ((socket_to_ip_string(&(play_args->to)).empty()) || (get_in_port(&(play_args->to)) == 0)) {
-        REPORT_ERROR("No destination media IP or port defined for %s while processing message index %d.  To address is '%s'\n,%s",
-                     media_type.c_str(), curmsg->index, socket_to_ip_port_string(&(play_args->to)).c_str(), curmsg->get_source_location().c_str());
+        REPORT_ERROR("No destination media IP or port defined for %s stream index %d while processing message index %d.  To address is '%s'.\n"
+                     "'index' counts the per-media-type c= entries: Is there at least %d c= section(s) in the m=%s section of the received SDP?\n,%s",
+                     media_type.c_str(), media_index, curmsg->index, socket_to_ip_port_string(&(play_args->to)).c_str(), 
+                     media_index, media_type.c_str(), curmsg->get_source_location().c_str());
       }
       play_args->pcap = currentAction->getPcapPkts();
       /* port number is set in [auto_]media_port interpolation*/
