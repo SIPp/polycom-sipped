@@ -4,6 +4,10 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.68
+- return fatal error codes as negative numbers so perl doesn't produce
+"can't spawn" messages. 
+
 3.2.67
 - report error when no -i2 command line argument and scenrio uses either 
 exec pcap_play_[audio|video|application] source_ip="2"   or uses [local_ip2]
