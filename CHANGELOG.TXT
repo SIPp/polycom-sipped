@@ -4,6 +4,11 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.70
+- Fix crash when TCP connection is closed because of wrong source IP.
+- Add fs to debug print.
+
+
 3.2.69
 - Improve error message when pcap_play_X's 'to' address is unknown, 
 and mention possibility that index 'attribute' is too large.
