@@ -1598,7 +1598,7 @@ int open_connections()
 
   //casting remote_sockaddr as int* and derefrencing to get first byte. If it is null, no IP has been specified.
   if(*(int*)&remote_sockaddr && no_call_id_check && main_socket->ss_transport == T_UDP) {
-    DEBUG("Connecting (limiting) UDP main_socket (fd = %d) to remote address");
+    DEBUG("Connecting (limiting) UDP main_socket (fd = %d) to remote address", main_socket->ss_fd);
     if(sipp_connect_socket(main_socket, &remote_sockaddr)) REPORT_ERROR("Could not connect socket to remote address. Check to make sure the remote IP is valid.");
   }
 

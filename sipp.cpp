@@ -122,7 +122,7 @@ struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket 
 
 void set_sipp_version_string(){
   memset(sipp_version,0,SIPPVERSSIZE);
-  sprintf(sipp_version,"SIPped v3.2.69"
+  sprintf(sipp_version,"SIPped v3.2.70BETA"
 #ifdef WIN32
                "-W32"
 #endif
@@ -1808,9 +1808,11 @@ void pollset_process(int wait)
       if ((transport == T_TCP || transport == T_TLS) && sock == main_socket) {
         // accept connection (limiting to remote_host if one was specified and we're using no_call_id_check)
         struct sipp_socket *new_sock = sipp_accept_socket(sock, (strlen(remote_host) && no_call_id_check) ? &remote_sockaddr : 0);
-        DEBUG("Allocated new socket remote %s, dest %s ",
-              socket_to_ip_string(&(new_sock->ss_remote_sockaddr)).c_str(),
-              socket_to_ip_string(&(new_sock->ss_dest)).c_str()  );
+        if (new_sock) {
+          DEBUG("Allocated new socket remote %s, dest %s ",
+                socket_to_ip_string(&(new_sock->ss_remote_sockaddr)).c_str(),
+                socket_to_ip_string(&(new_sock->ss_dest)).c_str()  );
+        }
       } else if (sock == ctrl_socket) {
         handle_ctrl_socket();
       } else if (sock == stdin_socket) {

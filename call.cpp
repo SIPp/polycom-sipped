@@ -5394,7 +5394,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
             *((int*)get_in_addr(&(play_args->to)) ));
       if ((socket_to_ip_string(&(play_args->to)).empty()) || (get_in_port(&(play_args->to)) == 0)) {
         REPORT_ERROR("No destination media IP or port defined for %s stream index %d while processing message index %d.  To address is '%s'.\n"
-                     "'index' counts the per-media-type c= entries: Is there at least %d c= section(s) in the m=%s section of the received SDP?\n,%s",
+                     "'index' counts the per-media-type c= entries: Is there at least %d c= section(s) in the m=%s section of the received SDP?.\n,%s",
                      media_type.c_str(), media_index, curmsg->index, socket_to_ip_port_string(&(play_args->to)).c_str(), 
                      media_index, media_type.c_str(), curmsg->get_source_location().c_str());
       }
