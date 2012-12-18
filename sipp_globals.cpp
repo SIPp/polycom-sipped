@@ -12,6 +12,7 @@
 #include <poll.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <stddef.h>  // RTCHECK_FULL  MAX_LOCAL_TWIN_SOCKETS
 #include <assert.h>
 #ifdef _USE_OPENSSL

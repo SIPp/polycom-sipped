@@ -41,6 +41,7 @@
 #include <limits.h>  // INT_MAX
 #include <assert.h>
 #include <set>
+#include <stdlib.h>
 
 #ifndef WIN32
 #include <sys/wait.h>

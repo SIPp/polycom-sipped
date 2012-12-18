@@ -5,11 +5,13 @@
 #include "screen.hpp" // REPORT_ERROR
 #include "stat.hpp"     //CStat
 #include <assert.h>
+#include <stdlib.h>
 #include "socket_helper.hpp"
+#include <errno.h>
 
 #ifdef WIN32
 #include <Winsock2.h>
-#include <errno.h>  // EPIPE
+//#include <errno.h>  // EPIPE
 #else
 #include <sys/poll.h> //pollfd
 #include <sys/types.h> //EPIPE

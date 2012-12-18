@@ -2,6 +2,7 @@
 #include "sipp_sockethandler.hpp"  //wsaerrorstr
 #include "sipp_globals.hpp"   //_RCAST
 #include <cstring>      //memcmp
+#include <stdlib.h>
 #ifdef WIN32
 #include <winsock2.h>
 #include <Ws2tcpip.h>  // Ws2_32.lib   getnameinfo 
