@@ -352,6 +352,8 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     } else {
       if(error == EADDRINUSE) {
         screen_exit(EXIT_BIND_ERROR);
+      } else if (timeout_error) {
+        screen_exit(EXIT_TEST_RES_INTERNAL);
       } else {
         screen_exit(EXIT_FATAL_ERROR);
       }

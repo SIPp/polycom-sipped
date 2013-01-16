@@ -62,7 +62,7 @@ typedef struct {
   int partial_check;
 } pcap_pkt;
 
-#define PCAP_MAXPACKET  1500
+#define PCAP_MAXPACKET  2200
 typedef struct {
   char *file;
   u_int16_t base;

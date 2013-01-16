@@ -4,6 +4,11 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.71 beta
+- Increase PCAP_MAXPACKET to support large (previously-fragmented) RTP packets
+- Change win32_compatibility definition of uint16 to be unsigned
+- Exit EXIT_TEST_RES_INTERNAL when SIPp times out (ie due to -timeout parameter)
+
 3.2.70
 - Fix crash when TCP connection is closed because of wrong source IP.
 - Add fs to debug print.

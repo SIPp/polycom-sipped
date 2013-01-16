@@ -5319,7 +5319,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
         quitting = 1;
         break;
       case CAction::E_INTCMD_STOP_NOW:
-        WARNING("SIPp timed out");
+        WARNING("Executing internal Stop Now command.");
         screen_exit(EXIT_TEST_RES_INTERNAL);
         break;
       case CAction::E_INTCMD_STOPCALL:

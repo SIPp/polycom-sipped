@@ -39,7 +39,7 @@ char *strndup (char const *s, size_t n);
 // Networking-related
 
 #define uint32_t UINT32
-#define uint16_t SHORT
+#define uint16_t UINT16
 #define uint8_t  BYTE
 
 struct iphdr {

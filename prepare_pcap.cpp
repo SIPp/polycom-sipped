@@ -106,6 +106,10 @@ inline u_int16_t checksum_carry(int s)
 char errbuf[PCAP_ERRBUF_SIZE];
 
 /* prepare a pcap file
+ *
+ * Note: IP fragments must have been reassembled into a single packet with UDP length field updated.  
+ * This code does not use L2 or L3 length headers, instead skipping over the L2 and L3(IP header) 
+ * and using UDP length field to extract RTP payload.
  */
 int prepare_pkts(char *file, pcap_pkts *pkts)
 {
@@ -126,11 +130,13 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
 
   pkts->pkts = NULL;
 
+  DEBUG("prepare_pcap.c: Processing file '%s'", file);
   pcap = pcap_open_offline(file, errbuf);
   if (!pcap)
     REPORT_ERROR("Can't open PCAP file '%s'. pcap_open_offline returned error: '%s'", file, errbuf);
   int num_of_non_ip_packets = 0;
   int num_of_non_udp_packets = 0;
+  int num_of_packets_read = 0;
 
 #if HAVE_PCAP_NEXT_EX
   while (pcap_next_ex (pcap, &pkthdr, (const u_char **) &pktdata) == 1) {
@@ -144,6 +150,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
     REPORT_ERROR("Can't allocate memory for pcap pkthdr");
   while ((pktdata = (u_char *) pcap_next (pcap, pkthdr)) != NULL) {
 #endif
+    num_of_packets_read++;
     int link_type = pcap_datalink(pcap);
     if(link_type == DLT_EN10MB) {
       ether_hdr* ethhdr = (ether_hdr *)pktdata;
@@ -209,8 +216,19 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
       pktlen = (u_long)(ntohs(udphdr->len) - (sizeof(struct udphdr)));
 #endif
     }
+    unsigned l2_and_l3_header_size = (unsigned) (((char *)udphdr) - ((char *)pktdata));
+    //printf("%u: iphdr = 0x%p ; udphdr = 0x%p ; iphdr.tot_len = %hu ; udphdr->len = %hi(%hu) ; pktlen = %u ; l2+l2 = %u\n", 
+    //  num_of_packets_read, iphdr, udphdr, ntohs(iphdr->tot_len), ntohs(udphdr->len), ntohs(udphdr->len), pktlen, l2_and_l3_header_size);
+    if (pkthdr->len-l2_and_l3_header_size < pktlen) {
+      REPORT_ERROR("Media packet truncated in frame %d in file '%s':\n"
+        "UDP header indicates %d bytes of data, but only %d bytes are in the pcap frame,\n"
+        "including L2 and L3 header overhead of %d bytes.\n"
+        "Please ensure the capture length is greater than the MTU and that all IP fragments are reassembled in the media file", 
+        num_of_packets_read, file, pktlen, pkthdr->len, l2_and_l3_header_size);
+    }
     if (pktlen > PCAP_MAXPACKET) {
-      REPORT_ERROR("Packet size is too big or corrupt capture file (%d > %d)! Recompile with bigger PCAP_MAXPACKET in prepare_pcap.h", pktlen, PCAP_MAXPACKET);
+      REPORT_ERROR("Media packet size is too big or capture file is corrupt (%d > %d)! Recompile with bigger PCAP_MAXPACKET in prepare_pcap.h", 
+        pktlen, PCAP_MAXPACKET);
     }
     pkts->pkts = (pcap_pkt *) realloc(pkts->pkts, sizeof(*(pkts->pkts)) * (n_pkts + 1));
     if (!pkts->pkts)
