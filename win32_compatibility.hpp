@@ -79,6 +79,7 @@ void ClearScreen();
 #include <string.h>     //strndup,strcasestr
 #include <limits.h>     //PATH_MAX
 #include <unistd.h>     // usleep
+#include <errno.h>
 
 #define SETSOCKOPT_TYPE (void *)
 #define MAX_PATH              PATH_MAX
