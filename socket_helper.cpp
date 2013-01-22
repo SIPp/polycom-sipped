@@ -43,31 +43,48 @@ void *get_in_addr(struct sockaddr_storage *sa)
 // get port, IPv4 or IPv6:
 unsigned short get_in_port(struct sockaddr_storage *sa)
 {
-  if (sa->ss_family == AF_INET) {
+  if (sa->ss_family == 0) {
+    return 0;
+  }
+  else if (sa->ss_family == AF_INET) {
     return ntohs(((struct sockaddr_in*)sa)->sin_port);
   }
 
   return ntohs(((struct sockaddr_in6*)sa)->sin6_port);
 }
 
+// If a socket error is known to have occured call to get the error message.
+string get_socket_error_message() 
+{
+#ifdef WIN32
+  int error = WSAGetLastError();
+  wchar_t *error_msg = wsaerrorstr(error);
+  char errorstring[1000];
+  const char *errstring = wchar_to_char(error_msg, errorstring);
+  return string(errorstring);
+#else
+  return string(strerror(errno));
+#endif
+}
+
 string socket_to_ip_string(struct sockaddr_storage *socket)
 {
+  if (socket->ss_family == 0) {
+    return "undefined";
+  }
   char ip[INET6_ADDRSTRLEN];
   ip[0] = 0;
 #ifdef WIN32
   int flag = NI_NUMERICHOST;
   int err = getnameinfo((struct sockaddr *) socket,sizeof(struct sockaddr_storage), ip, sizeof(ip), NULL, 0, flag );
   if (err){
-    int error = WSAGetLastError();
-    wchar_t *error_msg = wsaerrorstr(error);
-    char errorstring[1000];
-    const char *errstring = wchar_to_char(error_msg,errorstring);
-    printf("getnameinfo error looking up ip for socket (AF= %d) Error: %s\n",
-      socket->ss_family, errstring);
+    fprintf(stderr, "socket_helper.cpp:socket_to_ip_string(): getnameinfo error looking up ip for socket (AF = %d) Error: %s\n",
+      socket->ss_family, get_socket_error_message().c_str());
   }
 #else
-  if (inet_ntop(socket->ss_family, get_in_addr(socket), ip, sizeof(ip))==0){
-    perror("inet_ntop failure");
+  if (inet_ntop(socket->ss_family, get_in_addr(socket), ip, sizeof(ip)) == 0){
+    fprintf(stderr, "socket_helper.cpp:socket_to_ip_string(): inet_ntop error looking up ip for socket (AF = %d) Error: %s\n",
+      socket->ss_family, get_socket_error_message().c_str());
   }
 #endif
   return string(ip);
@@ -80,22 +97,15 @@ string socket_to_ip_port_string(struct sockaddr_storage *socket)
   char ip[INET6_ADDRSTRLEN];
   ip[0] = 0;
 
-  int flag = NI_NUMERICHOST;
-  int err = getnameinfo((struct sockaddr *) socket,sizeof(struct sockaddr_storage), ip, sizeof(ip), NULL, 0, flag );
-  if (err)
-#ifndef WIN32
-    perror("getnameinfo");
-#else
-  {
-    int nameerror;
-    nameerror = WSAGetLastError();
-    wchar_t *error_msg = wsaerrorstr(nameerror);
-    char errorstring[1000];
-    const char *errstring = wchar_to_char(error_msg,errorstring);
-    printf("getnameinfo error looking up ip for socket (AF=%d) Error: %s\n",
-      socket->ss_family, errstring);
+  if (socket->ss_family == 0) {
+    return "undefined";
   }
-#endif
+  int flag = NI_NUMERICHOST;
+  int err = getnameinfo((struct sockaddr *) socket, sizeof(struct sockaddr_storage), ip, sizeof(ip), NULL, 0, flag );
+  if (err) {
+    fprintf(stderr, "socket_helper.cpp:socket_to_ip_port_string(): getnameinfo error looking up ip for socket (AF = %d) Error: %s\n",
+      socket->ss_family, get_socket_error_message().c_str());
+  }
   if (socket->ss_family == AF_INET6){
     SNPRINTF(ip_and_port, sizeof(ip_and_port), "[%s]:%hu", ip, get_in_port(socket));
   }else{
@@ -160,6 +170,28 @@ void get_host_and_port(char * addr, char * host, int * port)
     *port = atol(p + 1);
   } else {
     *port = 0;
+  }
+}
+
+void set_addr(struct sockaddr_storage *sa, char *ip, bool isIpV6)
+{
+  if (isIpV6){
+    sa->ss_family=AF_INET6;
+    struct in6_addr * address = &(((sockaddr_in6*)(sa))->sin6_addr) ;
+    inet_pton(AF_INET6, ip, address);
+  }else {
+    sa->ss_family=AF_INET;
+    struct in_addr* address = &(((sockaddr_in*)(sa))->sin_addr) ;
+    inet_pton(AF_INET, ip, address);
+  }
+}
+
+void set_port(struct sockaddr_storage *sa, int port)
+{
+  if (sa->ss_family == AF_INET6) {
+    (_RCAST(struct sockaddr_in6 *, sa))->sin6_port = htons(port);
+  } else {
+    (_RCAST(struct sockaddr_in *, sa))->sin_port = htons(port);
   }
 }
 

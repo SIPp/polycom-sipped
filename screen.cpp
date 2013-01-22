@@ -307,7 +307,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
       strcat(msg, tmp);
       screen_exit(EXIT_FATAL_ERROR);
     } else {
-      DEBUG("%s: The following events occurred:\n", screen_exename);
+      DEBUG("%s: The following events occurred:", screen_exename);
       fprintf(error_lfi.fptr, "-----  %s  ------\n", sipp_version);
       fprintf(error_lfi.fptr, "%s: The following events occurred:\n",
               screen_exename);

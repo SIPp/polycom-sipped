@@ -39,9 +39,9 @@ void initialize_sockets()
 {
 #ifdef WIN32
   int rc = WSAStartup(MAKEWORD (2,0),&WSStartData);
-  DEBUG("WSAStartData.szDescription = %s\n",WSStartData.szDescription);
-  DEBUG("WSAStartData.szSystemStatus = %s\n", WSStartData.szSystemStatus);
-  DEBUG("WSAStartData.iMaxSockets = %d\n", WSStartData.iMaxSockets);
+  DEBUG("WSAStartData.szDescription = %s",WSStartData.szDescription);
+  DEBUG("WSAStartData.szSystemStatus = %s", WSStartData.szSystemStatus);
+  DEBUG("WSAStartData.iMaxSockets = %d", WSStartData.iMaxSockets);
   switch (rc){
     case 0:
       //all ok
@@ -732,7 +732,7 @@ int sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr,
     *port = ntohs((short)((_RCAST(struct sockaddr_in *, saddr))->sin_port));
   }
 
-  DEBUG_OUT("bound to %s\n", ip_and_port);
+  DEBUG_OUT("bound to %s", ip_and_port);
   return 0;
 }
 

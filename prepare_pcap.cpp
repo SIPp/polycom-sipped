@@ -195,7 +195,7 @@ int prepare_pkts(char *file, pcap_pkts *pkts)
       pktlen = (u_long) pkthdr->len - frame_size - sizeof(*ip6hdr);
       ip6hdr = (ipv6_hdr *)(void *) iphdr;
       if (ip6hdr->nxt_header != IPPROTO_UDP) {
-        DEBUG("prepare_pcap.c: Ignoring non UDP packet!\n");
+        DEBUG("prepare_pcap.c: Ignoring non UDP packet!");
         continue;
       }
       udphdr = (struct udphdr *)((char *)ip6hdr + sizeof(*ip6hdr));

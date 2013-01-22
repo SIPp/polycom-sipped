@@ -80,7 +80,6 @@
 
 
 
-
 inline void
 timerdiv (struct timeval *tvp, float div)
 {
@@ -127,6 +126,44 @@ float2timer (float time, struct timeval *tvp)
   tvp->tv_usec = (long) intpart;
 }
 
+// Set family and IP address
+void set_from_ip(play_args_t* play_args, char *ip, bool isIpV6) 
+{
+  if (strlen(ip)==0) {
+    REPORT_ERROR("call::set_from_ip() passed blank ip address."); 
+  }
+  set_addr(&(play_args->from), ip, isIpV6);
+  DEBUG("Set 'from' IP, now %s", socket_to_ip_port_string(&play_args->from).c_str());
+}
+
+// Sets port, requires family to already be set correctly.
+// Port is passed in in host order.
+void set_from_port(play_args_t* play_args, int port)
+{
+  set_port(&(play_args->from), port);
+  DEBUG("Set 'from' port, now %s", socket_to_ip_port_string(&play_args->from).c_str());
+}
+
+// Set family and IP address
+void set_to_ip(play_args_t* play_args, char *ip, bool isIpV6) 
+{
+  if (strlen(ip)==0) {
+    REPORT_ERROR("call::set_to_ip() passed blank ip address."); 
+  }
+  set_addr(&(play_args->to), ip, isIpV6);
+  DEBUG("Set 'to' IP, now %s", socket_to_ip_port_string(&play_args->to).c_str());
+}
+
+// Sets port, requires family to already be set correctly.
+// Port is passed in in host order.
+void set_to_port(play_args_t* play_args, int port)
+{
+  set_port(&(play_args->to), port);
+
+  DEBUG("Set 'to' port, now %s", socket_to_ip_port_string(&play_args->to).c_str());
+}
+
+
 /* buffer should be "file_name" */
 int parse_play_args (char *buffer, pcap_pkts *pkts)
 {
@@ -165,6 +202,7 @@ send_packets (play_args_t * play_args)
   struct sockaddr_in6 to6, from6;
   char buffer[PCAP_MAXPACKET];
   int result = 0;
+  int packets_count = 0;
 
   if(allow_ports_to_change) {
     // For now, never possible.
@@ -177,33 +215,16 @@ send_packets (play_args_t * play_args)
     from = &from_struct;
   }
 
-  DEBUGIN();
+  DEBUG_IN("from %s ; to %s", socket_to_ip_port_string(from).c_str(), socket_to_ip_port_string(to).c_str());
 
   if ( (play_args->from.ss_family == play_args->to.ss_family) && 
        (play_args->from.ss_family == AF_INET6)) {
     sock = socket(PF_INET6, SOCK_DGRAM, 0);
-    if (sock < 0) {
-      REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
-    }
-    DEBUG("IPv6 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x",
-          ntohs(((struct sockaddr_in6 *)(void *) from )->sin6_port),
-          ((struct sockaddr_in6 *)(void *) from )->sin6_addr.s6_addr,
-          ntohs(((struct sockaddr_in6 *)(void *) to )->sin6_port),
-          ((struct sockaddr_in6 *)(void *) to )->sin6_addr.s6_addr);
   } else {
     sock = socket(PF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
-      REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings?)");
-    }
-    DEBUG("IPv4 from_port = %hu, from_addr = 0x%x, to_port = %hu, to_addr = 0x%x",
-          ntohs(((struct sockaddr_in *)(void *) from )->sin_port),
-          ((struct sockaddr_in *)(void *) from )->sin_addr.s_addr,
-          ntohs(((struct sockaddr_in *)(void *) to )->sin_port),
-          ((struct sockaddr_in *)(void *) to )->sin_addr.s_addr);
-    DEBUG("IPV4 from %s  to  %s", 
-      socket_to_ip_port_string(from).c_str(),
-      socket_to_ip_port_string(to).c_str()    );
-
+  }
+  if (sock < 0) {
+    REPORT_ERROR_NO("Can't create RTP socket (need to run as root/Administrator and/or lower your Windows 7 User Account Settings to 'Never Notify'?)");
   }
   int sock_opt = 1;
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, SETSOCKOPT_TYPE &sock_opt, sizeof (sock_opt)) == -1) {
@@ -219,15 +240,12 @@ send_packets (play_args_t * play_args)
     }
   } else {
     if(bind(sock, (struct sockaddr *) from, sizeof(struct sockaddr_in6)) < 0) {
-      char ip[INET6_ADDRSTRLEN];
 #ifdef WIN32
-      ERRORNUMBER = WSAGetLastError();
-      wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
-      char errorstring[1000];
-      const char *errstring = wchar_to_char(error_msg,errorstring);
-      WARNING("send_packets.c: bind to %s failed with error: %s (sock = %d)", 
-        socket_to_ip_port_string(from).c_str() ,errstring, sock);
+      string errormessage = get_socket_error_message().c_str();
+      REPORT_ERROR("send_packets.c: bind to %s failed with error: %s (sock = %d)", 
+        socket_to_ip_port_string(from).c_str(), errormessage.c_str(), sock);
 #else
+      char ip[INET6_ADDRSTRLEN];
       inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) from)->sin6_addr), ip, INET_ADDRSTRLEN);
       REPORT_ERROR_NO("Could not bind socket to send RTP traffic %s:%hu", ip, ntohs(((struct sockaddr_in6 *)from )->sin6_port));
 #endif
@@ -269,36 +287,53 @@ send_packets (play_args_t * play_args)
 
   while (pkt_index < pkt_max) {
     memcpy(buffer,  pkt_index->data, pkt_index->pktlen);
+    packets_count++;
+
 
     do_sleep ((struct timeval *) &pkt_index->ts, &last, &didsleep, &start);
 
+    int retries = 0;
+    const int maxRetries = 3;
+    bool needRetry;
+    do {
+      needRetry = false;
+
 #ifdef MSG_DONTWAIT
-    if (!media_ip_is_ipv6) {
-      ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
-    } else {
-      ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
-    }
+      if (!media_ip_is_ipv6) {
+        ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
+      } else {
+        ret = sendto(sock, buffer, pkt_index->pktlen, MSG_DONTWAIT, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
+      }
 #else
-    if (!( (play_args->from.ss_family == play_args->to.ss_family) && 
-       (play_args->from.ss_family == AF_INET6))) {
-      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
-    } else {
-      ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
-    }
+      if (!( (play_args->from.ss_family == play_args->to.ss_family) && 
+         (play_args->from.ss_family == AF_INET6))) {
+        ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) to, sizeof(struct sockaddr_in));
+      } else {
+        ret = sendto(sock, buffer, pkt_index->pktlen, 0, (struct sockaddr *)(void *) &to6, sizeof(struct sockaddr_in6));
+      }     
 #endif
-    if (ret < 0) {
-#ifdef WIN32
-      ERRORNUMBER = WSAGetLastError();
-      wchar_t *error_msg = wsaerrorstr(ERRORNUMBER);
-      char errorstring[1000];
-      const char *errstring = wchar_to_char(error_msg,errorstring);
-      WARNING("send_packets.c: sendto failed with error: %s (sock = %d)", errstring, sock);
-#else
-      WARNING("send_packets.c: sendto failed with error: %s (sock = %d)", strerror(errno), sock);
-#endif
-      result = -1;
-      break; // Can not return directly because of pthread_cleanup_push/pop's use of { and }
-    }
+      if (ret < 0) {
+        int error = socketerror();
+        string errormessage = get_socket_error_message().c_str();
+        DEBUG("Packet #%d: sendto from %s to %s returned error %d: %s ; retries = %d ; sock = %d", 
+          packets_count, socket_to_ip_port_string(from).c_str(), socket_to_ip_port_string(to).c_str(), 
+          error, errormessage.c_str(), retries, sock);
+        if (((error == EWOULDBLOCK) || (error == EAGAIN)) && (retries < maxRetries)){
+          // Normal warning from non-blocking sockets: try again a few times
+          ++retries;
+          needRetry = true;
+          usleep(10000); // sleep 1/10 ms and try again.
+        } else {
+          WARNING("send_packets.c: sendto failed on packet #%d with error: %s ; from %s ; to %s", 
+            packets_count, errormessage.c_str(), 
+            socket_to_ip_port_string(from).c_str(), socket_to_ip_port_string(to).c_str());
+          retries = 0; // moving onto next packet so reset retries.
+//          Best effort: keep trying to send on errors (plus can't break from main loop from this inner loop).
+//          result = -1;
+//          break; // Can not return directly because of pthread_cleanup_push/pop's use of { and }
+        }
+      } // if ret < 0
+    } while (needRetry);
 
     rtp_pckts_pcap++;
     rtp_bytes_pcap += pkt_index->pktlen;

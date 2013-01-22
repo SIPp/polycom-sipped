@@ -121,6 +121,10 @@ typedef struct {
   struct sockaddr_storage from;
 } play_args_t;
 
+void set_from_ip(play_args_t* play_args, char *ip, bool isIpV6);
+void set_from_port(play_args_t* play_args, int port);
+void set_to_ip(play_args_t* play_args, char *ip, bool isIpV6);
+void set_to_port(play_args_t* play_args, int port);
 
 int parse_play_args (char *, pcap_pkts *);
 int send_packets (play_args_t *);

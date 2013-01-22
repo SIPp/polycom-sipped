@@ -17,4 +17,7 @@ string          socket_to_ip_port_string(struct sockaddr_storage *socket);
 char            *get_inet_address(struct sockaddr_storage * addr);
 void            get_host_and_port(char * addr, char * host, int * port);
 
+void            set_addr(struct sockaddr_storage *sa, char *ip, bool isIpV6);
+void            set_port(struct sockaddr_storage *sa, int port);
 
+string          get_socket_error_message();

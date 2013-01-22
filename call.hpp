@@ -195,17 +195,27 @@ private:
   int hasMediaInformation;
   pthread_t* media_threads[MAXIMUM_NUMBER_OF_RTP_MEDIA_THREADS];
   int number_of_active_rtp_threads;
-  //play_args_t play_args_a;
-  //play_args_t play_args_v;
-  // the changes:
+
   vector<play_args_t> play_args_audio;
   vector<play_args_t> play_args_video;
   vector<play_args_t> play_args_application;
+
+  void make_play_args_vector_big_enough(unsigned int index, vector<play_args_t> &play_args_vector, char *type, char *tofrom);
+
+  // Change 'to' value to 'to' values from play_args, leaving from as-is
+  // put play_args info into right vector at right index
+  // if index doesnt exist yet, push on play_args until it does
+  // this ensures that all play_args in vector have from address set.
+  void set_to_in_vector(play_args_t* play_args, unsigned int index, vector<play_args_t> &play_args_vector, char *type);
+
+  // Set from port, leaving all else as-is. Adds zero'd entries if index > existing vector size.
+  void set_from_port_in_vector(int port, unsigned int index, vector<play_args_t> &play_args_vector, char *type);
   void set_audio_from_port(int port, unsigned int index=1);
   void set_video_from_port(int port, unsigned int index=1);
   void set_application_from_port(int port, unsigned int index=1);
-  void setSrcIP_to_local_ip2(play_args_t* play_args);
-  void setSrcIP_autopick(play_args_t* play_args);
+
+  void set_from_ip_auto_pick(play_args_t* play_args);
+
 #endif
 
 

@@ -35,6 +35,7 @@ char *strcasestr(char *s, const char *pattern);
 
 char *strndup (char const *s, size_t n);
 
+inline int socketerror() { return WSAGetLastError(); }
 
 // Networking-related
 
@@ -81,6 +82,8 @@ void ClearScreen();
 
 #define SETSOCKOPT_TYPE (void *)
 #define MAX_PATH              PATH_MAX
+
+inline int socketerror() { return errno; }
 
 #endif
 

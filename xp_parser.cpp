@@ -382,7 +382,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
   int new_path_length = xp_get_start_index_of_filename(path_and_filename);
   strncpy(new_path, path_and_filename, new_path_length);
   new_path[new_path_length] = 0;
-  DEBUG("filename = '%s', path = '%s', path_and_filename = '%s', new_path = '%s'\n", filename, path, path_and_filename, new_path);
+  DEBUG("filename = '%s', path = '%s', path_and_filename = '%s', new_path = '%s'", filename, path, path_and_filename, new_path);
 
   int c;
   FILE * f = fopen(filename, "rb");
@@ -463,7 +463,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
         while ((c == ' ') || (c == '\t')) c = fgetc(f); // skip whitespace
 
         if (c != '/') { // if not closing tab, specifying dialogs="1,2,3"
-          DEBUG("dialogs parameter expected.\n");
+          DEBUG("dialogs parameter expected.");
 
           // match 'dialogs="'
           replace_index = 0;
@@ -479,7 +479,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
             return 0;
           }
           // extract n1,n2,n3 until " is encountered
-          DEBUG("dialogs tag matched, extracting list.\n");
+          DEBUG("dialogs tag matched, extracting list.");
           char number_str[8];
           int number_len = 0;
           do {
@@ -525,7 +525,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                     fclose(f);
                     return 0;
                   }
-                  DEBUG("number_str = %s => %d. sub_list[%d] = %d\n", number_str, d, d, sub_list[d]);
+                  DEBUG("number_str = %s => %d. sub_list[%d] = %d", number_str, d, d, sub_list[d]);
                   d = sub_list[d];
                 } else {
                   snprintf(err, MAXERRSIZE, "Invalid dialogs parameter value '%s'.\r\n", number_str);
@@ -535,7 +535,7 @@ int xp_open_and_buffer_file(const char * filename, char * path, int *index, unsi
                   return 0;
                 }
 
-                DEBUG("Adding %d to local_sub_list[%d].\n", d, local_sub_length);
+                DEBUG("Adding %d to local_sub_list[%d].", d, local_sub_length);
                 local_sub_list[local_sub_length] = d;
                 local_sub_length++;
                 number_len = 0;
@@ -731,8 +731,10 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
   int level = 0;
   static char name[XP_MAX_NAME_LEN];
 
-  DEBUG("xp_open_element_skip_control STARTED: index = %d, skip_scenario = %d, xp_stack = %d, ptr = '%s'\n", index, skip_scenario, xp_stack, debug_buffer(ptr));
-  if (is_xp_file_metadata_valid()) DEBUG("Source File Location:\n%s\n", convert_whereami_key_to_string(ptr-xp_file).c_str());
+  DEBUG("xp_open_element_skip_control STARTED: index = %d, skip_scenario = %d, xp_stack = %d, ptr = '%s'", index, skip_scenario, xp_stack, debug_buffer(ptr));
+  if (is_xp_file_metadata_valid()) {
+    DEBUG("Source File Location:\n%s", convert_whereami_key_to_string(ptr-xp_file).c_str());
+  }
   while(*ptr) {
     if (*ptr == '<') {
       if (!strncmp(ptr,"<![CDATA[", strlen("<![CDATA["))) {
@@ -753,13 +755,13 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
         ptr = doctype_end + 1;
       } else if ((skip_scenario) && !(strncmp(ptr,"<scenario", strlen("<scenario")))) {
         char * scenario_end = strstr(ptr, ">");
-        DEBUG("  Skipping over embedded <scenario> tag (%d bytes); level = %d, index = %d\n", scenario_end-ptr, level, index);
+        DEBUG("  Skipping over embedded <scenario> tag (%d bytes); level = %d, index = %d", scenario_end-ptr, level, index);
         if(!scenario_end) return NULL;
         ptr = scenario_end + 1;
       } else if (*(ptr+1) == '/') {
         if (!strncmp(ptr, "</scenario", strlen("</scenario"))) {
           char * scenario_end = strchr(ptr, '>');
-          DEBUG("  Skipping over embedded </scenario> tag (%d bytes); level = %d, index = %d\n", scenario_end-ptr, level, index);
+          DEBUG("  Skipping over embedded </scenario> tag (%d bytes); level = %d, index = %d", scenario_end-ptr, level, index);
           if(!scenario_end) return NULL;
           ptr = scenario_end + 1;
         } else {
@@ -771,7 +773,7 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
         if(level==0) {
           if (index) {
             index --;
-            DEBUG("  < found, level=0, index>0: decrementing index; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
+            DEBUG("  < found, level=0, index>0: decrementing index; level = %d, index = %d, ptr='%s'", level, index, debug_buffer(ptr));
           } else {
             char * end = xp_find_start_tag_end(ptr + 1);
             char * p;
@@ -802,26 +804,26 @@ char * xp_open_element_skip_control(int index, int skip_scenario)
             name[end-ptr-1] = 0;
 
             xp_position[++xp_stack] = end;
-            DEBUG("  xp_open_element_skip_control Returning element '%s'; level = %d, index = %d, xp_stack = %d, ptr='%s'\n", name, level, index, xp_stack, debug_buffer(ptr));
+            DEBUG("  xp_open_element_skip_control Returning element '%s'; level = %d, index = %d, xp_stack = %d, ptr='%s'", name, level, index, xp_stack, debug_buffer(ptr));
             return name;
           }
         }
 
         /* We want to skip over this particular element .*/
-        DEBUG("  We want to skip over this particular element, calling xp_find_start_tag_end; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
+        DEBUG("  We want to skip over this particular element, calling xp_find_start_tag_end; level = %d, index = %d, ptr='%s'", level, index, debug_buffer(ptr));
         ptr = xp_find_start_tag_end(ptr + 1);
         if (ptr) ptr--;
         level ++;
       }
     } else if((*ptr == '/') && (*(ptr+1) == '>')) {
       level --;
-      DEBUG("  Found />; if (level<0) will return null; level = %d, index = %d, ptr='%s'\n", level, index, debug_buffer(ptr));
+      DEBUG("  Found />; if (level<0) will return null; level = %d, index = %d, ptr='%s'", level, index, debug_buffer(ptr));
       if(level < 0) return NULL;
     }
     ptr++;
   }
 
-  DEBUG("  xp_open_element_skip_control Reached end of file, returning NULL; level = %d, index = %d\n", level, index);
+  DEBUG("  xp_open_element_skip_control Reached end of file, returning NULL; level = %d, index = %d", level, index);
   return NULL;
 }
 

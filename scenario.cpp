@@ -1060,7 +1060,7 @@ scenario::scenario(char * filename, int deflt, int dumpxml) : scenario_path(0)
         curmsg->set_source_location(xp_get_whereami_key());
         //DEBUG("whereami = %d \n", curmsg->get_source_location());
         //string source_location = convert_whereami_key_to_string(curmsg->get_source_offset());
-        DEBUG("Added Message %d to Scenario %s from index %d which comes from document:\n%s",
+        DEBUG("Added Message %d to Scenario %s from index %d which comes from document:%s",
               messages.size(), name , xp_get_whereami_key(),
               curmsg->get_source_location().c_str());
       }
@@ -1736,8 +1736,9 @@ void scenario::parseAction(CActions *actions, int dialog_number)
             REPORT_ERROR("Scenario specifies source_ip=\'%d\', index not supported", source_no);
           }
           tmpAction->setSourceIP(source_no);
-        }else
+        } else {
           tmpAction->setSourceIP(1);
+        }
 
         //flag for executeAction
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_AUDIO);
@@ -1764,8 +1765,9 @@ void scenario::parseAction(CActions *actions, int dialog_number)
             REPORT_ERROR("Scenario specifies source_ip=\'%d\', index not supported", source_no);
           }
           tmpAction->setSourceIP(source_no);
-        }else
+        } else {
           tmpAction->setSourceIP(1);
+        }
 
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_VIDEO);
         hasMedia = 1;
@@ -1791,8 +1793,9 @@ void scenario::parseAction(CActions *actions, int dialog_number)
             REPORT_ERROR("Scenario specifies source_ip=\'%d\', index not supported", source_no);
           }
           tmpAction->setSourceIP(source_no);
-        }else
+        } else {
           tmpAction->setSourceIP(1);
+        }
 
         tmpAction->setActionType(CAction::E_AT_PLAY_PCAP_APPLICATION);
         hasMedia = 1;
