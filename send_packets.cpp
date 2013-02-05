@@ -293,7 +293,7 @@ send_packets (play_args_t * play_args)
     do_sleep ((struct timeval *) &pkt_index->ts, &last, &didsleep, &start);
 
     int retries = 0;
-    const int maxRetries = 3;
+    const int maxRetries = 10;
     bool needRetry;
     do {
       needRetry = false;
@@ -324,8 +324,8 @@ send_packets (play_args_t * play_args)
           needRetry = true;
           usleep(10000); // sleep 1/10 ms and try again.
         } else {
-          WARNING("send_packets.c: sendto failed on packet #%d with error: %s ; from %s ; to %s", 
-            packets_count, errormessage.c_str(), 
+          WARNING("send_packets.c: sendto failed on packet #%d with error: %s ; retries = %d, from %s ; to %s", 
+            packets_count, errormessage.c_str(), retries,
             socket_to_ip_port_string(from).c_str(), socket_to_ip_port_string(to).c_str());
           retries = 0; // moving onto next packet so reset retries.
 //          Best effort: keep trying to send on errors (plus can't break from main loop from this inner loop).

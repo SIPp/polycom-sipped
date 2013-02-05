@@ -2142,7 +2142,7 @@ bool call::run()
     curmsg = call_scenario->messages[msg_index];
   }
 
-  callDebug("Processing message %d of type %d for call %s at %u.\n", msg_index, curmsg->M_type, id, clock_tick);
+  callDebug("Processing message %d of type %d for call %s at clock_tick = %u.\n", msg_index, curmsg->M_type, id, clock_tick);
 
   if (curmsg->condexec != -1) {
     bool exec = M_callVariableTable->getVar(curmsg->condexec)->isSet();
@@ -3831,7 +3831,7 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src, struct sip
 
   getmilliseconds();
   DEBUG_IN("Current msg_index is %d", msg_index);
-  callDebug("Processing %d byte incoming message for call-ID %s (hash %u):\n%s\n", strlen(msg), id, hash(msg), msg);
+  callDebug("Processing %d byte incoming message for call-ID %s (hash %u) at clock_tick %u:\n%s\n", strlen(msg), id, hash(msg), clock_tick, msg);
 
   setRunning();
 

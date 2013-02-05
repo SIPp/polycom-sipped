@@ -122,7 +122,7 @@ struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket 
 
 void set_sipp_version_string(){
   memset(sipp_version,0,SIPPVERSSIZE);
-  sprintf(sipp_version,"SIPped v3.2.72"
+  sprintf(sipp_version,"SIPped v3.2.73BETA"
 #ifdef WIN32
                "-W32"
 #endif
