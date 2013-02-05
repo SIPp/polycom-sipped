@@ -4,6 +4,10 @@ $Date$
 $Id$ 
 $Revision$
 
+3.2.73 BETA
+- Increase retries on operation would block errors during replay.
+- Print out retries value at Warning.
+- Bit more detail in debug logging in call (identify clock ticks)
 
 3.2.72
 - Add retry logic to sendto() in send_packets to support EAGAIN and EWOULDBLOCK errors
