@@ -19,6 +19,7 @@
  *            Richard GAYRAUD
  *            From Hewlett Packard Company.
  *            Guillaume Teissier from FTR&D
+ *            Polycom Inc. (Edward Estabrook, Richard Lum, Daniel Busto).  Contributions (c) 2010 - 2013
  */
 #include <stdlib.h>
 #include "common.hpp"
@@ -442,9 +443,9 @@ int CAction::executeRegExp(char* P_string, VariableTable *P_callVarTable)
 
     for(int i = 0; i <= getNbSubVarId(); i++) {
       if(pmatch[i].rm_eo == -1) break ;
-
-      //FIXME: Some regular expressions do not play nicely with this framework. Why?
-      //       e.g. using [0-9]* as your regular expression will set matching value to NULL.
+    
+      // Note using [0-9]* as your regular expression will set matching value to NULL.
+      // Because * can match a zero-length string (and for some reason it is not greedy here)
       setSubString(&result, P_string, pmatch[i].rm_so, pmatch[i].rm_eo);
       L_callVar->setMatchingValue(result);
 
@@ -457,7 +458,6 @@ int CAction::executeRegExp(char* P_string, VariableTable *P_callVarTable)
   return(nbOfMatch);
 }
 
-//FIXME: why use a char** for the target instead of just a char*?
 void CAction::setSubString(char** P_target, char* P_source, int P_start, int P_stop)
 {
   int sizeOf;

@@ -17,14 +17,15 @@
  *           Olivier Jacques
  *           From Hewlett Packard Company.
  *           Charles P Wright from IBM Research
- */
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
+*/
 
 
 #include "call.hpp" // call
 #include "screen.hpp"   // REPORT_ERROR
 #include "sipp_globals.hpp"
 #include "logging.hpp" //SIPP_MAX_MSG_SIZE
-//
+
 
 #include "message.hpp"  //MessageComponent
 #include <stdlib.h>

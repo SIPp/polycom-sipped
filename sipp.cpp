@@ -32,7 +32,8 @@
  *           Charles P Wright from IBM Research
  *           Martin Van Leeuwen
  *           Andy Aicken
- *       Michael Hirschbichler
+ *           Michael Hirschbichler
+ *           Polycom Inc. (Edward Estabrook, Richard Lum, Daniel Busto). Contributions (c) 2010 - 2013
  */
 
 
@@ -122,7 +123,7 @@ struct sipp_socket *stdin_socket = NULL; // stdin_socket treats stdin as socket 
 
 void set_sipp_version_string(){
   memset(sipp_version,0,SIPPVERSSIZE);
-  sprintf(sipp_version,"SIPped v3.2.73BETA"
+  sprintf(sipp_version,"SIPped v4.0 BETA"
 #ifdef WIN32
                "-W32"
 #endif

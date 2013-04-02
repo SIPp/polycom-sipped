@@ -15,6 +15,7 @@
  *
  *  Author : Gundu RAO - 16 Jul 2004
  *           From Hewlett Packard Company.
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 #ifndef _ccnv_2_common_h_H
 #define _ccnv_2_common_h_H
@@ -40,31 +41,27 @@
 /* Initialises an SSL context and makes the lib thread safe */
 #ifdef _USE_OPENSSL
 
-#ifndef SSL_MAIN
+# ifndef SSL_MAIN
 extern
-#endif
+# endif
 int init_OpenSSL(void);
 
-#ifndef SSL_MAIN
+# ifndef SSL_MAIN
 extern
-#endif
+# endif
 int Thread_setup(void);
 
-#ifndef SSL_MAIN
+# ifndef SSL_MAIN
 extern
-#endif
+# endif
 SSL_CTX *setup_ssl_context(SSL_METHOD *);
 
-#ifndef SSL_MAIN
+# ifndef SSL_MAIN
 extern
-#endif
+# endif
 int SSL_ERROR(void);
 
-#ifndef SSL_MAIN
-//  extern
-#endif
-//    int createAuthHeader(char * user, char * password, char * method, char * uri, char * msgbody, char * auth, char * result);
-#endif
-#endif
+# endif /* _USE_OPENSSL */
+#endif /* _ccnv_2_common_h_H */
 
 

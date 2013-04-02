@@ -20,6 +20,7 @@
  *                              - split in the auth architecture
  *                              - introduced AKAv1-MD5
  *           Frederique Aurouet
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 
 #if defined( __FreeBSD__) || defined(__DARWIN) || defined(__SUNOS)

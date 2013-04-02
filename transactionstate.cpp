@@ -14,8 +14,8 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *
- *  Author : Edward Estabrook - 13 April 2011
- *           From Polyom Inc.
+ *  Author : 
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  *
  */
 

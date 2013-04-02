@@ -15,6 +15,7 @@
  *
  *  Author : Gundu RAO - 16 Jul 2004
  *           From Hewlett Packard Company.
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 
 

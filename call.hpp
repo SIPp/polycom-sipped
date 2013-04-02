@@ -15,8 +15,9 @@
  *
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
- *       Charles P. Wright from IBM Research
+ *           Charles P. Wright from IBM Research
  *           Andy Aicken
+ *           Polycom Inc. (Edward Estabrook, Richard Lum, Daniel Busto).  Contributions (c) 2010 - 2013
  */
 
 #ifndef __CALL__

@@ -17,16 +17,12 @@
  *
  *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 
 #ifndef __COMPHPP__
 #define __COMPHPP__
-//#include <sys/types.h>
-//#ifdef WIN32
-//  #include <winsock2.h>
-//#else
-//  #include <sys/socket.h>
-//#endif
+
 
 
 char * comp_load();

@@ -14,6 +14,7 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *  Author : Guillaume TEISSIER from FTR&D 02/02/2006
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 #ifndef PREPARE_PCAP_H
 #define PREPARE_PCAP_H  1

@@ -33,6 +33,7 @@
  *           Ben Evans from Open Cloud
  *           Marc Van Diest from Belgacom
  *           Andy Aicken
+ *           Polycom Inc. (Edward Estabrook, Richard Lum, Daniel Busto).  Contributions (c) 2010 - 2013
  */
 
 #ifndef __MESSAGE__

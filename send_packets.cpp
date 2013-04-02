@@ -1,7 +1,7 @@
 /*
  * send_packets.c: from tcpreplay tools by Aaron Turner
  * http://tcpreplay.sourceforge.net/
- * send_packets.c is under BSD license (see below)
+ * send_packets.cpp is under BSD license (see below)
  * SIPp is under GPL license
  *
  *

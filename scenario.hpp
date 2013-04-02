@@ -19,7 +19,8 @@
  *           Peter Higginson
  *           JPeG
  *           Guillaume TEISSIER from FTR&D
-*/
+ *           Polycom Inc. (Edward Estabrook, Richard Lum, Daniel Busto).  Contributions (c) 2010 - 2013
+ */
 
 #ifndef __SCENARIO__
 #define __SCENARIO__

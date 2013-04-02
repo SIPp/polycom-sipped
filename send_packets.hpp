@@ -1,7 +1,7 @@
 /*
  * send_packets.h: from tcpreplay tools by Aaron Turner
  * http://tcpreplay.sourceforge.net/
- * send_packets.h is under BSD license (see below)
+ * send_packets.hpp is under BSD license (see below)
  * SIPp is under GPL license
  *
  * Copyright (c) 2001-2004 Aaron Turner.
@@ -38,7 +38,6 @@
 
 
 #ifdef WIN32
-//#include <time.h>  // ???
 #include <winsock2.h>
 #else
 #include <sys/time.h>

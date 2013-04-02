@@ -33,6 +33,7 @@
  *           Ben Evans from Open Cloud
  *           Marc Van Diest from Belgacom
  *           Michael Dwyer from Cibation
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 
 #include <assert.h>

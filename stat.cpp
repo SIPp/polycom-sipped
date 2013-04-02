@@ -19,6 +19,7 @@
  *            Richard GAYRAUD
  *            From Hewlett Packard Company.
  *            Wolfgang Beck
+ *            Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  *
  */
 

@@ -23,8 +23,9 @@
  *           Guillaume TEISSIER from FTR&D
  *           Wolfgang Beck
  *           Marc Van Diest from Belgacom
- *       Charles P. Wright from IBM Research
- *       Michael Stovenour
+ *           Charles P. Wright from IBM Research
+ *           Michael Stovenour
+ *           Polycom Inc. (Edward Estabrook, Richard Lum, Daniel Busto).  Contributions (c) 2010 - 2013
  */
 #include <assert.h>
 #include <limits.h>

@@ -35,7 +35,8 @@
  *           Michael Dwyer from Cibation
  *           Roland Meub
  *           Andy Aicken
- *       Martin H. VanLeeuwen
+ *           Martin H. VanLeeuwen
+ *           Polycom Inc. (Edward Estabrook, Richard Lum, Daniel Busto).  Contributions (c) 2010 - 2013
  */
 
 #include <limits.h>  // INT_MAX

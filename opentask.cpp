@@ -29,6 +29,7 @@
  *           Clement Chen
  *           Wolfgang Beck
  *           Charles P Wright from IBM Research
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 #include <assert.h>
 #include <math.h>

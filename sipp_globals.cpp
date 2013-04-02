@@ -1,8 +1,22 @@
 /*
- * sipp_globals.cpp
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *  Created on: Mar 9, 2012
- *      Author: rlum
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *  Author : 
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
+ *
  */
 
 #ifdef WIN32
@@ -22,7 +36,7 @@
 #include "sipp_globals.hpp"
 #include "logging.hpp"
 #include "win32_compatibility.hpp"
-#include "common.hpp"  //MAX_HEADER_LEN
+#include "common.hpp"  // MAX_HEADER_LEN
 
 
 char               sipp_version[SIPPVERSSIZE];
@@ -44,7 +58,7 @@ int                transport               = DEFAULT_TRANSPORT;
 bool               retrans_enabled         = 1;
 bool               absorb_retrans          = 0;
 
-//call.hpp defines constants that these initialize to
+// call.hpp defines constants that these initialize to
 int                rtcheck                 = RTCHECK_FULL;
 int                max_udp_retrans         = UDP_MAX_RETRANS;
 int                max_invite_retrans      = UDP_MAX_RETRANS_INVITE_TRANSACTION;
@@ -163,9 +177,7 @@ char              *tls_crl_name            = DEFAULT_TLS_CRL;
 #endif
 
 // extern field file management
-//typedef std::map<string, FileContents *> file_map;
 file_map           inFiles;
-//typedef std::map<string, str_int_map *> file_index;
 char              *ip_file                 = NULL;
 char              *default_file            = NULL;
 
@@ -176,18 +188,9 @@ list<int>          freeUsers;
 list<int>          retiredUsers;
 AllocVariableTable* globalVariables        = NULL;
 AllocVariableTable* userVariables          = NULL;
-//typedef std::map<int, VariableTable *> int_vt_map;
 int_vt_map          userVarMap;
 
-//extern int      new_socket(bool P_use_ipv6, int P_type_socket, int * P_status);
-//struct   sipp_socket *new_sipp_socket(bool use_ipv6, int transport);
-//struct sipp_socket *new_sipp_call_socket(bool use_ipv6, int transport, bool *existing);
-//struct sipp_socket *sipp_accept_socket(struct sipp_socket *accept_socket, struct sockaddr_storage *source=0);
-//int  sipp_bind_socket(struct sipp_socket *socket, struct sockaddr_storage *saddr, int *port);
-//int  sipp_connect_socket(struct sipp_socket *socket, struct sockaddr_storage *dest);
-//int      sipp_reconnect_socket(struct sipp_socket *socket);
-//void sipp_customize_socket(struct sipp_socket *socket);
-//int      delete_socket(int P_socket);
+
 int                min_socket              = 65535;
 int                select_socket           = 0;
 bool               socket_close            = true;
@@ -251,13 +254,6 @@ int               maxDynamicId            = 12000;  // max value for dynamicId; 
 int               startDynamicId          = 10000;  // offset for first dynamicId  FIXME:in CmdLine
 int               stepDynamicId           = 4;      // step of increment for dynamicId
 
-/**
-#define GET_TIME(clock)       \
-{                             \
-  struct timezone tzp;        \
-  gettimeofday (clock, &tzp); \
-}
-**/
 
 /*********************** Global Sockets  **********************/
 
@@ -286,20 +282,9 @@ struct sipp_socket* twinSippSocket         = NULL;
 struct sipp_socket* localTwinSippSocket    = NULL;
 struct sockaddr_storage twinSipp_sockaddr;
 
-/* 3pcc extended mode */
-//typedef struct _T_peer_infos {
-//               char                       peer_host[40];
-//               int                        peer_port;
-//               struct sockaddr_storage    peer_sockaddr;
-//               char                       peer_ip[40];
-//               struct sipp_socket         *peer_socket ;
-//               } T_peer_infos;
 
-//typedef std::map<std::string, char * > peer_addr_map;
 peer_addr_map      peer_addrs;
-//typedef std::map<std::string, T_peer_infos> peer_map;
 peer_map           peers;
-//typedef std::map<struct sipp_socket *, std::string > peer_socket_map;
 peer_socket_map    peer_sockets;
 struct sipp_socket* local_sockets[MAX_LOCAL_TWIN_SOCKETS];
 int                local_nb                = 0;
@@ -309,13 +294,6 @@ struct sockaddr_storage remote_sockaddr;
 short              use_remote_sending_addr = 0;
 struct sockaddr_storage remote_sending_sockaddr;
 
-//enum E_Alter_YesNo
-//  {
-//    E_ALTER_YES=0,
-//    E_ALTER_NO
-//  };
-
-//moved from sipp.cpp
 map<string, struct sipp_socket *>     map_perip_fd;
 int pending_messages = 0;
 int         pollnfds = 0;
@@ -325,7 +303,6 @@ int         pollnfds = 0;
 
 FILE *             screenf                 = 0;
 FILE *             countf                  = 0;
-// extern FILE * timeoutf                  = 0;
 bool               useMessagef             = 0;
 bool               useCallDebugf           = 0;
 bool               useShortMessagef        = 0;
@@ -333,7 +310,6 @@ bool               useScreenf              = 0;
 bool               useLogf                 = 0;
 bool               useDebugf               = 0;
 bool               useExecf                = 0;
-//extern bool   useTimeoutf                = 0;
 bool               dumpInFile              = 0;
 bool               dumpInRtt               = 0;
 bool               useCountf               = 0;
@@ -470,7 +446,7 @@ unsigned long int get_cseq_value(const char *msg)
   // there is no short form for CSeq:
   ptr1 = strcasestr2(msg, "\r\nCSeq:");
   if(!ptr1) {
-    //WARNING("No valid Cseq header in request %s", msg);
+    // WARNING("No valid Cseq header in request %s", msg);
     return 0;
   }
 
@@ -481,7 +457,7 @@ unsigned long int get_cseq_value(const char *msg)
   }
 
   if(!(*ptr1)) {
-    //WARNING("No valid Cseq data in header");
+    // WARNING("No valid Cseq data in header");
     return 0;
   }
 
@@ -503,7 +479,6 @@ unsigned long get_reply_code(const char *msg)
 
 
 
-//moved from sipp.cpp
 // Returns call-id from message or empty string if one is not found.
 char * get_call_id(char *msg)
 {
@@ -582,7 +557,7 @@ char * get_to_or_from_tag(char *msg, bool toHeader)
     hdr = strcasestr(msg, "\r\nTo:");
     if(!hdr) hdr = strstr(msg, "\r\nt:");
     if(!hdr) {
-      //REPORT_ERROR("No valid To: header in reply");
+      // REPORT_ERROR("No valid To: header in reply");
       strncat(errorstring, "No valid To: header in reply",errstringsize-7); 
       return errorstring;
     }
@@ -590,7 +565,7 @@ char * get_to_or_from_tag(char *msg, bool toHeader)
     hdr = strcasestr(msg, "\r\nFrom:");
     if(!hdr) hdr = strstr(msg, "\r\nf:");
     if(!hdr) {
-      //REPORT_ERROR("No valid From: header in message");
+      // REPORT_ERROR("No valid From: header in message");
       strncat(errorstring, "No valid From: header in message",errstringsize-7);
       return errorstring;
     }

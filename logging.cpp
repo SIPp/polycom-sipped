@@ -13,10 +13,9 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- *  Author : Edward Estabrook - 13 Dec 2011
- *           From Polycom
- *           Richard GAYRAUD - 04 Nov 2003
+ *  Author : Richard GAYRAUD - 04 Nov 2003
  *           From Hewlett Packard Company.
+ *           Polycom Inc. (Edward Estabrook, Richard Lum).  Contributions (c) 2010 - 2013
  */
 
 /****

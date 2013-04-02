@@ -32,8 +32,6 @@ LICENCE.txt file for details). You can contribute to the development
 of Sipp and contact us via Sourceforge to integrate your changes. If you 
 make changes in Sipp, *PLEASE* follow a few coding rules:
 
-  - Use 80 columns code,
-
   - Do *NOT* use tabulations for indentation. Use spaces,
 
   - Please stay conform with the current indentation style (2 spaces
@@ -63,5 +61,6 @@ Thanks,
 
   ojacques@users.sourceforge.net
   richard_gayraud@users.sourceforge.net
+  edwardestabrook@users.sourceforge.net
 
 ******************************************************************
