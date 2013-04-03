@@ -59,8 +59,7 @@ make changes in Sipp, *PLEASE* follow a few coding rules:
 
 Thanks,
 
-  ojacques@users.sourceforge.net
   richard_gayraud@users.sourceforge.net
-  edwardestabrook@users.sourceforge.net
+  edwardestabrook@users.sf.net
 
 ******************************************************************
