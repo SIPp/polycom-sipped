@@ -1015,7 +1015,7 @@ void xp_convert_special_characters(char * buffer)
   }
   *dst = 0;
 
-
+ 
 }
 
 // routines to assist unit testing
@@ -1040,7 +1040,7 @@ CompositeDocument build_xp_file_metadata(string sippFile, int dumpxml)
     return xp_file_metadata;
   else {
     // return an empty composite document if we failed to load file
-    printf("failed to load file into buffer\n");
+    printf("failed to load file '%s' into buffer\n", sippFile.c_str());
     CompositeDocument cdoc;
     return cdoc;
   }

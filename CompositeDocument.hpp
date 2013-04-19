@@ -138,6 +138,7 @@ private:
 public:
   CompositeDocument();
   ~CompositeDocument();
+  bool isEmpty();
   int incr_line(int index);
   void includeFile(string includeFileName);
   void endIncludeFile();

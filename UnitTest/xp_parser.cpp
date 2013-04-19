@@ -386,6 +386,7 @@ TEST(xp_parser, CompositeDocument)
    * This is done by build_xp_file_metadata .
    */
   CompositeDocument metadata = build_xp_file_metadata(rootSippWithIncludes, dumpxml);
+  ASSERT_FALSE(metadata.isEmpty()) << "CompositeDocument is empty, meaning the file needed for this test could not be opened";
 
   // does newline map in xp_buffer match CompositeDocument?
   EXPECT_TRUE(metadata.checkNewLineSynch(xp_get_xmlbuffer().c_str())) << "CompositeDocument Mapped Newlines not found in buffer xp_file";

@@ -37,6 +37,14 @@ CompositeDocument::CompositeDocument()
 CompositeDocument::~CompositeDocument()
 {
 }
+
+// return true if empty
+// provides easy way to tell if initialized correctly.
+bool CompositeDocument::isEmpty() 
+{
+  return getQtyStacks() == 0;
+}
+
 // get the current compositeLineNumber
 int CompositeDocument::getCompositeLineNumber()
 {
