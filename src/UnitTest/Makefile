@@ -120,7 +120,7 @@ transactionstate.o : transactionstate.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) -I$(SIPP_DIR) $(CXXFLAGS) -c transactionstate.cpp
     
 transactionstate : transactionstate.o $(SIPP_DIR)/transactionstate.o $(SIPP_DIR)/logging.o  gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ -lpthread
 
 ##### sipp_sockethandler
 	#TLS defines are required since sipp_socket structure is different w/wo TLS
@@ -141,7 +141,7 @@ sipp_sockethandler : sipp_sockethandler.o $(SIPP_DIR)/sipp_sockethandler.o \
 #		echo $(SSLLIBS)
 #		echo $(OSNAME)
 #		echo $(CURSLIBS)
-	$(CXX)  $(CPPFLAGS) $(CXXFLAGS)  -lpthread $^ -o $@ $(SSLLIBS) $(CURSLIBS) 
+	$(CXX)  $(CPPFLAGS) $(CXXFLAGS)  $^ -o $@ $(SSLLIBS) $(CURSLIBS)  -lpthread
 
 ### socket udp loop around test to help highlight cross platform differences in socket api   
 sockdemo.o : sockdemo.cpp $(GTEST_HEADERS)
@@ -158,7 +158,7 @@ sockdemo : sockdemo.o \
 		$(SIPP_DIR)/socket_helper.o \
     $(SIPP_DIR)/comp.o           \
 		gtest_main.a
-	$(CXX)  $(CPPFLAGS) $(CXXFLAGS)  -lpthread $^ -o $@ $(SSLLIBS) $(CURSLIBS) 
+	$(CXX)  $(CPPFLAGS) $(CXXFLAGS)  $^ -o $@ $(SSLLIBS) $(CURSLIBS)  -lpthread
 
 ##### 
 ##### xp_parser
@@ -166,7 +166,7 @@ xp_parser.o : xp_parser.cpp  $(GTEST_HEADERS)
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
 
 xp_parser : xp_parser.o $(SIPP_DIR)/xp_parser.o $(SIPP_DIR)/CompositeDocument.o gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@  -lpthread
 #####
 ##### screen
 screen.o : screen.cpp  $(GTEST_HEADERS)
@@ -188,5 +188,5 @@ helpers.o : helpers.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) -I$(SIPP_DIR) $(CXXFLAGS) -c helpers.cpp
     
 helpers : helpers.o $(SIPP_DIR)/helpers.o $(SIPP_DIR)/logging.o gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@  -lpthread
 	
