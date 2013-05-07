@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\openssld\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SIPP_SOURCE)\src\openssld\include&quot;;&quot;$(SIPP_SOURCE)\src\UnitTest\gtest-1.6.0\include&quot;;&quot;$(SIPP_SOURCE)\src&quot;;&quot;$(SIPP_SOURCE)\src\pthread_w32.2\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T;_USE_OPENSSL"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -64,7 +64,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="gtestd.lib gtest_maind.lib ws2_32.lib Kernel32.lib regex.lib win32_compatibility.obj sipp_globals.obj transactionstate.obj Logging.obj CompositeDocument.obj xp_parser.obj screen.obj stat.obj sipp_sockethandler.obj libeay32.lib ssleay32.lib socket_helper.obj infile.obj"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\openssld\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\msvc\gtest\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib\&quot;"
+				AdditionalLibraryDirectories="&quot;$(SIPP_SOURCE)\src\openssld\lib&quot;;&quot;$(SIPP_SOURCE)\src\UnitTest\gtest-1.6.0\msvc\gtest\Debug&quot;;&quot;$(SIPP_SOURCE)\src\Debug&quot;;&quot;$(SIPP_SOURCE)\src\regex-2.7\lib\&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
@@ -118,7 +118,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\openssl\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\include&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\pthread_w32.2\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SIPP_SOURCE)\src\openssl\include&quot;;&quot;$(SIPP_SOURCE)\src\UnitTest\gtest-1.6.0\include&quot;;&quot;$(SIPP_SOURCE)\src&quot;;&quot;$(SIPP_SOURCE)\src\pthread_w32.2\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T;_USE_OPENSSL"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
@@ -139,7 +139,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="gtestd.lib gtest_maind.lib ws2_32.lib Kernel32.lib regex.lib win32_compatibility.obj sipp_globals.obj transactionstate.obj Logging.obj CompositeDocument.obj xp_parser.obj screen.obj stat.obj sipp_sockethandler.obj libeay32.lib ssleay32.lib socket_helper.obj infile.obj"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(TA_DIR)\SIPped\SIPped\src\openssl\lib&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\UnitTest\gtest-1.6.0\msvc\gtest\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\Debug&quot;;&quot;$(TA_DIR)\SIPped\SIPped\src\regex-2.7\lib\&quot;"
+				AdditionalLibraryDirectories="&quot;$(SIPP_SOURCE)\src\openssl\lib&quot;;&quot;$(SIPP_SOURCE)\src\UnitTest\gtest-1.6.0\msvc\gtest\Debug&quot;;&quot;$(SIPP_SOURCE)\src\Debug&quot;;&quot;$(SIPP_SOURCE)\src\regex-2.7\lib\&quot;"
 				GenerateDebugInformation="false"
 				SubSystem="1"
 				RandomizedBaseAddress="1"

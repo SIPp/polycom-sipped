@@ -514,13 +514,13 @@ string prepend_environment_if_needed(const string &name, const string &message=s
 {
   if (file_exists(name)) {
     return name;
-  } else if (getenv("SIPPED")) {
-    string fullname = string(getenv("SIPPED")) + string("/") + name;
+  } else if (getenv("SIPP")) {
+    string fullname = string(getenv("SIPP")) + string("/") + name;
     if (file_exists(fullname)) {
       return fullname;
     }
   }
-  REPORT_ERROR("Error opening %s file '%s': File not found in current directory or in directory specified by SIPPED environment variable", message.c_str(), name.c_str());
+  REPORT_ERROR("Error opening %s file '%s': File not found in current directory or in directory specified by SIPP environment variable", message.c_str(), name.c_str());
   return ""; // Never executes
 }
 
