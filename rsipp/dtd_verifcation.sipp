@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="" parameters="">
+  <Global variables=""/>
+  <Reference variables=""/>
+  <User variables=""/>
+  <CallLengthRepartition value=""/>
+  <init/>
+  <label id="1"/>
+  <nop display="Actions">
+    <action>
+	  <add assign_to="" value=""/>
+	  <assign assign_to="" value=""/>
+	  <assignstr assign_to="" value=""/>
+	  <divide assign_to="" value=""/>
+	  <ereg assign_to="" regexp=""/>
+	  <exec command=""/>
+	  <gettimeofday assign_to=""/>
+	  <insert file="" value=""/>
+	  <jump value=""/>
+	  <log message=""/>
+	  <lookup assign_to="" key="" value=""/>
+	  <multiply assign_to="" value=""/>
+	  <strcmp assign_to="" value="" variable=""/>
+	  <subtract assign_to="" value=""/>
+	  <trim assign_to=""/>
+	  <test variable="" value=""/>
+	  <verifyauth assign_to=""/>
+	</action>
+  </nop>
+  <pause/>
+  <recv/>
+  <recvCmd/>
+  <ResponseTimeRepartition value=""/>
+  <send/>
+  <sendCmd/>
+</scenario>
+

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd"[]>
+<tools>
+  <sipp command="sipp">
+    <param name="-i" value="127.0.0.1" />
+    <param name="" value="127.0.0.1" />
+  </sipp>
+</tools>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd"[]>
+<tools>
+  <sipp command="sipp">
+    <param name="-i" value="REPLACE_WITH_IP_OF_YOUR_NETWORK_INTERFACE" />
+    <param name="" value="REPLACE_WITH_DEFAULT_IP_OF_ENDPOINT_TO_TEST" />
+  </sipp>
+</tools>
