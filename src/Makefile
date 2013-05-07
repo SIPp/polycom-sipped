@@ -162,11 +162,10 @@ INCDIR_Cygwin=-I. -I/usr/include/openssl -I/usr/include -I/usr/lib/WpdPack/Inclu
 INCDIR_Darwin=-I. -I/usr/local/ssl/include
 INCDIR=$(INCDIR_$(SYSTEM)) 
 
-
 -include local.mk
 
 # Building without TLS and authentication (no openssl pre-requisite)
-all:
+all: 
 	$(MAKE) OSNAME=`uname|sed -e "s/CYGWIN.*/CYGWIN/"` MODELNAME=`uname -m|sed "s/Power Macintosh/ppc/"` $(OUTPUT)
 # Building with TLS and authentication
 ossl:
@@ -227,12 +226,12 @@ archive:
 	cp TMP_TAR_FILE.tar.gz $(ARCHIVE)
 	rm -f TMP_TAR_FILE.*
 
-unit_test:
+unit_test: check_environment
 	$(MAKE) -C UnitTest
 	$(MAKE) -C UnitTest test 
 
 .PHONY:
-test: unit_test
+test: unit_test check_environment
 	$(MAKE) -C UnitTest test
 	@pushd test > /dev/null; ./test.rb; popd > /dev/null
 	
@@ -258,4 +257,9 @@ fortune.so: fortune.cpp
 	g++ -fPIC $(CPPFLAGS) $(MFLAGS) $(DEBUG_FLAGS) $(_HPUX_LI_FLAG) $(INCDIR) -c $^ -o fortune.o  
 	gcc -shared -Wl,-soname,fortune.so -o $@ fortune.o
 
-		
+# Be sure build environment is correct
+.PHONY: check_environment
+check_environment:
+ifndef SIPP_SOURCE
+	$(error SIPP_SOURCE environment variable is undefined. Please set to absolute path of src folder.)
+endif

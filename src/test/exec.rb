@@ -61,6 +61,6 @@ class Exec < Test::Unit::TestCase
 	# verify <exec verify="rsipp.pl ... ">
     test = SippTest.new("exec_uses_correct_path", "-mc -sf exec_uses_correct_path.sipp", "-sn uas -aa ")
 	test.expected_minimum_run_time = 3
-    assert(test.run(), test.error_message() + " (If failing first make sure the rsipp.config.xml file is set up correctly!)")
+    assert(test.run(), test.error_message() + " (If failing first make sure rsipp.pl is in the path and the rsipp.config.xml file is set up correctly!)")
   end
 end

@@ -3,7 +3,7 @@
 <scenario name="Include Substitution 1" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
 
   <!-- include_substitution_1 file has directly specified parameters -->
-   <xi:include href="%TA_DIR%/SIPped/SIPped/src/test/include_directory/include_substitution_2.xml" dialogs="BB,AA"/> 
+  <xi:include href="%SIPP_SOURCE%/test/include_directory/include_substitution_2.xml" dialogs="BB,AA"/> 
   
   <send dialog="AA">
    <![CDATA[

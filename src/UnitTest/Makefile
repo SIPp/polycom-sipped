@@ -11,7 +11,7 @@
 
 # All tests produced by this Makefile.  
 # Remember to add new tests you created to the list.
-TESTS = transactionstate xp_parser screen sipp_sockethandler sockdemo
+TESTS = transactionstate xp_parser screen sipp_sockethandler
 OSNAME:=$(shell uname|sed -e "s/CYGWIN.*/CYGWIN/")
 
 # Please tweak the following variable definitions as needed by your
@@ -143,7 +143,7 @@ sipp_sockethandler : sipp_sockethandler.o $(SIPP_DIR)/sipp_sockethandler.o \
 #		echo $(CURSLIBS)
 	$(CXX)  $(CPPFLAGS) $(CXXFLAGS)  -lpthread $^ -o $@ $(SSLLIBS) $(CURSLIBS) 
 
-### socket udp loop around test to help highlight cross platform differences in socket api   
+### socket loop around test to help highlight cross platform differences in socket api   
 sockdemo.o : sockdemo.cpp $(GTEST_HEADERS)
 		$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SIPP_DIR) -c $<
 

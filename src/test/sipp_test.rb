@@ -181,11 +181,11 @@ class SippTest
         sleep 1
         time_waited += 1
     end
-    
+
     if time_waited >= max_wait_time
        return false
     end
-    
+
     return true
   end
 
@@ -222,7 +222,7 @@ class SippTest
         success = false
       end
     end
-    
+
     if (success )
       success = start_sipp_client(client_commandline)
       stop_sipp_server()
@@ -282,7 +282,7 @@ class SippTest
         result = false;
       end
     end
-        
+
     if (!@expected_minimum_run_time.nil?)
       if (@expected_minimum_run_time > @run_time)
         puts "Run time #{@run_time} is less than expected minimum of #{@expected_minimum_run_time}.\n" unless @logging == "silent"
@@ -337,7 +337,7 @@ class SippTest
       return @error_message
     end
   end
-  
+
   def get_server_output()
     return IO.read(@server_screen_destination)
   end
@@ -345,16 +345,16 @@ class SippTest
   def get_client_output()
     return IO.read(@client_screen_destination)
   end
-  
+
   def get_error_log()
     return IO.read(@error_log_destination)
   end
-  
+
   def need_sipp_server()
     @server_options.empty? and return false
     return true
   end
-  
+
   # run server sipp process in background, saving pid
   def start_sipp_server(testcase_server)
     @server_options.empty? and return false

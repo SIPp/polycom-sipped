@@ -668,7 +668,7 @@ int xp_set_xml_buffer_from_file(const char * filename, int dumpxml)
   //  valid until either xp_file loaded from string or
   //  this method called again.
   xp_file_metadata.reset();
-  xp_file_metadata_is_not_valid =0;
+  xp_file_metadata_is_not_valid = 0;
 
   int result = xp_open_and_buffer_file(filename, empty, &index, 0, 0);
 

@@ -56,7 +56,7 @@ int loopit(int argc, char** argv)
     SOCKREF newfd;
     SOCKREF mainsock;
 
-    bool verbose = false;
+    bool verbose = true;
     char ipstr[INET6_ADDRSTRLEN];
     char hostname[256];
     bool is_tcp = false;
@@ -64,7 +64,7 @@ int loopit(int argc, char** argv)
     addrinfo hints, *res;
     memset(&hints,0,sizeof (hints));
     hints.ai_flags = AI_PASSIVE;
-    
+
 if (argc==1){
     //noargs, udp ipv4, looparound address
     hints.ai_family = AF_INET;
@@ -96,7 +96,7 @@ if (argc==1){
 }
 
     int astatus;
-    if ((astatus = getaddrinfo(hostname,"55432",&hints,&res)) != 0){
+    if ((astatus = getaddrinfo(hostname,"0",&hints,&res)) != 0) {
 #ifdef WIN32
         char errorstring[1000];
         wchar_to_char(wsaerrorstr(WSAGetLastError()),errorstring);
@@ -122,29 +122,41 @@ if (argc==1){
             strncpy(ipver,"IPv6",sizeof (ipver));
             port = htons(ipv6->sin6_port);
         }
-        
+
         inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr));
         if (verbose)
-          printf("%s: %s:%d, protocol %d\n", ipver, ipstr, port, p->ai_protocol);
+          printf("local getaddrinfo results %s: %s:%d, protocol %d\n", ipver, ipstr, port, p->ai_protocol);
     }
 
 // get local socket into sockfd, local_sockaddr
     SOCKREF sockfd;
     if ((sockfd = socket(res->ai_family,res->ai_socktype,res->ai_protocol)) == -1)
-        perror("Could not allocate socket:");
+        perror("Could not allocate local socket:");
     int bstatus;
     if ((bstatus=bind(sockfd, (struct sockaddr*)res->ai_addr, sizeof(sockaddr_storage))) == -1)
-        perror("Could not bind to socket:");
-    struct sockaddr* local_sockaddr;
-    local_sockaddr = (struct sockaddr*) res->ai_addr;
-    int local_addrlen = (int)res->ai_addrlen; 
+        perror("Could not bind to local socket:");
 
-    struct sockaddr* remote_sockaddr;
-    int remote_addrlen;
-    if ((astatus = getaddrinfo(hostname,"23455",&hints,&res)) != 0){
-        printf("getaddrinfo failed : %s\n",gai_strerror(astatus));
+    struct sockaddr local_sockaddr;
+    socklen_t local_addrlen = sizeof(local_sockaddr);
+    if (getsockname(sockfd,&local_sockaddr, &local_addrlen) != 0){
+#ifdef WIN32
+      int error = WSAGetLastError();
+      printf("local getsockname failed, errorcode %d\n", error);
+      wprintf(L"%s",wsaerrorstr(error));
+#else
+      perror("failed to get socketname from local sockfd;");
+#endif
+    } else {
+      if (verbose)
+        printf("local address from socket: %s\n",socket_to_ip_port_string((struct sockaddr_storage*)&local_sockaddr).c_str());
+    }
+
+    struct sockaddr remote_sockaddr;
+    socklen_t remote_addrlen = sizeof(remote_sockaddr);
+    if ((astatus = getaddrinfo(hostname,"0", &hints, &res)) != 0){
+        printf("getaddrinfo failed : %s\n", gai_strerror(astatus));
         exit(1);
-    }else{
+    } else {
         addrinfo* p = res;
         void* addr;
         char ipver[24];
@@ -161,51 +173,37 @@ if (argc==1){
         }
         inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr));
         if (verbose)
-          printf("remote %s: %s:%d, protocol %d\n", ipver, ipstr, port, p->ai_protocol);
-        remote_sockaddr = p->ai_addr;
-        remote_addrlen  = (int)p->ai_addrlen;
+          printf("remote getaddrinfo results %s: %s:%d, protocol %d\n", ipver, ipstr, port, p->ai_protocol);
+
     }
 // get remote socket into r_sockfd, remote_sockaddr
     SOCKREF r_sockfd;
     if ((r_sockfd = socket(res->ai_family,res->ai_socktype,res->ai_protocol)) == -1)
         perror("Could not allocate remote socket:");
+
     if ((bstatus=bind(r_sockfd, (struct sockaddr*)res->ai_addr, sizeof(sockaddr_storage))) == -1)
         perror("Could not bind to remote socket:");
-    
+
 // verify inputs: local socket (sockfd) and remote socket(r_sockfd), remote_sockaddr, local_sockaddr
-    //int grc=0;
-    struct sockaddr_storage name;
-    socklen_t namelen = sizeof (sockaddr_storage);
-    if (getsockname(r_sockfd,(struct sockaddr*)&name, &namelen) !=0){
+
+    if (getsockname(r_sockfd, &remote_sockaddr, &remote_addrlen) != 0) {
 #ifdef WIN32
       int error = WSAGetLastError();
-      printf("getsockname failed, errorcode %d\n", error);
+      printf("remote getsockname failed, errorcode %d\n", error);
       wprintf(L"%s",wsaerrorstr(error));
 #else
-      perror("failed to get socketname from r_sockfd;");
+      perror("failed to get socketname from remote r_sockfd;");
 #endif
-    }else{
+    } else {
       if (verbose)
-        printf("remote address from socket: %s\n",socket_to_ip_port_string((struct sockaddr_storage*)&name).c_str());
-    }
-    if (getsockname(sockfd,(struct sockaddr*)&name, &namelen) !=0){
-#ifdef WIN32
-      int error = WSAGetLastError();
-      printf("getsockname failed, errorcode %d\n", error);
-      wprintf(L"%s",wsaerrorstr(error));
-#else
-
-      perror("failed to get socketname from r_sockfd;");
-#endif
-    }else{
-      if (verbose){
-        printf("local address from socket: %s\n",socket_to_ip_port_string((struct sockaddr_storage*)&name).c_str());
-        printf("remote_sockaddr: %s\n",socket_to_ip_port_string((sockaddr_storage*)remote_sockaddr).c_str());
-        printf("local_sockaddr: %s\n",socket_to_ip_port_string((sockaddr_storage*)local_sockaddr).c_str());
-      }
+        printf("remote address from socket: %s\n", socket_to_ip_port_string((struct sockaddr_storage*)&remote_sockaddr).c_str());
     }
 
-    
+    if (verbose) {
+      printf("remote_sockaddr: %s\n",socket_to_ip_port_string((sockaddr_storage*)&remote_sockaddr).c_str());
+      printf("local_sockaddr: %s\n",socket_to_ip_port_string((sockaddr_storage*)&local_sockaddr).c_str());
+    }
+
 
 
     if (is_tcp){
@@ -226,7 +224,7 @@ if (argc==1){
 // connect from remote to local 
       int cstatus; 
       //connect from remote to local
-      if ((cstatus = connect(r_sockfd, local_sockaddr, local_addrlen) ) != 0){
+      if ((cstatus = connect(r_sockfd, &local_sockaddr, local_addrlen) ) != 0){
 #ifdef WIN32
         printf("connect to %s failed\n",
           socket_to_ip_port_string((sockaddr_storage*)local_sockaddr).c_str());
@@ -255,6 +253,8 @@ if (argc==1){
         sockfd = newfd;
       }
       //what is address associated with newly assigned sockfd
+      struct sockaddr name;
+      socklen_t namelen = sizeof(name);
       if (getsockname(sockfd,(struct sockaddr*)&name, &namelen) !=0){
 #ifdef WIN32
       int error = WSAGetLastError();
@@ -273,16 +273,16 @@ if (argc==1){
 
 
     const char* msg = "drahcir mul saw reven ereh!";
-    int sent = sendto(sockfd, msg, (int)strlen(msg),0, remote_sockaddr, remote_addrlen );
+    int sent = sendto(sockfd, msg, (int)strlen(msg),0, &remote_sockaddr, remote_addrlen );
     if (sent&&verbose)
         printf("sent from sockfd to remote_sockaddr %d letters\n", sent);
 
     const char* bmsg = "eht rewsna ym drneirf si gniwolb ni eht dniw";
-    int sent_to_local = sendto(r_sockfd, bmsg, (int)strlen(bmsg),0, local_sockaddr, local_addrlen );
+    int sent_to_local = sendto(r_sockfd, bmsg, (int)strlen(bmsg),0, &local_sockaddr, local_addrlen );
     if (sent&&verbose)
         printf("sent from r_sockfd to local_sockaddr %d letters\n", sent_to_local);
 
-    
+
     struct sockaddr_storage from;
 #ifdef WIN32
     socklen_t fromlen = sizeof(from);    
@@ -314,24 +314,23 @@ if (argc==1){
     if (received){
       if(verbose)
         printf ("received %d letters : %s\n", received, buf);
-        if (from.ss_family == AF_INET){
-            addr = (void*)&(((struct sockaddr_in*)&from)->sin_addr);
-            //addr = &(ipv4->sin_addr);
-            port = htons( ((struct sockaddr_in*)&from)->sin_port);
-        }else{
-            addr = &((struct sockaddr_in6*)&from)->sin6_addr;
-            port = htons( ((struct sockaddr_in6*)&from)->sin6_port);
-        }
-        if (!is_tcp){
-          //info from recfrom is not updated on tcp - only udp 
-          char astr[4096];
-          memset(astr,0,sizeof(astr));
-          inet_ntop(from.ss_family,addr ,astr, sizeof(ipstr));
-          if (verbose)
-            printf("sender : %s:%d\n", astr, port); 
-          EXPECT_STREQ(socket_to_ip_string((sockaddr_storage*)local_sockaddr).c_str(),astr)<<"sender should be remote address";
-          EXPECT_EQ(55432,port)<<"sender port is incorrect";
-        }
+      if (from.ss_family == AF_INET){
+          addr = (void*)&(((struct sockaddr_in*)&from)->sin_addr);
+          //addr = &(ipv4->sin_addr);
+          port = htons( ((struct sockaddr_in*)&from)->sin_port);
+      }else{
+          addr = &((struct sockaddr_in6*)&from)->sin6_addr;
+          port = htons( ((struct sockaddr_in6*)&from)->sin6_port);
+      }
+      if (!is_tcp){
+        //info from recfrom is not updated on tcp - only udp 
+        char astr[4096];
+        memset(astr,0,sizeof(astr));
+        inet_ntop(from.ss_family,addr ,astr, sizeof(ipstr));
+        if (verbose)
+          printf("sender : %s:%d\n", astr, port); 
+        EXPECT_STREQ(socket_to_ip_string((sockaddr_storage*)&local_sockaddr).c_str(),astr)<<"sender should be remote address";
+      }
 
     }
 
@@ -373,8 +372,7 @@ if (argc==1){
           memset(astr,0,sizeof(astr));
           inet_ntop(from.ss_family,addr ,astr, sizeof(ipstr));
           if (verbose) printf("sender : %s:%d\n", astr, port); 
-          EXPECT_STREQ(socket_to_ip_string((sockaddr_storage*)remote_sockaddr).c_str(),astr)<<"sender should be remote address";
-          EXPECT_EQ(23455,port)<<"sender port is incorrect";
+          EXPECT_STREQ(socket_to_ip_string((sockaddr_storage*)&remote_sockaddr).c_str(),astr)<<"sender should be remote address";
         }
     }
 

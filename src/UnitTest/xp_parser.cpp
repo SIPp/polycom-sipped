@@ -275,11 +275,11 @@ TEST(xp_parser, expand_env_var)
   char input[4096];
 
   // single substitution at front of path
-  char* env_value = getenv("SIPPED");
-  ASSERT_STRNE(env_value,NULL) << "SIPPED environment variable is not set";
-  string pathandfilename="%SIPPED%/src/test/xp_parser.cpp";
+  char* env_value = getenv("SIPP_SOURCE");
+  ASSERT_STRNE(env_value,NULL) << "SIPP_SOURCE environment variable is not set (and must be)";
+  string pathandfilename="%SIPP_SOURCE%/test/xp_parser.cpp";
   
-  string expected_pathandfilename=string(env_value) + string("/src/test/xp_parser.cpp");
+  string expected_pathandfilename=string(env_value) + string("/test/xp_parser.cpp");
   strcpy(input, pathandfilename.c_str());
   int rc = expand_env_var(input,0);
   EXPECT_GT(rc,0) << "number of substitutions should be greater than zero";
@@ -317,14 +317,14 @@ TEST(xp_parser, expand_env_var)
     unsetenv("ENV_VAR02");
   }
 
-  // test xi include that TA_DIR environment variable
-  char* tadir = getenv("TA_DIR");
-  ASSERT_STRNE(tadir,NULL) << "TA_DIR environment variable is not set";
+  // test xi include that SIPP_SOURCE environment variable
+  char* sipp_source_dir = getenv("SIPP_SOURCE");
+  ASSERT_STRNE(sipp_source_dir, NULL) << "SIPP_SOURCE environment variable must be set to complete this test";
   string include_file_with_env_var = "include_using_envvar.xml";
   string include_file_with_env_var_expected = "include_using_envvar-expected.xml";
-  EXPECT_TRUE(tadir!=NULL) << "TA_DIR environment variable must be set to complete this test";
-  ASSERT_EQ(1, xp_set_xml_buffer_from_file(include_file_with_env_var.c_str(), dumpxml)) << "Failed to set buffer - unable to proceed";
-  EXPECT_EQ(get_file_as_string(include_file_with_env_var_expected), xp_get_xmlbuffer()) << "xmlbuffer should contain xi include file even though fn contains blanks";
+  EXPECT_TRUE(sipp_source_dir != NULL) << "SIPP_SOURCE environment variable must be set to complete this test";
+  ASSERT_EQ(1, xp_set_xml_buffer_from_file(include_file_with_env_var.c_str(), dumpxml)) << "xp_set_xml_buffer_from_file failed to open or read file into buffer - unable to proceed: '" << xp_get_errors() << "'" ;
+  EXPECT_EQ(get_file_as_string(include_file_with_env_var_expected), xp_get_xmlbuffer()) << "Environment variable expansion in xi:include tag failed.";
 
 }
 
@@ -337,7 +337,7 @@ TEST(xp_parser, CompositeDocument)
 {
 
   // newline offsets for composite document formed by
-  // %TA_DIR%/SIPped/SIPped/src/test/include_substitution.sipp
+  // %SIPP_SOURCE%/test/include_substitution.sipp
   // and it's include documents  -- verified newlines by hand as correct reference
   // for byte offset of all new lines in composite document
   const int newlines[] = {
