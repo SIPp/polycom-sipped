@@ -1,0 +1,30 @@
+Packages on Mint:
+# Set the default shell to bash (rather than dash)
+# Otherwise ruby test scripts fail as file redirection works differently
+sudo dpkg-reconfigure dash
+sudo apt-get install libxml2-utils
+
+sudo apt-get install g++
+sudo apt-get install libpcap-dev
+sudo apt-get install libssl-dev
+sudo apt-get install libncurses-dev
+
+sudo apt-get update
+sudo apt-get install ruby1.8
+sudo apt-get install rubygems
+
+sudo gem install getopt
+
+Packages on Fedora:
+
+Install Perl modules (for rsipp)
+sudo src/installPackages.sh
+
+To Compile:
+1. Ensure rsipp folder is in path.
+2. Ensure RSIPP is set to rsipp directory
+3. Ensure SIPP_SOURCE 
+cd into src folder
+export SIPP_SOURCE=`pwd`
+make debug_pcap_ossl
+make test
