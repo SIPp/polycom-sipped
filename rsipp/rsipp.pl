@@ -220,7 +220,7 @@ sub extract_parameters_from_config_file
     my $die_invalid_ip_string = "Malformed address or hostname in configuration file $xml_file\n"
     . "If you have not edited this file since installation, please do so now.\n"
     . "Documentation can be found at $rsippDocumentationUrl\n\n";
-
+    my $command = $data->{sipp}[0]->{command};
     while ( my ( $key, $value ) = each %{ $data->{sipp}[0]->{param} } )
     {
         if ( $key eq '-i' ||      # local machine
@@ -246,7 +246,7 @@ sub extract_parameters_from_config_file
         }
     }
 
-    return $xml_params;
+    return ($command, $xml_params);
 }
 
 sub usage_and_die
@@ -267,8 +267,8 @@ sub usage_and_die
 
 sub process_command_line_and_run_sipp
 {
+    my $sipp_command = shift;
     my $config_file_params = shift;
-
     my %command_line_args;
     my @args_list = ('sf=s', # Use scenario from .sipp file
                      'sn=s', # Use scenario built into SIPp
@@ -288,7 +288,7 @@ sub process_command_line_and_run_sipp
 
     if ( defined( $command_line_args{v} ) )
     {
-        run_sipp("-v");
+        run_sipp($sipp_command, "-v");
     }
 
     my $scenario;
@@ -343,7 +343,7 @@ sub process_command_line_and_run_sipp
     if ( !( $command_line_args{validate_only} ) )
     {
         my $run_args = "$config_file_params $scenario_params $sipp_args";
-        run_sipp( $run_args, $scenario, $scenario_type );
+        run_sipp( $sipp_command, $run_args, $scenario, $scenario_type );
     }
 }
 
@@ -373,18 +373,18 @@ sub extract_parameters_from_sipp_file
 sub run_sipp
 {
 
-    my ( $run_args, $scenario_name, $scenario_type ) = @_;
+    my ( $sipp_command, $run_args, $scenario_name, $scenario_type ) = @_;
 
     my $result;
     if ( scalar( @_ ) == 1 ) # No scenario, i.e. for -v switch
     {
-        print("Running: 'sipp $run_args'\n");
-        $result = system("sipp $run_args");
+        print("Running: '$sipp_command $run_args'\n");
+        $result = system("$sipp_command $run_args");
     }
     else
     {
-        print("Running: 'sipp $run_args $scenario_type \"$scenario_name\"'\n");
-        $result = system("sipp $run_args $scenario_type \"$scenario_name\"");
+        print("Running: '$sipp_command $run_args $scenario_type \"$scenario_name\"'\n");
+        $result = system("$sipp_command $run_args $scenario_type \"$scenario_name\"");
     }
 
     if ( $result == -1 )
