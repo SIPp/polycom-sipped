@@ -59,6 +59,9 @@ TOCLEAN= *.log $(ARCHIVE) \
 #OSNAME=`uname`
 #MODELNAME=`uname -m`
 
+# Use bash as shell so pushd and popd work
+SHELL:=/bin/bash
+
 # SYSTEM nickname
 SYSTEM_HP-UX=hpux
 SYSTEM_Linux=linux
