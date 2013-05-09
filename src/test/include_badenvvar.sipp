@@ -4,10 +4,10 @@
 <scenario name="include_substitution" parameters="-mc" xmlns:xi="http://www.w3.org/2001/XInclude">
 
   <!-- include file in current sub-directory, replacement is aA=>1, Bb=>4, cc=>2 -->
-  <xi:include href="SIPP_SOURCE%/test/include_envvar_1.xml" dialogs="1,4,2" />
+  <xi:include href="SIPP_SOURCE%/src/test/include_envvar_1.xml" dialogs="1,4,2" />
   
   <!-- include file in current sub-directory, replacement is aA=>99, Bb=>1, cc=>3 -->
-  <xi:include href="%SIPP_SOURCE%/test/include_envvar_1.xml" dialogs="99,1,3" />
+  <xi:include href="%SIPP_SOURCE%/src/test/include_envvar_1.xml" dialogs="99,1,3" />
 
 </scenario>
 

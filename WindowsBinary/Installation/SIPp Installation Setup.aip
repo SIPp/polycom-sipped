@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<DOCUMENT Type="Advanced Installer" CreateVersion="8.1.3" version="8.1.3" Modules="freeware" RootPath="." Language="en">
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiPropsComponent">
+    <ROW Property="ALLUSERS" Value="2"/>
+    <ROW Property="ARPCOMMENTS" Value="This installer database contains the logic and data required to install [|ProductName]." ValueLocId="*"/>
+    <ROW Property="ARPCONTACT" Value="Edward Estabrook"/>
+    <ROW Property="ARPHELPLINK" Value="edward.estabrook@polycom.com"/>
+    <ROW Property="ARPNOMODIFY" MultiBuildValue="DefaultBuild:1"/>
+    <ROW Property="ARPNOREPAIR" Value="1"/>
+    <ROW Property="ARPURLINFOABOUT" Value="https://twiki.polycom.com/twiki//bin/view/Main/SIPped"/>
+    <ROW Property="CTRLS" Value="1"/>
+    <ROW Property="MSIFASTINSTALL" MultiBuildValue="DefaultBuild:1"/>
+    <ROW Property="Manufacturer" Value="Polycom Inc" ValueLocId="*"/>
+    <ROW Property="ProductCode" Value="1033:{621273EB-5BA1-4CF1-84D5-86ABFE7073CD} " Type="16"/>
+    <ROW Property="ProductLanguage" Value="1033"/>
+    <ROW Property="ProductName" Value="SIPped" ValueLocId="*"/>
+    <ROW Property="ProductVersion" Value="3.2.61"/>
+    <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND"/>
+    <ROW Property="UpgradeCode" Value="{B2D220A4-47E3-4803-B80F-BE934363B650}"/>
+    <ROW Property="VIEWREADME" Value="1" Type="4"/>
+    <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
+    <ROW Property="WindowsType9XDisplay" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiDirsComponent">
+    <ROW Directory="APPDIR" Directory_Parent="TARGETDIR" DefaultDir="APPDIR:." IsPseudoRoot="1"/>
+    <ROW Directory="BLA_DIR" Directory_Parent="Examples_DIR" DefaultDir="BLA"/>
+    <ROW Directory="English_Canada_DIR" Directory_Parent="dictionary_DIR" DefaultDir="Englis~1|English_Canada"/>
+    <ROW Directory="English_United_Kingdom_DIR" Directory_Parent="dictionary_DIR" DefaultDir="Englis~2|English_United_Kingdom"/>
+    <ROW Directory="English_United_States_DIR" Directory_Parent="dictionary_DIR" DefaultDir="Englis~3|English_United_States"/>
+    <ROW Directory="Examples_DIR" Directory_Parent="Scripts_DIR" DefaultDir="Examples"/>
+    <ROW Directory="Scripts_DIR" Directory_Parent="APPDIR" DefaultDir="Scripts"/>
+    <ROW Directory="Standard_Requests_DIR" Directory_Parent="Scripts_DIR" DefaultDir="Standa~1|Standard_Requests"/>
+    <ROW Directory="Standard_Responses_DIR" Directory_Parent="Scripts_DIR" DefaultDir="Standa~2|Standard_Responses"/>
+    <ROW Directory="TARGETDIR" DefaultDir="SourceDir"/>
+    <ROW Directory="VVX_to_answer_video_call_using_H263_DIR" Directory_Parent="Examples_DIR" DefaultDir="VVX_to~1|VVX_to_answer_video_call_using_H263"/>
+    <ROW Directory="VVX_to_initiate_video_call_using_H263_DIR" Directory_Parent="Examples_DIR" DefaultDir="VVX_to~2|VVX_to_initiate_video_call_using_H263"/>
+    <ROW Directory="__DIR" Directory_Parent="terminfo_DIR" DefaultDir="63"/>
+    <ROW Directory="c_DIR" Directory_Parent="terminfo_DIR" DefaultDir="c"/>
+    <ROW Directory="dictionary_DIR" Directory_Parent="APPDIR" DefaultDir="dictio~1|dictionary"/>
+    <ROW Directory="terminfo_DIR" Directory_Parent="APPDIR" DefaultDir="terminfo"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
+    <ROW Component="Branch_on_Random_chance.xml" ComponentId="{4E77DD74-7C67-48EA-B574-8860FAE73532}" Directory_="Examples_DIR" Attributes="0" KeyPath="Branch_on_Random_chance.xml" Type="0"/>
+    <ROW Component="INVITE.xml" ComponentId="{875D55EB-19C1-4B81-95EE-E0962F1F2638}" Directory_="Standard_Requests_DIR" Attributes="0" KeyPath="INVITE.xml" Type="0"/>
+    <ROW Component="LICENSE.txt" ComponentId="{523F4F96-1130-46A4-9FA4-C700AA6E7338}" Directory_="APPDIR" Attributes="0" KeyPath="LICENSE.txt" Type="0"/>
+    <ROW Component="SoundPointIP_dictionary.xml" ComponentId="{B7C8C9C2-27F5-435F-B217-B408D54FAEF5}" Directory_="English_Canada_DIR" Attributes="0" KeyPath="SoundPointIP_dictionary.xml" Type="0"/>
+    <ROW Component="SoundPointIP_dictionary.xml_1" ComponentId="{78387E63-5AF7-4006-A190-51B4925BAFCD}" Directory_="English_United_Kingdom_DIR" Attributes="0" KeyPath="SoundPointIP_dictionary.xml_1" Type="0"/>
+    <ROW Component="SoundPointIP_dictionary.xml_2" ComponentId="{3FEB077E-177A-4E44-A249-BD582D3ED1D5}" Directory_="English_United_States_DIR" Attributes="0" KeyPath="SoundPointIP_dictionary.xml_2" Type="0"/>
+    <ROW Component="VVX_to_answer_video_call_using_172_23_66" ComponentId="{5A7D22D5-4DCA-437F-AA06-C4294A761BAE}" Directory_="VVX_to_answer_video_call_using_H263_DIR" Attributes="0" KeyPath="VVX_to_answer_video_call_using_172_23_66_59_2254_1_.pcap" Type="0"/>
+    <ROW Component="VVX_to_initiate_video_call_using_H263.pc" ComponentId="{3734B5BA-D465-44F8-A554-3F308DDD88C6}" Directory_="VVX_to_initiate_video_call_using_H263_DIR" Attributes="0" KeyPath="VVX_to_initiate_video_call_using_H263.pcap" Type="0"/>
+    <ROW Component="cygcrypto_0.9.8.dll_1" ComponentId="{682CB3F9-255C-47F9-80B8-D7743F642B27}" Directory_="APPDIR" Attributes="0" KeyPath="cygcrypto_0.9.8.dll_1"/>
+    <ROW Component="cyggcc_s_1.dll_1" ComponentId="{035D91F7-BD1E-4F4B-950F-C6573224CE82}" Directory_="APPDIR" Attributes="0" KeyPath="cyggcc_s_1.dll_1"/>
+    <ROW Component="cygncurses_10.dll_1" ComponentId="{B0CEB33A-A453-4CE1-9E57-D398A9A482F1}" Directory_="APPDIR" Attributes="0" KeyPath="cygncurses_10.dll_1"/>
+    <ROW Component="cygssl_0.9.8.dll_1" ComponentId="{F73793D7-27E0-4B10-81C7-CC2E986533A9}" Directory_="APPDIR" Attributes="0" KeyPath="cygssl_0.9.8.dll_1"/>
+    <ROW Component="cygwin" ComponentId="{BF0F2AA7-B04F-4C5B-94F6-EFBC61DBF67B}" Directory_="__DIR" Attributes="0" KeyPath="cygwin_2" Type="0"/>
+    <ROW Component="cygwin1.dll_1" ComponentId="{4AB45523-E88A-4B0F-841B-C58F05A44BB0}" Directory_="APPDIR" Attributes="0" KeyPath="cygwin1.dll_1"/>
+    <ROW Component="cygwin_4" ComponentId="{2452F716-7CA7-43F3-BE4D-2576B4072BE9}" Directory_="c_DIR" Attributes="0" KeyPath="cygwin_3" Type="0"/>
+    <ROW Component="cygz.dll_1" ComponentId="{7487DC25-E261-406D-9733-058D9B3501CA}" Directory_="APPDIR" Attributes="0" KeyPath="cygz.dll_1"/>
+    <ROW Component="iconv.dll_1" ComponentId="{FBCB29CD-5DE8-4E43-AF61-E48FACB61441}" Directory_="APPDIR" Attributes="0" KeyPath="iconv.dll_1"/>
+    <ROW Component="libxml2.dll_1" ComponentId="{0ADD041B-203B-4150-BCD2-714657C66F07}" Directory_="APPDIR" Attributes="0" KeyPath="libxml2.dll_1"/>
+    <ROW Component="rsipp.exe" ComponentId="{AECDF96E-F8B2-43A6-9889-D7102EB7901A}" Directory_="APPDIR" Attributes="0" KeyPath="rsipp.exe"/>
+    <ROW Component="sipp.exe" ComponentId="{27EE982E-BF9D-4C44-B591-C1E9B7955B69}" Directory_="APPDIR" Attributes="0" KeyPath="sipp.exe"/>
+    <ROW Component="snipp.exe" ComponentId="{E4D13828-7D90-4E9B-BE42-FDC5EDB99A09}" Directory_="APPDIR" Attributes="0" KeyPath="snipp.exe"/>
+    <ROW Component="tc012671_Primary.sipp" ComponentId="{7BD8F740-C0D1-470B-9A9F-6C3475DF593A}" Directory_="BLA_DIR" Attributes="0" KeyPath="tc012671_Primary.sipp" Type="0"/>
+    <ROW Component="xml" ComponentId="{A58E6B3D-0F2B-41CB-9430-ABFBDD5B9DDC}" Directory_="Standard_Responses_DIR" Attributes="0" KeyPath="xml" Type="0"/>
+    <ROW Component="xmllint.exe_1" ComponentId="{509130F5-3937-45E1-BA1F-33643D751465}" Directory_="APPDIR" Attributes="0" KeyPath="xmllint.exe_1"/>
+    <ROW Component="zlib1.dll_1" ComponentId="{EFCF7FBB-EF56-430F-8592-8D1E820E63CA}" Directory_="APPDIR" Attributes="0" KeyPath="zlib1.dll_1"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
+    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="1" Level="1" Directory_="APPDIR" Attributes="0" Components="Branch_on_Random_chance.xml INVITE.xml LICENSE.txt SoundPointIP_dictionary.xml SoundPointIP_dictionary.xml_1 SoundPointIP_dictionary.xml_2 VVX_to_answer_video_call_using_172_23_66 VVX_to_initiate_video_call_using_H263.pc cygcrypto_0.9.8.dll_1 cyggcc_s_1.dll_1 cygncurses_10.dll_1 cygssl_0.9.8.dll_1 cygwin cygwin1.dll_1 cygwin_4 cygz.dll_1 iconv.dll_1 libxml2.dll_1 rsipp.exe sipp.exe snipp.exe tc012671_Primary.sipp xml xmllint.exe_1 zlib1.dll_1"/>
+    <ATTRIBUTE name="CurrentFeature" value="MainFeature"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiFilesComponent">
+    <ROW File="Branch_on_Random_chance.xml" Component_="Branch_on_Random_chance.xml" FileName="Branch~1.xml|Branch_on_Random_chance.xml" Attributes="0" SourcePath="..\..\Scripts\Examples\Branch_on_Random_chance.xml" SelfReg="false" NextFile="Multi_branch_example.xml"/>
+    <ROW File="INVITE.xml" Component_="INVITE.xml" FileName="INVITE.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Requests\INVITE.xml" SelfReg="false" NextFile="INVITE_wHold_SDP.xml"/>
+    <ROW File="INVITE_wHold_SDP.xml" Component_="INVITE.xml" FileName="INVITE~1.xml|INVITE_wHold_SDP.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Requests\INVITE_wHold_SDP.xml" SelfReg="false" NextFile="INVITE_wSDP.xml"/>
+    <ROW File="INVITE_wSDP.xml" Component_="INVITE.xml" FileName="INVITE~2.xml|INVITE_wSDP.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Requests\INVITE_wSDP.xml" SelfReg="false" NextFile="xml"/>
+    <ROW File="LICENSE.txt" Component_="LICENSE.txt" FileName="LICENSE.txt" Attributes="0" SourcePath="..\SIPped\LICENSE.txt" SelfReg="false" NextFile="rsipp.config.xml"/>
+    <ROW File="Multi_branch_example.xml" Component_="Branch_on_Random_chance.xml" FileName="Multi_~1.xml|Multi_branch_example.xml" Attributes="0" SourcePath="..\..\Scripts\Examples\Multi_branch_example.xml" SelfReg="false" NextFile="Place_a_call.xml"/>
+    <ROW File="Place_a_call.xml" Component_="Branch_on_Random_chance.xml" FileName="Place_~1.xml|Place_a_call.xml" Attributes="0" SourcePath="..\..\Scripts\Examples\Place_a_call.xml" SelfReg="false" NextFile="Receive_a_call.xml"/>
+    <ROW File="README.txt" Component_="LICENSE.txt" FileName="README.txt" Attributes="0" SourcePath="SIPped\README.txt" SelfReg="false" NextFile="cacert.pem"/>
+    <ROW File="Receive_a_call.xml" Component_="Branch_on_Random_chance.xml" FileName="Receiv~1.xml|Receive_a_call.xml" Attributes="0" SourcePath="..\..\Scripts\Examples\Receive_a_call.xml" SelfReg="false" NextFile="Receive_a_call_early_media.sipp"/>
+    <ROW File="Receive_a_call_early_media.sipp" Component_="Branch_on_Random_chance.xml" FileName="Receiv~1.sip|Receive_a_call_early_media.sipp" Attributes="0" SourcePath="..\..\Scripts\Examples\Receive_a_call_early_media.sipp" SelfReg="false" NextFile="VVX_to_answer_video_call_using_172_23_66_59_2254_1_.pcap"/>
+    <ROW File="SIPped_Prompt.bat_1" Component_="LICENSE.txt" FileName="SIPped~1.bat|SIPped Prompt.bat" Attributes="0" SourcePath="..\SIPped\SIPped Prompt.bat" SelfReg="false" NextFile="cygwin_2"/>
+    <ROW File="SoundPointIP_dictionary.xml" Component_="SoundPointIP_dictionary.xml" FileName="SoundP~1.xml|SoundPointIP-dictionary.xml" Attributes="0" SourcePath="..\..\snipp\dictionary\English_Canada\SoundPointIP-dictionary.xml" SelfReg="false" NextFile="SoundPointIP_dictionary.xml_1"/>
+    <ROW File="SoundPointIP_dictionary.xml_1" Component_="SoundPointIP_dictionary.xml_1" FileName="SoundP~1.xml|SoundPointIP-dictionary.xml" Attributes="0" SourcePath="..\..\snipp\dictionary\English_United_Kingdom\SoundPointIP-dictionary.xml" SelfReg="false" NextFile="SoundPointIP_dictionary.xml_2"/>
+    <ROW File="SoundPointIP_dictionary.xml_2" Component_="SoundPointIP_dictionary.xml_2" FileName="SoundP~1.xml|SoundPointIP-dictionary.xml" Attributes="0" SourcePath="..\..\snipp\dictionary\English_United_States\SoundPointIP-dictionary.xml" SelfReg="false"/>
+    <ROW File="VVX_to_answer_video_call_using_172_23_66_59_2254_1_.pcap" Component_="VVX_to_answer_video_call_using_172_23_66" FileName="VVX_to~1.pca|VVX_to_answer_video_call_using_172_23_66_59-2254_(1).pcap" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_answer_video_call_using_H263\VVX_to_answer_video_call_using_172_23_66_59-2254_(1).pcap" SelfReg="false" NextFile="VVX_to_answer_video_call_using_172_23_66_59_2256_1_.pcap"/>
+    <ROW File="VVX_to_answer_video_call_using_172_23_66_59_2256_1_.pcap" Component_="VVX_to_answer_video_call_using_172_23_66" FileName="VVX_to~2.pca|VVX_to_answer_video_call_using_172_23_66_59-2256_(1).pcap" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_answer_video_call_using_H263\VVX_to_answer_video_call_using_172_23_66_59-2256_(1).pcap" SelfReg="false" NextFile="VVX_to_answer_video_call_using_H263.pcap"/>
+    <ROW File="VVX_to_answer_video_call_using_H263.pcap" Component_="VVX_to_answer_video_call_using_172_23_66" FileName="VVX_to~3.pca|VVX_to_answer_video_call_using_H263.pcap" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_answer_video_call_using_H263\VVX_to_answer_video_call_using_H263.pcap" SelfReg="false" NextFile="VVX_to_answer_video_call_using_H263.sipp"/>
+    <ROW File="VVX_to_answer_video_call_using_H263.sipp" Component_="VVX_to_answer_video_call_using_172_23_66" FileName="VVX_to~1.sip|VVX_to_answer_video_call_using_H263.sipp" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_answer_video_call_using_H263\VVX_to_answer_video_call_using_H263.sipp" SelfReg="false" NextFile="VVX_to_initiate_video_call_using_H263.pcap"/>
+    <ROW File="VVX_to_initiate_video_call_using_H263.pcap" Component_="VVX_to_initiate_video_call_using_H263.pc" FileName="VVX_to~1.pca|VVX_to_initiate_video_call_using_H263.pcap" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_initiate_video_call_using_H263\VVX_to_initiate_video_call_using_H263.pcap" SelfReg="false" NextFile="VVX_to_initiate_video_call_using_H263.sipp"/>
+    <ROW File="VVX_to_initiate_video_call_using_H263.sipp" Component_="VVX_to_initiate_video_call_using_H263.pc" FileName="VVX_to~1.sip|VVX_to_initiate_video_call_using_H263.sipp" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_initiate_video_call_using_H263\VVX_to_initiate_video_call_using_H263.sipp" SelfReg="false" NextFile="VVX_to_initiate_video_call_using_H263_172_23_64_63_2258_1_.pcap"/>
+    <ROW File="VVX_to_initiate_video_call_using_H263_172_23_64_63_2258_1_.pcap" Component_="VVX_to_initiate_video_call_using_H263.pc" FileName="VVX_to~2.pca|VVX_to_initiate_video_call_using_H263_172_23_64_63-2258_(1).pcap" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_initiate_video_call_using_H263\VVX_to_initiate_video_call_using_H263_172_23_64_63-2258_(1).pcap" SelfReg="false" NextFile="VVX_to_initiate_video_call_using_H263_172_23_64_63_2260_1_.pcap"/>
+    <ROW File="VVX_to_initiate_video_call_using_H263_172_23_64_63_2260_1_.pcap" Component_="VVX_to_initiate_video_call_using_H263.pc" FileName="VVX_to~3.pca|VVX_to_initiate_video_call_using_H263_172_23_64_63-2260_(1).pcap" Attributes="0" SourcePath="..\..\Scripts\Examples\VVX_to_initiate_video_call_using_H263\VVX_to_initiate_video_call_using_H263_172_23_64_63-2260_(1).pcap" SelfReg="false" NextFile="INVITE.xml"/>
+    <ROW File="cacert.pem" Component_="LICENSE.txt" FileName="cacert.pem" Attributes="0" SourcePath="..\SIPped\cacert.pem" SelfReg="false" NextFile="cakey.pem"/>
+    <ROW File="cakey.pem" Component_="LICENSE.txt" FileName="cakey.pem" Attributes="0" SourcePath="..\SIPped\cakey.pem" SelfReg="false" NextFile="tc012671_Primary.sipp"/>
+    <ROW File="cygcrypto_0.9.8.dll_1" Component_="cygcrypto_0.9.8.dll_1" FileName="cygcry~1.dll|cygcrypto-0.9.8.dll" Attributes="0" SourcePath="..\SIPped\cygcrypto-0.9.8.dll" SelfReg="false" NextFile="cyggcc_s_1.dll_1"/>
+    <ROW File="cyggcc_s_1.dll_1" Component_="cyggcc_s_1.dll_1" FileName="cyggcc~1.dll|cyggcc_s-1.dll" Attributes="0" SourcePath="..\SIPped\cyggcc_s-1.dll" SelfReg="false" NextFile="cygncurses_10.dll_1"/>
+    <ROW File="cygncurses_10.dll_1" Component_="cygncurses_10.dll_1" FileName="cygncu~1.dll|cygncurses-10.dll" Attributes="0" SourcePath="..\SIPped\cygncurses-10.dll" SelfReg="false" NextFile="cygssl_0.9.8.dll_1"/>
+    <ROW File="cygssl_0.9.8.dll_1" Component_="cygssl_0.9.8.dll_1" FileName="cygssl~1.dll|cygssl-0.9.8.dll" Attributes="0" SourcePath="..\SIPped\cygssl-0.9.8.dll" SelfReg="false" NextFile="cygwin1.dll_1"/>
+    <ROW File="cygwin1.dll_1" Component_="cygwin1.dll_1" FileName="cygwin1.dll" Attributes="0" SourcePath="..\SIPped\cygwin1.dll" SelfReg="false" NextFile="cygz.dll_1"/>
+    <ROW File="cygwin_2" Component_="cygwin" FileName="cygwin" Attributes="0" SourcePath="..\SIPped\terminfo\63\cygwin" SelfReg="false" NextFile="cygwin_3"/>
+    <ROW File="cygwin_3" Component_="cygwin_4" FileName="cygwin" Attributes="0" SourcePath="..\SIPped\terminfo\c\cygwin" SelfReg="false" NextFile="xmllint.exe_1"/>
+    <ROW File="cygz.dll_1" Component_="cygz.dll_1" FileName="cygz.dll" Attributes="0" SourcePath="..\SIPped\cygz.dll" SelfReg="false" NextFile="iconv.dll_1"/>
+    <ROW File="iconv.dll_1" Component_="iconv.dll_1" FileName="iconv.dll" Attributes="0" SourcePath="..\SIPped\iconv.dll" SelfReg="false" NextFile="libxml2.dll_1"/>
+    <ROW File="libxml2.dll_1" Component_="libxml2.dll_1" FileName="libxml2.dll" Attributes="0" SourcePath="..\SIPped\libxml2.dll" SelfReg="false" NextFile="SIPped_Prompt.bat_1"/>
+    <ROW File="rsipp.config.xml" Component_="LICENSE.txt" FileName="rsippc~1.xml|rsipp.config.xml" Attributes="0" SourcePath="SIPped\rsipp.config.xml" SelfReg="false" NextFile="rsipp.exe"/>
+    <ROW File="rsipp.exe" Component_="rsipp.exe" FileName="rsipp.exe" Attributes="0" SourcePath="SIPped\rsipp.exe" SelfReg="false" NextFile="sipp.dtd"/>
+    <ROW File="sipp.dtd" Component_="LICENSE.txt" FileName="sipp.dtd" Attributes="0" SourcePath="..\..\rsipp\sipp.dtd" SelfReg="false" NextFile="sipp.exe"/>
+    <ROW File="sipp.exe" Component_="sipp.exe" FileName="sipp.exe" Attributes="0" SourcePath="..\SIPped\sipp.exe" SelfReg="false" NextFile="snipp.exe"/>
+    <ROW File="snipp.exe" Component_="snipp.exe" FileName="snipp.exe" Attributes="0" SourcePath="SIPped\snipp.exe" SelfReg="false" NextFile="cygcrypto_0.9.8.dll_1"/>
+    <ROW File="tc012671_Primary.sipp" Component_="tc012671_Primary.sipp" FileName="tc0126~1.sip|tc012671_Primary.sipp" Attributes="0" SourcePath="..\..\Scripts\Examples\BLA\tc012671_Primary.sipp" SelfReg="false" NextFile="tc012671_Secondary.sipp"/>
+    <ROW File="tc012671_Secondary.sipp" Component_="tc012671_Primary.sipp" FileName="tc0126~2.sip|tc012671_Secondary.sipp" Attributes="0" SourcePath="..\..\Scripts\Examples\BLA\tc012671_Secondary.sipp" SelfReg="false" NextFile="tc012671_v2_buffalo.pl"/>
+    <ROW File="tc012671_v2_buffalo.pl" Component_="tc012671_Primary.sipp" FileName="tc0126~1.pl|tc012671_v2_buffalo.pl" Attributes="0" SourcePath="..\..\Scripts\Examples\BLA\tc012671_v2_buffalo.pl" SelfReg="false" NextFile="Branch_on_Random_chance.xml"/>
+    <ROW File="wACK.xml" Component_="xml" FileName="200_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\200_wACK.xml" SelfReg="false" NextFile="wExpiry.xml"/>
+    <ROW File="wACK.xml_1" Component_="xml" FileName="401_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\401_wACK.xml" SelfReg="false" NextFile="xml_5"/>
+    <ROW File="wACK.xml_2" Component_="xml" FileName="403_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\403_wACK.xml" SelfReg="false" NextFile="xml_6"/>
+    <ROW File="wACK.xml_3" Component_="xml" FileName="404_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\404_wACK.xml" SelfReg="false" NextFile="xml_7"/>
+    <ROW File="wACK.xml_4" Component_="xml" FileName="407_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\407_wACK.xml" SelfReg="false" NextFile="xml_8"/>
+    <ROW File="wACK.xml_5" Component_="xml" FileName="408_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\408_wACK.xml" SelfReg="false" NextFile="xml_9"/>
+    <ROW File="wACK.xml_6" Component_="xml" FileName="603_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\603_wACK.xml" SelfReg="false" NextFile="SoundPointIP_dictionary.xml"/>
+    <ROW File="wExpiry.xml" Component_="xml" FileName="200_wE~1.xml|200_wExpiry.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\200_wExpiry.xml" SelfReg="false" NextFile="wSDP.xml_1"/>
+    <ROW File="wSDP.xml" Component_="xml" FileName="183_wSDP.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\183_wSDP.xml" SelfReg="false" NextFile="xml_2"/>
+    <ROW File="wSDP.xml_1" Component_="xml" FileName="200_wSDP.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\200_wSDP.xml" SelfReg="false" NextFile="wSDP_wACK.xml"/>
+    <ROW File="wSDP_wACK.xml" Component_="xml" FileName="200_wS~1.xml|200_wSDP_wACK.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\200_wSDP_wACK.xml" SelfReg="false" NextFile="xml_3"/>
+    <ROW File="xml" Component_="xml" FileName="100.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\100.xml" SelfReg="false" NextFile="xml_1"/>
+    <ROW File="xml_1" Component_="xml" FileName="180.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\180.xml" SelfReg="false" NextFile="wSDP.xml"/>
+    <ROW File="xml_2" Component_="xml" FileName="200.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\200.xml" SelfReg="false" NextFile="wACK.xml"/>
+    <ROW File="xml_3" Component_="xml" FileName="202.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\202.xml" SelfReg="false" NextFile="xml_4"/>
+    <ROW File="xml_4" Component_="xml" FileName="401.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\401.xml" SelfReg="false" NextFile="wACK.xml_1"/>
+    <ROW File="xml_5" Component_="xml" FileName="403.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\403.xml" SelfReg="false" NextFile="wACK.xml_2"/>
+    <ROW File="xml_6" Component_="xml" FileName="404.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\404.xml" SelfReg="false" NextFile="wACK.xml_3"/>
+    <ROW File="xml_7" Component_="xml" FileName="407.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\407.xml" SelfReg="false" NextFile="wACK.xml_4"/>
+    <ROW File="xml_8" Component_="xml" FileName="408.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\408.xml" SelfReg="false" NextFile="wACK.xml_5"/>
+    <ROW File="xml_9" Component_="xml" FileName="603.xml" Attributes="0" SourcePath="..\..\Scripts\Standard_Responses\603.xml" SelfReg="false" NextFile="wACK.xml_6"/>
+    <ROW File="xmllint.exe_1" Component_="xmllint.exe_1" FileName="xmllint.exe" Attributes="0" SourcePath="..\SIPped\xmllint.exe" SelfReg="false" NextFile="zlib1.dll_1"/>
+    <ROW File="zlib1.dll_1" Component_="zlib1.dll_1" FileName="zlib1.dll" Attributes="0" SourcePath="..\SIPped\zlib1.dll" SelfReg="false" NextFile="README.txt"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.BuildComponent">
+    <ROW BuildKey="DefaultBuild" BuildName="DefaultBuild" BuildOrder="1" BuildType="0" PackageFolder="." PackageFileName="SIPped" Languages="en" InstallationType="4"/>
+    <ATTRIBUTE name="CurrentBuild" value="DefaultBuild"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.DictionaryComponent">
+    <ROW Path="&lt;AI_DICTS&gt;ui.ail"/>
+    <ROW Path="&lt;AI_DICTS&gt;ui_en.ail"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.FragmentComponent">
+    <ROW Fragment="CommonUI.aip" Path="&lt;AI_FRAGS&gt;CommonUI.aip"/>
+    <ROW Fragment="FolderDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\FolderDlg.aip"/>
+    <ROW Fragment="SequenceDialogs.aip" Path="&lt;AI_THEMES&gt;classic\fragments\SequenceDialogs.aip"/>
+    <ROW Fragment="Sequences.aip" Path="&lt;AI_FRAGS&gt;Sequences.aip"/>
+    <ROW Fragment="StaticUIStrings.aip" Path="&lt;AI_FRAGS&gt;StaticUIStrings.aip"/>
+    <ROW Fragment="UI.aip" Path="&lt;AI_THEMES&gt;classic\fragments\UI.aip"/>
+    <ROW Fragment="Validation.aip" Path="&lt;AI_FRAGS&gt;Validation.aip"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiBinaryComponent">
+    <ROW Name="aicustact.dll" SourcePath="&lt;AI_CUSTACTS&gt;aicustact.dll"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiControlComponent">
+    <ATTRIBUTE name="FixedSizeBitmaps" value="0"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiControlEventComponent">
+    <ROW Dialog_="FolderDlg" Control_="Back" Event="NewDialog" Argument="WelcomeDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="WelcomeDlg" Control_="Next" Event="NewDialog" Argument="FolderDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Back" Event="NewDialog" Argument="FolderDlg" Condition="AI_INSTALL" Ordering="201"/>
+    <ROW Dialog_="FolderDlg" Control_="Next" Event="NewDialog" Argument="VerifyReadyDlg" Condition="AI_INSTALL" Ordering="201"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_INSTALL" Ordering="197"/>
+    <ROW Dialog_="MaintenanceTypeDlg" Control_="Back" Event="NewDialog" Argument="MaintenanceWelcomeDlg" Condition="AI_MAINT" Ordering="1"/>
+    <ROW Dialog_="MaintenanceWelcomeDlg" Control_="Next" Event="NewDialog" Argument="MaintenanceTypeDlg" Condition="AI_MAINT" Ordering="99"/>
+    <ROW Dialog_="CustomizeDlg" Control_="Back" Event="NewDialog" Argument="MaintenanceTypeDlg" Condition="AI_MAINT" Ordering="1"/>
+    <ROW Dialog_="MaintenanceTypeDlg" Control_="ChangeButton" Event="NewDialog" Argument="CustomizeDlg" Condition="AI_MAINT" Ordering="301"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Back" Event="NewDialog" Argument="CustomizeDlg" Condition="AI_MAINT" Ordering="202"/>
+    <ROW Dialog_="CustomizeDlg" Control_="Next" Event="NewDialog" Argument="VerifyReadyDlg" Condition="AI_MAINT" Ordering="1"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_MAINT" Ordering="198"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Back" Event="NewDialog" Argument="PatchWelcomeDlg" Condition="AI_PATCH" Ordering="203"/>
+    <ROW Dialog_="PatchWelcomeDlg" Control_="Next" Event="NewDialog" Argument="VerifyReadyDlg" Condition="AI_PATCH" Ordering="201"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_PATCH" Ordering="199"/>
+    <ROW Dialog_="ResumeDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_RESUME" Ordering="299"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiCustActComponent">
+    <ROW Action="AI_DOWNGRADE" Type="19" Target="4010"/>
+    <ROW Action="AI_PREPARE_UPGRADE" Type="65" Source="aicustact.dll" Target="PrepareUpgrade"/>
+    <ROW Action="AI_RESTORE_LOCATION" Type="65" Source="aicustact.dll" Target="RestoreLocation"/>
+    <ROW Action="AI_ResolveKnownFolders" Type="1" Source="aicustact.dll" Target="AI_ResolveKnownFolders"/>
+    <ROW Action="AI_STORE_LOCATION" Type="51" Source="ARPINSTALLLOCATION" Target="[APPDIR]"/>
+    <ROW Action="AI_ViewReadme" Type="1" Source="aicustact.dll" Target="[#README.txt]"/>
+    <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFilesFolder][ProductName]"/>
+    <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]"/>
+    <ROW Action="SET_TARGETDIR_TO_APPDIR" Type="51" Source="TARGETDIR" Target="[APPDIR]"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiEnvComponent">
+    <ROW Environment="PATH" Name="=*PATH" Value="[~];[APPDIR]" Component_="cygcrypto_0.9.8.dll_1"/>
+    <ROW Environment="SIPPED" Name="=-*SIPPED" Value="[APPDIR]" Component_="cygcrypto_0.9.8.dll_1"/>
+    <ROW Environment="TERMINFO" Name="=-*TERMINFO" Value="[terminfo_DIR]" Component_="cygcrypto_0.9.8.dll_1"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiInstExSeqComponent">
+    <ROW Action="AI_DOWNGRADE" Condition="AI_NEWERPRODUCTFOUND AND (UILevel &lt;&gt; 5)" Sequence="210"/>
+    <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
+    <ROW Action="AI_STORE_LOCATION" Condition="Not Installed" Sequence="1501"/>
+    <ROW Action="AI_PREPARE_UPGRADE" Condition="AI_UPGRADE=&quot;No&quot; AND (Not Installed)" Sequence="1399"/>
+    <ROW Action="AI_ResolveKnownFolders" Sequence="51"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
+    <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
+    <ROW Action="AI_ResolveKnownFolders" Sequence="51"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
+    <ROW Condition="VersionNT" Description="[ProductName] cannot be installed on [WindowsType9XDisplay]" DescriptionLocId="AI.LaunchCondition.No9X" IsPredefined="true" Builds="DefaultBuild"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiThemeComponent">
+    <ATTRIBUTE name="UsedTheme" value="classic"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiUpgradeComponent">
+    <ROW UpgradeCode="[|UpgradeCode]" VersionMax="[|ProductVersion]" Attributes="1025" ActionProperty="OLDPRODUCTS"/>
+    <ROW UpgradeCode="[|UpgradeCode]" VersionMin="[|ProductVersion]" Attributes="2" ActionProperty="AI_NEWERPRODUCTFOUND"/>
+  </COMPONENT>
+</DOCUMENT>
