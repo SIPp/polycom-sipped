@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="SIPped"
+	Name="SIPp"
 	ProjectGUID="{26C78237-A4F2-405E-A9A9-433447C94C21}"
 	RootNamespace="SIPped"
 	Keyword="Win32Proj"
@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SIPP_SOURCE)\src\openssld\include\&quot;;&quot;$(SIPP_SOURCE)\src\regex-2.7\include&quot;;&quot;$(SIPP_SOURCE)\src\pthread_w32.2\include&quot;;&quot;$(SIPP_SOURCE)\src\WpdPack\Include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SIPP_SOURCE)\openssld\include\&quot;;&quot;$(SIPP_SOURCE)\regex-2.7\include&quot;;&quot;$(SIPP_SOURCE)\pthread_w32.2\include&quot;;&quot;$(SIPP_SOURCE)\WpdPack\Include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T;WIN32_LEAN_AND_MEAN;PCAPPLAY;_USE_OPENSSL;HAVE_PCAP_NEXT_EX"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -66,7 +66,7 @@
 				AdditionalDependencies="pthreadVC2.lib wpcap.lib ws2_32.lib regex.lib libeay32.lib ssleay32.lib"
 				ShowProgress="1"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(SIPP_SOURCE)\src\pthread_w32.2\lib&quot;;&quot;$(SIPP_SOURCE)\src\regex-2.7\lib&quot;;&quot;$(SIPP_SOURCE)\src\openssld\lib&quot;;&quot;$(SIPP_SOURCE)\src\WpdPack\Lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(SIPP_SOURCE)\pthread_w32.2\lib&quot;;&quot;$(SIPP_SOURCE)\regex-2.7\lib&quot;;&quot;$(SIPP_SOURCE)\openssld\lib&quot;;&quot;$(SIPP_SOURCE)\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				RandomizedBaseAddress="1"
@@ -120,7 +120,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;$(SIPP_SOURCE)\src\openssl\include\&quot;;&quot;$(SIPP_SOURCE)\src\regex-2.7\include&quot;;&quot;$(SIPP_SOURCE)\src\pthread_w32.2\include&quot;;&quot;$(SIPP_SOURCE)\src\WpdPack\Include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SIPP_SOURCE)\openssl\include\&quot;;&quot;$(SIPP_SOURCE)\regex-2.7\include&quot;;&quot;$(SIPP_SOURCE)\pthread_w32.2\include&quot;;&quot;$(SIPP_SOURCE)\WpdPack\Include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;_USE_32BIT_TIME_T;WIN32_LEAN_AND_MEAN;PCAPPLAY;_USE_OPENSSL"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -141,7 +141,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="pthreadVC2.lib wpcap.lib ws2_32.lib regex.lib libeay32.lib ssleay32.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(SIPP_SOURCE)\src\pthread_w32.2\lib&quot;;&quot;$(SIPP_SOURCE)\src\regex-2.7\lib&quot;;&quot;$(SIPP_SOURCE)\src\openssl\lib&quot;;&quot;$(SIPP_SOURCE)\src\WpdPack\Lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(SIPP_SOURCE)\pthread_w32.2\lib&quot;;&quot;$(SIPP_SOURCE)\regex-2.7\lib&quot;;&quot;$(SIPP_SOURCE)\openssl\lib&quot;;&quot;$(SIPP_SOURCE)\WpdPack\Lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"

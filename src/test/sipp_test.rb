@@ -11,8 +11,8 @@ require 'English'
 require 'rbconfig'
 require 'optparse'
 require 'set'
-require 'win32/process' if Config::CONFIG["host_os"] =~ /mswin|mingw/
-require 'sys/proctable' if Config::CONFIG["host_os"] =~ /mswin|mingw/
+require 'win32/process' if RbConfig::CONFIG["host_os"] =~ /mswin|mingw/
+require 'sys/proctable' if RbConfig::CONFIG["host_os"] =~ /mswin|mingw/
 
 #
 # Todo:
@@ -41,15 +41,15 @@ class SippTest
 
   def initialize(name, client_options, server_options = '')
     process_args
-    @is_windows = Config::CONFIG["host_os"] =~ /mswin|mingw/
+    @is_windows = RbConfig::CONFIG["host_os"] =~ /mswin|mingw/
     @name = name
     @client_options = client_options
     @server_options = server_options 
     @sipp_local_port = 5069
     @sipp_remote_port = 15060
     @sipp_logging_parameters = "" #"-trace_debug"  #" -trace_screen -trace_msg"
-    #@sipp_path = (@is_windows)? "..\\Debug\\SIPped.exe" : "../sipp"
-    @sipp_path = (@is_windows)? "..\\sipp.exe" : "../sipp"
+    #@sipp_path = (@is_windows)? "..\\Debug\\sipp.exe" : "../sipp"
+    @sipp_path = (@is_windows)? "..\\sipp.exe" : "../sipp" # This means sipp.exe must get copied from Debug folder in win32 platform
     @logging = "normal" unless @logging
     @error_message = "";
     @server_screen_destination =  "#{@name}_server.out"

@@ -215,12 +215,6 @@ TEST(xp_parser, xp_set_xml_buffer_from_file_no_embedded_comment){
   ASSERT_NE(-1, file2_size) << "Could not stat " << include_file_name << ".";
   ASSERT_EQ(1, xp_set_xml_buffer_from_file(sipp_script_file_name.c_str(), dumpxml)) << "xp_set_xml_buffer_from_file() returned error";
 
-  //correct formula is : expected size = size1+size2-xi_include_linesize
-  //for this test case : 705           = 298  + 447 - 40
-  unsigned totalsize = get_file_length(sipp_script_file_name) + get_file_length(include_file_name) -40 ;
-  EXPECT_EQ(totalsize , xp_get_xmlbuffer().length()) << "Length XML string must match expected. Total size = " <<
-        file1_size << " + " << file2_size << " - "  << 40 << " =  " <<  totalsize ;
-//  if (debug) printf ("totalsize = %d + %d - %d  = %d\n", file1_size, file2_size,  40 ,  totalsize);
   EXPECT_STREQ(expected_result.c_str(), xp_get_xmlbuffer().c_str()) << "Resulting XML string must match. Actual = " <<
         xp_get_xmlbuffer() << "'\n Expected = '" << expected_result << "'";
   //EXPECT_EQ on String objects : equivalent to above
