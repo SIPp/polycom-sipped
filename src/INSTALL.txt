@@ -1,3 +1,6 @@
+This file identifies the packages required and steps neccessary to get SIPp building and installing.
+It will get updated and prettified as more systems are testsed.
+
 Packages on Mint:
 # Set the default shell to bash (rather than dash)
 # Otherwise ruby test scripts fail as file redirection works differently
@@ -26,5 +29,6 @@ To Compile:
 3. Ensure SIPP_SOURCE 
 cd into src folder
 export SIPP_SOURCE=`pwd`
+
 make debug_pcap_ossl
 make test
