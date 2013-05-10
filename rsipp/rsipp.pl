@@ -15,7 +15,11 @@ my $rsippDocumentationUrl = "https://twiki.polycom.com/twiki/bin/view/Main/Rsipp
 my $path;
 BEGIN
 {
-    if ( defined( $ENV{'RSIPP'} ) )
+    if ( defined( $ENV{'SIPP_SOURCE'} ) )
+    {
+        $path = "$ENV{'SIPP_SOURCE'}/rsipp";
+    }
+    elsif ( defined( $ENV{'RSIPP'} ) )
     {
         $path = "$ENV{'RSIPP'}";
     }
@@ -27,7 +31,8 @@ BEGIN
     {
         die "Environment variable SIPP or RSIPP must be defined.\n"
             . "SIPP should be set to the directory in which sipp-related files are installed (containing sipp.dtd);\n"
-            . "alternatively RSIPP should be set to the rsipp directory in which rsipp was installed or checked out.\n";
+            . "alternatively RSIPP should be set to the rsipp directory in which rsipp was installed or checked out.\n"
+            . "rsipp.config.xml is searched in many locations, including %APPDATA%\\sipp on Windows, ~ on linux.\n";
     }
 }
 use lib "$path";
@@ -38,6 +43,11 @@ process_command_line_and_run_sipp( extract_parameters_from_config_file( get_conf
 #locating the rsipp.config.xml file
 sub get_config_file_path
 {
+	my $sipp_app_data;
+    if ( defined( $ENV{'APPDATA'} ) )
+    {
+        $sipp_app_data = "$ENV{'APPDATA'}/sipp";
+    }
 
     if ( -e "rsipp.config.xml" )
     {
@@ -51,11 +61,16 @@ sub get_config_file_path
     {
         return "~/rsipp.config.xml";
     }
+    elsif ( -e "$sipp_app_data/rsipp.config.xml" )
+    {
+        return "$sipp_app_data/rsipp.config.xml";
+    }
     else
     {
         die "Could not locate rsipp.config.xml, which is required.\n"
             . "You must copy 'copy_to_rsipp.config.xml' to 'rsipp.config.xml' and edit it before using rsipp.\n"
-            . "rsipp.config.xml must be in current or home directory, or in the directory specified by SIPP variable.\n"
+            . "rsipp.config.xml must be in current, home or %APPDATA%\\sipp directory, or in one of \n"
+			. "\$SIPP, \$SIPP_SOURCE/rsipp or \$RSIPP directories.\n"
             . "Please refer to $rsippDocumentationUrl for help.\n";
     }
 
@@ -72,6 +87,7 @@ sub check_sipp_file_format_using_xmllint
     # allows spaces in path name for parameter passing into xmllint
     $modifiedPath =~ s/[ ]/%20/g;
 
+	my $command = "xmllint --path $modifiedPath --postvalid --noout $file --xinclude";
     my $result = system( "xmllint", "--path", $modifiedPath, "--postvalid", "--noout", $file,
                          "--xinclude" );
 
@@ -83,21 +99,25 @@ sub check_sipp_file_format_using_xmllint
             . "Please ensure that the xmllint binary is executable and in the System Path.\n"
             . "If you are receiving parser or validation errors, \"$file\"\n"
             . "probably contains syntax errors or is malformed.\n"
+			. "\n'$command'\n\n"
             . "Please refer to the XMLLint and SipP documentation.\n";
     }
     elsif ( $result & 127 )
     {
         my $code = ( $result & 127 );
         die "FAILURE attempting to use XMLLint for validation of \"$file\": the xmllint process "
-        . "died with signal $code\n";
+        . "died with signal $code\n"
+		. "\n'$command'\n\n";
     }
     elsif ( $result != 0 )
     {
         my $code = ( $result >> 8 );
         die "FAILURE attempting to use XMLLint for validation of \"$file\": the xmllint process "
             . "exited with value $code\n"
+			. "Ensure sipp.dtd file is in one of \$SIPP, \$SIPP_SOURCE/rsipp, \$RSIPP directories.\n"
             . "If you are receiving parser or validation errors, \"$file\"\n"
             . "probably contains syntax errors or is malformed.\n"
+			. "\n'$command'\n\n"
             . "Please refer to the XMLLint and SipP documentation.\n";
     }
     else
@@ -133,7 +153,7 @@ sub prompt_for_local_ip
 {
     print "\n";
     print "---- Local IP ----\n";
-    print "SIPped must be configured with the IP address on this computer you wish to use to send and receive packets.\n";
+    print "SIPp must be configured with the IP address on this computer you wish to use to send and receive packets.\n";
     print "This IP address must be associated with an interface on this computer, and correlates with the -i parameter.\n";
     print "\n";
     print "You may override the default you enter now for a specific run by specifying a -i parameter.\n";
@@ -185,13 +205,14 @@ sub create_rsipp_config_file
     print $CONFIGFILE "  </sipp>\n";
     print $CONFIGFILE "</tools>\n";
     close($CONFIGFILE);
+	print "Done.\n\n";
 
 }
 
 sub prompt_user_and_create_rsipp_config_file 
 {
     my $xml_file   = shift;
-    print "Invalid rsipp.config.xml file: SIPped requires configuration.\n\n";
+    print "Invalid rsipp.config.xml file: SIPp requires configuration.\n\n";
     
     my $local_ip = prompt_for_local_ip();
     my $remote_ip = prompt_for_remote_ip();
@@ -280,7 +301,7 @@ sub process_command_line_and_run_sipp
 
     my $sipp_args = "";
 
-    # Check if there are any extra arguments to pass to SIPped. Empty quotes in the command line cause Badness.
+    # Check if there are any extra arguments to pass to SIPp. Empty quotes in the command line cause Badness.
     if ( scalar(@ARGV) > 0)
     {
         $sipp_args = '"' . join('" "', @ARGV) . '"';

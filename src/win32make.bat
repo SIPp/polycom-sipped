@@ -1,26 +1,30 @@
 rem ******************************************************************
-rem *   20120731  compile windows port of sipped
+rem *   20120731  compile windows port of sipp
 rem ******************************************************************
 
 rem Set the environment for msbuild
-call "C:\Program Files (x86)\Microsoft Visual Studio 8\VC\vcvarsall.bat" x86
+call "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\vcvarsall.bat" x86
 
-set TA_DIR=%WORKSPACE%\TestUtilities
-set SIPPED=%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped_win32
+set SIPP=%SIPP_SOURCE%\WindowsBinary\SIPp_win32
 rem set INCLUDE=C:\Program Files\Microsoft SDKs\Windows\v6.0A\Include
 rem set LIB=C:\Program Files\Microsoft SDKs\Windows\v6.0A\Lib
-echo "*********************************************"
-cd "%TA_DIR%\SIPped\SIPped\src"
+@echo "*********************************************"
+cd "%SIPP_SOURCE%\src"
 
-msbuild SIPped.sln /t:rebuild
+del Debug\*.exe sipp.exe
 
-rem put executable into src directory
-copy /Y Debug\SIPped.exe sipp.exe
-set PATH=%PATH%;%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped_win32
+msbuild SIPp.sln /t:rebuild
+IF %ErrorLevel% NEQ 0 GOTO END
+
+rem put executable into src directory as expected by system tests
+copy /Y Debug\SIPp.exe sipp.exe
+set PATH=%PATH%;%SIPP%
 sipp.exe -v
 
 rem run unittests
 cd UnitTest
-..\Debug\SIPpedTest.exe --gtest_output=xml:testresults/SIPpedTest.xml 
+..\Debug\SIPpTest.exe --gtest_output=xml:testresults/SIPpTest.xml 
 cd ..
 
+:END
+exit /B %ERRORLEVEL%

@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="SIPpedTest"
+	Name="SIPpTest"
 	ProjectGUID="{604E29AD-F531-4176-B9D6-9FBE1978EB37}"
 	RootNamespace="SIPpedTest"
 	Keyword="Win32Proj"
@@ -190,11 +190,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\SIPpedTest.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\sockdemo.cpp"
+				RelativePath=".\SIPpTest.cpp"
 				>
 			</File>
 			<File

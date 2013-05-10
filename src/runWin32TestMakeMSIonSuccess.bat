@@ -1,8 +1,7 @@
-set TA_DIR=%WORKSPACE%\TestUtilities
-set SIPPED=%TA_DIR%\SIPped\WindowsBinary\SIPped_win32
-set PATH=%SIPPED%;%PATH%;%TA_DIR%\SIPped\rsipp
+set SIPP=%SIPP_SOURCE%\WindowsBinary\SIPp_win32
+set PATH=%SIPP%;%SIPP_SOURCE%\rsipp;%PATH%
 
-cd "%TA_DIR%\SIPped\SIPped\src\test"
+cd "%SIPP_SOURCE%\src\test"
 
 REM "How busy is the server right now"
 typeperf -sc 10 "\processor(_total)\%% processor time"
@@ -11,21 +10,21 @@ call runSippTest.bat CI-SIPPED-01_WIN32
 
 echo Result of execution is: %ERRORLEVEL%
 
-rem  if success copy binary into windowsbinary/sipped_win32 and build msi
+rem  if success copy binary into windowsbinary/sipp_win32 and build msi
 IF %ErrorLevel% EQU 1 GOTO END
-@echo copying sipp.exe to %SIPPED% 
-xcopy /Y "%TA_DIR%\SIPped\SIPped\src\Debug\SIPped.exe" "%SIPPED%\sipp.exe"
-copy /y NUL "%SIPPED%\..\SIPped\WARNING FILES HERE ARE NOT CURRENT.txt" > NUL
+@echo copying sipp.exe to %SIPP% for use in msi creation. 
+xcopy /Y "%SIPP_SOURCE%\src\Debug\SIPp.exe" "%SIPP%\sipp.exe"
+copy /y NUL "%SIPP_SOURCE%\WindowsBinary\SIPp\WARNING FILES HERE ARE NOT CURRENT.txt" > NUL
 @setlocal
 @set TMP=%PATH%
-cd "%SIPPED%\..\Installation\"
+cd "%SIPP_SOURCE%\WindowsBinary\Installation\"
 call create_windows7_installer.bat
 set PATH=%TMP%
 @endlocal
 
-cd "%TA_DIR%\SIPped\SIPped\src"
-IF /I "%Deploy%"=="No" GOTO END
-call DeploySIPped.bat SIPped_windows7.msi
+cd "%SIPP_SOURCE%\src"
+IF /I "%Deploy%" NEQ "Yes" GOTO END
+call DeploySIPp.bat SIPp_windows7.msi
 
 :END
 exit /B %ERRORLEVEL%

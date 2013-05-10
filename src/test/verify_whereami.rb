@@ -10,7 +10,7 @@ require './sipp_test'
 
 
 class WhereAmI < Test::Unit::TestCase
-  #environment variable in xi include file should be bracketed by % eg %SIPP_SOURCE%/includethisfile.xml 
+  #environment variable in xi include file should be bracketed by % eg %SIPP_SOURCE%/src/includethisfile.xml 
   def test_badenv
     test = SippTest.new("test_badenv", "-sf include_incl_badenv.sipp")
     test.expected_error_log = /Malformed environment environment variable - missing closing %\s*\nFound at\:\s*\n\s*include_badenvvar.sipp\:7\s*\n\s*include_incl_badenv.sipp\:10/

@@ -28,8 +28,36 @@ To Compile:
 1. Ensure rsipp folder is in path.
 2. Ensure RSIPP is set to rsipp directory
 3. Ensure SIPP_SOURCE 
-cd into src folder
+cd into checked out folder folder
 export SIPP_SOURCE=`pwd`
 
 make debug_pcap_ossl
 make test
+
+
+On Windows7
+Install Ruby (go to rubyinstaller.org)
+gem install win32-process
+gem install getopt
+gem install sys-proctable
+gem install test_reporter
+gem install test_unit
+gem install ci-reporter-rake-test_unit
+
+grep for win32 from http://gnuwin32.sourceforge.net/packages/grep.htm, added to path.
+
+To build:
+set SIPP_SOURCE to full path where checkout occured
+cd src
+win32make.bat
+
+Open in Visual Studio, and build.
+To run Unit Tests, right click on SIPpTest and select Debug | Start new instance.
+To run System Tests:
+- You MUST have rsipp in your path, grep installed and the SIPP_SOURCE and RSIPP variables set.
+- Open a command prompt and cd into src folder.
+- copy Debug/sipp.exe .  
+    (common folder location for sipp.exe on win32 and cygwin)
+- cd UnitTest
+- test.rb
+
