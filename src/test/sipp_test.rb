@@ -6,7 +6,6 @@
 #
 
 require 'rubygems'
-#require 'getopt/std'
 require 'English'
 require 'rbconfig'
 require 'optparse'
@@ -112,7 +111,7 @@ class SippTest
 
     if (not (@is_windows))
       #kill processes holding  our ports
-      result.each{|s|
+      result.each_line{|s|
         a = s.split()
         
         # examples of all forms of netstat output, note variable number of arguments
@@ -153,7 +152,7 @@ class SippTest
 
       #  Note on win7 UDP state rarely has a value, even when it is LISTENING
       #     cannot rely state as an indicator for kill candidate 
-      result.each{|s|
+      result.each_line{|s|
         a = s.split()
         # pid may be in arg 3 or 4 of each line
         for argno in (3..4) do
@@ -399,7 +398,7 @@ class SippTest
       # kill immediate children of the shell whose pid is stored in @server_pid
       # may want to
       # Hash[*`ps -f`.scan(/\s\d+\s/).map{|x|x.to_i}].each{ |pid,ppid|
-      `ps -ef`.each{|s|
+      `ps -ef`.each_line{|s|
         a = s.split()
         if (a[2].to_i == @server_pid)
           puts "Test Cleanup, SIGINT #{a[1]} because its ppid of #{@server_pid} matches the server process.\n"  if @logging == "verbose"
@@ -414,7 +413,7 @@ class SippTest
       }
       #sleep 1 # 99% of linux cases, INT will shutdown process quickly (load dependant) and not invoke KILL
       # if still not dead, once more with feeling....
-      `ps -ef`.each{|s|
+      `ps -ef`.each_line{|s|
         a = s.split()
         if (a[2].to_i == @server_pid)
           puts "NOT DEAD YET:SIGKILL #{a[1]} because its ppid of #{@server_pid} matches the server process.\n"  if @logging == "verbose"
