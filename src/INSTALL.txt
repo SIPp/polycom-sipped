@@ -19,6 +19,7 @@ Packages on Fedora:
 
 Install Perl modules (for rsipp)
 sudo src/installPackages.sh
+gem install rake
 
 To Compile:
 1. Ensure rsipp folder is in path.
