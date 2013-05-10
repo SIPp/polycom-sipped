@@ -15,6 +15,7 @@ sudo apt-get install libncurses-dev
 sudo apt-get update
 sudo apt-get install ruby1.8
 sudo apt-get install rubygems
+sudo apt-get install rake
 
 sudo gem install getopt
 
