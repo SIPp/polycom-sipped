@@ -1,23 +1,18 @@
 #!/bin/sh
 #
-# assumes Jenkins will run this script
-# 
-export SIPPED="$WORKSPACE/TestUtilities/SIPped/WindowsBinary/SIPped"
+# Must have SIPP_SOURCE set to root directory
+#
 #TERM must be defined or sipp will fail to launch, should this be login profile
 export TERM=xterm
 
-# reference rsipp.config.xml must exist on test platform 
-cp "$WORKSPACE/TestUtilities/AutoTester/continuous_integration/TA_Config/$1/SIPped/rsipp/rsipp.config.xml" "$TA_DIR/SIPped/rsipp"
-cat "$TA_DIR/SIPped/rsipp/rsipp.config.xml"
-
-#how do we alter svn checkin so this is executable on checkout
-ls -la  "$TA_DIR/SIPped/rsipp/rsipp.pl"
+#how do we alter checkin so this is executable on checkout
+ls -la  "$SIPP_SOURCE/rsipp/rsipp.pl"
 # exec.rb test case requires exec rsipp.pl to be able to find rsipp.pl as an executable.
-chmod 755 "$TA_DIR/SIPped/rsipp/rsipp.pl"
+chmod 755 "$SIPP_SOURCE/rsipp/rsipp.pl"
 export PATH=$PATH:$TA_DIR/SIPped/rsipp
 echo "PATH = $PATH"
 
-cd "$TA_DIR/SIPped/SIPped/src/test"
+cd "$SIPP_SOURCE/src/test"
 rake
 echo "rake exit code: $?"
 cp testresults/*.xml ../UnitTest/testresults/
