@@ -9,7 +9,7 @@ export TERM=xterm
 ls -la  "$SIPP_SOURCE/rsipp/rsipp.pl"
 # exec.rb test case requires exec rsipp.pl to be able to find rsipp.pl as an executable.
 chmod 755 "$SIPP_SOURCE/rsipp/rsipp.pl"
-export PATH=$PATH:$TA_DIR/SIPped/rsipp
+export PATH=$PATH:$SIPP_SOURCE/rsipp
 echo "PATH = $PATH"
 
 cd "$SIPP_SOURCE/src/test"
