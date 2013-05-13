@@ -1,28 +1,29 @@
-set TA_DIR=%WORKSPACE%\TestUtilities
-set SIPPED=%WORKSPACE%\TestUtilities\SIPped\WindowsBinary\SIPped
+rem Assume SIPP_SOURCE is set
+set SIPP=%SIPP_SOURCE%\WindowsBinary\SIPped_cygwin
 set CYGWIN=nodosfilewarning
-set TERMINFO=%TA_DIR%\SIPped\WindowsBinary\SIPped\terminfo
-set PATH=%SIPPED%;%PATH%;%TA_DIR%\SIPped\rsipp
+set TERMINFO=%SIPP_SOURCE%\WindowsBinary\SIPped\terminfo
+set PATH=%SIPP%;%SIPP_SOURCE%\rsipp;%PATH%
 
-cd "%TA_DIR%\SIPped\SIPped\src\test"
+cd "%SIPP_SOURCE%\src\test"
 
 REM "How busy is the server right now"
 typeperf -sc 10 "\processor(_total)\%% processor time"
 
-call runSippTest.bat CI-SIPPED-01_CYGWIN
+call runSippTest.bat 
 
 echo Result of execution is: %ERRORLEVEL%
 
 rem  if success copy binary into windowsbinary/sipped and build msi
 IF %ErrorLevel% EQU 1 GOTO END
-@echo copying sipp.exe to %SIPPED% 
-xcopy /Y "%TA_DIR%\SIPped\SIPped\src\sipp.exe" "%SIPPED%\sipp.exe"
-copy /y NUL "%SIPPED%\..\SIPped_win32\WARNING FILES HERE ARE NOT CURRENT.txt" > NUL
-cd "%SIPPED%\..\Installation\"
-call create_installer.bat
+@echo copying sipp.exe to %SIPP% 
+xcopy /Y "%SIPP_SOURCE%\src\sipp.exe" "%SIPP%\sipp.exe"
+copy /y NUL "%SIPP_SOURCE%\WindowsBinary\SIPped_win32\WARNING FILES HERE ARE NOT CURRENT.txt" > NUL
+cd "%SIPP_SOURCE%\WindowsBinary\Installation\"
+call create_cygwin_installer.bat
 
-cd "%TA_DIR%\SIPped\SIPped\src"
-IF /I "%Deploy%"=="Yes" call DeploySIPped.bat SIPped.msi
+cd "%SIPP_SOURCE%\src"
+IF /I "%Deploy%" NEQ "Yes" goto END
+call DeploySIPped.bat SIPped_cygwin.msi
 
 :END
 exit /B %ERRORLEVEL%

@@ -33,6 +33,6 @@ perl rename_sipp_msi_with_full_version.pl _windows7
 @echo Moving SIPp_windows7.msi to SIPp folder for archive.
 @copy /y SIPp_windows7.msi "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp
 @del SIPp_windows7.msi
-@echo (SIPp_windows7.msi in the SIPp folder for check-in)
+@echo (SIPp_windows7.msi and rsipp are in the SIPp folder for check-in)
 copy /y NUL "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp\FOR CYGWIN VERSION GOTO SIPP - CYGWIN WORKSPACE, CYGWIN NOT UPDATED HERE.txt"
 @endlocal

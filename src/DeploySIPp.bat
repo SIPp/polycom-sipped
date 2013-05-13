@@ -1,37 +1,38 @@
 dir
-@echo ******* COMMITTING %SIPPED%\sipp.exe and %1 **************
-echo %WORKSPACE%
-echo %TA_DIR%
-echo %SIPPED%
-echo %Deploy%
+@echo ******* COMMITTING %SIPP%\sipp.exe and %1 **************
+echo WORKSPACE = '%WORKSPACE%'
+echo SIPP_SOURCE = '%SIPP_SOURCE%'
+echo Deploy = '%Deploy%'
 
-cd "%TA_DIR%\SIPped\SIPped\src"
-sipp.exe -v | grep SIP >> svncommitmessage.txt
+cd "%SIPP_SOURCE%\src"
+sipp.exe -v | grep SIP >> jenkinscommitmessage.txt
 echo ---commit message
-type svncommitmessage.txt
+type jenkinscommitmessage.txt
 echo ---
-cd "%SIPPED%\..\Installation\SIPped"
+cd "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped"
 dir 
-"c:\Program Files\SlikSvn\bin\svn.exe" status
-rem 
-rem svn commit %1 "%SIPPED%\sipp.exe" --username jenkins  --password jenkins  --non-interactive -m "BugID(s): VOIP-64473\n\n%1 commit"
-rem "c:\Program Files\SlikSvn\bin\svn.exe" commit %1 "%SIPPED%\sipp.exe" --username jenkins  --password jenkins  --non-interactive -F "%TA_DIR%\SIPped\SIPped\src\svncommitmessage.txt"
-"c:\Program Files\SlikSvn\bin\svn.exe" commit %1 "%SIPPED%\sipp.exe" --non-interactive -F "%TA_DIR%\SIPped\SIPped\src\svncommitmessage.txt" --force-log
+git status
+rem "c:\Program Files\SlikSvn\bin\svn.exe" commit %1 "%SIPP%\sipp.exe" --non-interactive -F "%SIPP_SOURCE\src\jenkinscommitmessage.txt" --force-log
+rem git commit -am -F jenkinscommitmessage.txt
+rem Maybe use copy of jenkinscommitmessage.txt for changing so it isn't tracked and we can just do git add -u
+echo " Must add, commit and push sipp.exe, rsipp.exe and msi files (but not the jenkinscommitfile)."
+
 
 @echo archiving copy of msi file
-pushd "\\vanfileprd\public\SIPped\Old SIPped Versions"
+rem pushd "\\vanfileprd\public\SIPped\Old SIPped Versions"
+pushd "%JENKINS_HOME%\userContent\Old SIPp Versions"
 wmic logicaldisk get  name,description,providername
 @echo copying to archive
-if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPPED%\..\Installation\SIPped_windows7*.msi" .
-if /I "%1"=="SIPped.msi" copy /y "%SIPPED%\..\Installation\SIPped_v*.msi" .
+if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_windows7*.msi" .
+if /I "%1"=="SIPped_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_v*.msi" .
 dir
 @echo updating current distribution copy
 cd ..
 if /I "%1"=="SIPped_windows7.msi" del SIPped_windows7*.msi
 if /I "%1"=="SIPped_windows7.msi" del SIPped_v*.msi
-if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPPED%\..\Installation\SIPped_windows7*.msi" .
-if /I "%1"=="SIPped.msi" copy /y "%SIPPED%\..\Installation\SIPped_v*.msi" .
+if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_windows7*.msi" .
+if /I "%1"=="SIPped_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_cygwin*.msi" .
 dir
 popd 
-rem
+
   

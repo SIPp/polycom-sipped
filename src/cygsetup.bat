@@ -1,4 +1,4 @@
-set PATH=C:\TestUtilities\SIPped\WindowsBinary\SIPped;%PATH%
-set SIPPED=c:\TestUtilities\SIPped\WindowsBinary\SIPped
-set TERMINFO=%TA_DIR%\SIPped\WindowsBinary\SIPped\terminfo
+echo Assuming SIPP_SOURCE is set
+set PATH=%SIPP_SOURCE%\WindowsBinary\SIPped;%PATH%
+set TERMINFO=%SIPP_SOURCE%\WindowsBinary\SIPped\terminfo
 cmd
