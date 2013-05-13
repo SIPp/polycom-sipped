@@ -17,7 +17,7 @@ class IncludeDirectory < Test::Unit::TestCase
     assert(test.run())
   end
   
-  def test_include_substitution_sequence_diagram
+  def test_include_directory_sequence_diagram
     test = SippTest.new("include_directory_sequence_diagram", "-sf include_directory/include_directory.sipp -mc -dump_sequence_diagram -skip_rlimit")
 	
     test.expected_client_output = %Q!          INVITE ----------> \r\n        REGISTER ----------> \r\n!

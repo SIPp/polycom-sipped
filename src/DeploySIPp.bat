@@ -13,7 +13,7 @@ cd "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped"
 dir 
 git status
 rem "c:\Program Files\SlikSvn\bin\svn.exe" commit %1 "%SIPP%\sipp.exe" --non-interactive -F "%SIPP_SOURCE\src\jenkinscommitmessage.txt" --force-log
-rem git commit -am -F jenkinscommitmessage.txt
+rem git commit -a -F jenkinscommitmessage.txt
 rem Maybe use copy of jenkinscommitmessage.txt for changing so it isn't tracked and we can just do git add -u
 echo " Must add, commit and push sipp.exe, rsipp.exe and msi files (but not the jenkinscommitfile)."
 
