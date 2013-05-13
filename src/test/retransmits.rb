@@ -44,12 +44,6 @@ class Retransmits < Test::Unit::TestCase
     test = SippTest.new("test_uas_uac_rrxmt_invite2", "-sf myuac_rxmt_invite2.sipp -mc", "-sf myuas.sipp -mc -ar")
     assert(test.run())
   end    
-  #presence of -yr should not change behavoir
-  #to server: retransmit invite twice immediately
-  def test_uas_uac_rrxmt_invite2
-    test = SippTest.new("test_uas_uac_rrxmt_invite2", "-sf myuac_rxmt_invite2.sipp -mc", "-sf myuas.sipp -mc -ar")
-    assert(test.run())
-  end    
   
   #to server: retransmit invite twice - second invite delayed until after rx 200 ok
   def test_uas_uac_rrxmt_invite2_delay2ndInvite
