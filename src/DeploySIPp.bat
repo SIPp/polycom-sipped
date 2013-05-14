@@ -24,7 +24,7 @@ pushd "%JENKINS_HOME%\userContent\Old SIPp Versions"
 wmic logicaldisk get  name,description,providername
 @echo copying to archive
 if /I "%1"=="SIPp_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_windows7*.msi" .
-if /I "%1"=="SIPp_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_v*.msi" .
+if /I "%1"=="SIPp_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_cygwin*.msi" .
 dir
 @echo updating current distribution copy
 cd ..

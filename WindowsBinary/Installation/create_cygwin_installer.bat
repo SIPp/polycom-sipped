@@ -24,7 +24,7 @@ set /p SIPP_VERSION= < sippversion.txt
 IF EXIST "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp.msi" del "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp.msi"
 @echo Setting Installer version to %SIPP_VERSION%
 "C:\Program Files (x86)\Caphyon\Advanced Installer 8.1.3\bin\x86\advinst.exe" /edit "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp for Cygwin Setup.aip" /SetVersion %SIPP_VERSION% 
-@echo Creating SIPp.msi
+@echo Creating SIPp_cygwin.msi
 "C:\Program Files (x86)\Caphyon\Advanced Installer 8.1.3\bin\x86\advinst.exe" /rebuild "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp for Cygwin Setup.aip"
 dir *.msi | grep SIPp
 perl rename_sipp_msi_with_full_version.pl _cygwin

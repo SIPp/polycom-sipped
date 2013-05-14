@@ -1,1 +1,1 @@
-copy %SIPP_SOURCE%\src\Debug\sipped.exe %SIPP%\sipp.exe
+copy %SIPP_SOURCE%\src\Debug\sipp.exe %SIPP%\sipp.exe

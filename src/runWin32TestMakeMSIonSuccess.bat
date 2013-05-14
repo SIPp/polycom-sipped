@@ -6,7 +6,7 @@ cd "%SIPP_SOURCE%\src\test"
 REM "How busy is the server right now"
 typeperf -sc 10 "\processor(_total)\%% processor time"
 
-call runSippTest.bat CI-SIPPED-01_WIN32
+call runSippTest.bat
 
 echo Result of execution is: %ERRORLEVEL%
 
