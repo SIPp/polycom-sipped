@@ -29,7 +29,7 @@ dir
 @echo updating current distribution copy
 cd ..
 if /I "%1"=="SIPp_windows7.msi" del SIPp_windows7*.msi
-if /I "%1"=="SIPp_windows7.msi" del SIPp_v*.msi
+if /I "%1"=="SIPp_cygwin7.msi" del SIPp_cygwin*.msi
 if /I "%1"=="SIPp_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_windows7*.msi" .
 if /I "%1"=="SIPp_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_cygwin*.msi" .
 dir
