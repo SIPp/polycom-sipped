@@ -34,5 +34,5 @@ if /I "%1"=="SIPp_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installatio
 if /I "%1"=="SIPp_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_cygwin*.msi" .
 dir
 popd 
-
+exit /b 0
   
