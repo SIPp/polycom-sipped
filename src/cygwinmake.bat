@@ -19,7 +19,7 @@ goto:EXECUTE
 	ECHO "usage: %0 [directory]"
 	ECHO "       if [directory] is not supplied assumes current directory is target"
 	ECHO "       directory specification must use forward slash "
-	ECHO "       eg.  cywinmake z:/SIPped/src"
+	ECHO "       eg.  cywinmake z:/sipp4/src"
 	GOTO:EOF
 )
 

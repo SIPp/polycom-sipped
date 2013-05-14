@@ -1,7 +1,7 @@
 rem Assume SIPP_SOURCE is set
-set SIPP=%SIPP_SOURCE%\WindowsBinary\SIPped_cygwin
+set SIPP=%SIPP_SOURCE%\WindowsBinary\SIPp_cygwin
 set CYGWIN=nodosfilewarning
-set TERMINFO=%SIPP_SOURCE%\WindowsBinary\SIPped\terminfo
+set TERMINFO=%SIPP_SOURCE%\WindowsBinary\SIPp_cygwin\terminfo
 set PATH=%SIPP%;%SIPP_SOURCE%\rsipp;%PATH%
 
 cd "%SIPP_SOURCE%\src\test"

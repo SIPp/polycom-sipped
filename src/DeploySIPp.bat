@@ -9,7 +9,7 @@ sipp.exe -v | grep SIP >> jenkinscommitmessage.txt
 echo ---commit message
 type jenkinscommitmessage.txt
 echo ---
-cd "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped"
+cd "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp"
 dir 
 git status
 rem "c:\Program Files\SlikSvn\bin\svn.exe" commit %1 "%SIPP%\sipp.exe" --non-interactive -F "%SIPP_SOURCE\src\jenkinscommitmessage.txt" --force-log
@@ -19,19 +19,19 @@ echo " Must add, commit and push sipp.exe, rsipp.exe and msi files (but not the 
 
 
 @echo archiving copy of msi file
-rem pushd "\\vanfileprd\public\SIPped\Old SIPped Versions"
+rem pushd "\\vanfileprd\public\SIPp\Old SIPp Versions"
 pushd "%JENKINS_HOME%\userContent\Old SIPp Versions"
 wmic logicaldisk get  name,description,providername
 @echo copying to archive
-if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_windows7*.msi" .
-if /I "%1"=="SIPped_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_v*.msi" .
+if /I "%1"=="SIPp_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_windows7*.msi" .
+if /I "%1"=="SIPp_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_v*.msi" .
 dir
 @echo updating current distribution copy
 cd ..
-if /I "%1"=="SIPped_windows7.msi" del SIPped_windows7*.msi
-if /I "%1"=="SIPped_windows7.msi" del SIPped_v*.msi
-if /I "%1"=="SIPped_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_windows7*.msi" .
-if /I "%1"=="SIPped_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPped_cygwin*.msi" .
+if /I "%1"=="SIPp_windows7.msi" del SIPp_windows7*.msi
+if /I "%1"=="SIPp_windows7.msi" del SIPp_v*.msi
+if /I "%1"=="SIPp_windows7.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_windows7*.msi" .
+if /I "%1"=="SIPp_cygwin.msi" copy /y "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp_cygwin*.msi" .
 dir
 popd 
 

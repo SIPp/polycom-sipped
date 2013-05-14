@@ -1,1 +1,1 @@
-copy %SIPPED%\..\..\SIPped\src\Debug\sipped.exe %SIPPED%\sipp.exe
+copy %SIPP_SOURCE%\src\Debug\sipped.exe %SIPP%\sipp.exe

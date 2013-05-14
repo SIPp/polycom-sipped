@@ -6,7 +6,7 @@ REM
 
 cd "%SIPP_SOURCE%\src\test"
 REM  invoke tests through Rakefile.  pass verbose option through to each test
-#rake TESTOPTS="-- -v"
+REM Older version of Rake required 'TESTOPTS="-- -v"'
 rake TESTOPTS="-v"
 echo "$?   returned from rake"
 xcopy /Y testresults\*.* ..\UnitTest\testresults
