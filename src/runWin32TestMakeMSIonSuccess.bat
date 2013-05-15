@@ -14,7 +14,7 @@ rem  if success copy binary into windowsbinary/sipp_win32 and build msi
 IF %ErrorLevel% EQU 1 GOTO END
 @echo copying sipp.exe to %SIPP% for use in msi creation. 
 xcopy /Y "%SIPP_SOURCE%\src\Debug\SIPp.exe" "%SIPP%\sipp.exe"
-copy /y NUL "%SIPP_SOURCE%\WindowsBinary\SIPp\WARNING FILES HERE ARE NOT CURRENT.txt" > NUL
+copy /y NUL "%SIPP_SOURCE%\WindowsBinary\SIPp_cygwin\WARNING FILES HERE ARE NOT CURRENT.txt" > NUL
 @setlocal
 @set TMP=%PATH%
 cd "%SIPP_SOURCE%\WindowsBinary\Installation\"

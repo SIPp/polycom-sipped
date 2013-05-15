@@ -29,8 +29,8 @@ IF EXIST "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp.msi" del "%SIPP_SOURCE%\
 dir *.msi | grep SIPp
 perl rename_sipp_msi_with_full_version.pl _cygwin
 @echo Moving SIPp_cygwin.msi to SIPp folder for archive.
-@copy /y SIPp_cygwin.msi "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp
-@del SIPp_cygwin.msi
+copy /y SIPp_cygwin.msi "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp
+del SIPp_cygwin.msi
 @echo (SIPp_cygwin.msi and rsipp.exe are in the SIPp folder for check-in)
 copy /y NUL "%SIPP_SOURCE%\WindowsBinary\Installation\SIPp\FOR WIN32 VERSION GOTO SIPP - WIN32 WORKSPACE, WIN32 NOT UPDATED HERE.txt"
 @endlocal
