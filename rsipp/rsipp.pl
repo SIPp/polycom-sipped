@@ -309,7 +309,7 @@ sub process_command_line_and_run_sipp
 
     if ( defined( $command_line_args{v} ) )
     {
-        run_sipp($sipp_command, "-v");
+        run_sipp($sipp_command, "-v", "", "");
     }
 
     my $scenario;
